@@ -1,0 +1,8 @@
+[0m[1mnull_resource.demo3: Refreshing state... [id=6656350430648300298][0m
+[0m[1mnull_resource.demo: Refreshing state... [id=5888662989738382420][0m
+[0m[1mnull_resource.demo5: Refreshing state... [id=5600081826834566559][0m
+
+[0m[1m[32mNo changes.[0m[1m Your infrastructure matches the configuration.[0m
+
+[0mTerraform has compared your real infrastructure against your configuration
+and found no differences, so no changes are needed.
