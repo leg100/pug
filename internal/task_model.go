@@ -3,6 +3,7 @@ package internal
 import (
 	"io"
 
+	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -40,7 +41,7 @@ func (m taskModel) Init() tea.Cmd {
 	return m.getTaskUpdate
 }
 
-func (m taskModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m taskModel) Update(msg tea.Msg) (model, tea.Cmd) {
 	var (
 		cmd  tea.Cmd
 		cmds []tea.Cmd
@@ -86,4 +87,8 @@ func (m taskModel) getTaskUpdate() tea.Msg {
 	return taskUpdateMsg{
 		content: string(p),
 	}
+}
+
+func (m taskModel) bindings() []key.Binding {
+	return []key.Binding{keys.Modules}
 }

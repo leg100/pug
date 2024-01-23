@@ -1,6 +1,7 @@
 package internal
 
 import (
+	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -31,7 +32,7 @@ func (m modulesModel) Init() tea.Cmd {
 	return nil
 }
 
-func (m modulesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m modulesModel) Update(msg tea.Msg) (model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case viewSizeMsg:
 		m.list.SetSize(msg.width, msg.height)
@@ -45,4 +46,8 @@ func (m modulesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m modulesModel) View() string {
 	return m.list.View()
+}
+
+func (m modulesModel) bindings() []key.Binding {
+	return []key.Binding{keys.Init, keys.Plan, keys.Apply}
 }

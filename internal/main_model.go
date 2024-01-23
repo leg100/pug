@@ -1,8 +1,10 @@
 package internal
 
 import (
+	"math"
 	"strings"
 
+	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 )
@@ -18,10 +20,17 @@ const (
 	taskState
 )
 
+type model interface {
+	Init() tea.Cmd
+	Update(msg tea.Msg) (model, tea.Cmd)
+	View() string
+	bindings() []key.Binding
+}
+
 type mainModel struct {
 	current state
-	modules tea.Model
-	task    tea.Model
+	modules model
+	task    model
 
 	width, height int
 
@@ -55,10 +64,10 @@ func (m mainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return viewSizeMsg{m.viewWidth(), m.viewHeight()}
 		}
 	case tea.KeyMsg:
-		switch msg.String() {
-		case "ctrl+c":
+		switch {
+		case key.Matches(msg, keys.Quit):
 			return m, tea.Quit
-		case "m": // go to modules view
+		case key.Matches(msg, keys.Modules):
 			m.current = modulesState
 			return m, nil
 		}
@@ -91,18 +100,7 @@ var logo = strings.Join([]string{
 	"▀   ▀▀▀ ▀▀▀",
 }, "\n")
 
-func (m mainModel) header() string {
-	column1 := lipgloss.NewStyle().Bold(true).Align(lipgloss.Right).Width(2).Margin(0, 1)
-	column2 := lipgloss.NewStyle().Align(lipgloss.Left).Width(7).Margin(0, 0)
-	var (
-		keys  []string
-		descs []string
-	)
-	for _, k := range defaultKeys {
-		keys = append(keys, k.Help().Key)
-		descs = append(descs, k.Help().Desc)
-	}
-
+func (m mainModel) header(bindings []key.Binding) string {
 	logo := lipgloss.NewStyle().
 		Bold(true).
 		Padding(0, 1).
@@ -111,14 +109,41 @@ func (m mainModel) header() string {
 
 	return lipgloss.JoinHorizontal(lipgloss.Top,
 		logo,
-		column1.Render(strings.Join(keys, "\n")),
-		column2.Render(strings.Join(descs, "\n")),
+		renderHelp(bindings),
 	) + "\n"
+}
+
+func renderHelp(bindings []key.Binding) string {
+	bindings = append(
+		[]key.Binding{keys.Quit, keys.Help},
+		bindings...,
+	)
+	var (
+		// a column of keys and a column of descriptions for each group of three
+		// bindings
+		cols      = make([]string, 2*int(math.Ceil(float64(len(bindings))/3.)))
+		keyStyle  = regular.Bold(true).Align(lipgloss.Right).Margin(0, 1, 0, 2)
+		descStyle = regular.Align(lipgloss.Left)
+	)
+
+	for i := 0; i < len(bindings); i += 3 {
+		rows := min(3, len(bindings)-i)
+		keys := make([]string, rows)
+		descs := make([]string, rows)
+		for j := 0; j < rows; j++ {
+			keys[j] = bindings[i+j].Help().Key
+			descs[j] = bindings[i+j].Help().Desc
+		}
+		colnum := (i / 3) * 2
+		cols[colnum] = keyStyle.Render(strings.Join(keys, "\n"))
+		cols[colnum+1] = descStyle.Render(strings.Join(descs, "\n"))
+	}
+	return lipgloss.JoinHorizontal(lipgloss.Top, cols...)
 }
 
 // viewHeight retrieves the height available within the main view
 func (m mainModel) viewHeight() int {
-	return m.height - lipgloss.Height(m.header()) - 1
+	return m.height - 5
 }
 
 // viewWidth retrieves the width available within the main view
@@ -127,15 +152,13 @@ func (m mainModel) viewWidth() int {
 }
 
 func (m mainModel) View() string {
-	var (
-		borders = roundedBorders.Copy()
-	)
+	viewbox := roundedBorders.Copy().Height(m.viewHeight()).Width(m.viewWidth())
 
 	switch m.current {
 	case modulesState:
-		return m.header() + borders.Height(m.viewHeight()).Width(m.viewWidth()).Render(m.modules.View())
+		return m.header(m.modules.bindings()) + viewbox.Render(m.modules.View())
 	case taskState:
-		return m.header() + borders.Height(m.viewHeight()).Width(m.viewWidth()).Render(m.task.View())
+		return m.header(m.task.bindings()) + viewbox.Render(m.task.View())
 	default:
 		return ""
 	}

@@ -10,7 +10,6 @@ func newModuleDelegate(runner *runner) list.DefaultDelegate {
 	d := list.NewDefaultDelegate()
 	d.SetSpacing(0)
 	d.ShowDescription = false
-	keys := newDelegateKeyMap()
 
 	d.UpdateFunc = func(msg tea.Msg, m *list.Model) tea.Cmd {
 		mod, ok := m.SelectedItem().(module)
@@ -21,7 +20,7 @@ func newModuleDelegate(runner *runner) list.DefaultDelegate {
 		switch msg := msg.(type) {
 		case tea.KeyMsg:
 			switch {
-			case key.Matches(msg, keys.init):
+			case key.Matches(msg, keys.Init):
 				return func() tea.Msg {
 					task, err := runner.run(taskspec{
 						prog:      "tofu",
@@ -37,7 +36,7 @@ func newModuleDelegate(runner *runner) list.DefaultDelegate {
 						task: task,
 					}
 				}
-			case key.Matches(msg, keys.apply):
+			case key.Matches(msg, keys.Apply):
 				return func() tea.Msg {
 					task, err := runner.run(taskspec{
 						prog: "tofu",
@@ -58,51 +57,5 @@ func newModuleDelegate(runner *runner) list.DefaultDelegate {
 		return nil
 	}
 
-	help := []key.Binding{keys.init, keys.apply}
-
-	d.ShortHelpFunc = func() []key.Binding {
-		return help
-	}
-
-	d.FullHelpFunc = func() [][]key.Binding {
-		return [][]key.Binding{help}
-	}
-
 	return d
-}
-
-type delegateKeyMap struct {
-	init  key.Binding
-	apply key.Binding
-}
-
-// Additional short help entries. This satisfies the help.KeyMap interface and
-// is entirely optional.
-func (d delegateKeyMap) ShortHelp() []key.Binding {
-	return []key.Binding{
-		d.init,
-		d.apply,
-	}
-}
-
-// Additional full help entries. This satisfies the help.KeyMap interface and
-// is entirely optional.
-func (d delegateKeyMap) FullHelp() [][]key.Binding {
-	return [][]key.Binding{
-		{d.init},
-		{d.apply},
-	}
-}
-
-func newDelegateKeyMap() *delegateKeyMap {
-	return &delegateKeyMap{
-		init: key.NewBinding(
-			key.WithKeys("i"),
-			key.WithHelp("i", "init"),
-		),
-		apply: key.NewBinding(
-			key.WithKeys("a"),
-			key.WithHelp("a", "apply"),
-		),
-	}
 }
