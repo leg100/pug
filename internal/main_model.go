@@ -1,7 +1,6 @@
 package internal
 
 import (
-	"math"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/key"
@@ -13,24 +12,28 @@ type viewSizeMsg struct {
 	width, height int
 }
 
+type switchModelMsg state
+
 type state uint
 
 const (
 	modulesState state = iota
 	taskState
+	helpState
 )
 
 type model interface {
 	Init() tea.Cmd
 	Update(msg tea.Msg) (model, tea.Cmd)
 	View() string
+
 	bindings() []key.Binding
 }
 
 type mainModel struct {
-	current state
-	modules model
-	task    model
+	current, last state
+	modules       model
+	task          model
 
 	width, height int
 
@@ -69,6 +72,13 @@ func (m mainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 		case key.Matches(msg, keys.Modules):
 			m.current = modulesState
+			return m, nil
+		case key.Matches(msg, keys.Help):
+			if m.current == helpState {
+				m.current = m.last
+			} else {
+				m.current = helpState
+			}
 			return m, nil
 		}
 	case newTaskMsg:
@@ -109,36 +119,8 @@ func (m mainModel) header(bindings []key.Binding) string {
 
 	return lipgloss.JoinHorizontal(lipgloss.Top,
 		logo,
-		renderHelp(bindings),
+		renderShortHelp(bindings),
 	) + "\n"
-}
-
-func renderHelp(bindings []key.Binding) string {
-	bindings = append(
-		[]key.Binding{keys.Quit, keys.Help},
-		bindings...,
-	)
-	var (
-		// a column of keys and a column of descriptions for each group of three
-		// bindings
-		cols      = make([]string, 2*int(math.Ceil(float64(len(bindings))/3.)))
-		keyStyle  = regular.Bold(true).Align(lipgloss.Right).Margin(0, 1, 0, 2)
-		descStyle = regular.Align(lipgloss.Left)
-	)
-
-	for i := 0; i < len(bindings); i += 3 {
-		rows := min(3, len(bindings)-i)
-		keys := make([]string, rows)
-		descs := make([]string, rows)
-		for j := 0; j < rows; j++ {
-			keys[j] = bindings[i+j].Help().Key
-			descs[j] = bindings[i+j].Help().Desc
-		}
-		colnum := (i / 3) * 2
-		cols[colnum] = keyStyle.Render(strings.Join(keys, "\n"))
-		cols[colnum+1] = descStyle.Render(strings.Join(descs, "\n"))
-	}
-	return lipgloss.JoinHorizontal(lipgloss.Top, cols...)
 }
 
 // viewHeight retrieves the height available within the main view
@@ -159,7 +141,20 @@ func (m mainModel) View() string {
 		return m.header(m.modules.bindings()) + viewbox.Render(m.modules.View())
 	case taskState:
 		return m.header(m.task.bindings()) + viewbox.Render(m.task.View())
+	case helpState:
+		return m.header(nil) + viewbox.Render(renderLongHelp(m.bindings(), m.viewHeight()))
 	default:
 		return ""
+	}
+}
+
+func (m mainModel) bindings() []key.Binding {
+	switch m.current {
+	case modulesState:
+		return m.modules.bindings()
+	case taskState:
+		return m.task.bindings()
+	default:
+		return nil
 	}
 }
