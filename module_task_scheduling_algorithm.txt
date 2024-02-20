@@ -1,0 +1,26 @@
+invariants
+----
+* an active *init* task blocks all other tasks on a module
+* more than one active *plan* task is permissible on a workspace
+* no more than one active *apply* task is permissible on a workspace
+* no more than one active *write* task is permissible on a workspace
+
+
+read tasks
+-----
+workspace list
+show
+plan
+
+write tasks
+-----
+apply
+refresh
+destroy
+taint
+
+workspace management tasks
+----
+workspace new
+workspace delete
+workspace select (change default)

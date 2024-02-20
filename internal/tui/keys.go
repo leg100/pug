@@ -1,0 +1,98 @@
+package tui
+
+import (
+	"reflect"
+
+	"github.com/charmbracelet/bubbles/key"
+	tea "github.com/charmbracelet/bubbletea"
+)
+
+type keyMap struct {
+	Quit      key.Binding
+	Modules   key.Binding
+	Tasks     key.Binding
+	Init      key.Binding
+	Plan      key.Binding
+	Apply     key.Binding
+	ShowState key.Binding
+	Retry     key.Binding
+	Logs      key.Binding
+	Escape    key.Binding
+	Enter     key.Binding
+	Help      key.Binding
+	CloseHelp key.Binding
+}
+
+var Keys = keyMap{
+	Quit: key.NewBinding(
+		key.WithKeys("^c"),
+		key.WithHelp("^c", "exit"),
+	),
+	Modules: key.NewBinding(
+		key.WithKeys("m"),
+		key.WithHelp("m", "modules"),
+	),
+	Tasks: key.NewBinding(
+		key.WithKeys("t"),
+		key.WithHelp("t", "tasks"),
+	),
+	Init: key.NewBinding(
+		key.WithKeys("i"),
+		key.WithHelp("i", "init"),
+	),
+	Plan: key.NewBinding(
+		key.WithKeys("p"),
+		key.WithHelp("p", "plan"),
+	),
+	Apply: key.NewBinding(
+		key.WithKeys("a"),
+		key.WithHelp("a", "apply"),
+	),
+	ShowState: key.NewBinding(
+		key.WithKeys("s"),
+		key.WithHelp("s", "show state"),
+	),
+	Retry: key.NewBinding(
+		key.WithKeys("r"),
+		key.WithHelp("r", "retry"),
+	),
+	Logs: key.NewBinding(
+		key.WithKeys("l"),
+		key.WithHelp("l", "logs"),
+	),
+	Escape: key.NewBinding(
+		key.WithKeys("esc"),
+		key.WithHelp("esc", "back"),
+	),
+	Enter: key.NewBinding(
+		key.WithKeys("enter"),
+		key.WithHelp("enter", "select"),
+	),
+	Help: key.NewBinding(
+		key.WithKeys("?"),
+		key.WithHelp("?", "help"),
+	),
+	CloseHelp: key.NewBinding(
+		key.WithKeys("?"),
+		key.WithHelp("?", "close help"),
+	),
+}
+
+// GlobalKeyMsg wraps tea.KeyMsg along with the current state
+type GlobalKeyMsg struct {
+	Current State
+
+	tea.KeyMsg
+}
+
+func keyMapToSlice(t any) (bindings []key.Binding) {
+	typ := reflect.TypeOf(t)
+	if typ.Kind() != reflect.Struct {
+		return nil
+	}
+	for i := 0; i < typ.NumField(); i++ {
+		v := reflect.ValueOf(t).Field(i)
+		bindings = append(bindings, v.Interface().(key.Binding))
+	}
+	return
+}

@@ -2,15 +2,20 @@ package main
 
 import (
 	"fmt"
-	"io"
-	"log/slog"
 	"os"
+	"runtime/pprof"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/leg100/pug/internal"
+	"github.com/leg100/pug/internal/app"
+	"github.com/leg100/pug/internal/task"
+	"github.com/leg100/pug/internal/tui"
 )
 
 func main() {
+	f, _ := os.Create("cpu.prof")
+	pprof.StartCPUProfile(f)
+	defer pprof.StopCPUProfile()
+
 	if err := start(); err != nil {
 		fmt.Println(err.Error())
 		os.Exit(1)
@@ -18,23 +23,12 @@ func main() {
 }
 
 func start() error {
-	cfg, err := internal.SetConfig(os.Args[1:])
+	cfg, err := app.SetConfig(os.Args[1:])
 	if err != nil {
 		return fmt.Errorf("setting config: %w", err)
 	}
-	if cfg.LogFile != "" {
-		f, err := os.OpenFile(cfg.LogFile, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o755)
-		if err != nil {
-			return fmt.Errorf("opening file for logging: %w", err)
-		}
-		logger := slog.New(slog.NewTextHandler(f, nil))
-		slog.SetDefault(logger)
-	} else {
-		logger := slog.New(slog.NewTextHandler(io.Discard, nil))
-		slog.SetDefault(logger)
-	}
 
-	model, err := internal.NewMainModel(internal.NewRunner(cfg.MaxTasks))
+	model, err := tui.New(task.NewRunner(cfg.MaxTasks, "tofu"))
 	if err != nil {
 		return err
 	}
