@@ -82,7 +82,7 @@ func (s *Service) Init(path string) (*Module, *task.Task, error) {
 		return nil, nil, err
 	}
 	// create asynchronous task that runs terraform init
-	tsk, err := s.tasks.Create(task.Spec{
+	tsk, err := s.tasks.Create(task.CreateOptions{
 		Kind:      InitTask,
 		Parent:    mod,
 		Args:      []string{"init", "-input=false"},
@@ -107,7 +107,7 @@ func (s *Service) List() []*Module {
 	return maps.Values(s.store)
 }
 
-func (s *Service) CreateTask(spec task.Spec) (*task.Task, error) {
+func (s *Service) CreateTask(spec task.CreateOptions) (*task.Task, error) {
 	return nil, nil
 }
 

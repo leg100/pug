@@ -41,7 +41,7 @@ func (s *Service) Reload() error {
 			// TODO: log message
 			continue
 		}
-		tsk, err := s.tasks.Create(task.Spec{
+		tsk, err := s.tasks.Create(task.CreateOptions{
 			Args: []string{"workspace", "list"},
 			Path: mod.Path,
 		})
@@ -100,7 +100,7 @@ func (s *Service) Create(path, name string) (*Workspace, *task.Task, error) {
 	if _, err := s.modules.Get(path); err != nil {
 		return nil, nil, fmt.Errorf("checking for module: %s: %w", path, err)
 	}
-	tsk, err := s.tasks.Create(task.Spec{
+	tsk, err := s.tasks.Create(task.CreateOptions{
 		Args: []string{"workspace", "new", name},
 		Path: path,
 	})

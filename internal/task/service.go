@@ -50,8 +50,8 @@ func NewService(ctx context.Context, opts ServiceOptions) *Service {
 
 // Create a task. The task is placed into a pending state and requires enqueuing
 // before it'll be processed.
-func (s *Service) Create(spec Spec) (*Task, error) {
-	task, err := s.newTask(spec.Path, spec.Args...)
+func (s *Service) Create(opts CreateOptions) (*Task, error) {
+	task, err := s.newTask(opts)
 	if err != nil {
 		return nil, err
 	}
@@ -102,11 +102,11 @@ func (s *Service) List(opts ListOptions) []*Task {
 			continue
 		}
 		if opts.WorkspaceName != nil {
-			if t.WorkspaceName == nil {
+			if t.Workspace == nil {
 				// skip tasks unassociated with a workspace
 				continue
 			}
-			if *opts.WorkspaceName != *t.WorkspaceName {
+			if *opts.WorkspaceName != *t.Workspace {
 				// skip tasks associated with different workspace
 				continue
 			}

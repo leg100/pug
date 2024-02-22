@@ -86,18 +86,18 @@ func (e *enqueuer) Enqueue(event resource.Event[*task.Task]) []*task.Task {
 	// Build a set of blocked workspaces
 	blocked := make(map[string]struct{})
 	for _, t := range active {
-		if t.WorkspaceName == nil {
+		if t.Workspace == nil {
 			continue
 		}
 		switch t.Kind {
 		case ApplyTask, DestroyTask, RefreshTask:
 			// An active apply task blocks pending tasks
-			blocked[*t.WorkspaceName] = struct{}{}
+			blocked[*t.Workspace] = struct{}{}
 		}
 	}
 	// Remove blocked tasks from pending tasks
 	for i, t := range pending {
-		if t.WorkspaceName == nil {
+		if t.Workspace == nil {
 			// Module-specific task
 			switch t.Kind {
 			case module.InitTask:
@@ -107,7 +107,7 @@ func (e *enqueuer) Enqueue(event resource.Event[*task.Task]) []*task.Task {
 			}
 		} else {
 			// Workspace-specific task
-			if _, ok := blocked[*t.WorkspaceName]; ok {
+			if _, ok := blocked[*t.Workspace]; ok {
 				// Remove blocked task
 				pending = append(pending[:i], pending[i+1:]...)
 			} else {
@@ -115,7 +115,7 @@ func (e *enqueuer) Enqueue(event resource.Event[*task.Task]) []*task.Task {
 				case ApplyTask, DestroyTask, RefreshTask:
 					// Found blocking task in pending queue; no further tasks shall be
 					// enqueued
-					blocked[*t.WorkspaceName] = struct{}{}
+					blocked[*t.Workspace] = struct{}{}
 				}
 			}
 		}

@@ -12,7 +12,7 @@ import (
 
 func TestTask_stdout(t *testing.T) {
 	f := factory{program: "../testdata/task"}
-	task, err := f.newTask(".")
+	task, err := f.newTask(CreateOptions{})
 	require.NoError(t, err)
 	task.updateState(Queued)
 	waitfn, err := task.start()
@@ -37,7 +37,7 @@ func TestTask_stdout(t *testing.T) {
 
 func TestTask_cancel(t *testing.T) {
 	f := factory{program: "../testdata/killme"}
-	task, err := f.newTask(".")
+	task, err := f.newTask(CreateOptions{})
 	require.NoError(t, err)
 	task.updateState(Queued)
 

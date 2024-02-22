@@ -11,44 +11,29 @@ import (
 
 	"github.com/btcsuite/btcutil/base58"
 	"github.com/google/uuid"
-	"github.com/leg100/pug/internal/resource"
 )
 
 // Kind differentiates tasks, i.e. Init, Plan, etc.
 type Kind string
 
-type Spec struct {
-	Kind      Kind
-	Parent    resource.Resource
-	Args      []string
-	Path      string
-	Exclusive bool
-}
-
-type Scheduler interface {
-	Handle(event resource.Event[*Task]) []*Task
-}
-
 type Task struct {
-	Path          string
-	WorkspaceName *string
-	Scheduler     Scheduler
+	ID        uuid.UUID
+	Path      string
+	Workspace *string
+	Kind      Kind
+	State     Status
 
 	program   string
 	args      []string
 	exclusive bool
 
-	ID uuid.UUID
-
 	// Nil until task has started
 	proc *os.Process
-
-	Kind  Kind
-	State Status
 
 	created time.Time
 	updated time.Time
 
+	// Nil until task finishes with an error
 	Err error
 
 	buf *buffer
@@ -68,18 +53,31 @@ type factory struct {
 	callback func(*Task)
 }
 
-func (f *factory) newTask(path string, args ...string) (*Task, error) {
+type CreateOptions struct {
+	// Kind of task, Plan, Apply, etc.
+	Kind Kind
+	// Args to pass to program.
+	Args []string
+	// Path in which to execute the program - assumed be the terraform module's
+	// path.
+	Path string
+	// Globally exclusive task - at most only one such task can be running
+	Exclusive bool
+}
+
+func (f *factory) newTask(opts CreateOptions) (*Task, error) {
 	return &Task{
-		State:    Pending,
-		ID:       uuid.New(),
-		created:  time.Now(),
-		updated:  time.Now(),
-		finished: make(chan struct{}),
-		buf:      newBuffer(),
-		program:  f.program,
-		Path:     path,
-		args:     args,
-		callback: f.callback,
+		State:     Pending,
+		ID:        uuid.New(),
+		created:   time.Now(),
+		updated:   time.Now(),
+		finished:  make(chan struct{}),
+		buf:       newBuffer(),
+		program:   f.program,
+		Path:      opts.Path,
+		args:      opts.Args,
+		exclusive: opts.Exclusive,
+		callback:  f.callback,
 	}, nil
 }
 

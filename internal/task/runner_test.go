@@ -4,55 +4,81 @@ import (
 	"slices"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestRunner_runnable(t *testing.T) {
-	f := &factory{program: "../testdata/task"}
+	t1 := &Task{ID: uuid.New()}
+	t2 := &Task{ID: uuid.New()}
+	t3 := &Task{ID: uuid.New()}
+	ex1 := &Task{ID: uuid.New(), exclusive: true}
+	ex2 := &Task{ID: uuid.New(), exclusive: true}
 
-	t1, _ := f.newTask(".")
-	t2, _ := f.newTask(".")
-	t3, _ := f.newTask(".")
-	t1.updateState(Queued)
-	t2.updateState(Queued)
-	t3.updateState(Queued)
-
-	runner := newRunner(3, &fakeTaskLister{
-		queued: []*Task{t1, t2, t3},
-	})
-
-	got := runner.runnable()
-	assert.Len(t, got, 3)
-	assert.Equal(t, t1, got[0])
-	assert.Equal(t, t2, got[1])
-	assert.Equal(t, t3, got[2])
+	tests := []struct {
+		name string
+		// Max runnable tasks
+		max int
+		// Queued tasks
+		queued []*Task
+		// Running tasks
+		running []*Task
+		// Want these runnable tasks
+		want []*Task
+	}{
+		{
+			"all queued tasks are runnable",
+			3,
+			[]*Task{t1, t2, t3},
+			nil,
+			[]*Task{t1, t2, t3},
+		},
+		{
+			"only one queued task is runnable because max tasks is one",
+			1,
+			[]*Task{t1, t2, t3},
+			nil,
+			[]*Task{t1},
+		},
+		{
+			"no tasks are runnable because max tasks are already running",
+			2,
+			[]*Task{t3},
+			[]*Task{t1, t2},
+			nil,
+		},
+		{
+			"only one task is runnable because there is only one available slot",
+			2,
+			[]*Task{t2, t3},
+			[]*Task{t1},
+			[]*Task{t2},
+		},
+		{
+			"only one exclusive task is runnable",
+			3,
+			[]*Task{ex1, ex2},
+			nil,
+			[]*Task{ex1},
+		},
+		{
+			"multiple non-exclusive tasks and one exclusive task is runnable",
+			4,
+			[]*Task{t1, t2, ex1, t3},
+			nil,
+			[]*Task{t1, t2, ex1, t3},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			runner := newRunner(tt.max, &fakeTaskLister{
+				queued:  tt.queued,
+				running: tt.running,
+			})
+			assert.Equal(t, tt.want, runner.runnable())
+		})
+	}
 }
-
-//
-//func TestRunner_exclusive(t *testing.T) {
-//	runner := NewRunner(0, "../testdata/killme")
-//	require.Equal(t, 0, len(runner.exclusive))
-//
-//	// run an exclusive task
-//	task, err := runner.Run(Spec{Exclusive: true})
-//	require.NoError(t, err)
-//	// wait for it to enter running state
-//	assert.Equal(t, Running, <-task.Events, task.Err)
-//
-//	// should have taken exclusive slot
-//	require.Equal(t, 1, len(runner.exclusive))
-//
-//	// start another exclusive task; should be queued
-//	another, err := runner.Run(Spec{Exclusive: true})
-//	require.NoError(t, err)
-//
-//	// kill running task
-//	task.cancel()
-//	assert.Equal(t, Errored, <-task.Events)
-//
-//	// other task should now run
-//	assert.Equal(t, Running, <-another.Events)
-//}
 
 type fakeTaskLister struct {
 	queued, running []*Task
