@@ -36,49 +36,50 @@ func (r *runner) start(ctx context.Context) {
 	sub, unsub := r.broker.Subscribe(ctx)
 	defer unsub()
 
-	// Each new event triggers the runner to attempt to run tasks
+	// On each task event, get a list of tasks to be run, start them, and wait
+	// for them to complete in the background.
 	for range sub {
-		r.process()
+		for _, task := range r.runnable() {
+			waitfn, err := task.start()
+			if err != nil {
+				slog.Error(err.Error())
+			}
+			go waitfn()
+		}
 	}
 }
 
-func (r *runner) process() {
+// runnable retrieves a list of tasks to be run
+func (r *runner) runnable() []*Task {
 	running := r.tasks.List(ListOptions{
 		Status: []Status{Running},
 	})
 	avail := r.max - len(running)
 	if avail == 0 {
 		// Already running maximum number
-		return
+		return nil
 	}
 	// Process queue, starting with oldest task
 	queued := r.tasks.List(ListOptions{
 		Status: []Status{Queued},
 		Oldest: true,
 	})
-	for _, qt := range queued {
+	for i, qt := range queued {
 		if avail == 0 {
-			break
+			return queued[:i]
 		}
 		if qt.exclusive {
 			// Only run task if exclusive slot is empty
 			select {
 			case r.exclusive <- struct{}{}:
-				r.run(qt)
 				avail--
 			default:
+				// Exclusive slot is full; skip task
+				queued = append(queued[:i], queued[i+1:]...)
 			}
 		} else {
-			r.run(qt)
 			avail--
 		}
 	}
-}
-
-func (r *runner) run(t *Task) {
-	waitfn, err := t.start()
-	if err != nil {
-		slog.Error(err.Error())
-	}
-	go waitfn()
+	return queued
 }

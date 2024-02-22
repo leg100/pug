@@ -3,13 +3,29 @@ package task
 import (
 	"slices"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
-func TestRunner_queue(t *testing.T) {
-	// create runner with max number of tasks set to 3, and fire off 3 tasks
-	runner := newRunner(3, &fakeTaskLister{})
+func TestRunner_runnable(t *testing.T) {
+	f := &factory{program: "../testdata/task"}
 
-	runner.process()
+	t1, _ := f.newTask(".")
+	t2, _ := f.newTask(".")
+	t3, _ := f.newTask(".")
+	t1.updateState(Queued)
+	t2.updateState(Queued)
+	t3.updateState(Queued)
+
+	runner := newRunner(3, &fakeTaskLister{
+		queued: []*Task{t1, t2, t3},
+	})
+
+	got := runner.runnable()
+	assert.Len(t, got, 3)
+	assert.Equal(t, t1, got[0])
+	assert.Equal(t, t2, got[1])
+	assert.Equal(t, t3, got[2])
 }
 
 //
