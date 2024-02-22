@@ -135,7 +135,7 @@ func (s *Service) Get(id ID) (*Workspace, error) {
 }
 
 // List workspaces by module.
-func (s *Service) ListByModule(path string) ([]*Workspace, error) {
+func (s *Service) ListByModule(path string) []*Workspace {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -145,7 +145,7 @@ func (s *Service) ListByModule(path string) ([]*Workspace, error) {
 			workspaces = append(workspaces, ws)
 		}
 	}
-	return workspaces, nil
+	return workspaces
 }
 
 // Delete a workspace.

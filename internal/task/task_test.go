@@ -14,9 +14,10 @@ func TestTask_stdout(t *testing.T) {
 	f := factory{program: "../testdata/task"}
 	task, err := f.newTask(".")
 	require.NoError(t, err)
-	waitfunc := task.run()
-	require.NotNil(t, waitfunc, task.Err)
-	waitfunc()
+	task.updateState(Queued)
+	waitfn, err := task.start()
+	require.NoError(t, err)
+	waitfn()
 
 	scanner := bufio.NewScanner(task.NewReader())
 	want := []string{"foo", "bar", "baz", "bye"}
@@ -38,12 +39,13 @@ func TestTask_cancel(t *testing.T) {
 	f := factory{program: "../testdata/killme"}
 	task, err := f.newTask(".")
 	require.NoError(t, err)
+	task.updateState(Queued)
 
 	done := make(chan struct{})
 	go func() {
-		waitfunc := task.run()
-		require.NotNil(t, waitfunc, task.Err)
-		waitfunc()
+		waitfn, err := task.start()
+		require.NoError(t, err)
+		waitfn()
 		done <- struct{}{}
 	}()
 

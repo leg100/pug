@@ -1,6 +1,7 @@
 package task
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -15,18 +16,6 @@ import (
 
 // Kind differentiates tasks, i.e. Init, Plan, etc.
 type Kind string
-
-// Status is the current state of a task.
-type Status string
-
-const (
-	Pending  Status = "pending"
-	Queued   Status = "queued"
-	Running  Status = "running"
-	Exited   Status = "exited"
-	Errored  Status = "errored"
-	Canceled Status = "canceled"
-)
 
 type Spec struct {
 	Kind      Kind
@@ -45,10 +34,11 @@ type Task struct {
 	WorkspaceName *string
 	Scheduler     Scheduler
 
-	program string
-	args    []string
+	program   string
+	args      []string
+	exclusive bool
 
-	id uuid.UUID
+	ID uuid.UUID
 
 	// Nil until task has started
 	proc *os.Process
@@ -81,7 +71,7 @@ type factory struct {
 func (f *factory) newTask(path string, args ...string) (*Task, error) {
 	return &Task{
 		State:    Pending,
-		id:       uuid.New(),
+		ID:       uuid.New(),
 		created:  time.Now(),
 		updated:  time.Now(),
 		finished: make(chan struct{}),
@@ -93,14 +83,14 @@ func (f *factory) newTask(path string, args ...string) (*Task, error) {
 	}, nil
 }
 
-func (t *Task) ID() string {
-	return base58.Encode(t.id[:])
+func (t *Task) id() string {
+	return base58.Encode(t.ID[:])
 }
 
-func (t *Task) String() string      { return t.ID() }
-func (t *Task) Title() string       { return t.ID() }
+func (t *Task) String() string      { return t.id() }
+func (t *Task) Title() string       { return t.id() }
 func (t *Task) Description() string { return string(t.State) }
-func (t *Task) FilterValue() string { return t.ID() }
+func (t *Task) FilterValue() string { return t.id() }
 
 // NewReader provides a reader from which to read the task output from start to
 // end.
@@ -145,10 +135,10 @@ func (t *Task) cancel() {
 	defer t.mu.Unlock()
 
 	switch t.State {
-	case Exited, Canceled:
-		// take no action if already exited
+	case Exited, Errored, Canceled:
+		// silently take no action if already finished
 		return
-	case Queued:
+	case Pending, Queued:
 		t.updateState(Canceled)
 		return
 	default: // running
@@ -159,30 +149,29 @@ func (t *Task) cancel() {
 	}
 }
 
-func (t *Task) run() func() {
-	t.mu.Lock()
-	defer t.mu.Unlock()
-
-	// task can only transition from queued to running
-	if t.State != Queued {
-		return nil
-	}
-
+func (t *Task) start() (func(), error) {
 	cmd := exec.Command(t.program, t.args...)
 	cmd.Dir = t.Path
 	cmd.Stdout = t.buf
 	cmd.Stderr = t.buf
 
+	t.mu.Lock()
+	defer t.mu.Unlock()
+
+	if t.State != Queued {
+		return nil, errors.New("invalid state transition")
+	}
+
 	if err := cmd.Start(); err != nil {
 		t.updateState(Errored)
 		t.Err = fmt.Errorf("starting task: %w", err)
-		return nil
+		return nil, err
 	}
 	t.updateState(Running)
 	// save reference to process so that it can be cancelled via cancel()
 	t.proc = cmd.Process
 
-	return func() {
+	wait := func() {
 		state := Exited
 		if werr := cmd.Wait(); werr != nil {
 			state = Errored
@@ -190,14 +179,21 @@ func (t *Task) run() func() {
 		}
 
 		t.mu.Lock()
-		defer t.mu.Unlock()
-
 		t.updateState(state)
+		t.mu.Unlock()
 	}
+	return wait, nil
 }
 
 func (t *Task) updateState(state Status) {
 	t.updated = time.Now()
 	t.State = state
-	t.callback(t)
+	if t.callback != nil {
+		t.callback(t)
+	}
+
+	switch state {
+	case Exited, Errored, Canceled:
+		close(t.finished)
+	}
 }
