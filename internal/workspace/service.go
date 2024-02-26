@@ -3,6 +3,7 @@ package workspace
 import (
 	"bufio"
 	"fmt"
+	"io"
 	"log/slog"
 	"strings"
 	"sync"
@@ -25,101 +26,102 @@ type Service struct {
 // Reload the store with a fresh list of workspaces discovered by running
 // `terraform workspace list` in each module. Any workspaces currently stored
 // but no longer found are pruned.
-func (s *Service) Reload() error {
-	// TODO: once the workspace type has dynamic info, e.g. a status, then
-	// consider not overwriting existing workspaces.
-	s.mu.Lock()
-	s.workspaces = make(map[ID]*Workspace)
-	s.mu.Unlock()
-
-	// standard log message
-	msg := "reloading workspaces"
-
-	for _, m := range s.modules.List() {
-		mod := m
-		if mod.Status != module.Initialized {
-			// TODO: log message
-			continue
-		}
-		tsk, err := s.tasks.Create(task.CreateOptions{
-			Args: []string{"workspace", "list"},
-			Path: mod.Path,
+func (s *Service) Reload() ([]*task.Task, error) {
+	mods := s.modules.List()
+	tasks := make([]*task.Task, len(mods))
+	for i, m := range mods {
+		t, err := s.modules.CreateTask(m.Path, task.CreateOptions{
+			Command: []string{"workspace", "list"},
+			AfterError: func(t *task.Task) {
+				// TODO: log error and prune workspaces
+			},
+			AfterExited: func(t *task.Task) {
+				workspaces, err := parseList(t.Path, t.NewReader())
+				if err != nil {
+					slog.Error("reloading workspaces", "error", err, "module", m)
+					return
+				}
+				for _, ws := range workspaces {
+					s.mu.Lock()
+					s.workspaces[ws.Resource] = ws
+					s.mu.Unlock()
+				}
+				// TODO: prune workspaces no longer to be found in module
+			},
 		})
 		if err != nil {
-			slog.Error(msg, "error", err, "module", mod)
+			slog.Error("reloading workspaces", "error", err, "module", m)
+			return nil, err
 		}
-		// TODO: pass in context
-		go func() {
-			if err := tsk.Wait(); err != nil {
-				slog.Error(msg, "error", err, "module", mod)
-				return
-			}
-			// should output something like this:
-			//
-			// 1> terraform workspace list
-			//   default
-			//   non-default-1
-			// * non-default-2
-			scanner := bufio.NewScanner(tsk.NewReader())
-			for scanner.Scan() {
-				out := strings.TrimSpace(scanner.Text())
-				if out == "" {
-					continue
-				}
-				if strings.HasPrefix(out, "*") {
-					var found bool
-					_, out, found = strings.Cut(out, " ")
-					if !found {
-						slog.Error(msg+": malformed output", "module", mod, "output", scanner.Text())
-						continue
-					}
-				}
-				ws := &Workspace{ID: ID{Path: mod.Path, Name: out}}
-
-				s.mu.Lock()
-				s.workspaces[ws.ID] = ws
-				s.mu.Unlock()
-			}
-			if err := scanner.Err(); err != nil {
-				slog.Error(msg, "error", err, "module", mod)
-			}
-		}()
+		tasks[i] = t
 	}
-	return nil
+	// TODO: log created tasks
+	return tasks, nil
 }
 
-// Create a workspace.
+// Parse workspaces from the output of `terraform workspace list`.
+func parseList(path string, r io.Reader) ([]*Workspace, error) {
+	// Reader should output something like this:
+	//
+	//   default
+	//   non-default-1
+	// * non-default-2
+	var workspaces []*Workspace
+	scanner := bufio.NewScanner(r)
+	for scanner.Scan() {
+		out := strings.TrimSpace(scanner.Text())
+		if out == "" {
+			continue
+		}
+		// Handle current workspace denoted with a "*" prefix
+		var current bool
+		if strings.HasPrefix(out, "*") {
+			var found bool
+			_, out, found = strings.Cut(out, " ")
+			if !found {
+				return nil, fmt.Errorf("malformed output: %s", out)
+			}
+			current = true
+		}
+		ws := &Workspace{
+			Resource: ID{Path: path, Name: out},
+			Current:  current,
+		}
+		workspaces = append(workspaces, ws)
+	}
+	if err := scanner.Err(); err != nil {
+		return nil, err
+	}
+	return workspaces, nil
+}
+
+// Create a workspace. Asynchronous.
 func (s *Service) Create(path, name string) (*Workspace, *task.Task, error) {
-	ws := &Workspace{ID: ID{Path: path, Name: name}}
+	ws := &Workspace{Resource: ID{Path: path, Name: name}}
 
 	// check if workspace exists already
-	if _, err := s.Get(ws.ID); err != nil {
+	if _, err := s.Get(ws.Resource); err != nil {
 		return nil, nil, resource.ErrExists
 	}
 	// check module exists
 	if _, err := s.modules.Get(path); err != nil {
 		return nil, nil, fmt.Errorf("checking for module: %s: %w", path, err)
 	}
-	tsk, err := s.tasks.Create(task.CreateOptions{
-		Args: []string{"workspace", "new", name},
-		Path: path,
+	task, err := s.modules.CreateTask(path, task.CreateOptions{
+		Command: []string{"workspace", "new"},
+		Args:    []string{name},
+		AfterExited: func(*task.Task) {
+			s.mu.Lock()
+			s.workspaces[ws.Resource] = ws
+			s.mu.Unlock()
+
+			s.broker.Publish(resource.CreatedEvent, ws)
+		},
 	})
 	if err != nil {
 		return nil, nil, err
 	}
-	go func() {
-		if err := tsk.Wait(); err != nil {
-			// TODO: log error
-			return
-		}
-
-		s.mu.Lock()
-		s.workspaces[ws.ID] = ws
-		s.mu.Unlock()
-
-		s.broker.Publish(resource.CreatedEvent, ws)
-	}()
-	return ws, nil, nil
+	return ws, task, nil
 }
 
 // Get a workspace.
@@ -141,23 +143,50 @@ func (s *Service) ListByModule(path string) []*Workspace {
 
 	var workspaces []*Workspace
 	for _, ws := range s.workspaces {
-		if ws.Path == path {
+		if ws.ModulePath == path {
 			workspaces = append(workspaces, ws)
 		}
 	}
 	return workspaces
 }
 
-// Delete a workspace.
-func (s *Service) Delete(id ID) error {
+// Delete a workspace. Asynchronous.
+func (s *Service) Delete(id ID) (*task.Task, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	ws, ok := s.workspaces[id]
 	if !ok {
-		return resource.ErrNotFound
+		return nil, resource.ErrNotFound
 	}
-	s.broker.Publish(resource.DeletedEvent, ws)
-	delete(s.workspaces, id)
-	return nil
+
+	return s.modules.CreateTask(id.Path, task.CreateOptions{
+		Command:  []string{"workspace", "delete"},
+		Args:     []string{ws.Name},
+		Blocking: true,
+		AfterExited: func(*task.Task) {
+			s.mu.Lock()
+			delete(s.workspaces, id)
+			s.mu.Unlock()
+
+			s.broker.Publish(resource.DeletedEvent, ws)
+		},
+	})
+}
+
+const MetadataKey = "workspace"
+
+// Create workspace task.
+func (s *Service) CreateTask(id ID, opts task.CreateOptions) (*task.Task, error) {
+	// ensure workspace exists
+	ws, err := s.Get(id)
+	if err != nil {
+		return nil, fmt.Errorf("retrieving workspace: %s: %w", id, err)
+	}
+	if opts.Metadata == nil {
+		opts.Metadata = make(map[string]string)
+	}
+	opts.Metadata[MetadataKey] = id.Name
+	opts.Env = append(opts.Env, fmt.Sprintf("TF_WORKSPACE=%s", id.Name))
+	return s.modules.CreateTask(id.Path, opts)
 }

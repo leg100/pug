@@ -9,7 +9,7 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclwrite"
-	"github.com/leg100/pug/internal/task"
+	"github.com/leg100/pug/internal/resource"
 )
 
 type Status string
@@ -29,10 +29,14 @@ const (
 )
 
 type Module struct {
+	// Uniquely identifies module
+	resource.Resource
+
 	// Path is the path to the module relative to the pug working directory. The
-	// path uniquely identifies a module.
+	// path also uniquely identifies a module.
 	Path string
 
+	// Current module status
 	Status Status
 
 	// call this whenever state is updated
@@ -46,6 +50,7 @@ type factory struct {
 
 func (f *factory) newModule(path string, init bool) (*Module, error) {
 	mod := &Module{
+		Resource: resource.New(),
 		Path:     path,
 		Status:   Uninitialized,
 		callback: f.callback,
@@ -56,28 +61,10 @@ func (f *factory) newModule(path string, init bool) (*Module, error) {
 	return mod, nil
 }
 
-func (m *Module) ID() string          { return m.Path }
 func (m *Module) String() string      { return m.Path }
 func (m *Module) Title() string       { return m.Path }
 func (m *Module) Description() string { return m.Path }
 func (m *Module) FilterValue() string { return m.Path }
-
-// Enqueuable determines whether a task belonging to the module can be moved
-// onto the global queue or not.
-func (m *Module) Enqueuable(queue []*task.Task) bool {
-	if m.Status != Initialized {
-		// Cannot enqueue tasks for a module that is not in the initialized
-		// state.
-		return false
-	}
-	if len(queue) > 0 && queue[0].Kind == InitTask {
-		// A queued InitTask blocks pending task (and a queue for a module can
-		// only contain *one* InitTask, so we're safe just checking the first
-		// item).
-		return false
-	}
-	return true
-}
 
 func (m *Module) updateStatus(status Status) {
 	m.Status = status

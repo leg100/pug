@@ -2,6 +2,7 @@ package module
 
 import (
 	"context"
+	"fmt"
 	"slices"
 
 	"github.com/leg100/pug/internal/pubsub"
@@ -12,12 +13,10 @@ import (
 )
 
 type Service struct {
-	broker *pubsub.Broker[*Module]
-	tasks  *task.Service
-	// Pug working directory
+	broker  *pubsub.Broker[*Module]
+	tasks   *task.Service
+	modules map[resource.Resource]*Module
 	workdir string
-	// Modules keyed by path
-	store map[string]*Module
 	*factory
 	// TODO: Mutex for making atomic changes to modules and/or manipulating the
 	// modules map concurrently
@@ -52,83 +51,103 @@ func (s *Service) Reload() error {
 	if err != nil {
 		return err
 	}
-	if s.store == nil {
-		s.store = make(map[string]*Module, len(found))
+	if s.modules == nil {
+		s.modules = make(map[resource.Resource]*Module, len(found))
 	}
 	for _, mod := range found {
 		// Add module if it isn't stored already
-		if _, ok := s.store[mod.Path]; !ok {
-			s.store[mod.Path] = mod
+		if _, err := s.GetByPath(mod.Path); err == resource.ErrNotFound {
+			s.modules[mod.Resource] = mod
 		}
 	}
-	// cleanup store, removing those that are not in found
-	for path := range s.store {
+	// Cleanup existing modules, removing those that are not in found
+	for _, existing := range s.modules {
 		if !slices.ContainsFunc(found, func(m *Module) bool {
-			return m.Path == path
+			return m.Path == existing.Path
 		}) {
-			_ = s.Delete(path)
+			_ = s.Delete(existing.Resource)
 		}
-
 	}
 	return nil
 }
 
-// TODO: InitAll()
-
 // Init invokes terraform init on the module.
-func (s *Service) Init(path string) (*Module, *task.Task, error) {
-	mod, err := s.Get(path)
+func (s *Service) Init(id resource.Resource) (*Module, *task.Task, error) {
+	mod, err := s.Get(id)
 	if err != nil {
 		return nil, nil, err
 	}
 	// create asynchronous task that runs terraform init
-	tsk, err := s.tasks.Create(task.CreateOptions{
-		Kind:      InitTask,
-		Parent:    mod,
-		Args:      []string{"init", "-input=false"},
-		Path:      mod.Path,
+	tsk, err := s.CreateTask(id, task.CreateOptions{
+		Command: []string{"init"},
+		Args:    []string{"-input=false"},
+		// init blocks module and workspace tasks
+		Blocking:  true,
 		Exclusive: terraform.IsPluginCacheUsed(),
+		AfterCreate: func(*task.Task) {
+			mod.updateStatus(Initializing)
+		},
+		AfterExited: func(*task.Task) {
+			mod.updateStatus(Initialized)
+		},
+		AfterError: func(*task.Task) {
+			mod.updateStatus(Misconfigured)
+		},
 	})
 	if err != nil {
 		return nil, nil, err
 	}
-	mod.updateStatus(Initializing)
-	go func() {
-		if err := tsk.Wait(); err != nil {
-			mod.updateStatus(Misconfigured)
-		} else {
-			mod.updateStatus(Initialized)
-		}
-	}()
 	return mod, tsk, nil
 }
 
 func (s *Service) List() []*Module {
-	return maps.Values(s.store)
+	return maps.Values(s.modules)
 }
 
-func (s *Service) CreateTask(spec task.CreateOptions) (*task.Task, error) {
-	return nil, nil
+const MetadataKey = "module"
+
+// Create module task.
+func (s *Service) CreateTask(id resource.Resource, opts task.CreateOptions) (*task.Task, error) {
+	// ensure module exists
+	mod, err := s.Get(id)
+	if err != nil {
+		return nil, fmt.Errorf("retrieving module: %s: %w", id, err)
+	}
+	if opts.Metadata == nil {
+		opts.Metadata = make(map[string]string)
+	}
+	opts.Metadata[MetadataKey] = id
+	opts.Path = mod.Path
+	return s.tasks.Create(opts)
 }
 
-func (s *Service) Get(path string) (*Module, error) {
-	mod, ok := s.store[path]
+func (s *Service) Get(id resource.Resource) (*Module, error) {
+	mod, ok := s.modules[id]
 	if !ok {
 		return nil, resource.ErrNotFound
 	}
 	return mod, nil
 }
 
+func (s *Service) GetByPath(path string) (*Module, error) {
+	for _, mod := range s.modules {
+		if path == mod.Path {
+			return mod, nil
+		}
+	}
+	return nil, resource.ErrNotFound
+}
+
 func (s *Service) Watch(ctx context.Context) (<-chan resource.Event[*Module], func()) {
 	return s.broker.Subscribe(ctx)
 }
 
-func (s *Service) Delete(path string) error {
-	mod, ok := s.store[path]
+func (s *Service) Delete(id resource.Resource) error {
+	mod, ok := s.modules[id]
 	if !ok {
 		return resource.ErrNotFound
 	}
 	s.broker.Publish(resource.DeletedEvent, mod)
-	delete(s.store, path)
+	delete(s.modules, id)
 	return nil
 }

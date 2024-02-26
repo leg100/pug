@@ -9,22 +9,32 @@ import (
 	"sync"
 	"time"
 
-	"github.com/btcsuite/btcutil/base58"
-	"github.com/google/uuid"
+	"github.com/leg100/pug/internal/resource"
 )
 
-// Kind differentiates tasks, i.e. Init, Plan, etc.
-type Kind string
+type Kind int
+
+const (
+	GlobalKind Kind = iota
+	ModuleKind
+	WorkspaceKind
+	RunKind
+)
 
 type Task struct {
-	ID        uuid.UUID
-	Path      string
-	Workspace *string
-	Kind      Kind
-	State     Status
+	resource.Resource
+
+	Command  []string
+	Args     []string
+	Path     string
+	Blocking bool
+	State    Status
+	Env      []string
+	Kind     Kind
+	Metadata map[string]string
+	// Resource ID
 
 	program   string
-	args      []string
 	exclusive bool
 
 	// Nil until task has started
@@ -45,50 +55,34 @@ type Task struct {
 	finished chan struct{}
 
 	// call this whenever state is updated
-	callback func(*Task)
+	afterUpdate func(*Task)
 }
 
 type factory struct {
-	program  string
-	callback func(*Task)
-}
-
-type CreateOptions struct {
-	// Kind of task, Plan, Apply, etc.
-	Kind Kind
-	// Args to pass to program.
-	Args []string
-	// Path in which to execute the program - assumed be the terraform module's
-	// path.
-	Path string
-	// Globally exclusive task - at most only one such task can be running
-	Exclusive bool
+	program     string
+	afterUpdate func(*Task)
 }
 
 func (f *factory) newTask(opts CreateOptions) (*Task, error) {
 	return &Task{
-		State:     Pending,
-		ID:        uuid.New(),
-		created:   time.Now(),
-		updated:   time.Now(),
-		finished:  make(chan struct{}),
-		buf:       newBuffer(),
-		program:   f.program,
-		Path:      opts.Path,
-		args:      opts.Args,
-		exclusive: opts.Exclusive,
-		callback:  f.callback,
+		State:       Pending,
+		Resource:    resource.New(&opts.Parent),
+		created:     time.Now(),
+		updated:     time.Now(),
+		finished:    make(chan struct{}),
+		buf:         newBuffer(),
+		program:     f.program,
+		Path:        opts.Path,
+		Args:        opts.Args,
+		exclusive:   opts.Exclusive,
+		afterUpdate: f.afterUpdate,
 	}, nil
 }
 
-func (t *Task) id() string {
-	return base58.Encode(t.ID[:])
-}
-
-func (t *Task) String() string      { return t.id() }
-func (t *Task) Title() string       { return t.id() }
+func (t *Task) String() string      { return t.Resource.String() }
+func (t *Task) Title() string       { return t.Resource.String() }
 func (t *Task) Description() string { return string(t.State) }
-func (t *Task) FilterValue() string { return t.id() }
+func (t *Task) FilterValue() string { return t.Resource.String() }
 
 // NewReader provides a reader from which to read the task output from start to
 // end.
@@ -148,10 +142,11 @@ func (t *Task) cancel() {
 }
 
 func (t *Task) start() (func(), error) {
-	cmd := exec.Command(t.program, t.args...)
+	cmd := exec.Command(t.program, append(t.Command, t.Args...)...)
 	cmd.Dir = t.Path
 	cmd.Stdout = t.buf
 	cmd.Stderr = t.buf
+	cmd.Env = t.Env
 
 	t.mu.Lock()
 	defer t.mu.Unlock()
@@ -186,12 +181,20 @@ func (t *Task) start() (func(), error) {
 func (t *Task) updateState(state Status) {
 	t.updated = time.Now()
 	t.State = state
-	if t.callback != nil {
-		t.callback(t)
+	if t.afterUpdate != nil {
+		t.afterUpdate(t)
 	}
 
 	switch state {
 	case Exited, Errored, Canceled:
 		close(t.finished)
 	}
+}
+
+func (t *Task) setErrored(err error) {
+	t.Err = err
+	t.updateState(Errored)
+	//if t.AfterError != nil {
+	//	t.AfterError(t, err)
+	//}
 }

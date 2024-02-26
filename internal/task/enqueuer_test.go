@@ -1,12 +1,10 @@
-package workspace
+package task
 
 import (
 	"slices"
 	"testing"
 
-	"github.com/leg100/pug/internal/module"
 	"github.com/leg100/pug/internal/resource"
-	"github.com/leg100/pug/internal/task"
 	"github.com/stretchr/testify/assert"
 )
 

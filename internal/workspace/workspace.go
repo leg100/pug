@@ -2,32 +2,30 @@ package workspace
 
 import (
 	"fmt"
+	"path/filepath"
 
-	"github.com/leg100/pug/internal/task"
+	"github.com/leg100/pug/internal/resource"
 )
-
-// ID uniquely identifies a workspace
-type ID struct {
-	Path string
-	Name string
-}
-
-func (id ID) String() string {
-	return fmt.Sprintf("%s:%s", id.Path, id.Name)
-}
-
-func (id ID) ID() string {
-	return id.String()
-}
 
 type Workspace struct {
-	ID
+	// Parent module info
+	ModuleID   resource.Resource
+	ModulePath string
+
+	// Uniquely identifies workspace
+	resource.Resource
+
+	// Name of workspace
+	Name string
+
+	// True if workspace is the current workspace for the module.
+	Current bool
 }
 
-const (
-	PlanTask    task.Kind = "plan"
-	ApplyTask   task.Kind = "apply"
-	RefreshTask task.Kind = "refresh"
-	DestroyTask task.Kind = "destroy"
-	TaintTask   task.Kind = "taint"
-)
+func (ws *Workspace) String() string {
+	return fmt.Sprintf("%s:%s", ws.ModulePath, ws.Name)
+}
+
+func (ws *Workspace) PugDirectory() string {
+	return filepath.Join(ws.ModulePath, ".pug", ws.Name)
+}

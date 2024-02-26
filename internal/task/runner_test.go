@@ -4,16 +4,16 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/google/uuid"
+	"github.com/leg100/pug/internal/resource"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestRunner_runnable(t *testing.T) {
-	t1 := &Task{ID: uuid.New()}
-	t2 := &Task{ID: uuid.New()}
-	t3 := &Task{ID: uuid.New()}
-	ex1 := &Task{ID: uuid.New(), exclusive: true}
-	ex2 := &Task{ID: uuid.New(), exclusive: true}
+	t1 := &Task{Resource: resource.New()}
+	t2 := &Task{Resource: resource.New()}
+	t3 := &Task{Resource: resource.New()}
+	ex1 := &Task{Resource: resource.New(), exclusive: true}
+	ex2 := &Task{Resource: resource.New(), exclusive: true}
 
 	tests := []struct {
 		name string

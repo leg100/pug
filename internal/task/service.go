@@ -5,7 +5,6 @@ import (
 	"slices"
 	"sync"
 
-	"github.com/google/uuid"
 	"github.com/leg100/pug/internal/pubsub"
 	"github.com/leg100/pug/internal/resource"
 	"golang.org/x/exp/maps"
@@ -13,7 +12,7 @@ import (
 
 type Service struct {
 	// Tasks keyed by ID
-	tasks  map[uuid.UUID]*Task
+	tasks  map[resource.Resource]*Task
 	broker *pubsub.Broker[*Task]
 	// Mutex for concurrent read/write of tasks
 	mu sync.Mutex
@@ -30,8 +29,8 @@ func NewService(ctx context.Context, opts ServiceOptions) *Service {
 	broker := pubsub.NewBroker[*Task]()
 	factory := &factory{
 		program: opts.Program,
-		// Whenever task state is updated, publish it as an event.
-		callback: func(t *Task) {
+		// Publish an event whenever task state is updated
+		afterUpdate: func(t *Task) {
 			broker.Publish(resource.UpdatedEvent, t)
 		},
 	}
@@ -48,6 +47,33 @@ func NewService(ctx context.Context, opts ServiceOptions) *Service {
 	return svc
 }
 
+type CreateOptions struct {
+	// Resource that the task belongs to.
+	Parent resource.Resource
+	// Program command and any sub commands, e.g. plan, state rm, etc.
+	Command []string
+	// Args to pass to program.
+	Args []string
+	// Environment variables.
+	Env []string
+	// Path in which to execute the program - assumed be the terraform module's
+	// path.
+	Path string
+	// Arbitrary metadata to associate with the task.
+	Metadata map[string]string
+	// A blocking task blocks other tasks from running on the module or
+	// workspace.
+	Blocking bool
+	// Globally exclusive task - at most only one such task can be running
+	Exclusive bool
+	// Call this function after the task has successfully finished
+	AfterExited func(*Task)
+	// Call this function after the task fails with an error
+	AfterError func(*Task)
+	// Call this function after the task is successfully created
+	AfterCreate func(*Task)
+}
+
 // Create a task. The task is placed into a pending state and requires enqueuing
 // before it'll be processed.
 func (s *Service) Create(opts CreateOptions) (*Task, error) {
@@ -57,15 +83,36 @@ func (s *Service) Create(opts CreateOptions) (*Task, error) {
 	}
 
 	s.mu.Lock()
-	s.tasks[task.ID] = task
+	s.tasks[task.Resource] = task
 	s.mu.Unlock()
+
+	if opts.AfterCreate != nil {
+		opts.AfterCreate(task)
+	}
+
+	go func() {
+		if err := task.Wait(); err != nil {
+			// TODO: move this into task itself, before an update event is
+			// published.
+			if opts.AfterError != nil {
+				opts.AfterError(task)
+			}
+			// TODO: log error
+			return
+		}
+		// TODO: move this into task itself, before an update event is
+		// published.
+		if opts.AfterExited != nil {
+			opts.AfterExited(task)
+		}
+	}()
 
 	s.broker.Publish(resource.CreatedEvent, task)
 	return task, nil
 }
 
 // Enqueue moves the task onto the global queue for processing.
-func (s *Service) Enqueue(id uuid.UUID) (*Task, error) {
+func (s *Service) Enqueue(id resource.Resource) (*Task, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -82,8 +129,6 @@ func (s *Service) Enqueue(id uuid.UUID) (*Task, error) {
 type ListOptions struct {
 	// Filter tasks by those with a matching module path. Optional.
 	Path *string
-	// Filter tasks by those with a matching workspace name. Optional.
-	WorkspaceName *string
 	// Filter tasks by status: match task if it has one of these statuses.
 	// Optional.
 	Status []Status
@@ -100,16 +145,6 @@ func (s *Service) List(opts ListOptions) []*Task {
 		if opts.Path != nil && *opts.Path != t.Path {
 			// skip tasks matching different path
 			continue
-		}
-		if opts.WorkspaceName != nil {
-			if t.Workspace == nil {
-				// skip tasks unassociated with a workspace
-				continue
-			}
-			if *opts.WorkspaceName != *t.Workspace {
-				// skip tasks associated with different workspace
-				continue
-			}
 		}
 		if opts.Status != nil {
 			if !slices.Contains(opts.Status, t.State) {
@@ -133,7 +168,7 @@ func (s *Service) Watch(ctx context.Context) (<-chan resource.Event[*Task], func
 	return s.broker.Subscribe(ctx)
 }
 
-func (s *Service) Cancel(id uuid.UUID) (*Task, error) {
+func (s *Service) Cancel(id resource.Resource) (*Task, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -145,7 +180,7 @@ func (s *Service) Cancel(id uuid.UUID) (*Task, error) {
 	return task, nil
 }
 
-func (s *Service) Delete(id uuid.UUID) error {
+func (s *Service) Delete(id resource.Resource) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -154,8 +189,7 @@ func (s *Service) Delete(id uuid.UUID) error {
 	if !ok {
 		return resource.ErrNotFound
 	}
-	s.broker.Publish(resource.DeletedEvent, task)
-
 	delete(s.tasks, id)
+	s.broker.Publish(resource.DeletedEvent, task)
 	return nil
 }
