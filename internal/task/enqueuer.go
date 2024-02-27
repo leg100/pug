@@ -20,51 +20,58 @@ func startEnqueuer(
 	sub, unsub := tasks.Watch(ctx)
 	defer unsub()
 
-	e := enqueuer{
-		tasks: tasks,
-	}
+	e := enqueuer{tasks: tasks}
 
-	for event := range sub {
-		for _, t := range e.Enqueue(event) {
+	for range sub {
+		for _, t := range e.Enqueue() {
 			// TODO: log error
 			_, _ = tasks.Enqueue(t.Resource)
 		}
 	}
 }
 
-// Enqueue uses a recent task event to nominate tasks for enqueuing.
-// Algorithm:
-// * a task can only be enqueued if:
-//   - no task belonging to parent resources is active and blocking
-func (e *enqueuer) Enqueue(event resource.Event[*Task]) []*Task {
+// Enqueue returns a list of a tasks to be moved from the pending state to the
+// queued state.
+func (e *enqueuer) Enqueue() []*Task {
 	// Retrieve active tasks
 	active := e.tasks.List(ListOptions{
 		Status: []Status{Queued, Running},
 	})
-	// Build a set of active blocked resources
-	blocked := make(map[resource.Resource]struct{})
-	for _, t := range active {
-		if t.Blocking {
-			blocked[*t.Parent] = struct{}{}
+	// Construct set of task owners that are currently blocked.
+	blocked := make(map[resource.Resource]struct{}, len(active))
+	for _, ab := range active {
+		if ab.Blocking {
+			blocked[*ab.Parent] = struct{}{}
 		}
 	}
 
-	// Retrieve module's pending tasks in order of oldest first.
+	// Retrieve pending tasks in order of oldest first.
 	pending := e.tasks.List(ListOptions{
 		Status: []Status{Pending},
 		Oldest: true,
 	})
 	// Remove tasks from pending that should not be enqueued
 	for i, t := range pending {
-		if _, ok := blocked[*t.Parent]; ok {
-			// Remove blocked task
+		// Recursively walk task's owners and check if they are currently
+		// blocked; if so then task cannot be enqueued.
+		if hasBlockedParent(blocked, *t.Parent) {
 			pending = append(pending[:i], pending[i+1:]...)
 		} else if t.Blocking {
 			// Found blocking task in pending queue; no further tasks shall be
-			// enqueued for the workspace
-			blocked[name] = struct{}{}
+			// enqueued for resources belonging to the task's parent resource
+			blocked[*t.Parent] = struct{}{}
 		}
 	}
 	// Enqueue filtered pending tasks
 	return pending
+}
+
+func hasBlockedParent(blocked map[resource.Resource]struct{}, r resource.Resource) bool {
+	if _, ok := blocked[r]; ok {
+		return true
+	}
+	if r.Parent != nil {
+		return hasBlockedParent(blocked, *r.Parent)
+	}
+	return false
 }

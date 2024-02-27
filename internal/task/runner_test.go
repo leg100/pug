@@ -9,11 +9,11 @@ import (
 )
 
 func TestRunner_runnable(t *testing.T) {
-	t1 := &Task{Resource: resource.New()}
-	t2 := &Task{Resource: resource.New()}
-	t3 := &Task{Resource: resource.New()}
-	ex1 := &Task{Resource: resource.New(), exclusive: true}
-	ex2 := &Task{Resource: resource.New(), exclusive: true}
+	t1 := &Task{Resource: resource.New(nil)}
+	t2 := &Task{Resource: resource.New(nil)}
+	t3 := &Task{Resource: resource.New(nil)}
+	ex1 := &Task{Resource: resource.New(nil), exclusive: true}
+	ex2 := &Task{Resource: resource.New(nil), exclusive: true}
 
 	tests := []struct {
 		name string
@@ -71,7 +71,7 @@ func TestRunner_runnable(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			runner := newRunner(tt.max, &fakeTaskLister{
+			runner := newRunner(tt.max, &fakeRunnerLister{
 				queued:  tt.queued,
 				running: tt.running,
 			})
@@ -80,11 +80,11 @@ func TestRunner_runnable(t *testing.T) {
 	}
 }
 
-type fakeTaskLister struct {
+type fakeRunnerLister struct {
 	queued, running []*Task
 }
 
-func (f *fakeTaskLister) List(opts ListOptions) []*Task {
+func (f *fakeRunnerLister) List(opts ListOptions) []*Task {
 	if slices.Equal(opts.Status, []Status{Queued}) {
 		return f.queued
 	}

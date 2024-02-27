@@ -32,7 +32,6 @@ type Task struct {
 	Env      []string
 	Kind     Kind
 	Metadata map[string]string
-	// Resource ID
 
 	program   string
 	exclusive bool

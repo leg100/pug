@@ -50,7 +50,7 @@ type factory struct {
 
 func (f *factory) newModule(path string, init bool) (*Module, error) {
 	mod := &Module{
-		Resource: resource.New(),
+		Resource: resource.New(nil),
 		Path:     path,
 		Status:   Uninitialized,
 		callback: f.callback,

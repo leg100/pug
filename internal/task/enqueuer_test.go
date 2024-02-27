@@ -9,133 +9,78 @@ import (
 )
 
 func TestEnqueuer(t *testing.T) {
+	mod1 := resource.New(nil)
+	ws1 := resource.New(&mod1)
+
+	mod1Task1 := &Task{Resource: resource.New(&mod1)}
+	mod1TaskBlocking1 := &Task{Resource: resource.New(&mod1), Blocking: true}
+
+	ws1Task1 := &Task{Resource: resource.New(&ws1)}
+	ws1Task2 := &Task{Resource: resource.New(&ws1)}
+	ws1TaskBlocking1 := &Task{Resource: resource.New(&ws1), Blocking: true}
+
 	tests := []struct {
 		name string
-		// Module status
-		status module.Status
-		// Path of module in task event parameter
-		path string
 		// Active tasks
-		active []*task.Task
+		active []*Task
 		// Pending tasks
-		pending []*task.Task
+		pending []*Task
 		// Want these tasks enqueued
-		want []*task.Task
+		want []*Task
 	}{
 		{
-			"don't enqueue tasks for uninitialized module",
-			module.Uninitialized,
-			"a/b/c",
-			nil,
-			nil,
-			nil,
+			name:    "enqueue task for parent resource with no active tasks",
+			active:  []*Task{},
+			pending: []*Task{ws1Task1},
+			want:    []*Task{ws1Task1},
 		},
 		{
-			"don't enqueue tasks when there is an active init task",
-			module.Initialized,
-			"a/b/c",
-			[]*task.Task{{Kind: module.InitTask}},
-			nil,
-			nil,
+			name:    "enqueue task for parent resource with non-blocking active task",
+			active:  []*Task{ws1Task2},
+			pending: []*Task{ws1Task1},
+			want:    []*Task{ws1Task1},
 		},
 		{
-			"no tasks to enqueue",
-			module.Initialized,
-			"a/b/c",
-			nil,
-			nil,
-			nil,
+			name:    "enqueue task for parent resource with non-blocking active grand-parent task",
+			active:  []*Task{mod1Task1},
+			pending: []*Task{ws1Task1},
+			want:    []*Task{ws1Task1},
 		},
 		{
-			"enqueue plan",
-			module.Initialized,
-			"a/b/c",
-			nil,
-			[]*task.Task{
-				{Kind: PlanTask},
-			},
-			[]*task.Task{{Kind: PlanTask}},
+			name:    "don't enqueue tasks for blocked parent resource",
+			active:  []*Task{ws1TaskBlocking1},
+			pending: []*Task{ws1Task1},
+			want:    []*Task{},
 		},
 		{
-			"enqueue init but not newer plan",
-			module.Initialized,
-			"a/b/c",
-			nil,
-			[]*task.Task{
-				{Kind: module.InitTask},
-				{Kind: PlanTask},
-			},
-			[]*task.Task{{Kind: module.InitTask}},
-		},
-		{
-			"enqueue plan but not newer init",
-			module.Initialized,
-			"a/b/c",
-			nil,
-			[]*task.Task{
-				{Kind: PlanTask},
-				{Kind: module.InitTask},
-			},
-			[]*task.Task{{Kind: PlanTask}},
-		},
-		{
-			"enqueue multiple tasks but not newer init nor tasks following init",
-			module.Initialized,
-			"a/b/c",
-			nil,
-			[]*task.Task{
-				{Kind: PlanTask},
-				{Kind: ApplyTask},
-				{Kind: PlanTask},
-				{Kind: module.InitTask},
-				{Kind: PlanTask},
-				{Kind: PlanTask},
-			},
-			[]*task.Task{
-				{Kind: PlanTask},
-				{Kind: ApplyTask},
-				{Kind: PlanTask},
-			},
+			name:    "don't enqueue tasks for blocked grand-parent resource",
+			active:  []*Task{mod1TaskBlocking1},
+			pending: []*Task{ws1Task1},
+			want:    []*Task{},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			e := enqueuer{
-				modules: &fakeModuleGetter{
-					m: &module.Module{Status: tt.status},
-				},
-				tasks: &fakeTaskLister{
+				tasks: &fakeEnqueuerLister{
 					pending: tt.pending,
 					active:  tt.active,
 				},
 			}
-			event := resource.Event[*task.Task]{
-				Payload: &task.Task{
-					Path: tt.path,
-				},
-			}
-			assert.Equal(t, tt.want, e.Enqueue(event))
+			assert.Equal(t, tt.want, e.Enqueue())
 		})
 	}
 }
 
-type fakeModuleGetter struct {
-	m *module.Module
+type fakeEnqueuerLister struct {
+	pending, active []*Task
 }
 
-func (f *fakeModuleGetter) Get(path string) (*module.Module, error) {
-	return f.m, nil
-}
-
-type fakeTaskLister struct {
-	pending, active []*task.Task
-}
-
-func (f *fakeTaskLister) List(opts task.ListOptions) []*task.Task {
-	if slices.Equal(opts.Status, []task.Status{task.Queued, task.Running}) {
+func (f *fakeEnqueuerLister) List(opts ListOptions) []*Task {
+	if slices.Equal(opts.Status, []Status{Queued, Running}) {
 		return f.active
 	}
-	if slices.Equal(opts.Status, []task.Status{task.Pending}) {
+	if slices.Equal(opts.Status, []Status{Pending}) {
 		return f.pending
 	}
 	return nil

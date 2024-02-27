@@ -23,12 +23,3 @@ func New(parent *Resource) Resource {
 func (r Resource) String() string {
 	return base58.Encode(r.ID[:])
 }
-
-func FromString(s string) (Resource, error) {
-	decoded := base58.Decode(s)
-	raw, err := uuid.ParseBytes(decoded)
-	if err != nil {
-		return Resource{}, err
-	}
-	return Resource(raw), nil
-}

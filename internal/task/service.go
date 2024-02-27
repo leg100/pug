@@ -134,6 +134,9 @@ type ListOptions struct {
 	Status []Status
 	// Order tasks by oldest first (true), or newest first (false)
 	Oldest bool
+	// Filter tasks to only those that are block. If false, both blocking and
+	// non-blocking tasks are returned.
+	Blocking bool
 }
 
 func (s *Service) List(opts ListOptions) []*Task {
@@ -148,6 +151,11 @@ func (s *Service) List(opts ListOptions) []*Task {
 		}
 		if opts.Status != nil {
 			if !slices.Contains(opts.Status, t.State) {
+				continue
+			}
+		}
+		if opts.Blocking {
+			if !t.Blocking {
 				continue
 			}
 		}

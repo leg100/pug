@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"slices"
 
+	"github.com/google/uuid"
 	"github.com/leg100/pug/internal/pubsub"
 	"github.com/leg100/pug/internal/resource"
 	"github.com/leg100/pug/internal/task"
@@ -15,7 +16,7 @@ import (
 type Service struct {
 	broker  *pubsub.Broker[*Module]
 	tasks   *task.Service
-	modules map[resource.Resource]*Module
+	modules map[uuid.UUID]*Module
 	workdir string
 	*factory
 	// TODO: Mutex for making atomic changes to modules and/or manipulating the
@@ -52,12 +53,12 @@ func (s *Service) Reload() error {
 		return err
 	}
 	if s.modules == nil {
-		s.modules = make(map[resource.Resource]*Module, len(found))
+		s.modules = make(map[uuid.UUID]*Module, len(found))
 	}
 	for _, mod := range found {
 		// Add module if it isn't stored already
 		if _, err := s.GetByPath(mod.Path); err == resource.ErrNotFound {
-			s.modules[mod.Resource] = mod
+			s.modules[mod.ID] = mod
 		}
 	}
 	// Cleanup existing modules, removing those that are not in found
@@ -65,14 +66,14 @@ func (s *Service) Reload() error {
 		if !slices.ContainsFunc(found, func(m *Module) bool {
 			return m.Path == existing.Path
 		}) {
-			_ = s.Delete(existing.Resource)
+			_ = s.Delete(existing.ID)
 		}
 	}
 	return nil
 }
 
 // Init invokes terraform init on the module.
-func (s *Service) Init(id resource.Resource) (*Module, *task.Task, error) {
+func (s *Service) Init(id uuid.UUID) (*Module, *task.Task, error) {
 	mod, err := s.Get(id)
 	if err != nil {
 		return nil, nil, err
@@ -107,21 +108,18 @@ func (s *Service) List() []*Module {
 const MetadataKey = "module"
 
 // Create module task.
-func (s *Service) CreateTask(id resource.Resource, opts task.CreateOptions) (*task.Task, error) {
+func (s *Service) CreateTask(id uuid.UUID, opts task.CreateOptions) (*task.Task, error) {
 	// ensure module exists
 	mod, err := s.Get(id)
 	if err != nil {
 		return nil, fmt.Errorf("retrieving module: %s: %w", id, err)
 	}
-	if opts.Metadata == nil {
-		opts.Metadata = make(map[string]string)
-	}
-	opts.Metadata[MetadataKey] = id
 	opts.Path = mod.Path
+	opts.Parent = mod.Resource
 	return s.tasks.Create(opts)
 }
 
-func (s *Service) Get(id resource.Resource) (*Module, error) {
+func (s *Service) Get(id uuid.UUID) (*Module, error) {
 	mod, ok := s.modules[id]
 	if !ok {
 		return nil, resource.ErrNotFound
@@ -142,7 +140,7 @@ func (s *Service) Watch(ctx context.Context) (<-chan resource.Event[*Module], fu
 	return s.broker.Subscribe(ctx)
 }
 
-func (s *Service) Delete(id resource.Resource) error {
+func (s *Service) Delete(id uuid.UUID) error {
 	mod, ok := s.modules[id]
 	if !ok {
 		return resource.ErrNotFound
