@@ -25,6 +25,22 @@ type Service struct {
 	broker *pubsub.Broker[*Run]
 }
 
+type ServiceOptions struct {
+	TaskService      *task.Service
+	ModuleService    *module.Service
+	WorkspaceService *workspace.Service
+}
+
+func NewService(opts ServiceOptions) *Service {
+	return &Service{
+		tasks:      opts.TaskService,
+		modules:    opts.ModuleService,
+		workspaces: opts.WorkspaceService,
+		broker:     pubsub.NewBroker[*Run](),
+		runs:       make(map[resource.Resource]*Run),
+	}
+}
+
 // Create a run, triggering a plan task.
 func (s *Service) Create(workspaceID uuid.UUID, opts CreateOptions) (*Run, *task.Task, error) {
 	ws, err := s.workspaces.Get(workspaceID)

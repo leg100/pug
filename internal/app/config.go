@@ -18,7 +18,7 @@ type config struct {
 
 // set config in order of precedence:
 // 1. flags > 2. env vars > 3. config file
-func SetConfig(args []string) (config, error) {
+func parse(args []string) (config, error) {
 	var cfg config
 
 	fs := ff.NewFlagSet("pug")
@@ -35,9 +35,6 @@ func SetConfig(args []string) (config, error) {
 	if errors.Is(err, ff.ErrHelp) {
 		fmt.Fprintln(os.Stderr, ffhelp.Flags(fs))
 		return config{}, nil
-	} else if err != nil {
-		return config{}, err
 	}
-
-	return cfg, nil
+	return cfg, err
 }

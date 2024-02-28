@@ -10,7 +10,10 @@ import (
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	taskpkg "github.com/leg100/pug/internal/task"
+	"github.com/leg100/pug/internal/module"
+	"github.com/leg100/pug/internal/run"
+	"github.com/leg100/pug/internal/task"
+	"github.com/leg100/pug/internal/workspace"
 	"golang.org/x/exp/maps"
 )
 
@@ -24,15 +27,21 @@ type main struct {
 	width  int
 	height int
 
-	runner *taskpkg.Runner
-
 	// status contains extraordinary info, e.g. errors, warnings
 	status   string
 	messages *slog.Logger
 }
 
-func New(runner *taskpkg.Runner) (main, error) {
-	mm, err := newModules(runner)
+type Options struct {
+	TaskService      *task.Service
+	ModuleService    *module.Service
+	WorkspaceService *workspace.Service
+	RunService       *run.Service
+	Workdir          string
+}
+
+func New(opts Options) (main, error) {
+	mm, err := newModules(opts.ModuleService, opts.Workdir)
 	if err != nil {
 		return main{}, err
 	}
@@ -50,7 +59,6 @@ func New(runner *taskpkg.Runner) (main, error) {
 			helpState:    newHelp(defaultState),
 		},
 		current:  defaultState,
-		runner:   runner,
 		messages: messages,
 	}, nil
 }

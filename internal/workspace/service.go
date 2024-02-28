@@ -25,6 +25,19 @@ type Service struct {
 	mu sync.Mutex
 }
 
+type ServiceOptions struct {
+	TaskService   *task.Service
+	ModuleService *module.Service
+}
+
+func NewService(opts ServiceOptions) *Service {
+	return &Service{
+		tasks:   opts.TaskService,
+		modules: opts.ModuleService,
+		broker:  pubsub.NewBroker[*Workspace](),
+	}
+}
+
 // Reload the store with a fresh list of workspaces discovered by running
 // `terraform workspace list` in each module. Any workspaces currently stored
 // but no longer found are pruned.

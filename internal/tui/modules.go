@@ -2,15 +2,15 @@ package tui
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/leg100/pug/internal/module"
-	taskpkg "github.com/leg100/pug/internal/task"
 )
+
+const modulesState State = "modules"
 
 func init() {
 	registerHelpBindings(func(short bool, current State) []key.Binding {
@@ -27,8 +27,6 @@ func init() {
 	})
 }
 
-const modulesState State = "modules"
-
 type modules struct {
 	list list.Model
 
@@ -38,16 +36,11 @@ type modules struct {
 	height int
 }
 
-func newModules(runner *taskpkg.Runner) (modules, error) {
-	// get mods and convert to items
-	mods, err := module.FindModules(".")
-	if err != nil {
+func newModules(svc *module.Service, workdir string) (modules, error) {
+	if err := svc.Reload(); err != nil {
 		return modules{}, err
 	}
-	wd, err := os.Getwd()
-	if err != nil {
-		return modules{}, err
-	}
+	mods := svc.List()
 	items := make([]list.Item, len(mods))
 	for i, mod := range mods {
 		items[i] = mod
@@ -58,7 +51,7 @@ func newModules(runner *taskpkg.Runner) (modules, error) {
 	l.SetShowStatusBar(false)
 	l.SetShowHelp(false)
 
-	return modules{list: l, workdir: wd}, nil
+	return modules{list: l, workdir: workdir}, nil
 }
 
 func (m modules) Init() tea.Cmd {
@@ -97,4 +90,61 @@ func (m modules) View() string {
 		lipgloss.Top,
 		m.list.View(),
 	)
+}
+
+func newModuleDelegate(runner *taskpkg.Runner) list.DefaultDelegate {
+	d := list.NewDefaultDelegate()
+	d.SetSpacing(0)
+	d.ShowDescription = false
+
+	d.UpdateFunc = func(msg tea.Msg, m *list.Model) tea.Cmd {
+		mod, ok := m.SelectedItem().(*module.Module)
+		if !ok {
+			return nil
+		}
+
+		switch msg := msg.(type) {
+		case tea.KeyMsg:
+			switch {
+			case key.Matches(msg, Keys.Tasks, Keys.Enter):
+				return ChangeState(tasksState, WithModelOption(
+					newTasks(mod),
+				))
+			case key.Matches(msg, Keys.Init):
+				return func() tea.Msg {
+					t, err := mod.Init(runner)
+					if err != nil {
+						return Err(err, "creating init task", "module", mod)
+					}
+					return ChangeState(taskState, WithModelOption(
+						newTask(t, mod, 0, 0),
+					))()
+				}
+			case key.Matches(msg, Keys.Apply):
+				return func() tea.Msg {
+					t, err := mod.Apply(runner)
+					if err != nil {
+						return taskFailedMsg(err.Error())
+					}
+					return ChangeState(taskState, WithModelOption(
+						newTask(t, mod, 0, 0),
+					))()
+				}
+			case key.Matches(msg, Keys.ShowState):
+				return func() tea.Msg {
+					t, err := mod.ShowState(runner)
+					if err != nil {
+						return Err(err, "creating show state task", "module", mod)
+					}
+					return ChangeState(taskState, WithModelOption(
+						newTask(t, mod, 0, 0),
+					))()
+				}
+			}
+		}
+
+		return nil
+	}
+
+	return d
 }

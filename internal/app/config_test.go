@@ -2,6 +2,7 @@ package app
 
 import (
 	"os"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -10,6 +11,8 @@ import (
 )
 
 func TestConfig(t *testing.T) {
+	cpus := runtime.NumCPU()
+
 	tests := []struct {
 		name string
 		file string
@@ -22,14 +25,14 @@ func TestConfig(t *testing.T) {
 			"",
 			nil,
 			nil,
-			config{Program: "terraform", MaxTasks: 5},
+			config{Program: "terraform", MaxTasks: 2 * cpus},
 		},
 		{
 			"config file override default",
 			"program: tofu\n",
 			nil,
 			nil,
-			config{Program: "tofu", MaxTasks: 5},
+			config{Program: "tofu", MaxTasks: 2 * cpus},
 		},
 		{
 			"config file with max-tasks override default",
@@ -43,35 +46,35 @@ func TestConfig(t *testing.T) {
 			"",
 			nil,
 			[]string{"PUG_PROGRAM=tofu"},
-			config{Program: "tofu", MaxTasks: 5},
+			config{Program: "tofu", MaxTasks: 2 * cpus},
 		},
 		{
 			"flag override default",
 			"",
 			[]string{"--program", "tofu"},
 			nil,
-			config{Program: "tofu", MaxTasks: 5},
+			config{Program: "tofu", MaxTasks: 2 * cpus},
 		},
 		{
 			"env var overrides config file",
 			"program: tofu\n",
 			nil,
 			[]string{"PUG_PROGRAM=terragrunt"},
-			config{Program: "terragrunt", MaxTasks: 5},
+			config{Program: "terragrunt", MaxTasks: 2 * cpus},
 		},
 		{
 			"flag overrides env var",
 			"",
 			[]string{"--program", "tofu"},
 			[]string{"PUG_PROGRAM=terragrunt"},
-			config{Program: "tofu", MaxTasks: 5},
+			config{Program: "tofu", MaxTasks: 2 * cpus},
 		},
 		{
 			"flag overrides both env var and config",
 			"program: cloudformation\n",
 			[]string{"--program", "tofu"},
 			[]string{"PUG_PROGRAM=terragrunt"},
-			config{Program: "tofu", MaxTasks: 5},
+			config{Program: "tofu", MaxTasks: 2 * cpus},
 		},
 	}
 	for _, tt := range tests {
@@ -92,7 +95,7 @@ func TestConfig(t *testing.T) {
 			}
 
 			// and pass in flags
-			got, err := SetConfig(tt.args)
+			got, err := parse(tt.args)
 			require.NoError(t, err)
 
 			assert.Equal(t, tt.want, got)
