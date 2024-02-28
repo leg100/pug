@@ -10,15 +10,10 @@ type reader struct {
 
 // Read blocks when there is nothing to be read.
 func (b *reader) Read(p []byte) (int, error) {
+	// if error is non-nil it'll be io.EOF
 	n, err := b.readWithLock(p)
-	if err != nil {
-		if err != io.EOF {
-			// return non-EOF error
-			return n, err
-		}
-	}
 	if n > 0 {
-		// something was read, so return it along with any EOF error.
+		// something was read, so return it along with err
 		return n, err
 	}
 	// buffer is empty: wait til something is written

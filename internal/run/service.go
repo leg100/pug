@@ -3,8 +3,10 @@ package run
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"sync"
 
+	"github.com/google/uuid"
 	"github.com/leg100/pug/internal/module"
 	"github.com/leg100/pug/internal/pubsub"
 	"github.com/leg100/pug/internal/resource"
@@ -24,19 +26,42 @@ type Service struct {
 }
 
 // Create a run, triggering a plan task.
-func (s *Service) Create(id workspace.ID, opts CreateOptions) (*Run, *task.Task, error) {
-	ws, err := s.workspaces.Get(id)
+func (s *Service) Create(workspaceID uuid.UUID, opts CreateOptions) (*Run, *task.Task, error) {
+	ws, err := s.workspaces.Get(workspaceID)
 	if err != nil {
 		return nil, nil, fmt.Errorf("creating run: %w", err)
 	}
-	run, err := newRun(ws, opts)
+	mod, err := s.modules.Get(ws.Module().ID)
 	if err != nil {
 		return nil, nil, fmt.Errorf("creating run: %w", err)
 	}
-	task, err := s.workspaces.CreateTask(ws.Resource, task.CreateOptions{
-		Command:     []string{"plan"},
-		Args:        []string{"-input", "false", "-plan", run.PlanPath()},
-		AfterExited: s.afterPlan(run),
+	// Publish an event upon every run status update
+	opts.afterUpdate = func(run *Run) {
+		s.broker.Publish(resource.UpdatedEvent, run)
+	}
+	run, err := newRun(mod, ws, opts)
+	if err != nil {
+		return nil, nil, fmt.Errorf("creating run: %w", err)
+	}
+	task, err := s.tasks.Create(task.CreateOptions{
+		Parent:  run.Resource,
+		Path:    mod.Path,
+		Command: []string{"plan"},
+		Args:    []string{"-input", "false", "-plan", PlanPath(mod, ws, run)},
+		Env:     []string{ws.TerraformEnv()},
+		AfterQueued: func(*task.Task) {
+			run.updateStatus(PlanQueued)
+		},
+		AfterRunning: func(*task.Task) {
+			run.updateStatus(Planning)
+		},
+		AfterError: func(t *task.Task) {
+			run.setErrored(t.Err)
+		},
+		AfterCanceled: func(*task.Task) {
+			run.updateStatus(Canceled)
+		},
+		AfterExited: s.afterPlan(mod, ws, run),
 	})
 	if err != nil {
 		return nil, nil, fmt.Errorf("creating plan task: %w", err)
@@ -50,35 +75,38 @@ func (s *Service) Create(id workspace.ID, opts CreateOptions) (*Run, *task.Task,
 	return run, task, nil
 }
 
-func (s *Service) afterPlan(run *Run) func(*task.Task) {
+func (s *Service) afterPlan(mod *module.Module, ws *workspace.Workspace, run *Run) func(*task.Task) {
 	return func(plan *task.Task) {
 		// Convert binary plan file to json plan file.
-		convert, err := s.workspaces.CreateTask(run.Workspace, task.CreateOptions{
+		_, err := s.tasks.Create(task.CreateOptions{
+			Parent:  run.Resource,
+			Path:    mod.Path,
 			Command: []string{"show"},
-			Args:    []string{"-json", run.PlanPath()},
+			Args:    []string{"-json", PlanPath(mod, ws, run)},
+			Env:     []string{ws.TerraformEnv()},
+			AfterError: func(t *task.Task) {
+				run.setErrored(t.Err)
+			},
+			AfterCanceled: func(*task.Task) {
+				run.updateStatus(Canceled)
+			},
+			AfterExited: func(t *task.Task) {
+				var pfile planFile
+				if err := json.NewDecoder(t.NewReader()).Decode(&pfile); err != nil {
+					run.setErrored(err)
+					return
+				}
+				if run.addPlan(pfile) {
+					if _, _, err := s.Apply(run.Resource); err != nil {
+						run.setErrored(err)
+						return
+					}
+				}
+			},
 		})
 		if err != nil {
 			run.setErrored(err)
 			return
-		}
-		// TODO: make task above synchronous
-		var pfile planFile
-		if err = json.NewDecoder(convert.NewReader()).Decode(&pfile); err != nil {
-			run.setErrored(err)
-			return
-		}
-		run.PlanReport = pfile.resourceChanges()
-		if !run.PlanReport.HasChanges() {
-			run.updateStatus(PlannedAndFinished)
-			return
-		}
-		run.updateStatus(Planned)
-		if run.AutoApply {
-			_, _, err = s.Apply(run.Resource)
-			if err != nil {
-				run.setErrored(err)
-				return
-			}
 		}
 	}
 }
@@ -92,12 +120,49 @@ func (s *Service) Apply(id resource.Resource) (*Run, *task.Task, error) {
 	if !ok {
 		return nil, nil, resource.ErrNotFound
 	}
+	ws, err := s.workspaces.Get(run.Workspace().ID)
+	if err != nil {
+		return nil, nil, fmt.Errorf("creating run: %w", err)
+	}
+	mod, err := s.modules.Get(ws.Module().ID)
+	if err != nil {
+		return nil, nil, fmt.Errorf("creating run: %w", err)
+	}
+
 	if run.Status != Planned {
 		return nil, nil, fmt.Errorf("run is not in the planned state: %s", run.Status)
 	}
-	task, err := s.workspaces.CreateTask(run.Parent, task.CreateOptions{
+	task, err := s.tasks.Create(task.CreateOptions{
+		Parent:  run.Resource,
+		Path:    mod.Path,
 		Command: []string{"apply"},
-		Args:    []string{"-input", "false", run.PlanPath()},
+		Args:    []string{"-input", "false", PlanPath(mod, ws, run)},
+		Env:     []string{ws.TerraformEnv()},
+		AfterQueued: func(*task.Task) {
+			run.updateStatus(ApplyQueued)
+		},
+		AfterRunning: func(*task.Task) {
+			run.updateStatus(Applying)
+		},
+		AfterError: func(*task.Task) {
+			run.updateStatus(Errored)
+		},
+		AfterCanceled: func(*task.Task) {
+			run.updateStatus(Canceled)
+		},
+		AfterExited: func(t *task.Task) {
+			out, err := io.ReadAll(t.NewReader())
+			if err != nil {
+				// log error
+				return
+			}
+			report, err := parseApplyOutput(string(out))
+			if err != nil {
+				// log error
+				return
+			}
+			run.ApplyReport = report
+		},
 	})
 	if err != nil {
 		return nil, nil, fmt.Errorf("applying run: %w", err)
@@ -116,13 +181,13 @@ func (s *Service) Get(id resource.Resource) (*Run, error) {
 	return run, nil
 }
 
-func (s *Service) List(id workspace.ID) []*Run {
+func (s *Service) ListByWorkspace(workspaceID uuid.UUID) []*Run {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	var runs []*Run
 	for _, run := range s.runs {
-		if run.Workspace == id {
+		if run.Workspace().ID == workspaceID {
 			runs = append(runs, run)
 		}
 	}
@@ -145,11 +210,4 @@ func (s *Service) Delete(id resource.Resource) error {
 	delete(s.runs, id)
 	s.broker.Publish(resource.DeletedEvent, run)
 	return nil
-}
-
-const MetadataKey = "run"
-
-// Create task for a run.
-func (s *Service) CreateTask(run *Run, opts task.CreateOptions) (*task.Task, error) {
-	return s.workspaces.CreateTask(run.Parent, opts)
 }

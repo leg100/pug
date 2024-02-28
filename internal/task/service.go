@@ -47,33 +47,6 @@ func NewService(ctx context.Context, opts ServiceOptions) *Service {
 	return svc
 }
 
-type CreateOptions struct {
-	// Resource that the task belongs to.
-	Parent resource.Resource
-	// Program command and any sub commands, e.g. plan, state rm, etc.
-	Command []string
-	// Args to pass to program.
-	Args []string
-	// Environment variables.
-	Env []string
-	// Path in which to execute the program - assumed be the terraform module's
-	// path.
-	Path string
-	// Arbitrary metadata to associate with the task.
-	Metadata map[string]string
-	// A blocking task blocks other tasks from running on the module or
-	// workspace.
-	Blocking bool
-	// Globally exclusive task - at most only one such task can be running
-	Exclusive bool
-	// Call this function after the task has successfully finished
-	AfterExited func(*Task)
-	// Call this function after the task fails with an error
-	AfterError func(*Task)
-	// Call this function after the task is successfully created
-	AfterCreate func(*Task)
-}
-
 // Create a task. The task is placed into a pending state and requires enqueuing
 // before it'll be processed.
 func (s *Service) Create(opts CreateOptions) (*Task, error) {
@@ -92,18 +65,8 @@ func (s *Service) Create(opts CreateOptions) (*Task, error) {
 
 	go func() {
 		if err := task.Wait(); err != nil {
-			// TODO: move this into task itself, before an update event is
-			// published.
-			if opts.AfterError != nil {
-				opts.AfterError(task)
-			}
 			// TODO: log error
 			return
-		}
-		// TODO: move this into task itself, before an update event is
-		// published.
-		if opts.AfterExited != nil {
-			opts.AfterExited(task)
 		}
 	}()
 

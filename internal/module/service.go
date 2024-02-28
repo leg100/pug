@@ -2,8 +2,8 @@ package module
 
 import (
 	"context"
-	"fmt"
 	"slices"
+	"sync"
 
 	"github.com/google/uuid"
 	"github.com/leg100/pug/internal/pubsub"
@@ -14,13 +14,13 @@ import (
 )
 
 type Service struct {
-	broker  *pubsub.Broker[*Module]
-	tasks   *task.Service
-	modules map[uuid.UUID]*Module
+	broker *pubsub.Broker[*Module]
+	tasks  *task.Service
+
 	workdir string
-	*factory
-	// TODO: Mutex for making atomic changes to modules and/or manipulating the
-	// modules map concurrently
+
+	modules map[uuid.UUID]*Module
+	mu      sync.Mutex
 }
 
 type ServiceOptions struct {
@@ -30,16 +30,9 @@ type ServiceOptions struct {
 
 func NewService(opts ServiceOptions) *Service {
 	broker := pubsub.NewBroker[*Module]()
-	factory := &factory{
-		// Whenever state is updated, publish it as an event.
-		callback: func(t *Module) {
-			broker.Publish(resource.UpdatedEvent, t)
-		},
-	}
 	return &Service{
 		tasks:   opts.TaskService,
 		workdir: opts.Workdir,
-		factory: factory,
 		broker:  broker,
 	}
 }
@@ -48,25 +41,31 @@ func NewService(opts ServiceOptions) *Service {
 // to the store before pruning those that are currently stored but can no longer
 // be found.
 func (s *Service) Reload() error {
-	found, err := s.findModules(s.workdir)
+	found, err := findModules(s.workdir)
 	if err != nil {
 		return err
 	}
 	if s.modules == nil {
 		s.modules = make(map[uuid.UUID]*Module, len(found))
 	}
-	for _, mod := range found {
-		// Add module if it isn't stored already
-		if _, err := s.GetByPath(mod.Path); err == resource.ErrNotFound {
+	for _, path := range found {
+		// Add module if it isn't in pug already
+		if _, err := s.GetByPath(path); err == resource.ErrNotFound {
+			mod := &Module{Resource: resource.New(nil), Path: path}
+			s.mu.Lock()
 			s.modules[mod.ID] = mod
+			s.mu.Unlock()
+			s.broker.Publish(resource.CreatedEvent, mod)
 		}
 	}
-	// Cleanup existing modules, removing those that are not in found
-	for _, existing := range s.modules {
-		if !slices.ContainsFunc(found, func(m *Module) bool {
-			return m.Path == existing.Path
-		}) {
-			_ = s.Delete(existing.ID)
+
+	// Cleanup existing modules, removing those that are no longer to be found
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for id, existing := range s.modules {
+		if !slices.Contains(found, existing.Path) {
+			s.broker.Publish(resource.DeletedEvent, existing)
+			delete(s.modules, id)
 		}
 	}
 	return nil
@@ -79,20 +78,21 @@ func (s *Service) Init(id uuid.UUID) (*Module, *task.Task, error) {
 		return nil, nil, err
 	}
 	// create asynchronous task that runs terraform init
-	tsk, err := s.CreateTask(id, task.CreateOptions{
-		Command: []string{"init"},
-		Args:    []string{"-input=false"},
-		// init blocks module and workspace tasks
+	tsk, err := s.tasks.Create(task.CreateOptions{
+		Parent:    mod.Resource,
+		Path:      mod.Path,
+		Command:   []string{"init"},
+		Args:      []string{"-input=false"},
 		Blocking:  true,
 		Exclusive: terraform.IsPluginCacheUsed(),
 		AfterCreate: func(*task.Task) {
-			mod.updateStatus(Initializing)
+			// log
 		},
 		AfterExited: func(*task.Task) {
-			mod.updateStatus(Initialized)
+			// log
 		},
 		AfterError: func(*task.Task) {
-			mod.updateStatus(Misconfigured)
+			// log error
 		},
 	})
 	if err != nil {
@@ -102,24 +102,16 @@ func (s *Service) Init(id uuid.UUID) (*Module, *task.Task, error) {
 }
 
 func (s *Service) List() []*Module {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
 	return maps.Values(s.modules)
 }
 
-const MetadataKey = "module"
-
-// Create module task.
-func (s *Service) CreateTask(id uuid.UUID, opts task.CreateOptions) (*task.Task, error) {
-	// ensure module exists
-	mod, err := s.Get(id)
-	if err != nil {
-		return nil, fmt.Errorf("retrieving module: %s: %w", id, err)
-	}
-	opts.Path = mod.Path
-	opts.Parent = mod.Resource
-	return s.tasks.Create(opts)
-}
-
 func (s *Service) Get(id uuid.UUID) (*Module, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
 	mod, ok := s.modules[id]
 	if !ok {
 		return nil, resource.ErrNotFound
@@ -128,6 +120,9 @@ func (s *Service) Get(id uuid.UUID) (*Module, error) {
 }
 
 func (s *Service) GetByPath(path string) (*Module, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
 	for _, mod := range s.modules {
 		if path == mod.Path {
 			return mod, nil
@@ -138,14 +133,4 @@ func (s *Service) GetByPath(path string) (*Module, error) {
 
 func (s *Service) Watch(ctx context.Context) (<-chan resource.Event[*Module], func()) {
 	return s.broker.Subscribe(ctx)
-}
-
-func (s *Service) Delete(id uuid.UUID) error {
-	mod, ok := s.modules[id]
-	if !ok {
-		return resource.ErrNotFound
-	}
-	s.broker.Publish(resource.DeletedEvent, mod)
-	delete(s.modules, id)
-	return nil
 }

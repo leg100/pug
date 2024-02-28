@@ -12,22 +12,6 @@ import (
 	"github.com/leg100/pug/internal/resource"
 )
 
-type Status string
-
-const (
-	// Module does not have a .terraform dir
-	Uninitialized Status = "uninitalized"
-	// Terraform init is being run
-	Initializing Status = "initializing"
-	// Terraform init ran successfully
-	Initialized Status = "initialized"
-	// Terraform init ran unsuccessfully
-	Misconfigured Status = "misconfigured"
-	// TODO: handle state in which a command has been run, i.e. terraform plan
-	// or terraform workspace list, but it failed with error indicating the
-	// module needs re-initalizing.
-)
-
 type Module struct {
 	// Uniquely identifies module
 	resource.Resource
@@ -35,43 +19,12 @@ type Module struct {
 	// Path is the path to the module relative to the pug working directory. The
 	// path also uniquely identifies a module.
 	Path string
-
-	// Current module status
-	Status Status
-
-	// call this whenever state is updated
-	callback func(*Module)
-}
-
-type factory struct {
-	program  string
-	callback func(*Module)
-}
-
-func (f *factory) newModule(path string, init bool) (*Module, error) {
-	mod := &Module{
-		Resource: resource.New(nil),
-		Path:     path,
-		Status:   Uninitialized,
-		callback: f.callback,
-	}
-	if init {
-		mod.Status = Initialized
-	}
-	return mod, nil
 }
 
 func (m *Module) String() string      { return m.Path }
 func (m *Module) Title() string       { return m.Path }
 func (m *Module) Description() string { return m.Path }
 func (m *Module) FilterValue() string { return m.Path }
-
-func (m *Module) updateStatus(status Status) {
-	m.Status = status
-	m.callback(m)
-}
-
-//Args: []string{"apply", "-auto-approve", "-input=false"},
 
 // FindModules finds root modules that are descendents of the given path and
 // returns their paths. Determining what is a root module is difficult and
@@ -82,13 +35,11 @@ func (m *Module) updateStatus(status Status) {
 //
 // (a) will only succeed if the module has already been initialized, i.e. terraform
 // init has been run, whereas (b) is necessary if it has not.
-func (f *factory) findModules(parent string) (modules []*Module, err error) {
+func findModules(parent string) (modules []string, err error) {
 	walkfn := func(path string, d fs.DirEntry, walkerr error) error {
-		// skip files in directories that have already been identified as containing a
+		// skip directories that have already been identified as containing a
 		// root module
-		if slices.ContainsFunc(modules, func(m *Module) bool {
-			return filepath.Dir(path) == m.Path
-		}) {
+		if slices.Contains(modules, filepath.Dir(path)) {
 			return nil
 		}
 		if walkerr != nil {
@@ -96,11 +47,8 @@ func (f *factory) findModules(parent string) (modules []*Module, err error) {
 		}
 		if d.IsDir() {
 			if d.Name() == ".terraform" {
-				mod, err := f.newModule(filepath.Dir(path), true)
-				if err != nil {
-					return err
-				}
-				modules = append(modules, mod)
+				modules = append(modules, filepath.Dir(path))
+				// skip walking .terraform/
 				return filepath.SkipDir
 			}
 			return nil
@@ -123,12 +71,9 @@ func (f *factory) findModules(parent string) (modules []*Module, err error) {
 			if block.Type() == "terraform" {
 				for _, nested := range block.Body().Blocks() {
 					if nested.Type() == "backend" || nested.Type() == "cloud" {
-						mod, err := f.newModule(filepath.Dir(path), false)
-						if err != nil {
-							return err
-						}
-						modules = append(modules, mod)
-						return nil
+						modules = append(modules, filepath.Dir(path))
+						// skip walking remainder of parent directory
+						return fs.SkipDir
 					}
 				}
 			}

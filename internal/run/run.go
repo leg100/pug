@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/leg100/pug/internal/module"
 	"github.com/leg100/pug/internal/resource"
 	"github.com/leg100/pug/internal/workspace"
 )
@@ -24,6 +25,14 @@ const (
 	Canceled           Status = "canceled"
 )
 
+func PugDirectory(module *module.Module, ws *workspace.Workspace, run *Run) string {
+	return filepath.Join(workspace.PugDirectory(module.Path, ws.Name), run.String())
+}
+
+func PlanPath(module *module.Module, ws *workspace.Workspace, run *Run) string {
+	return filepath.Join(PugDirectory(module, ws, run), "plan.out")
+}
+
 type Run struct {
 	resource.Resource
 
@@ -42,41 +51,26 @@ type Run struct {
 }
 
 type CreateOptions struct {
-	AutoApply bool
+	AutoApply   bool
+	afterUpdate func(run *Run)
 }
 
-func newRun(ws *workspace.Workspace, opts CreateOptions) (*Run, error) {
+func newRun(mod *module.Module, ws *workspace.Workspace, opts CreateOptions) (*Run, error) {
 	run := &Run{
-		Resource:  resource.New(),
-		Status:    Pending,
-		AutoApply: opts.AutoApply,
-		Created:   time.Now(),
-		Workspace: ws.Resource,
+		Resource:    resource.New(&ws.Resource),
+		Status:      Pending,
+		AutoApply:   opts.AutoApply,
+		Created:     time.Now(),
+		afterUpdate: opts.afterUpdate,
 	}
-	if err := os.MkdirAll(run.PugDirectory(), 0o755); err != nil {
+	if err := os.MkdirAll(PugDirectory(mod, ws, run), 0o755); err != nil {
 		return nil, err
 	}
 	return run, nil
 }
 
-func (r *Run) PugDirectory() string {
-	return filepath.Join(r.Workspace.PugDirectory(), r.String())
-}
-
-func (r *Run) PlanPath() string {
-	return filepath.Join(r.PugDirectory(), "plan.out")
-}
-
-func (r *Run) setErrored(err error) {
-	r.Error = err
-	r.updateStatus(Errored)
-}
-
-func (r *Run) updateStatus(status Status) {
-	r.Status = status
-	if r.afterUpdate != nil {
-		r.afterUpdate(r)
-	}
+func (r *Run) Workspace() resource.Resource {
+	return *r.Parent
 }
 
 func (r *Run) IsFinished() bool {
@@ -85,5 +79,27 @@ func (r *Run) IsFinished() bool {
 		return true
 	default:
 		return false
+	}
+}
+
+func (r *Run) setErrored(err error) {
+	r.Error = err
+	r.updateStatus(Errored)
+}
+
+func (r *Run) addPlan(pfile planFile) bool {
+	r.PlanReport = pfile.resourceChanges()
+	if !r.PlanReport.HasChanges() {
+		r.updateStatus(PlannedAndFinished)
+		return false
+	}
+	r.updateStatus(Planned)
+	return r.AutoApply
+}
+
+func (r *Run) updateStatus(status Status) {
+	r.Status = status
+	if r.afterUpdate != nil {
+		r.afterUpdate(r)
 	}
 }

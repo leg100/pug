@@ -8,14 +8,8 @@ import (
 )
 
 func TestFindModules(t *testing.T) {
-	got, err := FindModules("../testdata/configs")
+	got, err := findModules("../testdata/configs")
 	require.NoError(t, err)
 	assert.Equal(t, 4, len(got))
 	//assert.Equal(t, "", got[0].Path)
 }
-
-//func TestModule_init(t *testing.T) {
-//	mod := Module{"testdata/configs/envs/dev", true}
-//	err := mod.init(NewRunner(1))
-//	require.NoError(t, err)
-//}

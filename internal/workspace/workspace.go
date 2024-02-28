@@ -1,6 +1,7 @@
 package workspace
 
 import (
+	"fmt"
 	"path/filepath"
 
 	"github.com/leg100/pug/internal/module"
@@ -31,7 +32,11 @@ func (ws *Workspace) String() string {
 }
 
 func (ws *Workspace) Module() resource.Resource {
-	return *ws.Resource.Parent
+	return *ws.Parent
+}
+
+func (ws *Workspace) TerraformEnv() string {
+	return fmt.Sprintf("TF_WORKSPACE=%s", ws.Name)
 }
 
 func PugDirectory(path, name string) string {
