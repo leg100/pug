@@ -45,11 +45,11 @@ func (m help) Init() tea.Cmd {
 
 func (m help) Update(msg tea.Msg) (Model, tea.Cmd) {
 	switch msg := msg.(type) {
-	case ViewSizeMsg:
+	case viewSizeMsg:
 		m.height = msg.Height
-	case ChangeStateMsg:
+	case changeStateMsg:
 		m.current = msg.To
-	case GlobalKeyMsg:
+	case globalKeyMsg:
 		if key.Matches(msg.KeyMsg, Keys.Help) {
 			if msg.Current != helpState {
 				// open help, keeping reference to last state

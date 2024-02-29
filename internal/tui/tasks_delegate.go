@@ -24,7 +24,7 @@ func newTaskDelegate(mod *module.Module) list.DefaultDelegate {
 			switch {
 			case key.Matches(msg, Keys.Enter):
 				return ChangeState(taskState, WithModelOption(
-					newTask(task, mod, 0, 0),
+					newTaskModel(task, mod, 0, 0),
 				))
 			}
 		}

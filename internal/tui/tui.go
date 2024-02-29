@@ -9,20 +9,20 @@ type Model interface {
 	View() string
 }
 
-func MsgHandler(msg tea.Msg) tea.Cmd {
+func cmdHandler(msg tea.Msg) tea.Cmd {
 	return func() tea.Msg {
 		return msg
 	}
 }
 
-type ErrorMsg struct {
+type errorMsg struct {
 	Error   error
 	Message string
 	Args    []any
 }
 
-func Err(err error, msg string, args ...any) ErrorMsg {
-	return ErrorMsg{
+func newErrorMsg(err error, msg string, args ...any) errorMsg {
+	return errorMsg{
 		Error:   err,
 		Message: msg,
 		Args:    args,

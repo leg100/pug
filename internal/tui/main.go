@@ -17,7 +17,7 @@ import (
 	"golang.org/x/exp/maps"
 )
 
-const defaultState = modulesState
+const defaultState = moduleListState
 
 type main struct {
 	current State
@@ -41,7 +41,7 @@ type Options struct {
 }
 
 func New(opts Options) (main, error) {
-	mm, err := newModules(opts.ModuleService, opts.Workdir)
+	mm, err := newModuleListModel(opts.ModuleService, opts.Workdir)
 	if err != nil {
 		return main{}, err
 	}
@@ -54,9 +54,9 @@ func New(opts Options) (main, error) {
 
 	return main{
 		models: map[State]Model{
-			modulesState: mm,
-			logsState:    newLogs(),
-			helpState:    newHelp(defaultState),
+			moduleListState: mm,
+			logsState:       newLogs(),
+			helpState:       newHelp(defaultState),
 		},
 		current:  defaultState,
 		messages: messages,
@@ -95,19 +95,13 @@ func (m main) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// model returns
 			return m, tea.Batch(
 				cmd,
-				MsgHandler(GlobalKeyMsg{
+				cmdHandler(globalKeyMsg{
 					Current: m.current,
 					KeyMsg:  msg,
 				}),
 			)
 		}
-	case GlobalKeyMsg:
-		for k, mod := range m.models {
-			updated, cmd := mod.Update(msg)
-			m.models[k] = updated
-			cmds = append(cmds, cmd)
-		}
-	case ChangeStateMsg:
+	case changeStateMsg:
 		m.current = msg.To
 		if msg.Model != nil {
 			m.models[m.current] = msg.Model
@@ -125,7 +119,7 @@ func (m main) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m main) resizeCmd() tea.Msg {
-	return ViewSizeMsg{Width: m.viewWidth(), Height: m.viewHeight()}
+	return viewSizeMsg{Width: m.viewWidth(), Height: m.viewHeight()}
 }
 
 // viewHeight retrieves the height available within the main view

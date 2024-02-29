@@ -23,16 +23,16 @@ func startEnqueuer(
 	e := enqueuer{tasks: tasks}
 
 	for range sub {
-		for _, t := range e.Enqueue() {
+		for _, t := range e.enqueue() {
 			// TODO: log error
 			_, _ = tasks.Enqueue(t.Resource)
 		}
 	}
 }
 
-// Enqueue returns a list of a tasks to be moved from the pending state to the
+// enqueue returns a list of a tasks to be moved from the pending state to the
 // queued state.
-func (e *enqueuer) Enqueue() []*Task {
+func (e *enqueuer) enqueue() []*Task {
 	// Retrieve active tasks
 	active := e.tasks.List(ListOptions{
 		Status: []Status{Queued, Running},

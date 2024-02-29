@@ -177,9 +177,9 @@ func (s *Service) Get(id uuid.UUID) (*Workspace, error) {
 	return ws, nil
 }
 
-// List workspaces by module.
-func (s *Service) ListByModule(moduleID uuid.UUID) ([]*Workspace, error) {
-	mod, err := s.modules.Get(moduleID)
+// Get the current workspace for a module
+func (s *Service) GetCurrent(moduleID uuid.UUID) (*Workspace, error) {
+	moduleWorkspaces, err := s.ListByModule(moduleID)
 	if err != nil {
 		return nil, err
 	}
@@ -187,9 +187,23 @@ func (s *Service) ListByModule(moduleID uuid.UUID) ([]*Workspace, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
+	for _, ws := range moduleWorkspaces {
+		if ws.Current {
+			return ws, nil
+		}
+	}
+	// Should never happen.
+	return nil, resource.ErrNotFound
+}
+
+// List workspaces by module.
+func (s *Service) ListByModule(moduleID uuid.UUID) ([]*Workspace, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
 	var existing []*Workspace
 	for _, ws := range s.workspaces {
-		if ws.Module().ID == mod.ID {
+		if ws.Module().ID == moduleID {
 			existing = append(existing, ws)
 		}
 	}

@@ -39,6 +39,7 @@ type Run struct {
 	Status    Status
 	Created   time.Time
 	AutoApply bool
+	PlanOnly  bool
 
 	PlanReport  report
 	ApplyReport report
@@ -51,7 +52,9 @@ type Run struct {
 }
 
 type CreateOptions struct {
-	AutoApply   bool
+	AutoApply bool
+	PlanOnly  bool
+
 	afterUpdate func(run *Run)
 }
 
@@ -60,6 +63,7 @@ func newRun(mod *module.Module, ws *workspace.Workspace, opts CreateOptions) (*R
 		Resource:    resource.New(&ws.Resource),
 		Status:      Pending,
 		AutoApply:   opts.AutoApply,
+		PlanOnly:    opts.PlanOnly,
 		Created:     time.Now(),
 		afterUpdate: opts.afterUpdate,
 	}

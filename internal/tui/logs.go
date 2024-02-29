@@ -53,7 +53,7 @@ func (m model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	)
 
 	switch msg := msg.(type) {
-	case GlobalKeyMsg:
+	case globalKeyMsg:
 		switch {
 		case key.Matches(msg.KeyMsg, Keys.Logs):
 			if msg.Current != logsState {
@@ -75,10 +75,10 @@ func (m model) Update(msg tea.Msg) (Model, tea.Cmd) {
 		m.viewport.SetContent(m.content)
 		m.viewport.GotoTop()
 		return m, m.readLogs
-	case ErrorMsg:
+	case errorMsg:
 		args := append(msg.Args, "error", msg.Error.Error())
 		slog.Error(msg.Message, args...)
-	case ViewSizeMsg:
+	case viewSizeMsg:
 		// Accomodate margin of size 1 on either side
 		m.viewport.Width = msg.Width - 2
 		m.viewport.Height = msg.Height
@@ -86,7 +86,7 @@ func (m model) Update(msg tea.Msg) (Model, tea.Cmd) {
 		m.viewport.SetContent(wordwrap.String(m.content, m.viewport.Width))
 		// Is this necessary?
 		//m.viewport.GotoTop()
-	case ChangeStateMsg:
+	case changeStateMsg:
 		m.current = msg.To
 	default:
 		// Handle keyboard and mouse events in the viewport

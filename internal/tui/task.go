@@ -34,7 +34,7 @@ type (
 	taskFailedMsg string
 )
 
-type task struct {
+type taskModel struct {
 	task *taskpkg.Task
 	mod  *module.Module
 
@@ -45,19 +45,19 @@ type task struct {
 	height int
 }
 
-func newTask(t *taskpkg.Task, mod *module.Module, w, h int) task {
-	return task{
+func newTaskModel(t *taskpkg.Task, mod *module.Module, w, h int) taskModel {
+	return taskModel{
 		task:     t,
 		mod:      mod,
 		viewport: viewport.New(w, h),
 	}
 }
 
-func (m task) Init() tea.Cmd {
+func (m taskModel) Init() tea.Cmd {
 	return tea.Batch(m.getTaskUpdate, m.watchTaskEvents)
 }
 
-func (m task) Update(msg tea.Msg) (Model, tea.Cmd) {
+func (m taskModel) Update(msg tea.Msg) (Model, tea.Cmd) {
 	var (
 		cmd  tea.Cmd
 		cmds []tea.Cmd
@@ -67,12 +67,12 @@ func (m task) Update(msg tea.Msg) (Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, Keys.Tasks, Keys.Escape):
-			return m, ChangeState(tasksState, WithModelOption(
-				newTasks(m.mod),
+			return m, ChangeState(taskListState, WithModelOption(
+				newTaskListModel(m.mod),
 			))
 		case key.Matches(msg, Keys.Retry):
-			return m, ChangeState(tasksState, WithModelOption(
-				newTasks(m.mod),
+			return m, ChangeState(taskListState, WithModelOption(
+				newTaskListModel(m.mod),
 			))
 		}
 	case taskUpdateMsg:
@@ -90,7 +90,7 @@ func (m task) Update(msg tea.Msg) (Model, tea.Cmd) {
 		m.content = string(msg)
 		m.viewport.SetContent(m.content)
 		m.viewport.GotoBottom()
-	case ViewSizeMsg:
+	case viewSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
 		// subtract 2 to account for margins
@@ -106,7 +106,7 @@ func (m task) Update(msg tea.Msg) (Model, tea.Cmd) {
 	return m, tea.Batch(cmds...)
 }
 
-func (m task) Title() string {
+func (m taskModel) Title() string {
 	workspace := lipgloss.NewStyle().
 		Background(lipgloss.Color(DarkGrey)).
 		Foreground(White).
@@ -114,7 +114,7 @@ func (m task) Title() string {
 	return fmt.Sprintf("task (%s) %s", m.mod.Path, workspace)
 }
 
-func (m task) View() string {
+func (m taskModel) View() string {
 	status := lipgloss.NewStyle().
 		Background(lipgloss.Color("#353533")).
 		Foreground(White).
@@ -140,7 +140,7 @@ func (m task) View() string {
 	)
 }
 
-func (m task) getTaskUpdate() tea.Msg {
+func (m taskModel) getTaskUpdate() tea.Msg {
 	out, err := io.ReadAll(m.task.Output)
 	if err != nil {
 		return taskUpdateMsg(err.Error())
@@ -148,7 +148,7 @@ func (m task) getTaskUpdate() tea.Msg {
 	return taskUpdateMsg(string(out))
 }
 
-func (m task) watchTaskEvents() tea.Msg {
+func (m taskModel) watchTaskEvents() tea.Msg {
 	<-m.task.Events
 	return taskEventMsg{}
 }

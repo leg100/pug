@@ -78,8 +78,8 @@ var Keys = keyMap{
 	),
 }
 
-// GlobalKeyMsg wraps tea.KeyMsg along with the current state
-type GlobalKeyMsg struct {
+// globalKeyMsg wraps tea.KeyMsg along with the current state
+type globalKeyMsg struct {
 	Current State
 
 	tea.KeyMsg

@@ -67,7 +67,7 @@ func TestEnqueuer(t *testing.T) {
 					active:  tt.active,
 				},
 			}
-			assert.Equal(t, tt.want, e.Enqueue())
+			assert.Equal(t, tt.want, e.enqueue())
 		})
 	}
 }

@@ -8,13 +8,15 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/leg100/pug/internal/module"
+	"github.com/leg100/pug/internal/run"
+	"github.com/leg100/pug/internal/workspace"
 )
 
-const modulesState State = "modules"
+const moduleListState State = "modules"
 
 func init() {
 	registerHelpBindings(func(short bool, current State) []key.Binding {
-		if current != modulesState {
+		if current != moduleListState {
 			return []key.Binding{Keys.Modules}
 		}
 		return []key.Binding{
@@ -27,7 +29,7 @@ func init() {
 	})
 }
 
-type modules struct {
+type moduleListModel struct {
 	list list.Model
 
 	workdir string
@@ -36,63 +38,63 @@ type modules struct {
 	height int
 }
 
-func newModules(svc *module.Service, workdir string) (modules, error) {
+func newModuleListModel(svc *module.Service, workdir string) (moduleListModel, error) {
 	if err := svc.Reload(); err != nil {
-		return modules{}, err
+		return moduleListModel{}, err
 	}
 	mods := svc.List()
 	items := make([]list.Item, len(mods))
 	for i, mod := range mods {
 		items[i] = mod
 	}
-	d := newDelegate(runner)
+	d := newModuleDelegate(runner)
 	l := list.New(items, d, 0, 0)
 	l.SetShowTitle(false)
 	l.SetShowStatusBar(false)
 	l.SetShowHelp(false)
 
-	return modules{list: l, workdir: workdir}, nil
+	return moduleListModel{list: l, workdir: workdir}, nil
 }
 
-func (m modules) Init() tea.Cmd {
+func (moduleListModel) Init() tea.Cmd {
 	return nil
 }
 
-func (m modules) Update(msg tea.Msg) (Model, tea.Cmd) {
+func (mlm moduleListModel) Update(msg tea.Msg) (Model, tea.Cmd) {
 	switch msg := msg.(type) {
-	case GlobalKeyMsg:
-		if msg.Current != modulesState {
+	case globalKeyMsg:
+		if msg.Current != moduleListState {
 			if key.Matches(msg.KeyMsg, Keys.Modules) {
-				return m, ChangeState(modulesState)
+				return mlm, ChangeState(moduleListState)
 			}
 		}
-	case ViewSizeMsg:
-		m.list.SetSize(msg.Width, msg.Height)
-		m.width = msg.Width
-		m.height = msg.Height
-		return m, nil
+	case viewSizeMsg:
+		mlm.list.SetSize(msg.Width, msg.Height)
+		mlm.width = msg.Width
+		mlm.height = msg.Height
+		return mlm, nil
 	case taskFailedMsg:
 		// TODO: update a status bar
-		return m, tea.Quit
+		return mlm, tea.Quit
 	}
 
 	var cmd tea.Cmd
-	m.list, cmd = m.list.Update(msg)
-	return m, cmd
+	mlm.list, cmd = mlm.list.Update(msg)
+	return mlm, cmd
 }
 
-func (m modules) Title() string {
-	return fmt.Sprintf("modules (%s)", m.workdir)
+func (mlm moduleListModel) Title() string {
+	return fmt.Sprintf("modules (%s)", mlm.workdir)
 }
 
-func (m modules) View() string {
+func (mlm moduleListModel) View() string {
 	return lipgloss.JoinVertical(
 		lipgloss.Top,
-		m.list.View(),
+		mlm.list.View(),
 	)
 }
 
-func newModuleDelegate(runner *taskpkg.Runner) list.DefaultDelegate {
+func newModuleDelegate(svc *module.Service, runs *run.Service, workspaces *workspace.Service) list.DefaultDelegate {
 	d := list.NewDefaultDelegate()
 	d.SetSpacing(0)
 	d.ShowDescription = false
@@ -102,42 +104,48 @@ func newModuleDelegate(runner *taskpkg.Runner) list.DefaultDelegate {
 		if !ok {
 			return nil
 		}
+		currentWorkspace, err := workspaces.GetCurrent(mod.ID)
+		if err != nil {
+			return cmdHandler(newErrorMsg(err, "creating init task", "module", mod))
+		}
 
 		switch msg := msg.(type) {
 		case tea.KeyMsg:
 			switch {
 			case key.Matches(msg, Keys.Tasks, Keys.Enter):
-				return ChangeState(tasksState, WithModelOption(
-					newTasks(mod),
+				return ChangeState(taskListState, WithModelOption(
+					newTaskListModel(mod),
 				))
 			case key.Matches(msg, Keys.Init):
 				return func() tea.Msg {
-					t, err := mod.Init(runner)
+					_, t, err := svc.Init(mod.ID)
 					if err != nil {
-						return Err(err, "creating init task", "module", mod)
+						return newErrorMsg(err, "initializing module", "module", mod)
 					}
 					return ChangeState(taskState, WithModelOption(
-						newTask(t, mod, 0, 0),
+						newTaskModel(t, mod, 0, 0),
 					))()
 				}
-			case key.Matches(msg, Keys.Apply):
+			case key.Matches(msg, Keys.Plan):
 				return func() tea.Msg {
-					t, err := mod.Apply(runner)
+					_, t, err := runs.Create(currentWorkspace.ID, run.CreateOptions{
+						PlanOnly: true,
+					})
 					if err != nil {
-						return taskFailedMsg(err.Error())
+						return newErrorMsg(err, "creating run", "module", mod)
 					}
 					return ChangeState(taskState, WithModelOption(
-						newTask(t, mod, 0, 0),
+						newTaskModel(t, mod, 0, 0),
 					))()
 				}
 			case key.Matches(msg, Keys.ShowState):
 				return func() tea.Msg {
-					t, err := mod.ShowState(runner)
+					t, err := mod.ShowState(svc)
 					if err != nil {
-						return Err(err, "creating show state task", "module", mod)
+						return newErrorMsg(err, "creating show state task", "module", mod)
 					}
 					return ChangeState(taskState, WithModelOption(
-						newTask(t, mod, 0, 0),
+						newTaskModel(t, mod, 0, 0),
 					))()
 				}
 			}

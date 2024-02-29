@@ -10,15 +10,16 @@ import (
 	taskpkg "github.com/leg100/pug/internal/task"
 )
 
-const tasksState State = "tasks"
+const taskListState State = "tasks"
 
-type tasks struct {
+// TODO: name this moduleTaskListModel
+type taskListModel struct {
 	mod *module.Module
 
 	list list.Model
 }
 
-func newTasks(mod *module.Module) tasks {
+func newTaskListModel(mod *module.Module) taskListModel {
 	// convert tasks to list items
 	items := make([]list.Item, len(mod.Tasks))
 	for i, t := range mod.Tasks {
@@ -31,14 +32,14 @@ func newTasks(mod *module.Module) tasks {
 	l.SetShowTitle(false)
 	l.SetShowStatusBar(false)
 
-	return tasks{list: l, mod: mod}
+	return taskListModel{list: l, mod: mod}
 }
 
-func (m tasks) Init() tea.Cmd {
+func (m taskListModel) Init() tea.Cmd {
 	return nil
 }
 
-func (m tasks) Update(msg tea.Msg) (Model, tea.Cmd) {
+func (m taskListModel) Update(msg tea.Msg) (Model, tea.Cmd) {
 	var (
 		cmd  tea.Cmd
 		cmds []tea.Cmd
@@ -48,9 +49,9 @@ func (m tasks) Update(msg tea.Msg) (Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, Keys.Modules, Keys.Escape):
-			return m, ChangeState(modulesState)
+			return m, ChangeState(moduleListState)
 		}
-	case ViewSizeMsg:
+	case viewSizeMsg:
 		m.list.SetSize(msg.Width, msg.Height)
 		return m, nil
 	case taskNewMsg:
@@ -65,10 +66,10 @@ func (m tasks) Update(msg tea.Msg) (Model, tea.Cmd) {
 	return m, tea.Batch(cmds...)
 }
 
-func (m tasks) Title() string {
+func (m taskListModel) Title() string {
 	return fmt.Sprintf("tasks (%s)", m.mod)
 }
 
-func (m tasks) View() string {
+func (m taskListModel) View() string {
 	return m.list.View()
 }

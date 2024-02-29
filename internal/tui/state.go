@@ -5,17 +5,17 @@ import tea "github.com/charmbracelet/bubbletea"
 type (
 	State string
 
-	ChangeStateMsg struct {
+	ChangeStateOption func(msg *changeStateMsg)
+
+	changeStateMsg struct {
 		To    State
 		Model Model
 	}
-
-	ChangeStateOption func(msg *ChangeStateMsg)
 )
 
 func ChangeState(to State, opts ...ChangeStateOption) tea.Cmd {
 	return func() tea.Msg {
-		msg := ChangeStateMsg{To: to}
+		msg := changeStateMsg{To: to}
 		for _, f := range opts {
 			f(&msg)
 		}
@@ -24,7 +24,7 @@ func ChangeState(to State, opts ...ChangeStateOption) tea.Cmd {
 }
 
 func WithModelOption(m Model) ChangeStateOption {
-	return func(msg *ChangeStateMsg) {
+	return func(msg *changeStateMsg) {
 		msg.Model = m
 	}
 }

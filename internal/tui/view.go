@@ -1,5 +1,5 @@
 package tui
 
-type ViewSizeMsg struct {
+type viewSizeMsg struct {
 	Width, Height int
 }
