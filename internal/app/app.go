@@ -39,6 +39,7 @@ func Start() error {
 	modules := module.NewService(module.ServiceOptions{
 		TaskService: tasks,
 		Workdir:     workdir,
+		PluginCache: cfg.PluginCache,
 	})
 	workspaces := workspace.NewService(workspace.ServiceOptions{
 		TaskService:   tasks,

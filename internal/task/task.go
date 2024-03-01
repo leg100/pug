@@ -28,8 +28,8 @@ type Task struct {
 	// Nil until task has started
 	proc *os.Process
 
-	created time.Time
-	updated time.Time
+	Created time.Time
+	Updated time.Time
 
 	// Nil until task finishes with an error
 	Err error
@@ -95,9 +95,9 @@ type CreateOptions struct {
 func (f *factory) newTask(opts CreateOptions) (*Task, error) {
 	return &Task{
 		State:         Pending,
-		Resource:      resource.New(resource.Task, &opts.Parent),
-		created:       time.Now(),
-		updated:       time.Now(),
+		Resource:      resource.New(resource.Task, "", &opts.Parent),
+		Created:       time.Now(),
+		Updated:       time.Now(),
 		finished:      make(chan struct{}),
 		buf:           newBuffer(),
 		program:       f.program,
@@ -213,7 +213,7 @@ func (t *Task) start() (func(), error) {
 }
 
 func (t *Task) updateState(state Status) {
-	t.updated = time.Now()
+	t.Updated = time.Now()
 	t.State = state
 	if t.afterUpdate != nil {
 		t.afterUpdate(t)

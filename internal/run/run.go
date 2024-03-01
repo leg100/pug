@@ -26,7 +26,7 @@ const (
 )
 
 func PugDirectory(module *module.Module, ws *workspace.Workspace, run *Run) string {
-	return filepath.Join(workspace.PugDirectory(module.Path, ws.Name), run.String())
+	return filepath.Join(workspace.PugDirectory(module.Path, ws.String()), run.String())
 }
 
 func PlanPath(module *module.Module, ws *workspace.Workspace, run *Run) string {
@@ -60,7 +60,7 @@ type CreateOptions struct {
 
 func newRun(mod *module.Module, ws *workspace.Workspace, opts CreateOptions) (*Run, error) {
 	run := &Run{
-		Resource:    resource.New(resource.Run, &ws.Resource),
+		Resource:    resource.New(resource.Run, "", &ws.Resource),
 		Status:      Pending,
 		AutoApply:   opts.AutoApply,
 		PlanOnly:    opts.PlanOnly,

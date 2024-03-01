@@ -90,7 +90,7 @@ func (s *Service) resetWorkspaces(module *module.Module, discovered []string, cu
 	// Add discovered workspaces that don't exist in pug
 	for _, name := range discovered {
 		if !slices.ContainsFunc(existing, func(ws *Workspace) bool {
-			return ws.Name == name
+			return ws.String() == name
 		}) {
 			add := newWorkspace(module, name, false)
 			s.workspaces[add.ID] = add
@@ -99,14 +99,14 @@ func (s *Service) resetWorkspaces(module *module.Module, discovered []string, cu
 	}
 	// Remove workspaces from pug that no longer exist
 	for _, ws := range existing {
-		if !slices.Contains(discovered, ws.Name) {
+		if !slices.Contains(discovered, ws.String()) {
 			delete(s.workspaces, ws.ID)
 			s.broker.Publish(resource.DeletedEvent, ws)
 		}
 	}
 	// Reset current workspace
 	for _, ws := range s.workspaces {
-		ws.Current = (ws.Name == current)
+		ws.Current = (ws.String() == current)
 	}
 }
 
@@ -227,7 +227,7 @@ func (s *Service) Delete(id uuid.UUID) (*task.Task, error) {
 
 	return s.createTask(ws, task.CreateOptions{
 		Command:  []string{"workspace", "delete"},
-		Args:     []string{ws.Name},
+		Args:     []string{ws.String()},
 		Blocking: true,
 		AfterExited: func(*task.Task) {
 			s.mu.Lock()

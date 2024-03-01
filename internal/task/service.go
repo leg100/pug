@@ -133,7 +133,7 @@ func (s *Service) List(opts ListOptions) []*Task {
 		filtered = append(filtered, t)
 	}
 	slices.SortFunc(filtered, func(a, b *Task) int {
-		cmp := a.updated.Compare(b.updated)
+		cmp := a.Updated.Compare(b.Updated)
 		if opts.Oldest {
 			return cmp
 		}

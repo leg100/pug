@@ -9,7 +9,6 @@ import (
 	"github.com/leg100/pug/internal/pubsub"
 	"github.com/leg100/pug/internal/resource"
 	"github.com/leg100/pug/internal/task"
-	"github.com/leg100/pug/internal/terraform"
 	"golang.org/x/exp/maps"
 )
 
@@ -17,7 +16,8 @@ type Service struct {
 	broker *pubsub.Broker[*Module]
 	tasks  *task.Service
 
-	workdir string
+	workdir     string
+	pluginCache bool
 
 	modules map[uuid.UUID]*Module
 	mu      sync.Mutex
@@ -26,14 +26,16 @@ type Service struct {
 type ServiceOptions struct {
 	TaskService *task.Service
 	Workdir     string
+	PluginCache bool
 }
 
 func NewService(opts ServiceOptions) *Service {
 	broker := pubsub.NewBroker[*Module]()
 	return &Service{
-		tasks:   opts.TaskService,
-		workdir: opts.Workdir,
-		broker:  broker,
+		tasks:       opts.TaskService,
+		workdir:     opts.Workdir,
+		broker:      broker,
+		pluginCache: opts.PluginCache,
 	}
 }
 
@@ -52,7 +54,7 @@ func (s *Service) Reload() error {
 		// Add module if it isn't in pug already
 		if _, err := s.GetByPath(path); err == resource.ErrNotFound {
 			mod := &Module{
-				Resource: resource.New(resource.Module, nil),
+				Resource: resource.New(resource.Module, path, nil),
 				Path:     path,
 			}
 			s.mu.Lock()
@@ -82,12 +84,14 @@ func (s *Service) Init(id uuid.UUID) (*Module, *task.Task, error) {
 	}
 	// create asynchronous task that runs terraform init
 	tsk, err := s.tasks.Create(task.CreateOptions{
-		Parent:    mod.Resource,
-		Path:      mod.Path,
-		Command:   []string{"init"},
-		Args:      []string{"-input=false"},
-		Blocking:  true,
-		Exclusive: terraform.IsPluginCacheUsed(),
+		Parent:   mod.Resource,
+		Path:     mod.Path,
+		Command:  []string{"init"},
+		Args:     []string{"-input=false"},
+		Blocking: true,
+		// The terraform plugin cache is not concurrency-safe, so only allow one
+		// init task to run at any given time.
+		Exclusive: s.pluginCache,
 		AfterCreate: func(*task.Task) {
 			// log
 		},

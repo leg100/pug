@@ -28,9 +28,9 @@ func parse(args []string) (config, error) {
 	fs.IntVar(&cfg.MaxTasks, 't', "max-tasks", 2*runtime.NumCPU(), "The maximum number of parallel tasks.")
 	_ = fs.String('c', "config", "pug.yaml", "Path to config file.")
 
-	// Plugin cache is enabled not via pug but via the terraform CLI config
-	clicfg, _ := cliconfig.LoadConfig()
-	cfg.PluginCache = (clicfg.PluginCacheDir != "")
+	// Plugin cache is enabled not via pug but via terraform config
+	tfcfg, _ := cliconfig.LoadConfig()
+	cfg.PluginCache = (tfcfg.PluginCacheDir != "")
 
 	err := ff.Parse(fs, args,
 		ff.WithEnvVarPrefix("PUG"),
