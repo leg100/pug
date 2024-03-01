@@ -6,14 +6,16 @@ import (
 	"os"
 	"runtime"
 
+	"github.com/hashicorp/terraform/command/cliconfig"
 	"github.com/peterbourgon/ff/v4"
 	"github.com/peterbourgon/ff/v4/ffhelp"
 	"github.com/peterbourgon/ff/v4/ffyaml"
 )
 
 type config struct {
-	Program  string
-	MaxTasks int
+	Program     string
+	MaxTasks    int
+	PluginCache bool
 }
 
 // set config in order of precedence:
@@ -25,6 +27,10 @@ func parse(args []string) (config, error) {
 	fs.StringVar(&cfg.Program, 'p', "program", "terraform", "The default program to use with pug.")
 	fs.IntVar(&cfg.MaxTasks, 't', "max-tasks", 2*runtime.NumCPU(), "The maximum number of parallel tasks.")
 	_ = fs.String('c', "config", "pug.yaml", "Path to config file.")
+
+	// Plugin cache is enabled not via pug but via the terraform CLI config
+	clicfg, _ := cliconfig.LoadConfig()
+	cfg.PluginCache = (clicfg.PluginCacheDir != "")
 
 	err := ff.Parse(fs, args,
 		ff.WithEnvVarPrefix("PUG"),

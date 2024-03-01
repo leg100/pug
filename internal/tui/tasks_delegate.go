@@ -23,7 +23,7 @@ func newTaskDelegate(mod *module.Module) list.DefaultDelegate {
 		case tea.KeyMsg:
 			switch {
 			case key.Matches(msg, Keys.Enter):
-				return ChangeState(taskState, WithModelOption(
+				return navigate(taskState, WithModelOption(
 					newTaskModel(task, mod, 0, 0),
 				))
 			}

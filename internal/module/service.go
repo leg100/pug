@@ -51,7 +51,10 @@ func (s *Service) Reload() error {
 	for _, path := range found {
 		// Add module if it isn't in pug already
 		if _, err := s.GetByPath(path); err == resource.ErrNotFound {
-			mod := &Module{Resource: resource.New(nil), Path: path}
+			mod := &Module{
+				Resource: resource.New(resource.Module, nil),
+				Path:     path,
+			}
 			s.mu.Lock()
 			s.modules[mod.ID] = mod
 			s.mu.Unlock()
@@ -131,6 +134,6 @@ func (s *Service) GetByPath(path string) (*Module, error) {
 	return nil, resource.ErrNotFound
 }
 
-func (s *Service) Watch(ctx context.Context) (<-chan resource.Event[*Module], func()) {
+func (s *Service) Subscribe(ctx context.Context) (<-chan resource.Event[*Module], func()) {
 	return s.broker.Subscribe(ctx)
 }

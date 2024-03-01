@@ -9,7 +9,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-type helpBindingFunc func(short bool, current State) []key.Binding
+type helpBindingFunc func(short bool, current Page) []key.Binding
 
 var helpBindingFuncs []helpBindingFunc
 
@@ -17,7 +17,7 @@ func registerHelpBindings(f helpBindingFunc) {
 	helpBindingFuncs = append(helpBindingFuncs, f)
 }
 
-func getBindings(short bool, current State) (bindings []key.Binding) {
+func getBindings(short bool, current Page) (bindings []key.Binding) {
 	for _, f := range helpBindingFuncs {
 		bindings = append(bindings, f(short, current)...)
 	}
@@ -28,14 +28,14 @@ func getBindings(short bool, current State) (bindings []key.Binding) {
 	return
 }
 
-const helpState State = "help"
+const helpState Page = "help"
 
 type help struct {
-	current, last State
+	current, last Page
 	height        int
 }
 
-func newHelp(current State) help {
+func newHelp(current Page) help {
 	return help{current: current}
 }
 
@@ -47,20 +47,20 @@ func (m help) Update(msg tea.Msg) (Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case viewSizeMsg:
 		m.height = msg.Height
-	case changeStateMsg:
+	case navigationMsg:
 		m.current = msg.To
 	case globalKeyMsg:
 		if key.Matches(msg.KeyMsg, Keys.Help) {
 			if msg.Current != helpState {
 				// open help, keeping reference to last state
 				m.last = m.current
-				return m, ChangeState(helpState)
+				return m, navigate(helpState)
 			}
 		}
 	case tea.KeyMsg:
 		if key.Matches(msg, Keys.CloseHelp, Keys.Escape) {
 			// close help and return to last state
-			return m, ChangeState(m.last)
+			return m, navigate(m.last)
 		}
 	}
 	return m, nil
@@ -75,7 +75,7 @@ func (m help) View() string {
 	return renderHelp(getBindings(false, m.last), m.height-2)
 }
 
-func RenderShort(current State) string {
+func RenderShort(current Page) string {
 	if current == helpState {
 		return renderHelp([]key.Binding{Keys.CloseHelp}, 1)
 	}

@@ -5,6 +5,7 @@ import (
 	"slices"
 	"sync"
 
+	"github.com/google/uuid"
 	"github.com/leg100/pug/internal/pubsub"
 	"github.com/leg100/pug/internal/resource"
 	"golang.org/x/exp/maps"
@@ -12,7 +13,7 @@ import (
 
 type Service struct {
 	// Tasks keyed by ID
-	tasks  map[resource.Resource]*Task
+	tasks  map[uuid.UUID]*Task
 	broker *pubsub.Broker[*Task]
 	// Mutex for concurrent read/write of tasks
 	mu sync.Mutex
@@ -56,7 +57,7 @@ func (s *Service) Create(opts CreateOptions) (*Task, error) {
 	}
 
 	s.mu.Lock()
-	s.tasks[task.Resource] = task
+	s.tasks[task.ID] = task
 	s.mu.Unlock()
 
 	if opts.AfterCreate != nil {
@@ -75,7 +76,7 @@ func (s *Service) Create(opts CreateOptions) (*Task, error) {
 }
 
 // Enqueue moves the task onto the global queue for processing.
-func (s *Service) Enqueue(id resource.Resource) (*Task, error) {
+func (s *Service) Enqueue(id uuid.UUID) (*Task, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -97,9 +98,11 @@ type ListOptions struct {
 	Status []Status
 	// Order tasks by oldest first (true), or newest first (false)
 	Oldest bool
-	// Filter tasks to only those that are block. If false, both blocking and
+	// Filter tasks by only those that are block. If false, both blocking and
 	// non-blocking tasks are returned.
 	Blocking bool
+	// Filter tasks by only those that have an ancestor with the given ID.
+	Ancestor uuid.UUID
 }
 
 func (s *Service) List(opts ListOptions) []*Task {
@@ -122,6 +125,11 @@ func (s *Service) List(opts ListOptions) []*Task {
 				continue
 			}
 		}
+		if opts.Ancestor != uuid.Nil {
+			if !t.HasAncestor(opts.Ancestor) {
+				continue
+			}
+		}
 		filtered = append(filtered, t)
 	}
 	slices.SortFunc(filtered, func(a, b *Task) int {
@@ -135,11 +143,11 @@ func (s *Service) List(opts ListOptions) []*Task {
 	return filtered
 }
 
-func (s *Service) Watch(ctx context.Context) (<-chan resource.Event[*Task], func()) {
+func (s *Service) Subscribe(ctx context.Context) (<-chan resource.Event[*Task], func()) {
 	return s.broker.Subscribe(ctx)
 }
 
-func (s *Service) Cancel(id resource.Resource) (*Task, error) {
+func (s *Service) Cancel(id uuid.UUID) (*Task, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -151,7 +159,7 @@ func (s *Service) Cancel(id resource.Resource) (*Task, error) {
 	return task, nil
 }
 
-func (s *Service) Delete(id resource.Resource) error {
+func (s *Service) Delete(id uuid.UUID) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -160,6 +168,8 @@ func (s *Service) Delete(id resource.Resource) error {
 	if !ok {
 		return resource.ErrNotFound
 	}
+	// TODO: only allow deleting task if in finished state (error message should
+	// instruct user to cancel task first).
 	delete(s.tasks, id)
 	s.broker.Publish(resource.DeletedEvent, task)
 	return nil

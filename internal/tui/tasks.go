@@ -10,8 +10,6 @@ import (
 	taskpkg "github.com/leg100/pug/internal/task"
 )
 
-const taskListState State = "tasks"
-
 // TODO: name this moduleTaskListModel
 type taskListModel struct {
 	mod *module.Module
@@ -49,7 +47,7 @@ func (m taskListModel) Update(msg tea.Msg) (Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, Keys.Modules, Keys.Escape):
-			return m, ChangeState(moduleListState)
+			return m, navigate(moduleListState)
 		}
 	case viewSizeMsg:
 		m.list.SetSize(msg.Width, msg.Height)

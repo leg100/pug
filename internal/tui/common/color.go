@@ -1,4 +1,4 @@
-package tui
+package common
 
 import "github.com/charmbracelet/lipgloss"
 

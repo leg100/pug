@@ -17,15 +17,14 @@ func startEnqueuer(
 	tasks *Service,
 ) {
 
-	sub, unsub := tasks.Watch(ctx)
-	defer unsub()
+	sub, _ := tasks.Subscribe(ctx)
 
 	e := enqueuer{tasks: tasks}
 
 	for range sub {
 		for _, t := range e.enqueue() {
 			// TODO: log error
-			_, _ = tasks.Enqueue(t.Resource)
+			_, _ = tasks.Enqueue(t.ID)
 		}
 	}
 }

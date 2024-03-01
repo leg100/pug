@@ -12,10 +12,8 @@ import (
 	"github.com/leg100/pug/internal/workspace"
 )
 
-const moduleListState State = "modules"
-
 func init() {
-	registerHelpBindings(func(short bool, current State) []key.Binding {
+	registerHelpBindings(func(short bool, current Page) []key.Binding {
 		if current != moduleListState {
 			return []key.Binding{Keys.Modules}
 		}
@@ -65,7 +63,7 @@ func (mlm moduleListModel) Update(msg tea.Msg) (Model, tea.Cmd) {
 	case globalKeyMsg:
 		if msg.Current != moduleListState {
 			if key.Matches(msg.KeyMsg, Keys.Modules) {
-				return mlm, ChangeState(moduleListState)
+				return mlm, navigate(moduleListState)
 			}
 		}
 	case viewSizeMsg:
@@ -113,7 +111,7 @@ func newModuleDelegate(svc *module.Service, runs *run.Service, workspaces *works
 		case tea.KeyMsg:
 			switch {
 			case key.Matches(msg, Keys.Tasks, Keys.Enter):
-				return ChangeState(taskListState, WithModelOption(
+				return navigate(taskListState, WithModelOption(
 					newTaskListModel(mod),
 				))
 			case key.Matches(msg, Keys.Init):
@@ -122,7 +120,7 @@ func newModuleDelegate(svc *module.Service, runs *run.Service, workspaces *works
 					if err != nil {
 						return newErrorMsg(err, "initializing module", "module", mod)
 					}
-					return ChangeState(taskState, WithModelOption(
+					return navigate(taskState, WithModelOption(
 						newTaskModel(t, mod, 0, 0),
 					))()
 				}
@@ -134,7 +132,7 @@ func newModuleDelegate(svc *module.Service, runs *run.Service, workspaces *works
 					if err != nil {
 						return newErrorMsg(err, "creating run", "module", mod)
 					}
-					return ChangeState(taskState, WithModelOption(
+					return navigate(taskState, WithModelOption(
 						newTaskModel(t, mod, 0, 0),
 					))()
 				}
@@ -144,7 +142,7 @@ func newModuleDelegate(svc *module.Service, runs *run.Service, workspaces *works
 					if err != nil {
 						return newErrorMsg(err, "creating show state task", "module", mod)
 					}
-					return ChangeState(taskState, WithModelOption(
+					return navigate(taskState, WithModelOption(
 						newTaskModel(t, mod, 0, 0),
 					))()
 				}

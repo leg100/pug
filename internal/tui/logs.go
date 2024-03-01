@@ -20,7 +20,7 @@ const logsState = "logs"
 type logMsg string
 
 type model struct {
-	current, last State
+	current, last Page
 
 	buf *iopkg.Buffer
 
@@ -59,14 +59,14 @@ func (m model) Update(msg tea.Msg) (Model, tea.Cmd) {
 			if msg.Current != logsState {
 				// open logs, keeping reference to last state
 				m.last = m.current
-				return m, ChangeState(logsState)
+				return m, navigate(logsState)
 			}
 		}
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, Keys.Escape):
 			// close logs and return to last state
-			return m, ChangeState(m.last)
+			return m, navigate(m.last)
 		}
 	case logMsg:
 		// because log messages are line terminated, each one can be safely
@@ -86,7 +86,7 @@ func (m model) Update(msg tea.Msg) (Model, tea.Cmd) {
 		m.viewport.SetContent(wordwrap.String(m.content, m.viewport.Width))
 		// Is this necessary?
 		//m.viewport.GotoTop()
-	case changeStateMsg:
+	case navigationMsg:
 		m.current = msg.To
 	default:
 		// Handle keyboard and mouse events in the viewport

@@ -95,7 +95,7 @@ type CreateOptions struct {
 func (f *factory) newTask(opts CreateOptions) (*Task, error) {
 	return &Task{
 		State:         Pending,
-		Resource:      resource.New(&opts.Parent),
+		Resource:      resource.New(resource.Task, &opts.Parent),
 		created:       time.Now(),
 		updated:       time.Now(),
 		finished:      make(chan struct{}),

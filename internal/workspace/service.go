@@ -2,6 +2,7 @@ package workspace
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"io"
 	"log/slog"
@@ -208,6 +209,10 @@ func (s *Service) ListByModule(moduleID uuid.UUID) ([]*Workspace, error) {
 		}
 	}
 	return existing, nil
+}
+
+func (s *Service) Subscribe(ctx context.Context) (<-chan resource.Event[*Workspace], func()) {
+	return s.broker.Subscribe(ctx)
 }
 
 // Delete a workspace. Asynchronous.

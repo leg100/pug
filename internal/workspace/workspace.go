@@ -21,7 +21,7 @@ type Workspace struct {
 
 func newWorkspace(module *module.Module, name string, current bool) *Workspace {
 	return &Workspace{
-		Resource: resource.New(&module.Resource),
+		Resource: resource.New(resource.Workspace, &module.Resource),
 		Name:     name,
 		Current:  current,
 	}

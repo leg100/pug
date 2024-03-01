@@ -50,7 +50,7 @@ func Start() error {
 		WorkspaceService: workspaces,
 	})
 
-	// Start TUI
+	// Construct TUI programme.
 	model, err := tui.New(tui.Options{
 		TaskService:      tasks,
 		ModuleService:    modules,
@@ -68,6 +68,33 @@ func Start() error {
 		// turn on mouse support so we can track the mouse wheel
 		tea.WithMouseCellMotion(),
 	)
+
+	// Relay resource events to TUI.
+	go func() {
+		events, _ := modules.Subscribe(ctx)
+		for ev := range events {
+			p.Send(ev)
+		}
+	}()
+	go func() {
+		events, _ := workspaces.Subscribe(ctx)
+		for ev := range events {
+			p.Send(ev)
+		}
+	}()
+	go func() {
+		events, _ := runs.Subscribe(ctx)
+		for ev := range events {
+			p.Send(ev)
+		}
+	}()
+	go func() {
+		events, _ := tasks.Subscribe(ctx)
+		for ev := range events {
+			p.Send(ev)
+		}
+	}()
+
 	// Blocks until user quits
 	if _, err := p.Run(); err != nil {
 		return err

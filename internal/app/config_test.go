@@ -76,6 +76,20 @@ func TestConfig(t *testing.T) {
 			[]string{"PUG_PROGRAM=terragrunt"},
 			config{Program: "tofu", MaxTasks: 2 * cpus},
 		},
+		{
+			"enable plugin cache via terraform config",
+			"",
+			nil,
+			[]string{"TF_CLI_CONFIG_FILE=../testdata/_terraformrc_with_plugin_cache"},
+			config{Program: "terraform", MaxTasks: 2 * cpus, PluginCache: true},
+		},
+		{
+			"enable plugin cache via env var",
+			"",
+			nil,
+			[]string{"TF_PLUGIN_CACHE_DIR=../testdata/plugin_cache"},
+			config{Program: "terraform", MaxTasks: 2 * cpus, PluginCache: true},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

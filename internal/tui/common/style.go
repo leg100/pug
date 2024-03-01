@@ -1,4 +1,4 @@
-package tui
+package common
 
 import "github.com/charmbracelet/lipgloss"
 
@@ -7,6 +7,6 @@ var (
 	RoundedBorders = Regular.Copy().Border(lipgloss.RoundedBorder())
 	Bold           = Regular.Copy().Bold(true)
 
-	width  = lipgloss.Width
-	height = lipgloss.Height
+	Width  = lipgloss.Width
+	Height = lipgloss.Height
 )

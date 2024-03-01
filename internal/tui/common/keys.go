@@ -1,4 +1,4 @@
-package tui
+package common
 
 import (
 	"reflect"
@@ -14,6 +14,7 @@ type keyMap struct {
 	Init      key.Binding
 	Plan      key.Binding
 	Apply     key.Binding
+	Cancel    key.Binding
 	ShowState key.Binding
 	Retry     key.Binding
 	Logs      key.Binding
@@ -48,6 +49,10 @@ var Keys = keyMap{
 		key.WithKeys("a"),
 		key.WithHelp("a", "apply"),
 	),
+	Cancel: key.NewBinding(
+		key.WithKeys("c"),
+		key.WithHelp("c", "cancel"),
+	),
 	ShowState: key.NewBinding(
 		key.WithKeys("s"),
 		key.WithHelp("s", "show state"),
@@ -78,9 +83,9 @@ var Keys = keyMap{
 	),
 }
 
-// globalKeyMsg wraps tea.KeyMsg along with the current state
+// globalKeyMsg wraps tea.KeyMsg along with the current page
 type globalKeyMsg struct {
-	Current State
+	Current Page
 
 	tea.KeyMsg
 }

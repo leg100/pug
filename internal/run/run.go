@@ -60,7 +60,7 @@ type CreateOptions struct {
 
 func newRun(mod *module.Module, ws *workspace.Workspace, opts CreateOptions) (*Run, error) {
 	run := &Run{
-		Resource:    resource.New(&ws.Resource),
+		Resource:    resource.New(resource.Run, &ws.Resource),
 		Status:      Pending,
 		AutoApply:   opts.AutoApply,
 		PlanOnly:    opts.PlanOnly,

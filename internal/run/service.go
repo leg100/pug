@@ -1,6 +1,7 @@
 package run
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -208,6 +209,10 @@ func (s *Service) ListByWorkspace(workspaceID uuid.UUID) []*Run {
 		}
 	}
 	return runs
+}
+
+func (s *Service) Subscribe(ctx context.Context) (<-chan resource.Event[*Run], func()) {
+	return s.broker.Subscribe(ctx)
 }
 
 func (s *Service) Delete(id resource.Resource) error {

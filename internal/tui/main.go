@@ -20,9 +20,9 @@ import (
 const defaultState = moduleListState
 
 type main struct {
-	current State
+	current Page
 
-	models map[State]Model
+	models map[Page]Model
 
 	width  int
 	height int
@@ -53,7 +53,7 @@ func New(opts Options) (main, error) {
 	messages := slog.New(slog.NewTextHandler(f, nil))
 
 	return main{
-		models: map[State]Model{
+		models: map[Page]Model{
 			moduleListState: mm,
 			logsState:       newLogs(),
 			helpState:       newHelp(defaultState),
@@ -101,7 +101,7 @@ func (m main) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}),
 			)
 		}
-	case changeStateMsg:
+	case navigationMsg:
 		m.current = msg.To
 		if msg.Model != nil {
 			m.models[m.current] = msg.Model
