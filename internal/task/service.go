@@ -13,7 +13,7 @@ import (
 
 type Service struct {
 	// Tasks keyed by ID
-	tasks  map[uuid.UUID]*Task
+	tasks  map[resource.ID]*Task
 	broker *pubsub.Broker[*Task]
 	// Mutex for concurrent read/write of tasks
 	mu sync.Mutex
@@ -76,7 +76,7 @@ func (s *Service) Create(opts CreateOptions) (*Task, error) {
 }
 
 // Enqueue moves the task onto the global queue for processing.
-func (s *Service) Enqueue(id uuid.UUID) (*Task, error) {
+func (s *Service) Enqueue(id resource.ID) (*Task, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -102,7 +102,7 @@ type ListOptions struct {
 	// non-blocking tasks are returned.
 	Blocking bool
 	// Filter tasks by only those that have an ancestor with the given ID.
-	Ancestor uuid.UUID
+	Ancestor resource.ID
 }
 
 func (s *Service) List(opts ListOptions) []*Task {
@@ -125,7 +125,7 @@ func (s *Service) List(opts ListOptions) []*Task {
 				continue
 			}
 		}
-		if opts.Ancestor != uuid.Nil {
+		if opts.Ancestor != resource.ID(uuid.Nil) {
 			if !t.HasAncestor(opts.Ancestor) {
 				continue
 			}
@@ -143,11 +143,22 @@ func (s *Service) List(opts ListOptions) []*Task {
 	return filtered
 }
 
+func (s *Service) Get(taskID resource.ID) (*Task, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	task, ok := s.tasks[taskID]
+	if !ok {
+		return nil, resource.ErrNotFound
+	}
+	return task, nil
+}
+
 func (s *Service) Subscribe(ctx context.Context) (<-chan resource.Event[*Task], func()) {
 	return s.broker.Subscribe(ctx)
 }
 
-func (s *Service) Cancel(id uuid.UUID) (*Task, error) {
+func (s *Service) Cancel(id resource.ID) (*Task, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -159,7 +170,7 @@ func (s *Service) Cancel(id uuid.UUID) (*Task, error) {
 	return task, nil
 }
 
-func (s *Service) Delete(id uuid.UUID) error {
+func (s *Service) Delete(id resource.ID) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 

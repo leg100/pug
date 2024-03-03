@@ -5,7 +5,6 @@ import (
 	"slices"
 	"sync"
 
-	"github.com/google/uuid"
 	"github.com/leg100/pug/internal/pubsub"
 	"github.com/leg100/pug/internal/resource"
 	"github.com/leg100/pug/internal/task"
@@ -19,7 +18,7 @@ type Service struct {
 	workdir     string
 	pluginCache bool
 
-	modules map[uuid.UUID]*Module
+	modules map[resource.ID]*Module
 	mu      sync.Mutex
 }
 
@@ -37,6 +36,7 @@ func NewService(opts ServiceOptions) *Service {
 		broker:      broker,
 		pluginCache: opts.PluginCache,
 	}
+	// TODO: reload
 }
 
 // Reload searches the working directory recursively for modules and adds them
@@ -48,7 +48,7 @@ func (s *Service) Reload() error {
 		return err
 	}
 	if s.modules == nil {
-		s.modules = make(map[uuid.UUID]*Module, len(found))
+		s.modules = make(map[resource.ID]*Module, len(found))
 	}
 	for _, path := range found {
 		// Add module if it isn't in pug already
@@ -77,7 +77,7 @@ func (s *Service) Reload() error {
 }
 
 // Init invokes terraform init on the module.
-func (s *Service) Init(id uuid.UUID) (*Module, *task.Task, error) {
+func (s *Service) Init(id resource.ID) (*Module, *task.Task, error) {
 	mod, err := s.Get(id)
 	if err != nil {
 		return nil, nil, err
@@ -115,7 +115,7 @@ func (s *Service) List() []*Module {
 	return maps.Values(s.modules)
 }
 
-func (s *Service) Get(id uuid.UUID) (*Module, error) {
+func (s *Service) Get(id resource.ID) (*Module, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 

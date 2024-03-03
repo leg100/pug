@@ -1,4 +1,4 @@
-package task
+package tui
 
 import (
 	"fmt"
@@ -9,9 +9,8 @@ import (
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/google/uuid"
 	"github.com/leg100/pug/internal/resource"
-	taskpkg "github.com/leg100/pug/internal/task"
+	"github.com/leg100/pug/internal/task"
 	"github.com/leg100/pug/internal/tui/common"
 )
 
@@ -27,13 +26,11 @@ import (
 //	})
 //}
 
-type (
-	outputMsg string
-)
+type taskOutputMsg string
 
-type model struct {
-	svc    *taskpkg.Service
-	task   *taskpkg.Task
+type taskModel struct {
+	svc    *task.Service
+	task   *task.Task
 	output io.Reader
 
 	content  string
@@ -43,20 +40,24 @@ type model struct {
 	height int
 }
 
-func NewModel(svc *taskpkg.Service, task *taskpkg.Task, w, h int) model {
-	return model{
+func NewTaskModel(svc *task.Service, taskID resource.ID, w, h int) (taskModel, error) {
+	task, err := svc.Get(taskID)
+	if err != nil {
+		return taskModel{}, err
+	}
+	return taskModel{
 		svc:      svc,
 		task:     task,
 		output:   task.NewReader(),
 		viewport: viewport.New(w, h),
-	}
+	}, nil
 }
 
-func (m model) Init() tea.Cmd {
+func (m taskModel) Init() tea.Cmd {
 	return m.getOutput
 }
 
-func (m model) Update(msg tea.Msg) (common.Model, tea.Cmd) {
+func (m taskModel) Update(msg tea.Msg) (common.Model, tea.Cmd) {
 	var (
 		cmd  tea.Cmd
 		cmds []tea.Cmd
@@ -66,19 +67,19 @@ func (m model) Update(msg tea.Msg) (common.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, common.Keys.Tasks, common.Keys.Escape):
-			return m, common.Navigate(common.GlobalTaskListPage, uuid.UUID{})
+			return m, common.Navigate(common.TaskListPage, nil)
 		case key.Matches(msg, common.Keys.Cancel):
 			return m, m.cancel
 			// TODO: retry
 		}
-	case outputMsg:
+	case taskOutputMsg:
 		m.content += string(msg)
 		m.viewport.SetContent(m.content)
 		m.viewport.GotoBottom()
 		if !m.task.IsFinished() {
 			cmds = append(cmds, m.getOutput)
 		}
-	case resource.Event[*taskpkg.Task]:
+	case resource.Event[*task.Task]:
 		if msg.Payload.ID == m.task.ID {
 			m.task = msg.Payload
 		}
@@ -98,13 +99,12 @@ func (m model) Update(msg tea.Msg) (common.Model, tea.Cmd) {
 	return m, tea.Batch(cmds...)
 }
 
-// Title is typically ignored in favour of the parent model's Title()
-func (m model) Title() string {
-	return ""
+func (m taskModel) Title() string {
+	return "title goes here"
 }
 
 // View renders the viewport and the footer.
-func (m model) View() string {
+func (m taskModel) View() string {
 	status := lipgloss.NewStyle().
 		Background(lipgloss.Color("#353533")).
 		Foreground(common.White).
@@ -130,15 +130,20 @@ func (m model) View() string {
 	)
 }
 
-func (m model) getOutput() tea.Msg {
-	out, err := io.ReadAll(m.output)
-	if err != nil {
-		return outputMsg(err.Error())
-	}
-	return outputMsg(string(out))
+func (m taskModel) HelpBindings() (bindings []key.Binding) {
+	bindings = append(bindings, common.Keys.CloseHelp)
+	return
 }
 
-func (m model) cancel() tea.Msg {
+func (m taskModel) getOutput() tea.Msg {
+	out, err := io.ReadAll(m.output)
+	if err != nil {
+		return taskOutputMsg(err.Error())
+	}
+	return taskOutputMsg(string(out))
+}
+
+func (m taskModel) cancel() tea.Msg {
 	if _, err := m.svc.Cancel(m.task.ID); err != nil {
 		return common.NewErrorMsg(err, "canceling task")
 	}

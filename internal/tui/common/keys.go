@@ -4,24 +4,24 @@ import (
 	"reflect"
 
 	"github.com/charmbracelet/bubbles/key"
-	tea "github.com/charmbracelet/bubbletea"
 )
 
 type keyMap struct {
-	Quit      key.Binding
-	Modules   key.Binding
-	Tasks     key.Binding
-	Init      key.Binding
-	Plan      key.Binding
-	Apply     key.Binding
-	Cancel    key.Binding
-	ShowState key.Binding
-	Retry     key.Binding
-	Logs      key.Binding
-	Escape    key.Binding
-	Enter     key.Binding
-	Help      key.Binding
-	CloseHelp key.Binding
+	Quit       key.Binding
+	Modules    key.Binding
+	Workspaces key.Binding
+	Tasks      key.Binding
+	Init       key.Binding
+	Plan       key.Binding
+	Apply      key.Binding
+	Cancel     key.Binding
+	ShowState  key.Binding
+	Retry      key.Binding
+	Logs       key.Binding
+	Escape     key.Binding
+	Enter      key.Binding
+	Help       key.Binding
+	CloseHelp  key.Binding
 }
 
 var Keys = keyMap{
@@ -32,6 +32,10 @@ var Keys = keyMap{
 	Modules: key.NewBinding(
 		key.WithKeys("m"),
 		key.WithHelp("m", "modules"),
+	),
+	Workspaces: key.NewBinding(
+		key.WithKeys("w"),
+		key.WithHelp("w", "workspaces"),
 	),
 	Tasks: key.NewBinding(
 		key.WithKeys("t"),
@@ -83,13 +87,8 @@ var Keys = keyMap{
 	),
 }
 
-// globalKeyMsg wraps tea.KeyMsg along with the current page
-type globalKeyMsg struct {
-	Current Page
-
-	tea.KeyMsg
-}
-
+// keyMapToSlice takes a struct of fields of type key.Binding and returns it as
+// a slice instead.
 func keyMapToSlice(t any) (bindings []key.Binding) {
 	typ := reflect.TypeOf(t)
 	if typ.Kind() != reflect.Struct {

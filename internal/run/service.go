@@ -7,7 +7,6 @@ import (
 	"io"
 	"sync"
 
-	"github.com/google/uuid"
 	"github.com/leg100/pug/internal/module"
 	"github.com/leg100/pug/internal/pubsub"
 	"github.com/leg100/pug/internal/resource"
@@ -43,7 +42,7 @@ func NewService(opts ServiceOptions) *Service {
 }
 
 // Create a run, triggering a plan task.
-func (s *Service) Create(workspaceID uuid.UUID, opts CreateOptions) (*Run, *task.Task, error) {
+func (s *Service) Create(workspaceID resource.ID, opts CreateOptions) (*Run, *task.Task, error) {
 	ws, err := s.workspaces.Get(workspaceID)
 	if err != nil {
 		return nil, nil, fmt.Errorf("creating run: %w", err)
@@ -198,15 +197,22 @@ func (s *Service) Get(id resource.Resource) (*Run, error) {
 	return run, nil
 }
 
-func (s *Service) ListByWorkspace(workspaceID uuid.UUID) []*Run {
+type ListOptions struct {
+	ParentID *resource.ID
+}
+
+func (s *Service) List(opts ListOptions) []*Run {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	var runs []*Run
 	for _, run := range s.runs {
-		if run.Workspace().ID == workspaceID {
-			runs = append(runs, run)
+		if opts.ParentID != nil {
+			if !run.HasAncestor(*opts.ParentID) {
+				continue
+			}
 		}
+		runs = append(runs, run)
 	}
 	return runs
 }

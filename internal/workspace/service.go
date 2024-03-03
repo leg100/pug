@@ -10,7 +10,6 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/google/uuid"
 	"github.com/leg100/pug/internal/module"
 	"github.com/leg100/pug/internal/pubsub"
 	"github.com/leg100/pug/internal/resource"
@@ -21,7 +20,7 @@ type Service struct {
 	modules    *module.Service
 	tasks      *task.Service
 	broker     *pubsub.Broker[*Workspace]
-	workspaces map[uuid.UUID]*Workspace
+	workspaces map[resource.ID]*Workspace
 	// Mutex for concurrent read/write of workspaces
 	mu sync.Mutex
 }
@@ -33,16 +32,22 @@ type ServiceOptions struct {
 
 func NewService(opts ServiceOptions) *Service {
 	return &Service{
-		tasks:   opts.TaskService,
-		modules: opts.ModuleService,
-		broker:  pubsub.NewBroker[*Workspace](),
+		tasks:      opts.TaskService,
+		modules:    opts.ModuleService,
+		broker:     pubsub.NewBroker[*Workspace](),
+		workspaces: make(map[resource.ID]*Workspace),
 	}
+	// TODO: reload should be done at pug startup, but because it is an
+	// asynchronous activity, and it may take some time depending upon the
+	// number of modules (100+?)...
 }
 
 // Reload the store with a fresh list of workspaces discovered by running
 // `terraform workspace list` in each module. Any workspaces currently stored
 // but no longer found are pruned.
 func (s *Service) Reload() ([]*task.Task, error) {
+	// TODO: only permit one reload at a time.
+
 	mods := s.modules.List()
 	tasks := make([]*task.Task, len(mods))
 	for i, m := range mods {
@@ -167,7 +172,7 @@ func (s *Service) Create(path, name string) (*Workspace, *task.Task, error) {
 }
 
 // Get a workspace.
-func (s *Service) Get(id uuid.UUID) (*Workspace, error) {
+func (s *Service) Get(id resource.ID) (*Workspace, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -179,11 +184,10 @@ func (s *Service) Get(id uuid.UUID) (*Workspace, error) {
 }
 
 // Get the current workspace for a module
-func (s *Service) GetCurrent(moduleID uuid.UUID) (*Workspace, error) {
-	moduleWorkspaces, err := s.ListByModule(moduleID)
-	if err != nil {
-		return nil, err
-	}
+func (s *Service) GetCurrent(moduleID resource.ID) (*Workspace, error) {
+	moduleWorkspaces := s.List(ListOptions{
+		ModuleID: &moduleID,
+	})
 
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -197,18 +201,24 @@ func (s *Service) GetCurrent(moduleID uuid.UUID) (*Workspace, error) {
 	return nil, resource.ErrNotFound
 }
 
-// List workspaces by module.
-func (s *Service) ListByModule(moduleID uuid.UUID) ([]*Workspace, error) {
+type ListOptions struct {
+	ModuleID *resource.ID
+}
+
+func (s *Service) List(opts ListOptions) []*Workspace {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	var existing []*Workspace
 	for _, ws := range s.workspaces {
-		if ws.Module().ID == moduleID {
-			existing = append(existing, ws)
+		if opts.ModuleID != nil {
+			if ws.Module().ID != *opts.ModuleID {
+				continue
+			}
 		}
+		existing = append(existing, ws)
 	}
-	return existing, nil
+	return existing
 }
 
 func (s *Service) Subscribe(ctx context.Context) (<-chan resource.Event[*Workspace], func()) {
@@ -216,7 +226,7 @@ func (s *Service) Subscribe(ctx context.Context) (<-chan resource.Event[*Workspa
 }
 
 // Delete a workspace. Asynchronous.
-func (s *Service) Delete(id uuid.UUID) (*task.Task, error) {
+func (s *Service) Delete(id resource.ID) (*task.Task, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 

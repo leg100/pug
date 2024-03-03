@@ -6,9 +6,11 @@ package app
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"os"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/hashicorp/terraform/internal/logging"
 	"github.com/leg100/pug/internal/module"
 	"github.com/leg100/pug/internal/run"
 	"github.com/leg100/pug/internal/task"
@@ -30,6 +32,10 @@ func Start() error {
 	if err != nil {
 		return fmt.Errorf("getting working directory: %w", err)
 	}
+
+	// Setup logging
+	logger := logging.NewLogger(cfg.LogLevel)
+	slog.SetDefault(logger)
 
 	// Instantiate services
 	tasks := task.NewService(ctx, task.ServiceOptions{
@@ -71,6 +77,12 @@ func Start() error {
 	)
 
 	// Relay resource events to TUI.
+	go func() {
+		events, _ := logging.Subscribe(ctx)
+		for ev := range events {
+			p.Send(ev)
+		}
+	}()
 	go func() {
 		events, _ := modules.Subscribe(ctx)
 		for ev := range events {

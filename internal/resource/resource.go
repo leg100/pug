@@ -7,7 +7,7 @@ import (
 
 // Resource is a unique pug entity.
 type Resource struct {
-	ID uuid.UUID
+	ID ID
 	// Resource optionally belongs to a parent.
 	Parent *Resource
 	// Kind of resource, e.g. module, workspace, etc.
@@ -19,7 +19,7 @@ type Resource struct {
 
 func New(kind Kind, ident string, parent *Resource) Resource {
 	return Resource{
-		ID:     uuid.New(),
+		ID:     ID(uuid.New()),
 		Parent: parent,
 		Kind:   kind,
 		ident:  ident,
@@ -49,7 +49,7 @@ func getAncestors(resource Resource, ancestors []Resource) {
 }
 
 // HasAncestor checks whether the given id is an ancestor of the resource.
-func (r Resource) HasAncestor(id uuid.UUID) bool {
+func (r Resource) HasAncestor(id ID) bool {
 	if r.Parent == nil {
 		return false
 	}

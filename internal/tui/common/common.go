@@ -1,12 +1,19 @@
 package common
 
-import tea "github.com/charmbracelet/bubbletea"
+import (
+	"github.com/charmbracelet/bubbles/key"
+	tea "github.com/charmbracelet/bubbletea"
+)
 
 type Model interface {
 	Init() tea.Cmd
 	Update(tea.Msg) (Model, tea.Cmd)
+	// Title is the text to render in the title bar at the top of the screen.
 	Title() string
 	View() string
+	// HelpBindings are those bindings that help should show when this model is
+	// current.
+	HelpBindings() []key.Binding
 }
 
 func CmdHandler(msg tea.Msg) tea.Cmd {
@@ -27,6 +34,10 @@ func NewErrorMsg(err error, msg string, args ...any) ErrorMsg {
 		Message: msg,
 		Args:    args,
 	}
+}
+
+func NewErrorCmd(err error, msg string, args ...any) tea.Cmd {
+	return CmdHandler(NewErrorMsg(err, msg, args...))
 }
 
 type ViewSizeMsg struct {
