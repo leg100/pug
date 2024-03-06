@@ -5,6 +5,13 @@ import (
 	"github.com/google/uuid"
 )
 
+// IDEncodedMaxLen is the max length of an encoded ID (it can sometimes encode
+// to something shorter).
+const IDEncodedMaxLen = 22
+
+// NilID is the zero value of ID
+var NilID = ID(uuid.Nil)
+
 type ID uuid.UUID
 
 func (id ID) String() string {

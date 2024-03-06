@@ -30,57 +30,59 @@ type ServiceOptions struct {
 	ModuleService *module.Service
 }
 
-func NewService(opts ServiceOptions) *Service {
-	return &Service{
-		tasks:      opts.TaskService,
+func NewService(ctx context.Context, opts ServiceOptions) *Service {
+	svc := &Service{
 		modules:    opts.ModuleService,
+		tasks:      opts.TaskService,
 		broker:     pubsub.NewBroker[*Workspace](),
 		workspaces: make(map[resource.ID]*Workspace),
 	}
-	// TODO: reload should be done at pug startup, but because it is an
-	// asynchronous activity, and it may take some time depending upon the
-	// number of modules (100+?)...
+	// Load workspaces whenever a module is created.
+	sub, _ := opts.ModuleService.Subscribe(ctx)
+	go func() {
+		for event := range sub {
+			switch event.Type {
+			case resource.CreatedEvent:
+				_, _ = svc.Reload(event.Payload.Resource)
+			}
+		}
+	}()
+	return svc
 }
 
-// Reload the store with a fresh list of workspaces discovered by running
-// `terraform workspace list` in each module. Any workspaces currently stored
-// but no longer found are pruned.
-func (s *Service) Reload() ([]*task.Task, error) {
+// Reload invokes `terraform workspace list` on a module and updates pug with
+// the results, adding any newly discovered workspaces and pruning any
+// workspaces no longer found to exist.
+func (s *Service) Reload(module resource.Resource) (*task.Task, error) {
 	// TODO: only permit one reload at a time.
 
-	mods := s.modules.List()
-	tasks := make([]*task.Task, len(mods))
-	for i, m := range mods {
-		t, err := s.tasks.Create(task.CreateOptions{
-			Parent:  m.Resource,
-			Path:    m.Path,
-			Command: []string{"workspace", "list"},
-			AfterError: func(t *task.Task) {
-				// TODO: log error and prune workspaces
-			},
-			AfterExited: func(t *task.Task) {
-				found, current, err := parseList(t.NewReader())
-				if err != nil {
-					slog.Error("reloading workspaces", "error", err, "module", m)
-					return
-				}
-				s.resetWorkspaces(m, found, current)
-			},
-		})
-		if err != nil {
-			slog.Error("reloading workspaces", "error", err, "module", m)
-			return nil, err
-		}
-		tasks[i] = t
+	task, err := s.tasks.Create(task.CreateOptions{
+		Parent:  module,
+		Path:    module.String(),
+		Command: []string{"workspace", "list"},
+		AfterError: func(t *task.Task) {
+			// TODO: log error and prune workspaces
+		},
+		AfterExited: func(t *task.Task) {
+			found, current, err := parseList(t.NewReader())
+			if err != nil {
+				slog.Error("reloading workspaces", "error", err, "module", module)
+				return
+			}
+			s.resetWorkspaces(module, found, current)
+		},
+	})
+	if err != nil {
+		slog.Error("reloading workspaces", "error", err, "module", module)
+		return nil, err
 	}
-	// TODO: log created tasks
-	return tasks, nil
+	return task, nil
 }
 
 // resetWorkspaces resets the workspaces for a module, adding newly discovered
 // workspaces, removing workspaces that no longer exist, and setting the current
 // workspace for the module.
-func (s *Service) resetWorkspaces(module *module.Module, discovered []string, current string) {
+func (s *Service) resetWorkspaces(module resource.Resource, discovered []string, current string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -131,10 +133,11 @@ func parseList(r io.Reader) (list []string, current string, err error) {
 		// Handle current workspace denoted with a "*" prefix
 		if strings.HasPrefix(out, "*") {
 			var found bool
-			_, current, found = strings.Cut(out, " ")
+			_, current, found = strings.Cut(out, "* ")
 			if !found {
 				return nil, "", fmt.Errorf("malformed output: %s", out)
 			}
+			out = current
 		}
 		list = append(list, out)
 	}
@@ -152,7 +155,7 @@ func (s *Service) Create(path, name string) (*Workspace, *task.Task, error) {
 	}
 	// `terraform workspace new` below implicitly makes the created workspace
 	// the *current* workspace.
-	ws := newWorkspace(mod, name, true)
+	ws := newWorkspace(mod.Resource, name, true)
 
 	task, err := s.createTask(ws, task.CreateOptions{
 		Command: []string{"workspace", "new"},

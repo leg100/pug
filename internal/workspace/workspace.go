@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"github.com/leg100/pug/internal/module"
 	"github.com/leg100/pug/internal/resource"
 )
 
@@ -16,9 +15,9 @@ type Workspace struct {
 	Current bool
 }
 
-func newWorkspace(module *module.Module, name string, current bool) *Workspace {
+func newWorkspace(module resource.Resource, name string, current bool) *Workspace {
 	return &Workspace{
-		Resource: resource.New(resource.Workspace, name, &module.Resource),
+		Resource: resource.New(resource.Workspace, name, &module),
 		Current:  current,
 	}
 }

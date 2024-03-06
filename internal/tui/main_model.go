@@ -1,12 +1,16 @@
 package tui
 
 import (
+	"fmt"
+	"os"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/leg100/pug/internal/logging"
 	"github.com/leg100/pug/internal/module"
+	"github.com/leg100/pug/internal/resource"
 	"github.com/leg100/pug/internal/run"
 	"github.com/leg100/pug/internal/task"
 	"github.com/leg100/pug/internal/tui/common"
@@ -14,162 +18,165 @@ import (
 )
 
 type mainModel struct {
-	TaskService      *task.Service
-	ModuleService    *module.Service
-	WorkspaceService *workspace.Service
-	RunService       *run.Service
-	Workdir          string
-
-	last            common.Model
-	current         common.Model
-	moduleModel     common.Model
-	workspacesModel common.Model
-	tasksModel      common.Model
-	logsModel       common.Model
+	*navigator
 
 	width  int
 	height int
 
-	// status contains extraordinary info, e.g. errors, warnings
-	status string
+	showHelp bool
+
+	dump *os.File
 }
 
 type Options struct {
-	TaskService      *task.Service
 	ModuleService    *module.Service
 	WorkspaceService *workspace.Service
 	RunService       *run.Service
-	Workdir          string
+	TaskService      *task.Service
+
+	Logger    *logging.Logger
+	Workdir   string
+	FirstPage int
+	MaxTasks  int
 }
 
 func New(opts Options) (mainModel, error) {
-	moduleModel, err := NewModuleListModel(opts.ModuleService, opts.Workdir)
+	messages, err := os.OpenFile("messages.log", os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0o755)
 	if err != nil {
 		return mainModel{}, err
 	}
-
-	return mainModel{
-		moduleModel: moduleModel,
-		logsModel:   newLogsModel(),
-		current:     moduleModel,
-	}, nil
+	makers := map[modelKind]maker{
+		ModuleListKind: &moduleListModelMaker{
+			svc:        opts.ModuleService,
+			workspaces: opts.WorkspaceService,
+			workdir:    opts.Workdir,
+		},
+		WorkspaceListKind: &workspaceListModelMaker{
+			svc:     opts.WorkspaceService,
+			modules: opts.ModuleService,
+		},
+		RunListKind: &runListModelMaker{
+			svc:   opts.RunService,
+			tasks: opts.TaskService,
+		},
+		TaskListKind: &taskListModelMaker{
+			svc:      opts.TaskService,
+			maxTasks: opts.MaxTasks,
+		},
+		TaskKind: &taskModelMaker{
+			svc: opts.TaskService,
+		},
+		LogsKind: &logsModelMaker{
+			logger: opts.Logger,
+		},
+	}
+	navigator, err := newNavigator(modelKind(opts.FirstPage), makers)
+	if err != nil {
+		return mainModel{}, err
+	}
+	m := mainModel{
+		navigator: navigator,
+		dump:      messages,
+	}
+	return m, nil
 }
 
 func (m mainModel) Init() tea.Cmd {
-	return nil
+	return m.currentModel().Init()
 }
 
 func (m mainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmds []tea.Cmd
 
+	fmt.Fprintf(m.dump, "%#v\n", msg)
+
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
-		return m, m.resizeCmd
+		cmds = append(cmds, m.resizeCmd)
+	case resource.Event[any], common.ViewSizeMsg:
+		// Send resource and view resize events to all cached models
+		cmds = append(cmds, m.cache.updateAll(msg)...)
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, common.Keys.Quit):
+			// ctrl-c quits the app
 			return m, tea.Quit
+		case key.Matches(msg, common.Keys.Escape):
+			// <esc> whilst in help turns off help
+			if m.showHelp {
+				m.showHelp = false
+			} else {
+				m.goBack()
+			}
 		case key.Matches(msg, common.Keys.Help):
-			// open help, keeping reference to last state and passing in the
-			// bindings for the last state.
-			m.last = m.current
-			m.current = newHelpModel(m.last.HelpBindings())
-			return m, nil
+			// '?' toggles help
+			m.showHelp = !m.showHelp
 		case key.Matches(msg, common.Keys.Logs):
-			// open logs, keeping reference to last state
-			m.last = m.current
-			m.current = m.logsModel
-			return m, nil
+			// 'l' shows logs
+			return m, navigate(page{kind: LogsKind})
 		case key.Matches(msg, common.Keys.Modules):
-			m.current = m.moduleModel
-			return m, nil
+			// 'm' lists all modules
+			return m, navigate(page{kind: ModuleListKind})
 		case key.Matches(msg, common.Keys.Workspaces):
-			m.current = m.workspacesModel
-			return m, nil
+			// 'W' lists all workspaces
+			return m, navigate(page{kind: WorkspaceListKind})
+		case key.Matches(msg, common.Keys.Runs):
+			// 'R' lists all runs
+			return m, navigate(page{kind: RunListKind})
 		case key.Matches(msg, common.Keys.Tasks):
-			m.current = m.tasksModel
-			return m, nil
-		default:
-			// send key to current model
-			updated, cmd := m.current.Update(msg)
-			m.current = updated
-			return m, cmd
+			// 'T' lists all tasks
+			return m, navigate(page{kind: TaskListKind})
 		}
-	case common.ReturnLastMsg:
-		m.current = m.last
-		return m, nil
-	case common.NavigationMsg:
-		var (
-			to  common.Model
-			err error
-		)
-		switch msg.To {
-		case common.LogsPage:
-			to = tuitask.NewTaskListModel(m.TaskService, msg.Resource)
-		case common.HelpPage:
-			to = tuitask.NewTaskListModel(m.TaskService, msg.Resource)
-		case common.ModuleListPage:
-			to, err = tuimodule.NewModuleListModel(m.ModuleService, m.Workdir)
-		case common.RunListPage:
-			to = tuirun.NewListModel(m.RunService, msg.Resource)
-		case common.WorkspaceListPage:
-			to = tuiworkspace.NewListModel(m.WorkspaceService, msg.Resource)
-		case common.TaskListPage:
-			to = tuitask.NewTaskListModel(m.TaskService, msg.Resource)
-		case common.TaskPage:
-			to, err = tuitask.NewTaskModel(m.TaskService, msg.Resource.ID, m.width, m.height)
-		}
+	case navigationMsg:
+		created, err := m.setCurrent(msg)
 		if err != nil {
-			return m, common.NewErrorCmd(err, "navigating pages")
+			return m, common.NewErrorCmd(err, "setting current page")
 		}
-		m.current = to
-		cmds = append(cmds, to.Init(), m.resizeCmd)
+		if created {
+			cmds = append(cmds, m.currentModel().Init(), m.resizeCmd)
+		}
 	}
-	return m, tea.Batch(cmds...)
-}
-
-func (m mainModel) resizeCmd() tea.Msg {
-	return common.ViewSizeMsg{Width: m.viewWidth(), Height: m.viewHeight()}
-}
-
-// viewHeight retrieves the height available within the main view
-func (m mainModel) viewHeight() int {
-	// hardcode height adjustment for performance reasons:
-	// heading: 3
-	// hr: 1
-	// title: 1
-	// hr: 1
-	return m.height - 4
-}
-
-// viewWidth retrieves the width available within the main view
-func (m mainModel) viewWidth() int {
-	return m.width
+	// Send messages to current model
+	cmd := m.updateCurrent(msg)
+	return m, tea.Batch(append(cmds, cmd)...)
 }
 
 func (m mainModel) View() string {
-	title := lipgloss.NewStyle().
+	var (
+		title   string
+		content string
+	)
+
+	if m.showHelp {
+		title = "help"
+		content = renderHelp(m.currentModel().HelpBindings(), max(1, m.height-2))
+	} else {
+		title = m.currentModel().Title()
+		content = m.currentModel().View()
+	}
+
+	top := lipgloss.NewStyle().
 		Bold(true).
 		Background(lipgloss.Color(common.DarkGrey)).
 		Foreground(common.White).
 		Padding(0, 1).
-		Render(m.current.Title())
-	titleWidth := lipgloss.Width(title)
+		Render(title)
+	topWidth := lipgloss.Width(top)
 
 	rows := []string{
 		m.header(),
 		lipgloss.JoinHorizontal(
 			lipgloss.Top,
 			"─",
-			title,
-			strings.Repeat("─", max(0, m.width-titleWidth)),
+			top,
+			strings.Repeat("─", max(0, m.width-topWidth)),
 		),
 		common.Regular.Copy().
 			Height(m.viewHeight()).
 			Width(m.viewWidth()).
-			Render(m.current.View()),
+			Render(content),
 	}
 	return lipgloss.JoinVertical(lipgloss.Top, rows...)
 }
@@ -191,9 +198,28 @@ var (
 func (m mainModel) header() string {
 	help := lipgloss.NewStyle().
 		Width(m.width - logoWidth).
-		Render(RenderShort(m.current))
+		Render(RenderShort(m.currentModel().HelpBindings()))
 	return lipgloss.JoinHorizontal(lipgloss.Top,
 		help,
 		renderedLogo,
 	)
+}
+
+// viewHeight retrieves the height available within the main view
+func (m mainModel) viewHeight() int {
+	// hardcode height adjustment for performance reasons:
+	// heading: 3
+	// hr: 1
+	// title: 1
+	// hr: 1
+	return m.height - 4
+}
+
+// viewWidth retrieves the width available within the main view
+func (m mainModel) viewWidth() int {
+	return m.width
+}
+
+func (m mainModel) resizeCmd() tea.Msg {
+	return common.ViewSizeMsg{Width: m.viewWidth(), Height: m.viewHeight()}
 }

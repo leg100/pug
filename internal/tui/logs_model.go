@@ -1,36 +1,55 @@
 package tui
 
 import (
-	"log/slog"
+	"fmt"
+	"time"
 
 	"github.com/charmbracelet/bubbles/key"
-	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/evertras/bubble-table/table"
 	"github.com/leg100/pug/internal/logging"
 	"github.com/leg100/pug/internal/resource"
 	"github.com/leg100/pug/internal/tui/common"
-	"github.com/muesli/reflow/wordwrap"
 )
+
+type logsModelMaker struct {
+	logger *logging.Logger
+}
+
+func (m *logsModelMaker) makeModel(taskResource resource.Resource) (common.Model, error) {
+	columns := []table.Column{
+		table.NewColumn(common.ColKeyTime, "TIME", 20).WithStyle(
+			lipgloss.NewStyle().
+				Align(lipgloss.Left),
+		),
+		table.NewColumn(common.ColKeyLevel, "LEVEL", 10).WithStyle(
+			lipgloss.NewStyle().
+				Align(lipgloss.Left),
+		),
+		table.NewFlexColumn(common.ColKeyMessage, "MESSAGE", 30).WithStyle(
+			lipgloss.NewStyle().
+				Align(lipgloss.Left),
+		),
+	}
+	return logsModel{
+		logger: m.logger,
+		table:  table.New(columns).Focused(true).WithMultiline(true),
+	}, nil
+}
 
 type logMsg string
 
 type logsModel struct {
-	lastPage     common.Page
-	lastResource *resource.Resource
-
-	content  string
-	viewport viewport.Model
-}
-
-func newLogsModel() logsModel {
-	return logsModel{
-		viewport: viewport.New(0, 0),
-	}
+	logger   *logging.Logger
+	table    table.Model
+	messages []logging.Message
 }
 
 func (m logsModel) Init() tea.Cmd {
-	return nil
+	return func() tea.Msg {
+		return common.BulkInsertMsg[logging.Message](m.logger.Messages)
+	}
 }
 
 func (m logsModel) Update(msg tea.Msg) (common.Model, tea.Cmd) {
@@ -40,33 +59,20 @@ func (m logsModel) Update(msg tea.Msg) (common.Model, tea.Cmd) {
 	)
 
 	switch msg := msg.(type) {
-	case tea.KeyMsg:
-		switch {
-		case key.Matches(msg, common.Keys.Escape):
-			// return to last state
-			return m, common.CmdHandler(common.ReturnLastMsg{})
-		}
+	case common.BulkInsertMsg[logging.Message]:
+		m.messages = msg
+		m.table = m.table.WithRows(m.toRows())
 	case resource.Event[logging.Message]:
-		// because log messages are line terminated, each one can be safely
-		// word-wrapped and prepended to previously word-wrapped content.
-		m.content = wordwrap.String(string(msg.Payload), m.viewport.Width) + m.content
-		m.viewport.SetContent(m.content)
-		m.viewport.GotoTop()
-		return m, nil
-	case errorMsg:
-		args := append(msg.Args, "error", msg.Error.Error())
-		slog.Error(msg.Message, args...)
+		m.messages = append(m.messages, msg.Payload)
+		m.table = m.table.WithRows(m.toRows())
 	case common.ViewSizeMsg:
 		// Accomodate margin of size 1 on either side
-		m.viewport.Width = msg.Width - 2
-		m.viewport.Height = msg.Height
-		// re-wrap entire content
-		m.viewport.SetContent(wordwrap.String(m.content, m.viewport.Width))
-		// Is this necessary?
-		//m.viewport.GotoTop()
+		m.table = m.table.WithTargetWidth(msg.Width - 2)
+		//m.table = m.table.WithMinimumHeight(msg.Height)
+		return m, nil
 	}
-	// Handle keyboard and mouse events in the viewport
-	m.viewport, cmd = m.viewport.Update(msg)
+	// Handle keyboard and mouse events in the table widget
+	m.table, cmd = m.table.Update(msg)
 	cmds = append(cmds, cmd)
 
 	return m, tea.Batch(cmds...)
@@ -79,10 +85,28 @@ func (m logsModel) Title() string {
 func (m logsModel) View() string {
 	return lipgloss.NewStyle().
 		Margin(0, 1).
-		Render(m.viewport.View())
+		Render(m.table.View())
 }
 
 func (m logsModel) HelpBindings() (bindings []key.Binding) {
 	bindings = append(bindings, common.Keys.CloseHelp)
 	return
+}
+
+func (m logsModel) toRows() []table.Row {
+	rows := make([]table.Row, len(m.messages))
+	for i, msg := range m.messages {
+		data := table.RowData{
+			common.ColKeyTime:  msg.Time.Round(time.Second),
+			common.ColKeyLevel: msg.Level,
+		}
+		switch msg.Level {
+		case "ERROR":
+			data[common.ColKeyMessage] = fmt.Sprintf("%s: %s", msg.Message, msg.Error)
+		default:
+			data[common.ColKeyMessage] = msg.Message
+		}
+		rows[i] = table.NewRow(data)
+	}
+	return rows
 }

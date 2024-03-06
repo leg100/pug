@@ -30,13 +30,14 @@ type ServiceOptions struct {
 
 func NewService(opts ServiceOptions) *Service {
 	broker := pubsub.NewBroker[*Module]()
-	return &Service{
+	svc := &Service{
 		tasks:       opts.TaskService,
 		workdir:     opts.Workdir,
 		broker:      broker,
 		pluginCache: opts.PluginCache,
+		modules:     make(map[resource.ID]*Module),
 	}
-	// TODO: reload
+	return svc
 }
 
 // Reload searches the working directory recursively for modules and adds them
@@ -46,9 +47,6 @@ func (s *Service) Reload() error {
 	found, err := findModules(s.workdir)
 	if err != nil {
 		return err
-	}
-	if s.modules == nil {
-		s.modules = make(map[resource.ID]*Module, len(found))
 	}
 	for _, path := range found {
 		// Add module if it isn't in pug already
@@ -77,8 +75,8 @@ func (s *Service) Reload() error {
 }
 
 // Init invokes terraform init on the module.
-func (s *Service) Init(id resource.ID) (*Module, *task.Task, error) {
-	mod, err := s.Get(id)
+func (s *Service) Init(moduleID resource.ID) (*Module, *task.Task, error) {
+	mod, err := s.Get(moduleID)
 	if err != nil {
 		return nil, nil, err
 	}

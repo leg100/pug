@@ -2,53 +2,72 @@ package tui
 
 import (
 	"github.com/charmbracelet/bubbles/key"
-	"github.com/charmbracelet/bubbles/table"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
+	"github.com/evertras/bubble-table/table"
+	"github.com/leg100/pug/internal/module"
 	"github.com/leg100/pug/internal/resource"
 	"github.com/leg100/pug/internal/tui/common"
 	"github.com/leg100/pug/internal/workspace"
+	"golang.org/x/exp/maps"
 )
 
-type workspaceListModel struct {
-	table table.Model
+type workspaceListModelMaker struct {
+	svc     *workspace.Service
+	modules *module.Service
 }
 
-func NewWorkspaceListModel(svc *workspace.Service, module *resource.Resource) workspaceListModel {
-	var opts workspace.ListOptions
-	if module != nil {
-		opts.ModuleID = &module.ID
-	}
-
-	tasks := svc.List(opts)
+func (m *workspaceListModelMaker) makeModel(parent resource.Resource) (common.Model, error) {
 	// TODO: depending upon kind of parent, hide certain redundant columns, e.g.
 	// a module parent kind would render the module column redundant.
 	columns := []table.Column{
-		{Title: "ID", Width: 10},
-		{Title: "MODULE", Width: 10},
-		{Title: "NAME", Width: 10},
+		table.NewFlexColumn(common.ColKeyModule, "MODULE", 1).WithStyle(
+			lipgloss.NewStyle().
+				Align(lipgloss.Left),
+		),
+		table.NewFlexColumn(common.ColKeyName, "NAME", 2).WithStyle(
+			lipgloss.NewStyle().
+				Align(lipgloss.Left),
+		),
 	}
-	rows := make([]table.Row, len(tasks))
-	for i, t := range tasks {
-		rows[i] = newWorkspaceRow(t)
-	}
-	tbl := table.New(
-		table.WithColumns(columns),
-		table.WithRows(rows),
-		table.WithFocused(true),
-	)
-	return workspaceListModel{table: tbl}
+	return workspaceListModel{
+		table:      table.New(columns).Focused(true),
+		svc:        m.svc,
+		modules:    m.modules,
+		parent:     parent,
+		workspaces: make(map[resource.ID]*workspace.Workspace, 0),
+	}, nil
 }
 
-func newWorkspaceRow(ws *workspace.Workspace) table.Row {
-	return table.Row{
-		ws.ID.String(),
-		ws.Module().String(),
-		ws.String(),
-	}
+type workspaceListModel struct {
+	table      table.Model
+	svc        *workspace.Service
+	modules    *module.Service
+	parent     resource.Resource
+	workspaces map[resource.ID]*workspace.Workspace
 }
 
 func (m workspaceListModel) Init() tea.Cmd {
-	return nil
+	return func() tea.Msg {
+		var opts workspace.ListOptions
+		if m.parent != resource.NilResource {
+			opts.ModuleID = &m.parent.ID
+		}
+		return common.BulkInsertMsg[*workspace.Workspace](m.svc.List(opts))
+	}
+}
+
+func (m workspaceListModel) toRows() []table.Row {
+	rows := make([]table.Row, len(m.workspaces))
+	for i, ws := range maps.Values(m.workspaces) {
+		rows[i] = table.NewRow(table.RowData{
+			common.ColKeyID:     ws.ID.String(),
+			common.ColKeyModule: ws.Module().String(),
+			common.ColKeyName:   ws.Workspace().String(),
+			common.ColKeyData:   ws,
+		})
+	}
+	return rows
 }
 
 func (m workspaceListModel) Update(msg tea.Msg) (common.Model, tea.Cmd) {
@@ -61,48 +80,36 @@ func (m workspaceListModel) Update(msg tea.Msg) (common.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, common.Keys.Enter):
-			row := m.table.SelectedRow()
-			id, err := resource.IDFromString(row[0])
-			if err != nil {
-				return m, common.NewErrorCmd(err, "selecting workspace")
-			}
-			return m, common.Navigate(common.TaskPage, id)
+			row := m.table.HighlightedRow()
+			ws := row.Data[common.ColKeyData].(*workspace.Workspace)
+			return m, navigate(page{kind: RunListKind, resource: ws.Resource})
+		case key.Matches(msg, common.Keys.Init):
+			row := m.table.HighlightedRow()
+			ws := row.Data[common.ColKeyData].(*workspace.Workspace)
+			return m, initCmd(m.modules, ws.Module().ID)
 		}
 	case common.ViewSizeMsg:
 		// Accomodate margin of size 1 on either side
-		m.table.SetWidth(msg.Width - 2)
-		m.table.SetHeight(msg.Height)
+		m.table = m.table.WithTargetWidth(msg.Width - 2)
 		return m, nil
+	case common.BulkInsertMsg[*workspace.Workspace]:
+		// TODO: filter by parent
+		m.workspaces = make(map[resource.ID]*workspace.Workspace, len(msg))
+		for _, ws := range msg {
+			m.workspaces[ws.ID] = ws
+		}
+		m.table = m.table.WithRows(m.toRows())
 	case resource.Event[*workspace.Workspace]:
+		// TODO: filter by parent
 		switch msg.Type {
 		case resource.CreatedEvent:
-			// Insert new workspace at top
-			m.table.SetRows(
-				append([]table.Row{newWorkspaceRow(msg.Payload)}, m.table.Rows()...),
-			)
+			m.workspaces[msg.Payload.ID] = msg.Payload
 		case resource.UpdatedEvent:
-			i := m.findRow(msg.Payload.ID)
-			if i < 0 {
-				// TODO: log error
-				return m, nil
-			}
-			// remove row
-			rows := append(m.table.Rows()[:i], m.table.Rows()[i+1:]...)
-			// add to top
-			m.table.SetRows(
-				append([]table.Row{newWorkspaceRow(msg.Payload)}, rows...),
-			)
+			m.workspaces[msg.Payload.ID] = msg.Payload
 		case resource.DeletedEvent:
-			i := m.findRow(msg.Payload.ID)
-			if i < 0 {
-				// TODO: log error
-				return m, nil
-			}
-			// remove row
-			m.table.SetRows(
-				append(m.table.Rows()[:i], m.table.Rows()[i+1:]...),
-			)
+			delete(m.workspaces, msg.Payload.ID)
 		}
+		m.table = m.table.WithRows(m.toRows())
 		return m, nil
 	}
 
@@ -114,7 +121,8 @@ func (m workspaceListModel) Update(msg tea.Msg) (common.Model, tea.Cmd) {
 }
 
 func (m workspaceListModel) Title() string {
-	return "global tasks"
+	// TODO: add optional module
+	return "workspaces"
 }
 
 func (m workspaceListModel) View() string {
@@ -124,14 +132,4 @@ func (m workspaceListModel) View() string {
 func (m workspaceListModel) HelpBindings() (bindings []key.Binding) {
 	bindings = append(bindings, common.Keys.CloseHelp)
 	return
-}
-
-func (m workspaceListModel) findRow(id resource.ID) int {
-	encoded := id.String()
-	for i, row := range m.table.Rows() {
-		if row[0] == encoded {
-			return i
-		}
-	}
-	return -1
 }

@@ -16,8 +16,8 @@ import (
 
 type Service struct {
 	tasks      *task.Service
-	workspaces *workspace.Service
 	modules    *module.Service
+	workspaces *workspace.Service
 	// Runs keyed by run ID
 	runs map[resource.Resource]*Run
 	// Mutex for concurrent read/write of runs
@@ -82,6 +82,7 @@ func (s *Service) Create(workspaceID resource.ID, opts CreateOptions) (*Run, *ta
 	if err != nil {
 		return nil, nil, fmt.Errorf("creating plan task: %w", err)
 	}
+	run.PlanTask = &task.Resource
 
 	s.mu.Lock()
 	s.runs[run.Resource] = run
@@ -183,6 +184,7 @@ func (s *Service) Apply(id resource.Resource) (*Run, *task.Task, error) {
 	if err != nil {
 		return nil, nil, fmt.Errorf("applying run: %w", err)
 	}
+	run.ApplyTask = &task.Resource
 	return run, task, nil
 }
 

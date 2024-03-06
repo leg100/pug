@@ -4,81 +4,116 @@ import (
 	"fmt"
 
 	"github.com/charmbracelet/bubbles/key"
-	"github.com/charmbracelet/bubbles/table"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/evertras/bubble-table/table"
 	"github.com/leg100/pug/internal/module"
+	"github.com/leg100/pug/internal/resource"
 	"github.com/leg100/pug/internal/tui/common"
+	"github.com/leg100/pug/internal/workspace"
+	"golang.org/x/exp/maps"
 )
 
-//func init() {
-//	registerHelpBindings(func(short bool, current Page) []key.Binding {
-//		if current != moduleListState {
-//			return []key.Binding{Keys.Modules}
-//		}
-//		return []key.Binding{
-//			Keys.Init,
-//			Keys.Plan,
-//			Keys.Apply,
-//			Keys.ShowState,
-//			Keys.Tasks,
-//		}
-//	})
-//}
+//	func init() {
+//		registerHelpBindings(func(short bool, current Page) []key.Binding {
+//			if current != moduleListState {
+//				return []key.Binding{Keys.Modules}
+//			}
+//			return []key.Binding{
+//				Keys.Init,
+//				Keys.Plan,
+//				Keys.Apply,
+//				Keys.ShowState,
+//				Keys.Tasks,
+//			}
+//		})
+//	}
+
+type moduleListModelMaker struct {
+	svc        *module.Service
+	workspaces *workspace.Service
+	workdir    string
+}
+
+func (m *moduleListModelMaker) makeModel(_ resource.Resource) (common.Model, error) {
+	columns := []table.Column{
+		table.NewColumn(common.ColKeyID, "ID", resource.IDEncodedMaxLen).WithStyle(
+			lipgloss.NewStyle().
+				Align(lipgloss.Left),
+		),
+		table.NewFlexColumn(common.ColKeyPath, "PATH", 1).WithStyle(
+			lipgloss.NewStyle().
+				Align(lipgloss.Left),
+		),
+	}
+	return moduleListModel{
+		table:      table.New(columns).Focused(true),
+		svc:        m.svc,
+		modules:    make(map[resource.ID]*module.Module),
+		workspaces: m.workspaces,
+		workdir:    m.workdir,
+	}, nil
+}
 
 type moduleListModel struct {
-	table table.Model
+	table      table.Model
+	svc        *module.Service
+	workspaces *workspace.Service
+	modules    map[resource.ID]*module.Module
 
 	workdir string
-
-	width  int
-	height int
 }
 
-func NewModuleListModel(svc *module.Service, workdir string) (moduleListModel, error) {
-	if err := svc.Reload(); err != nil {
-		return moduleListModel{}, err
+func (mlm moduleListModel) Init() tea.Cmd {
+	//return mlm.reload()
+	return func() tea.Msg {
+		return common.BulkInsertMsg[*module.Module](mlm.svc.List())
 	}
-	mods := svc.List()
-	columns := []table.Column{
-		{Title: "ID", Width: 10},
-		{Title: "PATH", Width: 10},
-	}
-	rows := make([]table.Row, len(mods))
-	for i, t := range mods {
-		rows[i] = newModuleRow(t)
-	}
-	tbl := table.New(
-		table.WithColumns(columns),
-		table.WithRows(rows),
-		table.WithFocused(true),
+}
+
+func (m moduleListModel) Update(msg tea.Msg) (common.Model, tea.Cmd) {
+	var (
+		cmd  tea.Cmd
+		cmds []tea.Cmd
 	)
-	return moduleListModel{table: tbl, workdir: workdir}, nil
-}
 
-func newModuleRow(m *module.Module) table.Row {
-	return table.Row{
-		m.ID.String(),
-		m.Path,
-	}
-}
-
-func (moduleListModel) Init() tea.Cmd {
-	return nil
-}
-
-func (lm moduleListModel) Update(msg tea.Msg) (common.Model, tea.Cmd) {
 	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		switch {
+		case key.Matches(msg, common.Keys.Enter):
+			row := m.table.HighlightedRow()
+			mod := row.Data[common.ColKeyData].(*module.Module)
+			return m, navigate(page{kind: WorkspaceListKind, resource: mod.Resource})
+		case key.Matches(msg, common.Keys.Init):
+			row := m.table.HighlightedRow()
+			mod := row.Data[common.ColKeyData].(*module.Module)
+			return m, initCmd(m.svc, mod.ID)
+		}
 	case common.ViewSizeMsg:
 		// Accomodate margin of size 1 on either side
-		lm.table.SetWidth(msg.Width - 2)
-		lm.table.SetHeight(msg.Height)
-		return lm, nil
+		m.table = m.table.WithTargetWidth(msg.Width - 2)
+		m.table = m.table.WithMinimumHeight(msg.Height)
+	case common.BulkInsertMsg[*module.Module]:
+		m.modules = make(map[resource.ID]*module.Module, len(msg))
+		for _, mod := range msg {
+			m.modules[mod.ID] = mod
+		}
+		m.table = m.table.WithRows(m.toRows())
+	case resource.Event[*module.Module]:
+		switch msg.Type {
+		case resource.CreatedEvent:
+			m.modules[msg.Payload.ID] = msg.Payload
+		case resource.UpdatedEvent:
+			m.modules[msg.Payload.ID] = msg.Payload
+		case resource.DeletedEvent:
+			delete(m.modules, msg.Payload.ID)
+		}
+		m.table = m.table.WithRows(m.toRows())
 	}
 
-	var cmd tea.Cmd
-	lm.table, cmd = lm.table.Update(msg)
-	return lm, cmd
+	m.table, cmd = m.table.Update(msg)
+	cmds = append(cmds, cmd)
+	return m, tea.Batch(cmds...)
 }
 
 func (mlm moduleListModel) Title() string {
@@ -95,6 +130,49 @@ func (mlm moduleListModel) View() string {
 func (mlm moduleListModel) HelpBindings() (bindings []key.Binding) {
 	bindings = append(bindings, common.Keys.CloseHelp)
 	return
+}
+
+func (m moduleListModel) toRows() []table.Row {
+	rows := make([]table.Row, len(m.modules))
+	for i, mod := range maps.Values(m.modules) {
+		rows[i] = table.NewRow(table.RowData{
+			common.ColKeyID:   mod.ID.String(),
+			common.ColKeyPath: mod.Module().String(),
+			common.ColKeyData: mod,
+		})
+	}
+	return rows
+}
+
+func (mlm moduleListModel) reload() tea.Cmd {
+	return func() tea.Msg {
+		if err := mlm.svc.Reload(); err != nil {
+			return common.NewErrorMsg(err, "reloading modules")
+		}
+		return nil
+	}
+}
+
+func (mlm moduleListModel) reloadWorkspaces(module resource.Resource) tea.Cmd {
+	return func() tea.Msg {
+		_, err := mlm.workspaces.Reload(module)
+		if err != nil {
+			return common.NewErrorMsg(err, "reloading workspaces")
+		}
+		return nil
+	}
+}
+
+func initCmd(modules *module.Service, moduleID resource.ID) tea.Cmd {
+	return func() tea.Msg {
+		_, task, err := modules.Init(moduleID)
+		if err != nil {
+			return common.NewErrorCmd(err, "creating init task")
+		}
+		return navigationMsg{
+			target: page{kind: TaskKind, resource: task.Resource},
+		}
+	}
 }
 
 //func newModuleDelegate(svc *module.Service, runs *run.Service, workspaces *workspace.Service) list.DefaultDelegate {

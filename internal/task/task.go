@@ -68,8 +68,7 @@ type CreateOptions struct {
 	Command []string
 	// Args to pass to program.
 	Args []string
-	// Path in which to execute the program - assumed be the terraform module's
-	// path.
+	// Path in which to execute the program.
 	Path string
 	// Environment variables.
 	Env []string
@@ -101,6 +100,7 @@ func (f *factory) newTask(opts CreateOptions) (*Task, error) {
 		finished:      make(chan struct{}),
 		buf:           newBuffer(),
 		program:       f.program,
+		Command:       opts.Command,
 		Path:          opts.Path,
 		Args:          opts.Args,
 		exclusive:     opts.Exclusive,

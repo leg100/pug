@@ -5,11 +5,11 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
-	"slices"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclwrite"
 	"github.com/leg100/pug/internal/resource"
+	"golang.org/x/exp/maps"
 )
 
 type Module struct {
@@ -18,6 +18,9 @@ type Module struct {
 
 	// Path is the path to the module relative to the pug working directory. The
 	// path also uniquely identifies a module.
+	//
+	// TODO: remove path and instead add a method that extracts path from
+	// resource.Resource above.
 	Path string
 }
 
@@ -26,7 +29,7 @@ func (m *Module) Title() string       { return m.Path }
 func (m *Module) Description() string { return m.Path }
 func (m *Module) FilterValue() string { return m.Path }
 
-// FindModules finds root modules that are descendents of the given path and
+// findModules finds root modules that are descendents of the given path and
 // returns their paths. Determining what is a root module is difficult and
 // relies on a set of heuristics:
 //
@@ -36,10 +39,11 @@ func (m *Module) FilterValue() string { return m.Path }
 // (a) will only succeed if the module has already been initialized, i.e. terraform
 // init has been run, whereas (b) is necessary if it has not.
 func findModules(parent string) (modules []string, err error) {
+	found := make(map[string]struct{})
 	walkfn := func(path string, d fs.DirEntry, walkerr error) error {
 		// skip directories that have already been identified as containing a
 		// root module
-		if slices.Contains(modules, filepath.Dir(path)) {
+		if _, ok := found[filepath.Dir(path)]; ok {
 			return nil
 		}
 		if walkerr != nil {
@@ -47,7 +51,7 @@ func findModules(parent string) (modules []string, err error) {
 		}
 		if d.IsDir() {
 			if d.Name() == ".terraform" {
-				modules = append(modules, filepath.Dir(path))
+				found[filepath.Dir(path)] = struct{}{}
 				// skip walking .terraform/
 				return filepath.SkipDir
 			}
@@ -71,7 +75,7 @@ func findModules(parent string) (modules []string, err error) {
 			if block.Type() == "terraform" {
 				for _, nested := range block.Body().Blocks() {
 					if nested.Type() == "backend" || nested.Type() == "cloud" {
-						modules = append(modules, filepath.Dir(path))
+						found[filepath.Dir(path)] = struct{}{}
 						// skip walking remainder of parent directory
 						return fs.SkipDir
 					}
@@ -80,5 +84,17 @@ func findModules(parent string) (modules []string, err error) {
 		}
 		return nil
 	}
-	return modules, filepath.WalkDir(parent, walkfn)
+	if err := filepath.WalkDir(parent, walkfn); err != nil {
+		return nil, err
+	}
+	// Strip parent prefix from paths before returning
+	modules = make([]string, len(found))
+	for i, f := range maps.Keys(found) {
+		stripped, err := filepath.Rel(parent, f)
+		if err != nil {
+			return nil, err
+		}
+		modules[i] = stripped
+	}
+	return modules, nil
 }

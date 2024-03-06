@@ -38,12 +38,19 @@ func NewService(ctx context.Context, opts ServiceOptions) *Service {
 
 	svc := &Service{
 		broker:  broker,
+		tasks:   make(map[resource.ID]*Task),
 		factory: factory,
 	}
 
+	// subscribe to task events
+	sub, _ := broker.Subscribe(ctx)
+
+	// Start task enqueuer in background
+	go startEnqueuer(ctx, svc, sub)
+
 	// Start task runner in background
 	runner := newRunner(opts.MaxTasks, svc)
-	go runner.start(ctx)
+	go runner.start(ctx, sub)
 
 	return svc
 }
@@ -109,8 +116,10 @@ func (s *Service) List(opts ListOptions) []*Task {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	var filtered []*Task
-	for _, t := range maps.Values(s.tasks) {
+	tasks := maps.Values(s.tasks)
+	filtered := make([]*Task, 0, len(tasks))
+
+	for _, t := range tasks {
 		if opts.Path != nil && *opts.Path != t.Path {
 			// skip tasks matching different path
 			continue
@@ -132,6 +141,7 @@ func (s *Service) List(opts ListOptions) []*Task {
 		}
 		filtered = append(filtered, t)
 	}
+
 	slices.SortFunc(filtered, func(a, b *Task) int {
 		cmp := a.Updated.Compare(b.Updated)
 		if opts.Oldest {

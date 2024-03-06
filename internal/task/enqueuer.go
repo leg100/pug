@@ -15,9 +15,8 @@ type enqueuer struct {
 func startEnqueuer(
 	ctx context.Context,
 	tasks *Service,
+	sub <-chan resource.Event[*Task],
 ) {
-
-	sub, _ := tasks.Subscribe(ctx)
 
 	e := enqueuer{tasks: tasks}
 

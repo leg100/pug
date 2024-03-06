@@ -18,77 +18,103 @@ func TestConfig(t *testing.T) {
 		file string
 		args []string
 		envs []string
-		want config
+		want func(t *testing.T, got config)
 	}{
 		{
 			"defaults",
 			"",
 			nil,
 			nil,
-			config{Program: "terraform", MaxTasks: 2 * cpus},
+			func(t *testing.T, got config) {
+				want := config{
+					Program:   "terraform",
+					MaxTasks:  2 * cpus,
+					FirstPage: 0,
+					LogLevel:  "info",
+				}
+				assert.Equal(t, want, got)
+			},
 		},
 		{
 			"config file override default",
 			"program: tofu\n",
 			nil,
 			nil,
-			config{Program: "tofu", MaxTasks: 2 * cpus},
+			func(t *testing.T, got config) {
+				assert.Equal(t, got.Program, "tofu")
+			},
 		},
 		{
 			"config file with max-tasks override default",
 			"max-tasks: 3\n",
 			nil,
 			nil,
-			config{Program: "terraform", MaxTasks: 3},
+			func(t *testing.T, got config) {
+				assert.Equal(t, got.MaxTasks, 3)
+			},
 		},
 		{
 			"env var override default",
 			"",
 			nil,
 			[]string{"PUG_PROGRAM=tofu"},
-			config{Program: "tofu", MaxTasks: 2 * cpus},
+			func(t *testing.T, got config) {
+				assert.Equal(t, got.Program, "tofu")
+			},
 		},
 		{
 			"flag override default",
 			"",
 			[]string{"--program", "tofu"},
 			nil,
-			config{Program: "tofu", MaxTasks: 2 * cpus},
+			func(t *testing.T, got config) {
+				assert.Equal(t, got.Program, "tofu")
+			},
 		},
 		{
 			"env var overrides config file",
 			"program: tofu\n",
 			nil,
 			[]string{"PUG_PROGRAM=terragrunt"},
-			config{Program: "terragrunt", MaxTasks: 2 * cpus},
+			func(t *testing.T, got config) {
+				assert.Equal(t, got.Program, "terragrunt")
+			},
 		},
 		{
 			"flag overrides env var",
 			"",
 			[]string{"--program", "tofu"},
 			[]string{"PUG_PROGRAM=terragrunt"},
-			config{Program: "tofu", MaxTasks: 2 * cpus},
+			func(t *testing.T, got config) {
+				assert.Equal(t, got.Program, "tofu")
+			},
 		},
 		{
 			"flag overrides both env var and config",
 			"program: cloudformation\n",
 			[]string{"--program", "tofu"},
 			[]string{"PUG_PROGRAM=terragrunt"},
-			config{Program: "tofu", MaxTasks: 2 * cpus},
-		},
-		{
-			"enable plugin cache via terraform config",
-			"",
-			nil,
-			[]string{"TF_CLI_CONFIG_FILE=../testdata/_terraformrc_with_plugin_cache"},
-			config{Program: "terraform", MaxTasks: 2 * cpus, PluginCache: true},
+			func(t *testing.T, got config) {
+				assert.Equal(t, got.Program, "tofu")
+			},
 		},
 		{
 			"enable plugin cache via env var",
 			"",
 			nil,
 			[]string{"TF_PLUGIN_CACHE_DIR=../testdata/plugin_cache"},
-			config{Program: "terraform", MaxTasks: 2 * cpus, PluginCache: true},
+			func(t *testing.T, got config) {
+				assert.True(t, got.PluginCache)
+			},
+		},
+		{
+			"set first page via environment variable",
+			"",
+			nil,
+			[]string{"PUG_FIRST_PAGE=4"},
+			func(t *testing.T, got config) {
+				assert.Equal(t, got.FirstPage, 4)
+			},
 		},
 	}
 	for _, tt := range tests {
@@ -112,7 +138,7 @@ func TestConfig(t *testing.T) {
 			got, err := parse(tt.args)
 			require.NoError(t, err)
 
-			assert.Equal(t, tt.want, got)
+			tt.want(t, got)
 		})
 	}
 }

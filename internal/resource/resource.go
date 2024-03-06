@@ -5,6 +5,8 @@ import (
 	"github.com/google/uuid"
 )
 
+var NilResource = Resource{}
+
 // Resource is a unique pug entity.
 type Resource struct {
 	ID ID
@@ -37,15 +39,11 @@ func (r Resource) String() string {
 
 // Ancestors provides a list of successive parents, starting with the direct parents.
 func (r Resource) Ancestors() (ancestors []Resource) {
-	getAncestors(r, ancestors)
-	return
-}
-
-func getAncestors(resource Resource, ancestors []Resource) {
-	if resource.Parent == nil {
+	if r.Parent == nil {
 		return
 	}
-	getAncestors(*resource.Parent, append(ancestors, *resource.Parent))
+	ancestors = append(ancestors, *r.Parent)
+	return append(ancestors, r.Parent.Ancestors()...)
 }
 
 // HasAncestor checks whether the given id is an ancestor of the resource.

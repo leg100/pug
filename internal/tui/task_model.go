@@ -14,17 +14,22 @@ import (
 	"github.com/leg100/pug/internal/tui/common"
 )
 
-//func init() {
-//	registerHelpBindings(func(short bool, current Page) []key.Binding {
-//		if current != taskState {
-//			return nil
-//		}
-//		if !short {
-//			return keyMapToSlice(viewport.DefaultKeyMap())
-//		}
-//		return nil
-//	})
-//}
+type taskModelMaker struct {
+	svc *task.Service
+}
+
+func (m *taskModelMaker) makeModel(taskResource resource.Resource) (common.Model, error) {
+	task, err := m.svc.Get(taskResource.ID)
+	if err != nil {
+		return taskModel{}, err
+	}
+	return taskModel{
+		svc:      m.svc,
+		task:     task,
+		output:   task.NewReader(),
+		viewport: viewport.New(0, 0),
+	}, nil
+}
 
 type taskOutputMsg string
 
@@ -66,8 +71,6 @@ func (m taskModel) Update(msg tea.Msg) (common.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch {
-		case key.Matches(msg, common.Keys.Tasks, common.Keys.Escape):
-			return m, common.Navigate(common.TaskListPage, nil)
 		case key.Matches(msg, common.Keys.Cancel):
 			return m, m.cancel
 			// TODO: retry

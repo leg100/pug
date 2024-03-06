@@ -43,3 +43,5 @@ func NewErrorCmd(err error, msg string, args ...any) tea.Cmd {
 type ViewSizeMsg struct {
 	Width, Height int
 }
+
+type BulkInsertMsg[T any] []T

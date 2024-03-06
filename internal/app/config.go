@@ -17,6 +17,8 @@ type config struct {
 	MaxTasks    int
 	PluginCache bool
 	LogLevel    string
+	// TODO: rename to home page
+	FirstPage int
 }
 
 // set config in order of precedence:
@@ -27,10 +29,11 @@ func parse(args []string) (config, error) {
 	fs := ff.NewFlagSet("pug")
 	fs.StringVar(&cfg.Program, 'p', "program", "terraform", "The default program to use with pug.")
 	fs.IntVar(&cfg.MaxTasks, 't', "max-tasks", 2*runtime.NumCPU(), "The maximum number of parallel tasks.")
+	fs.IntVar(&cfg.FirstPage, 'f', "first-page", 0, "The first page to open on startup.")
 	fs.StringEnumVar(&cfg.LogLevel, 'l', "log-level", "Logging level.", "info", "debug", "error", "warn")
 	_ = fs.String('c', "config", "pug.yaml", "Path to config file.")
 
-	// Plugin cache is enabled not via pug but via terraform config
+	// Plugin cache is enabled not via pug flags but via terraform config
 	tfcfg, _ := cliconfig.LoadConfig()
 	cfg.PluginCache = (tfcfg.PluginCacheDir != "")
 

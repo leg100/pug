@@ -10,7 +10,7 @@ import (
 	"os"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/hashicorp/terraform/internal/logging"
+	"github.com/leg100/pug/internal/logging"
 	"github.com/leg100/pug/internal/module"
 	"github.com/leg100/pug/internal/run"
 	"github.com/leg100/pug/internal/task"
@@ -35,7 +35,10 @@ func Start() error {
 
 	// Setup logging
 	logger := logging.NewLogger(cfg.LogLevel)
-	slog.SetDefault(logger)
+	slog.SetDefault(logger.Logger)
+
+	// Log some info useful to the user
+	slog.Info(fmt.Sprintf("set max tasks: %d", cfg.MaxTasks))
 
 	// Instantiate services
 	tasks := task.NewService(ctx, task.ServiceOptions{
@@ -47,7 +50,7 @@ func Start() error {
 		Workdir:     workdir,
 		PluginCache: cfg.PluginCache,
 	})
-	workspaces := workspace.NewService(workspace.ServiceOptions{
+	workspaces := workspace.NewService(ctx, workspace.ServiceOptions{
 		TaskService:   tasks,
 		ModuleService: modules,
 	})
@@ -57,13 +60,21 @@ func Start() error {
 		WorkspaceService: workspaces,
 	})
 
+	// Search directory for modules
+	if err := modules.Reload(); err != nil {
+		return fmt.Errorf("searching for modules: %w", err)
+	}
+
 	// Construct TUI programme.
 	model, err := tui.New(tui.Options{
 		TaskService:      tasks,
 		ModuleService:    modules,
 		WorkspaceService: workspaces,
 		RunService:       runs,
+		Logger:           logger,
+		FirstPage:        cfg.FirstPage,
 		Workdir:          workdir,
+		MaxTasks:         cfg.MaxTasks,
 	})
 	if err != nil {
 		return err
@@ -78,7 +89,7 @@ func Start() error {
 
 	// Relay resource events to TUI.
 	go func() {
-		events, _ := logging.Subscribe(ctx)
+		events, _ := logger.Subscribe(ctx)
 		for ev := range events {
 			p.Send(ev)
 		}

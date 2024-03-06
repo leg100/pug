@@ -5,6 +5,7 @@ import (
 	"log/slog"
 
 	"github.com/leg100/pug/internal/pubsub"
+	"github.com/leg100/pug/internal/resource"
 )
 
 // Runner is the global task Runner that provides a couple of invariants:
@@ -32,10 +33,7 @@ func newRunner(maxTasks int, lister taskLister) *runner {
 	}
 }
 
-func (r *runner) start(ctx context.Context) {
-	sub, unsub := r.broker.Subscribe(ctx)
-	defer unsub()
-
+func (r *runner) start(ctx context.Context, sub <-chan resource.Event[*Task]) {
 	// On each task event, get a list of tasks to be run, start them, and wait
 	// for them to complete in the background.
 	for range sub {
@@ -56,7 +54,7 @@ func (r *runner) runnable() []*Task {
 	})
 	avail := r.max - len(running)
 	if avail == 0 {
-		// Already running maximum number
+		// Hit max, can't run any more tasks
 		return nil
 	}
 	// Process queue, starting with oldest task

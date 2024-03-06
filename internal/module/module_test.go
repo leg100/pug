@@ -10,6 +10,10 @@ import (
 func TestFindModules(t *testing.T) {
 	got, err := findModules("../testdata/configs")
 	require.NoError(t, err)
+
 	assert.Equal(t, 4, len(got))
-	//assert.Equal(t, "", got[0].Path)
+	assert.Contains(t, got, "envs/dev")
+	assert.Contains(t, got, "envs/prod")
+	assert.Contains(t, got, "envs/staging")
+	assert.Contains(t, got, "uninitialized")
 }

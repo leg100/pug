@@ -2,63 +2,80 @@ package tui
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
+	"github.com/evertras/bubble-table/table"
+	"golang.org/x/exp/maps"
+
 	"github.com/charmbracelet/bubbles/key"
-	"github.com/charmbracelet/bubbles/table"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/leg100/pug/internal/resource"
 	"github.com/leg100/pug/internal/task"
 	"github.com/leg100/pug/internal/tui/common"
 )
 
-type taskListModel struct {
-	table table.Model
+type taskListModelMaker struct {
+	svc      *task.Service
+	maxTasks int
 }
 
-func NewTaskListModel(svc *task.Service, parent *resource.Resource) taskListModel {
-	var opts task.ListOptions
-	if parent != nil {
-		opts.Ancestor = parent.ID
-	}
-
-	tasks := svc.List(opts)
+func (m *taskListModelMaker) makeModel(parent resource.Resource) (common.Model, error) {
 	// TODO: depending upon kind of parent, hide certain redundant columns, e.g.
 	// a module parent kind would render the module column redundant.
 	columns := []table.Column{
-		{Title: "ID", Width: 10},
+		table.NewColumn(common.ColKeyID, "ID", resource.IDEncodedMaxLen).WithStyle(
+			lipgloss.NewStyle().
+				Align(lipgloss.Left),
+		),
+		table.NewFlexColumn(common.ColKeyModule, "MODULE", 2).WithStyle(
+			lipgloss.NewStyle().
+				Align(lipgloss.Left),
+		),
+		table.NewColumn(common.ColKeyWorkspace, "WORKSPACE", 10).WithStyle(
+			lipgloss.NewStyle().
+				Align(lipgloss.Left),
+		),
+		table.NewFlexColumn(common.ColKeyCommand, "COMMAND", 1).WithStyle(
+			lipgloss.NewStyle().
+				Align(lipgloss.Left),
+		),
+		table.NewColumn(common.ColKeyStatus, "STATUS", 10).WithStyle(
+			lipgloss.NewStyle().
+				Align(lipgloss.Left),
+		),
+		table.NewColumn(common.ColKeyAge, "AGE", 10).WithStyle(
+			lipgloss.NewStyle().
+				Align(lipgloss.Left),
+		),
 	}
-	columns = append(columns, table.Column{Title: "MODULE", Width: 10})
-	columns = append(columns, table.Column{Title: "WORKSPACE", Width: 10})
-	columns = append(columns, table.Column{Title: "COMMAND", Width: 10})
-	columns = append(columns, table.Column{Title: "STATUS", Width: 10})
-	columns = append(columns, table.Column{Title: "AGE", Width: 10})
 
-	rows := make([]table.Row, len(tasks))
-	for i, t := range tasks {
-		rows[i] = newTaskRow(t)
-	}
-	tbl := table.New(
-		table.WithColumns(columns),
-		table.WithRows(rows),
-		table.WithFocused(true),
-	)
-	return taskListModel{table: tbl}
+	return taskListModel{
+		table:  table.New(columns).Focused(true).SortByDesc(common.ColKeyTime),
+		svc:    m.svc,
+		parent: parent,
+		tasks:  make(map[resource.ID]*task.Task),
+		max:    m.maxTasks,
+	}, nil
 }
 
-func newTaskRow(t *task.Task) table.Row {
-	return table.Row{
-		t.String(),
-		t.Module().String(),
-		t.Workspace().String(),
-		fmt.Sprintf("%v", t.Command),
-		string(t.State),
-		t.Updated.Round(time.Second).String(),
-	}
+type taskListModel struct {
+	table  table.Model
+	svc    *task.Service
+	tasks  map[resource.ID]*task.Task
+	parent resource.Resource
+	max    int
 }
 
 func (m taskListModel) Init() tea.Cmd {
-	return nil
+	return func() tea.Msg {
+		var opts task.ListOptions
+		if m.parent != resource.NilResource {
+			opts.Ancestor = m.parent.ID
+		}
+		return common.BulkInsertMsg[*task.Task](m.svc.List(opts))
+	}
 }
 
 func (m taskListModel) Update(msg tea.Msg) (common.Model, tea.Cmd) {
@@ -71,48 +88,34 @@ func (m taskListModel) Update(msg tea.Msg) (common.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, common.Keys.Enter):
-			row := m.table.SelectedRow()
-			id, err := resource.IDFromString(row[0])
-			if err != nil {
-				return m, common.NewErrorCmd(err, "selecting task")
-			}
-			return m, common.Navigate(common.TaskPage, &resource.Resource{ID: id})
+			row := m.table.HighlightedRow()
+			task := row.Data[common.ColKeyData].(*task.Task)
+			return m, navigate(page{kind: TaskKind, resource: task.Resource})
+			//case key.Matches(msg, common.Keys.Cancel):
+			//	row := m.table.HighlightedRow()
+			//	task := row.Data[common.ColKeyData].(*task.Task)
+			//	return m, cancelCmd(m.svc, task.ID)
 		}
 	case common.ViewSizeMsg:
 		// Accomodate margin of size 1 on either side
-		m.table.SetWidth(msg.Width - 2)
-		m.table.SetHeight(msg.Height)
-		return m, nil
+		m.table = m.table.WithTargetWidth(msg.Width - 2)
+		m.table = m.table.WithMinimumHeight(msg.Height)
+	case common.BulkInsertMsg[*task.Task]:
+		m.tasks = make(map[resource.ID]*task.Task, len(msg))
+		for _, run := range msg {
+			m.tasks[run.ID] = run
+		}
+		m.table = m.table.WithRows(m.toRows())
 	case resource.Event[*task.Task]:
 		switch msg.Type {
 		case resource.CreatedEvent:
-			// Insert new task at top
-			m.table.SetRows(
-				append([]table.Row{newTaskRow(msg.Payload)}, m.table.Rows()...),
-			)
+			m.tasks[msg.Payload.ID] = msg.Payload
 		case resource.UpdatedEvent:
-			i := m.findRow(msg.Payload.ID)
-			if i < 0 {
-				// TODO: log error
-				return m, nil
-			}
-			// remove row
-			rows := append(m.table.Rows()[:i], m.table.Rows()[i+1:]...)
-			// add to top
-			m.table.SetRows(
-				append([]table.Row{newTaskRow(msg.Payload)}, rows...),
-			)
+			m.tasks[msg.Payload.ID] = msg.Payload
 		case resource.DeletedEvent:
-			i := m.findRow(msg.Payload.ID)
-			if i < 0 {
-				// TODO: log error
-				return m, nil
-			}
-			// remove row
-			m.table.SetRows(
-				append(m.table.Rows()[:i], m.table.Rows()[i+1:]...),
-			)
+			delete(m.tasks, msg.Payload.ID)
 		}
+		m.table = m.table.WithRows(m.toRows())
 		return m, nil
 	}
 
@@ -124,7 +127,7 @@ func (m taskListModel) Update(msg tea.Msg) (common.Model, tea.Cmd) {
 }
 
 func (m taskListModel) Title() string {
-	return "global tasks"
+	return fmt.Sprintf("global tasks (max: %d)", m.max)
 }
 
 func (m taskListModel) View() string {
@@ -136,12 +139,40 @@ func (m taskListModel) HelpBindings() (bindings []key.Binding) {
 	return
 }
 
-func (m taskListModel) findRow(id resource.ID) int {
-	encoded := id.String()
-	for i, row := range m.table.Rows() {
-		if row[0] == encoded {
-			return i
+func (m taskListModel) toRows() []table.Row {
+	rows := make([]table.Row, len(m.tasks))
+	// TODO: categorise and sort tasks according to a specific schema:
+	// 1. running (newest first)
+	// 2. queued (oldest first)
+	// 3. pending (oldest first)
+	// 4. finished (newest first)
+	for i, task := range maps.Values(m.tasks) {
+		row := table.RowData{
+			common.ColKeyID:      task.ID.String(),
+			common.ColKeyCommand: strings.Join(task.Command, " "),
+			common.ColKeyStatus:  string(task.State),
+			common.ColKeyAge:     ago(time.Now(), task.Created),
+			common.ColKeyData:    task,
+		}
+		if mod := task.Module(); mod != nil {
+			row[common.ColKeyModule] = mod.String()
+		}
+		if ws := task.Workspace(); ws != nil {
+			row[common.ColKeyWorkspace] = ws.String()
+		}
+		rows[i] = table.NewRow(row)
+	}
+	return rows
+}
+
+func cancelCmd(tasks *task.Service, taskID resource.ID) tea.Cmd {
+	return func() tea.Msg {
+		task, err := tasks.Cancel(taskID)
+		if err != nil {
+			return common.NewErrorCmd(err, "creating cancel task")
+		}
+		return navigationMsg{
+			target: page{kind: TaskKind, resource: task.Resource},
 		}
 	}
-	return -1
 }

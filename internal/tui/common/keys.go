@@ -10,6 +10,7 @@ type keyMap struct {
 	Quit       key.Binding
 	Modules    key.Binding
 	Workspaces key.Binding
+	Runs       key.Binding
 	Tasks      key.Binding
 	Init       key.Binding
 	Plan       key.Binding
@@ -26,7 +27,7 @@ type keyMap struct {
 
 var Keys = keyMap{
 	Quit: key.NewBinding(
-		key.WithKeys("^c"),
+		key.WithKeys("ctrl+c"),
 		key.WithHelp("^c", "exit"),
 	),
 	Modules: key.NewBinding(
@@ -36,6 +37,10 @@ var Keys = keyMap{
 	Workspaces: key.NewBinding(
 		key.WithKeys("w"),
 		key.WithHelp("w", "workspaces"),
+	),
+	Runs: key.NewBinding(
+		key.WithKeys("r"),
+		key.WithHelp("r", "runs"),
 	),
 	Tasks: key.NewBinding(
 		key.WithKeys("t"),
@@ -70,8 +75,8 @@ var Keys = keyMap{
 		key.WithHelp("l", "logs"),
 	),
 	Escape: key.NewBinding(
-		key.WithKeys("esc"),
-		key.WithHelp("esc", "back"),
+		key.WithKeys("esc", "`"),
+		key.WithHelp("esc, `", "back"),
 	),
 	Enter: key.NewBinding(
 		key.WithKeys("enter"),

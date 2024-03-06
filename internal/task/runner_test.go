@@ -9,11 +9,11 @@ import (
 )
 
 func TestRunner_runnable(t *testing.T) {
-	t1 := &Task{Resource: resource.New(nil)}
-	t2 := &Task{Resource: resource.New(nil)}
-	t3 := &Task{Resource: resource.New(nil)}
-	ex1 := &Task{Resource: resource.New(nil), exclusive: true}
-	ex2 := &Task{Resource: resource.New(nil), exclusive: true}
+	t1 := &Task{Resource: resource.New(resource.Task, "", nil)}
+	t2 := &Task{Resource: resource.New(resource.Task, "", nil)}
+	t3 := &Task{Resource: resource.New(resource.Task, "", nil)}
+	ex1 := &Task{Resource: resource.New(resource.Task, "", nil), exclusive: true}
+	ex2 := &Task{Resource: resource.New(resource.Task, "", nil), exclusive: true}
 
 	tests := []struct {
 		name string

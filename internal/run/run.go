@@ -44,6 +44,9 @@ type Run struct {
 	PlanReport  report
 	ApplyReport report
 
+	PlanTask  *resource.Resource
+	ApplyTask *resource.Resource
+
 	// Error is non-nil when the run status is Errored
 	Error error
 
@@ -86,12 +89,19 @@ func (r *Run) IsFinished() bool {
 	}
 }
 
+func (r *Run) CurrentTask() resource.Resource {
+	if r.ApplyTask != nil {
+		return *r.ApplyTask
+	}
+	return *r.PlanTask
+}
+
 func (r *Run) setErrored(err error) {
 	r.Error = err
 	r.updateStatus(Errored)
 }
 
-func (r *Run) addPlan(pfile planFile) bool {
+func (r *Run) addPlan(pfile planFile) (apply bool) {
 	r.PlanReport = pfile.resourceChanges()
 	if !r.PlanReport.HasChanges() {
 		r.updateStatus(PlannedAndFinished)
