@@ -8,7 +8,6 @@ import (
 	"log/slog"
 	"slices"
 	"strings"
-	"sync"
 
 	"github.com/leg100/pug/internal/module"
 	"github.com/leg100/pug/internal/pubsub"
@@ -17,12 +16,11 @@ import (
 )
 
 type Service struct {
-	modules    *module.Service
-	tasks      *task.Service
-	broker     *pubsub.Broker[*Workspace]
-	workspaces map[resource.ID]*Workspace
-	// Mutex for concurrent read/write of workspaces
-	mu sync.Mutex
+	broker *pubsub.Broker[*Workspace]
+	table  *resource.Table[*Workspace]
+
+	modules *module.Service
+	tasks   *task.Service
 }
 
 type ServiceOptions struct {
@@ -31,11 +29,12 @@ type ServiceOptions struct {
 }
 
 func NewService(ctx context.Context, opts ServiceOptions) *Service {
+	broker := pubsub.NewBroker[*Workspace]()
 	svc := &Service{
-		modules:    opts.ModuleService,
-		tasks:      opts.TaskService,
-		broker:     pubsub.NewBroker[*Workspace](),
-		workspaces: make(map[resource.ID]*Workspace),
+		broker:  broker,
+		table:   resource.NewTable[*Workspace](broker),
+		modules: opts.ModuleService,
+		tasks:   opts.TaskService,
 	}
 	// Load workspaces whenever a module is created.
 	sub, _ := opts.ModuleService.Subscribe(ctx)
@@ -85,12 +84,9 @@ func (s *Service) Reload(module resource.Resource) (*task.Task, error) {
 // workspaces, removing workspaces that no longer exist, and setting the current
 // workspace for the module.
 func (s *Service) resetWorkspaces(module resource.Resource, discovered []string, current string) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
 	// Gather existing workspaces for the module.
 	var existing []*Workspace
-	for _, ws := range s.workspaces {
+	for _, ws := range s.table.List() {
 		if ws.Module().ID == module.ID {
 			existing = append(existing, ws)
 		}
@@ -102,21 +98,19 @@ func (s *Service) resetWorkspaces(module resource.Resource, discovered []string,
 			return ws.String() == name
 		}) {
 			add := New(module, name, false)
-			s.workspaces[add.ID] = add
-			s.broker.Publish(resource.CreatedEvent, add)
+			s.table.Add(add.ID, add)
 			slog.Info("added workspace", "name", name, "module", module)
 		}
 	}
 	// Remove workspaces from pug that no longer exist
 	for _, ws := range existing {
 		if !slices.Contains(discovered, ws.String()) {
-			delete(s.workspaces, ws.ID)
-			s.broker.Publish(resource.DeletedEvent, ws)
+			s.table.Delete(ws.ID)
 			slog.Info("removed workspace", "name", ws.String(), "module", module)
 		}
 	}
 	// Reset current workspace
-	for _, ws := range s.workspaces {
+	for _, ws := range s.table.List() {
 		ws.Current = (ws.String() == current)
 	}
 }
@@ -165,11 +159,7 @@ func (s *Service) Create(path, name string) (*Workspace, *task.Task, error) {
 		Command: []string{"workspace", "new"},
 		Args:    []string{name},
 		AfterExited: func(*task.Task) {
-			s.mu.Lock()
-			s.workspaces[ws.ID] = ws
-			s.mu.Unlock()
-
-			s.broker.Publish(resource.CreatedEvent, ws)
+			s.table.Add(ws.ID, ws)
 		},
 	})
 	if err != nil {
@@ -178,16 +168,8 @@ func (s *Service) Create(path, name string) (*Workspace, *task.Task, error) {
 	return ws, task, nil
 }
 
-// Get a workspace.
-func (s *Service) Get(id resource.ID) (*Workspace, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	ws, ok := s.workspaces[id]
-	if !ok {
-		return nil, resource.ErrNotFound
-	}
-	return ws, nil
+func (s *Service) Get(workspaceID resource.ID) (*Workspace, error) {
+	return s.table.Get(workspaceID)
 }
 
 // Get the current workspace for a module
@@ -195,9 +177,6 @@ func (s *Service) GetCurrent(moduleID resource.ID) (*Workspace, error) {
 	moduleWorkspaces := s.List(ListOptions{
 		ModuleID: &moduleID,
 	})
-
-	s.mu.Lock()
-	defer s.mu.Unlock()
 
 	for _, ws := range moduleWorkspaces {
 		if ws.Current {
@@ -213,11 +192,8 @@ type ListOptions struct {
 }
 
 func (s *Service) List(opts ListOptions) []*Workspace {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
 	var existing []*Workspace
-	for _, ws := range s.workspaces {
+	for _, ws := range s.table.List() {
 		if opts.ModuleID != nil {
 			if ws.Module().ID != *opts.ModuleID {
 				continue
@@ -234,12 +210,9 @@ func (s *Service) Subscribe(ctx context.Context) (<-chan resource.Event[*Workspa
 
 // Delete a workspace. Asynchronous.
 func (s *Service) Delete(id resource.ID) (*task.Task, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	ws, ok := s.workspaces[id]
-	if !ok {
-		return nil, resource.ErrNotFound
+	ws, err := s.table.Get(id)
+	if err != nil {
+		return nil, fmt.Errorf("deleting workspace: %w", err)
 	}
 
 	return s.createTask(ws, task.CreateOptions{
@@ -247,12 +220,30 @@ func (s *Service) Delete(id resource.ID) (*task.Task, error) {
 		Args:     []string{ws.String()},
 		Blocking: true,
 		AfterExited: func(*task.Task) {
-			s.mu.Lock()
-			delete(s.workspaces, id)
-			s.mu.Unlock()
-
-			s.broker.Publish(resource.DeletedEvent, ws)
+			s.table.Delete(ws.ID)
 		},
+	})
+}
+
+func (s *Service) Format(workspaceID resource.ID) (*task.Task, error) {
+	ws, err := s.table.Get(workspaceID)
+	if err != nil {
+		return nil, fmt.Errorf("formatting workspace: %w", err)
+	}
+
+	return s.createTask(ws, task.CreateOptions{
+		Command: []string{"fmt"},
+	})
+}
+
+func (s *Service) Validate(workspaceID resource.ID) (*task.Task, error) {
+	ws, err := s.table.Get(workspaceID)
+	if err != nil {
+		return nil, fmt.Errorf("validating workspace: %w", err)
+	}
+
+	return s.createTask(ws, task.CreateOptions{
+		Command: []string{"validate"},
 	})
 }
 

@@ -2,22 +2,18 @@ package task
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"slices"
-	"sync"
 
 	"github.com/google/uuid"
 	"github.com/leg100/pug/internal/pubsub"
 	"github.com/leg100/pug/internal/resource"
-	"golang.org/x/exp/maps"
 )
 
 type Service struct {
-	// Tasks keyed by ID
-	tasks  map[resource.ID]*Task
+	table  *resource.Table[*Task]
 	broker *pubsub.Broker[*Task]
-	// Mutex for concurrent read/write of tasks
-	mu sync.Mutex
 
 	*factory
 }
@@ -38,12 +34,15 @@ func NewService(ctx context.Context, opts ServiceOptions) *Service {
 	}
 
 	svc := &Service{
+		table:   resource.NewTable[*Task](broker),
 		broker:  broker,
-		tasks:   make(map[resource.ID]*Task),
 		factory: factory,
 	}
 
 	// Start task enqueuer in background
+	//
+	// TODO: move this into separate routing, to allow easy testing of service
+	// (cannot use constructor without startign these daemons).
 	enqueuerSub, _ := broker.Subscribe(ctx)
 	go startEnqueuer(ctx, svc, enqueuerSub)
 
@@ -63,9 +62,7 @@ func (s *Service) Create(opts CreateOptions) (*Task, error) {
 		return nil, err
 	}
 
-	s.mu.Lock()
-	s.tasks[task.ID] = task
-	s.mu.Unlock()
+	s.table.Add(task.ID, task)
 
 	if opts.AfterCreate != nil {
 		opts.AfterCreate(task)
@@ -78,20 +75,16 @@ func (s *Service) Create(opts CreateOptions) (*Task, error) {
 		}
 	}()
 
-	s.broker.Publish(resource.CreatedEvent, task)
 	slog.Info("created task", "task_id", task.ID, "command", task.Command)
 	return task, nil
 }
 
 // Enqueue moves the task onto the global queue for processing.
 func (s *Service) Enqueue(taskID resource.ID) (*Task, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	task, ok := s.tasks[taskID]
-	if !ok {
+	task, err := s.table.Get(taskID)
+	if err != nil {
 		slog.Error("enqueuing task", "error", "task not found", "task_id", taskID.String())
-		return nil, resource.ErrNotFound
+		return nil, fmt.Errorf("enqueuing task: %w", err)
 	}
 
 	task.updateState(Queued)
@@ -120,15 +113,12 @@ type taskLister interface {
 }
 
 func (s *Service) List(opts ListOptions) []*Task {
-	s.mu.Lock()
-	defer s.mu.Unlock()
+	tasks := s.table.List()
 
-	tasks := maps.Values(s.tasks)
-	filtered := make([]*Task, 0, len(tasks))
-
+	// Filter list according to options
+	var i int
 	for _, t := range tasks {
 		if opts.Path != nil && *opts.Path != t.Path {
-			// skip tasks matching different path
 			continue
 		}
 		if opts.Status != nil {
@@ -146,10 +136,13 @@ func (s *Service) List(opts ListOptions) []*Task {
 				continue
 			}
 		}
-		filtered = append(filtered, t)
+		tasks[i] = t
+		i++
 	}
+	tasks = tasks[:i]
 
-	slices.SortFunc(filtered, func(a, b *Task) int {
+	// Sort list according to options
+	slices.SortFunc(tasks, func(a, b *Task) int {
 		cmp := a.Updated.Compare(b.Updated)
 		if opts.Oldest {
 			return cmp
@@ -157,48 +150,30 @@ func (s *Service) List(opts ListOptions) []*Task {
 		return -cmp
 	})
 
-	return filtered
+	return tasks
 }
 
 func (s *Service) Get(taskID resource.ID) (*Task, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	task, ok := s.tasks[taskID]
-	if !ok {
-		return nil, resource.ErrNotFound
-	}
-	return task, nil
+	return s.table.Get(taskID)
 }
 
 func (s *Service) Subscribe(ctx context.Context) (<-chan resource.Event[*Task], func()) {
 	return s.broker.Subscribe(ctx)
 }
 
-func (s *Service) Cancel(id resource.ID) (*Task, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	task, ok := s.tasks[id]
-	if !ok {
-		return nil, resource.ErrNotFound
+func (s *Service) Cancel(taskID resource.ID) (*Task, error) {
+	task, err := s.table.Get(taskID)
+	if err != nil {
+		return nil, fmt.Errorf("canceling task: %w", err)
 	}
+
 	task.cancel()
 	return task, nil
 }
 
-func (s *Service) Delete(id resource.ID) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	// check task exists, and send it in a deleted event.
-	task, ok := s.tasks[id]
-	if !ok {
-		return resource.ErrNotFound
-	}
+func (s *Service) Delete(taskID resource.ID) error {
 	// TODO: only allow deleting task if in finished state (error message should
 	// instruct user to cancel task first).
-	delete(s.tasks, id)
-	s.broker.Publish(resource.DeletedEvent, task)
+	s.table.Delete(taskID)
 	return nil
 }

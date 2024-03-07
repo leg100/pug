@@ -3,23 +3,20 @@ package module
 import (
 	"context"
 	"slices"
-	"sync"
 
 	"github.com/leg100/pug/internal/pubsub"
 	"github.com/leg100/pug/internal/resource"
 	"github.com/leg100/pug/internal/task"
-	"golang.org/x/exp/maps"
 )
 
 type Service struct {
+	table  *resource.Table[*Module]
 	broker *pubsub.Broker[*Module]
-	tasks  *task.Service
+
+	tasks *task.Service
 
 	workdir     string
 	pluginCache bool
-
-	modules map[resource.ID]*Module
-	mu      sync.Mutex
 }
 
 type ServiceOptions struct {
@@ -31,11 +28,11 @@ type ServiceOptions struct {
 func NewService(opts ServiceOptions) *Service {
 	broker := pubsub.NewBroker[*Module]()
 	svc := &Service{
+		table:       resource.NewTable[*Module](broker),
+		broker:      broker,
 		tasks:       opts.TaskService,
 		workdir:     opts.Workdir,
-		broker:      broker,
 		pluginCache: opts.PluginCache,
-		modules:     make(map[resource.ID]*Module),
 	}
 	return svc
 }
@@ -52,20 +49,14 @@ func (s *Service) Reload() error {
 		// Add module if it isn't in pug already
 		if _, err := s.GetByPath(path); err == resource.ErrNotFound {
 			mod := New(path)
-			s.mu.Lock()
-			s.modules[mod.ID] = mod
-			s.mu.Unlock()
-			s.broker.Publish(resource.CreatedEvent, mod)
+			s.table.Add(mod.ID, mod)
 		}
 	}
 
 	// Cleanup existing modules, removing those that are no longer to be found
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	for id, existing := range s.modules {
+	for _, existing := range s.table.List() {
 		if !slices.Contains(found, existing.Path()) {
-			s.broker.Publish(resource.DeletedEvent, existing)
-			delete(s.modules, id)
+			s.table.Delete(existing.ID)
 		}
 	}
 	return nil
@@ -104,28 +95,15 @@ func (s *Service) Init(moduleID resource.ID) (*Module, *task.Task, error) {
 }
 
 func (s *Service) List() []*Module {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	return maps.Values(s.modules)
+	return s.table.List()
 }
 
 func (s *Service) Get(id resource.ID) (*Module, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	mod, ok := s.modules[id]
-	if !ok {
-		return nil, resource.ErrNotFound
-	}
-	return mod, nil
+	return s.table.Get(id)
 }
 
 func (s *Service) GetByPath(path string) (*Module, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	for _, mod := range s.modules {
+	for _, mod := range s.table.List() {
 		if path == mod.Path() {
 			return mod, nil
 		}

@@ -37,8 +37,9 @@ func (r *runner) start(ctx context.Context, sub <-chan resource.Event[*Task]) {
 			waitfn, err := task.start()
 			if err != nil {
 				slog.Error(err.Error())
+			} else {
+				go waitfn()
 			}
-			go waitfn()
 		}
 	}
 }

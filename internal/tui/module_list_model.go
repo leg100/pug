@@ -37,17 +37,17 @@ type moduleListModelMaker struct {
 
 func (m *moduleListModelMaker) makeModel(_ resource.Resource) (common.Model, error) {
 	columns := []table.Column{
-		table.NewColumn(common.ColKeyID, "ID", resource.IDEncodedMaxLen).WithStyle(
+		table.NewFlexColumn(common.ColKeyPath, "PATH", 1).WithStyle(
 			lipgloss.NewStyle().
 				Align(lipgloss.Left),
 		),
-		table.NewFlexColumn(common.ColKeyPath, "PATH", 1).WithStyle(
+		table.NewColumn(common.ColKeyID, "ID", resource.IDEncodedMaxLen).WithStyle(
 			lipgloss.NewStyle().
 				Align(lipgloss.Left),
 		),
 	}
 	return moduleListModel{
-		table:      table.New(columns).Focused(true),
+		table:      table.New(columns).Focused(true).WithFooterVisibility(false),
 		svc:        m.svc,
 		modules:    make(map[resource.ID]*module.Module),
 		workspaces: m.workspaces,

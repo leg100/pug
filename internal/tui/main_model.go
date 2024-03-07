@@ -130,6 +130,10 @@ func (m mainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			cmd := m.updateCurrent(msg)
 			return m, cmd
 		}
+	case tea.MouseMsg:
+		// Send mouse events to current model.
+		cmd := m.updateCurrent(msg)
+		return m, cmd
 	case navigationMsg:
 		created, err := m.setCurrent(msg)
 		if err != nil {

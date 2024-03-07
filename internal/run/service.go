@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"sync"
 
 	"github.com/leg100/pug/internal/module"
 	"github.com/leg100/pug/internal/pubsub"
@@ -15,14 +14,12 @@ import (
 )
 
 type Service struct {
+	table  *resource.Table[*Run]
+	broker *pubsub.Broker[*Run]
+
 	tasks      *task.Service
 	modules    *module.Service
 	workspaces *workspace.Service
-	// Runs keyed by run ID
-	runs map[resource.Resource]*Run
-	// Mutex for concurrent read/write of runs
-	mu     sync.Mutex
-	broker *pubsub.Broker[*Run]
 }
 
 type ServiceOptions struct {
@@ -32,12 +29,13 @@ type ServiceOptions struct {
 }
 
 func NewService(opts ServiceOptions) *Service {
+	broker := pubsub.NewBroker[*Run]()
 	return &Service{
+		table:      resource.NewTable[*Run](broker),
+		broker:     broker,
 		tasks:      opts.TaskService,
 		modules:    opts.ModuleService,
 		workspaces: opts.WorkspaceService,
-		broker:     pubsub.NewBroker[*Run](),
-		runs:       make(map[resource.Resource]*Run),
 	}
 }
 
@@ -84,11 +82,7 @@ func (s *Service) Create(workspaceID resource.ID, opts CreateOptions) (*Run, *ta
 	}
 	run.PlanTask = &task.Resource
 
-	s.mu.Lock()
-	s.runs[run.Resource] = run
-	s.mu.Unlock()
-
-	s.broker.Publish(resource.CreatedEvent, run)
+	s.table.Add(run.ID, run)
 	return run, task, nil
 }
 
@@ -114,7 +108,7 @@ func (s *Service) afterPlan(mod *module.Module, ws *workspace.Workspace, run *Ru
 					return
 				}
 				if run.addPlan(pfile) {
-					if _, _, err := s.Apply(run.Resource); err != nil {
+					if _, _, err := s.Apply(run.ID); err != nil {
 						run.setErrored(err)
 						return
 					}
@@ -129,21 +123,14 @@ func (s *Service) afterPlan(mod *module.Module, ws *workspace.Workspace, run *Ru
 }
 
 // Apply triggers an apply task for a run. The run must be in the planned state.
-func (s *Service) Apply(id resource.Resource) (*Run, *task.Task, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	run, ok := s.runs[id]
-	if !ok {
-		return nil, nil, resource.ErrNotFound
+func (s *Service) Apply(runID resource.ID) (*Run, *task.Task, error) {
+	run, err := s.table.Get(runID)
+	if err != nil {
+		return nil, nil, fmt.Errorf("applying run: %w", err)
 	}
 	ws, err := s.workspaces.Get(run.Workspace().ID)
 	if err != nil {
-		return nil, nil, fmt.Errorf("creating run: %w", err)
-	}
-	mod, err := s.modules.Get(ws.Module().ID)
-	if err != nil {
-		return nil, nil, fmt.Errorf("creating run: %w", err)
+		return nil, nil, fmt.Errorf("applying run: %w", err)
 	}
 
 	if run.Status != Planned {
@@ -151,7 +138,7 @@ func (s *Service) Apply(id resource.Resource) (*Run, *task.Task, error) {
 	}
 	task, err := s.tasks.Create(task.CreateOptions{
 		Parent:  run.Resource,
-		Path:    mod.Path(),
+		Path:    run.ModulePath(),
 		Command: []string{"apply"},
 		Args:    []string{"-input=false", run.PlanPath()},
 		Env:     []string{ws.TerraformEnv()},
@@ -188,15 +175,8 @@ func (s *Service) Apply(id resource.Resource) (*Run, *task.Task, error) {
 	return run, task, nil
 }
 
-func (s *Service) Get(id resource.Resource) (*Run, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	run, ok := s.runs[id]
-	if !ok {
-		return nil, resource.ErrNotFound
-	}
-	return run, nil
+func (s *Service) Get(runID resource.ID) (*Run, error) {
+	return s.table.Get(runID)
 }
 
 type ListOptions struct {
@@ -204,11 +184,8 @@ type ListOptions struct {
 }
 
 func (s *Service) List(opts ListOptions) []*Run {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
 	var runs []*Run
-	for _, run := range s.runs {
+	for _, run := range s.table.List() {
 		if opts.ParentID != nil {
 			if !run.HasAncestor(*opts.ParentID) {
 				continue
@@ -223,20 +200,16 @@ func (s *Service) Subscribe(ctx context.Context) (<-chan resource.Event[*Run], f
 	return s.broker.Subscribe(ctx)
 }
 
-func (s *Service) Delete(id resource.Resource) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	run, ok := s.runs[id]
-	if !ok {
-		return resource.ErrNotFound
+func (s *Service) Delete(id resource.ID) error {
+	run, err := s.table.Get(id)
+	if err != nil {
+		return fmt.Errorf("deleting run: %w", err)
 	}
 
 	if !run.IsFinished() {
 		return fmt.Errorf("cannot delete incomplete run")
 	}
 
-	delete(s.runs, id)
-	s.broker.Publish(resource.DeletedEvent, run)
+	s.table.Delete(id)
 	return nil
 }

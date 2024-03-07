@@ -15,6 +15,8 @@ type keyMap struct {
 	Init       key.Binding
 	Plan       key.Binding
 	Apply      key.Binding
+	Validate   key.Binding
+	Format     key.Binding
 	Cancel     key.Binding
 	ShowState  key.Binding
 	Retry      key.Binding
@@ -57,6 +59,14 @@ var Keys = keyMap{
 	Apply: key.NewBinding(
 		key.WithKeys("a"),
 		key.WithHelp("a", "apply"),
+	),
+	Validate: key.NewBinding(
+		key.WithKeys("v"),
+		key.WithHelp("v", "validate"),
+	),
+	Format: key.NewBinding(
+		key.WithKeys("f"),
+		key.WithHelp("f", "format"),
 	),
 	Cancel: key.NewBinding(
 		key.WithKeys("c"),

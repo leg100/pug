@@ -82,6 +82,14 @@ func (m workspaceListModel) Update(msg tea.Msg) (common.Model, tea.Cmd) {
 			row := m.table.HighlightedRow()
 			ws := row.Data[common.ColKeyData].(*workspace.Workspace)
 			return m, runCmd(m.runs, ws.ID)
+		case key.Matches(msg, common.Keys.Validate):
+			row := m.table.HighlightedRow()
+			ws := row.Data[common.ColKeyData].(*workspace.Workspace)
+			return m, validateCmd(m.svc, ws.ID)
+		case key.Matches(msg, common.Keys.Format):
+			row := m.table.HighlightedRow()
+			ws := row.Data[common.ColKeyData].(*workspace.Workspace)
+			return m, formatCmd(m.svc, ws.ID)
 		}
 	case common.ViewSizeMsg:
 		// Accomodate margin of size 1 on either side
@@ -146,6 +154,30 @@ func runCmd(runs *run.Service, workspaceID resource.ID) tea.Cmd {
 		_, task, err := runs.Create(workspaceID, run.CreateOptions{})
 		if err != nil {
 			return common.NewErrorCmd(err, "creating run")
+		}
+		return navigationMsg{
+			target: page{kind: TaskKind, resource: task.Resource},
+		}
+	}
+}
+
+func validateCmd(workspaces *workspace.Service, workspaceID resource.ID) tea.Cmd {
+	return func() tea.Msg {
+		task, err := workspaces.Validate(workspaceID)
+		if err != nil {
+			return common.NewErrorCmd(err, "creating validate task")
+		}
+		return navigationMsg{
+			target: page{kind: TaskKind, resource: task.Resource},
+		}
+	}
+}
+
+func formatCmd(workspaces *workspace.Service, workspaceID resource.ID) tea.Cmd {
+	return func() tea.Msg {
+		task, err := workspaces.Format(workspaceID)
+		if err != nil {
+			return common.NewErrorCmd(err, "creating format task")
 		}
 		return navigationMsg{
 			target: page{kind: TaskKind, resource: task.Resource},
