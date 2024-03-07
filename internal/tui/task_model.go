@@ -12,6 +12,7 @@ import (
 	"github.com/leg100/pug/internal/resource"
 	"github.com/leg100/pug/internal/task"
 	"github.com/leg100/pug/internal/tui/common"
+	"github.com/muesli/reflow/wordwrap"
 )
 
 type taskModelMaker struct {
@@ -31,7 +32,11 @@ func (m *taskModelMaker) makeModel(taskResource resource.Resource) (common.Model
 	}, nil
 }
 
-type taskOutputMsg string
+type taskOutputMsg struct {
+	taskID resource.ID
+	output string
+	eof    bool
+}
 
 type taskModel struct {
 	svc    *task.Service
@@ -76,10 +81,14 @@ func (m taskModel) Update(msg tea.Msg) (common.Model, tea.Cmd) {
 			// TODO: retry
 		}
 	case taskOutputMsg:
-		m.content += string(msg)
+		if msg.taskID != m.task.ID {
+			return m, nil
+		}
+		m.content += msg.output
+		m.content = wordwrap.String(m.content, m.width)
 		m.viewport.SetContent(m.content)
 		m.viewport.GotoBottom()
-		if !m.task.IsFinished() {
+		if !msg.eof {
 			cmds = append(cmds, m.getOutput)
 		}
 	case resource.Event[*task.Task]:
@@ -139,11 +148,20 @@ func (m taskModel) HelpBindings() (bindings []key.Binding) {
 }
 
 func (m taskModel) getOutput() tea.Msg {
-	out, err := io.ReadAll(m.output)
-	if err != nil {
-		return taskOutputMsg(err.Error())
+	msg := taskOutputMsg{taskID: m.task.ID}
+
+	// read upto 1kb at a time
+	//
+	// TODO: move to field on receiver
+	p := make([]byte, 1024)
+	n, err := m.output.Read(p)
+	if err == io.EOF {
+		msg.eof = true
+	} else if err != nil {
+		return common.NewErrorCmd(err, "reading task output")
 	}
-	return taskOutputMsg(string(out))
+	msg.output = string(p[:n])
+	return msg
 }
 
 func (m taskModel) cancel() tea.Msg {

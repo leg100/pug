@@ -20,10 +20,6 @@ type runner struct {
 	tasks  taskLister
 }
 
-type taskLister interface {
-	List(opts ListOptions) []*Task
-}
-
 func newRunner(maxTasks int, lister taskLister) *runner {
 	return &runner{
 		max:       maxTasks,

@@ -61,9 +61,9 @@ func (s *Service) Create(workspaceID resource.ID, opts CreateOptions) (*Run, *ta
 	}
 	task, err := s.tasks.Create(task.CreateOptions{
 		Parent:  run.Resource,
-		Path:    mod.Path,
+		Path:    mod.Path(),
 		Command: []string{"plan"},
-		Args:    []string{"-input", "false", "-plan", PlanPath(mod, ws, run)},
+		Args:    []string{"-input=false", "-out", run.PlanPath()},
 		Env:     []string{ws.TerraformEnv()},
 		AfterQueued: func(*task.Task) {
 			run.updateStatus(PlanQueued)
@@ -97,9 +97,9 @@ func (s *Service) afterPlan(mod *module.Module, ws *workspace.Workspace, run *Ru
 		// Convert binary plan file to json plan file.
 		_, err := s.tasks.Create(task.CreateOptions{
 			Parent:  run.Resource,
-			Path:    mod.Path,
+			Path:    mod.Path(),
 			Command: []string{"show"},
-			Args:    []string{"-json", PlanPath(mod, ws, run)},
+			Args:    []string{"-json", run.PlanPath()},
 			Env:     []string{ws.TerraformEnv()},
 			AfterError: func(t *task.Task) {
 				run.setErrored(t.Err)
@@ -151,9 +151,9 @@ func (s *Service) Apply(id resource.Resource) (*Run, *task.Task, error) {
 	}
 	task, err := s.tasks.Create(task.CreateOptions{
 		Parent:  run.Resource,
-		Path:    mod.Path,
+		Path:    mod.Path(),
 		Command: []string{"apply"},
-		Args:    []string{"-input", "false", PlanPath(mod, ws, run)},
+		Args:    []string{"-input=false", run.PlanPath()},
 		Env:     []string{ws.TerraformEnv()},
 		AfterQueued: func(*task.Task) {
 			run.updateStatus(ApplyQueued)

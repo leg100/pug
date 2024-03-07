@@ -7,6 +7,7 @@ import (
 	"github.com/evertras/bubble-table/table"
 	"github.com/leg100/pug/internal/module"
 	"github.com/leg100/pug/internal/resource"
+	"github.com/leg100/pug/internal/run"
 	"github.com/leg100/pug/internal/tui/common"
 	"github.com/leg100/pug/internal/workspace"
 	"golang.org/x/exp/maps"
@@ -15,6 +16,7 @@ import (
 type workspaceListModelMaker struct {
 	svc     *workspace.Service
 	modules *module.Service
+	runs    *run.Service
 }
 
 func (m *workspaceListModelMaker) makeModel(parent resource.Resource) (common.Model, error) {
@@ -34,6 +36,7 @@ func (m *workspaceListModelMaker) makeModel(parent resource.Resource) (common.Mo
 		table:      table.New(columns).Focused(true),
 		svc:        m.svc,
 		modules:    m.modules,
+		runs:       m.runs,
 		parent:     parent,
 		workspaces: make(map[resource.ID]*workspace.Workspace, 0),
 	}, nil
@@ -43,6 +46,7 @@ type workspaceListModel struct {
 	table      table.Model
 	svc        *workspace.Service
 	modules    *module.Service
+	runs       *run.Service
 	parent     resource.Resource
 	workspaces map[resource.ID]*workspace.Workspace
 }
@@ -50,24 +54,11 @@ type workspaceListModel struct {
 func (m workspaceListModel) Init() tea.Cmd {
 	return func() tea.Msg {
 		var opts workspace.ListOptions
-		if m.parent != resource.NilResource {
-			opts.ModuleID = &m.parent.ID
-		}
+		//if m.parent != resource.NilResource {
+		//	opts.ModuleID = &m.parent.ID
+		//}
 		return common.BulkInsertMsg[*workspace.Workspace](m.svc.List(opts))
 	}
-}
-
-func (m workspaceListModel) toRows() []table.Row {
-	rows := make([]table.Row, len(m.workspaces))
-	for i, ws := range maps.Values(m.workspaces) {
-		rows[i] = table.NewRow(table.RowData{
-			common.ColKeyID:     ws.ID.String(),
-			common.ColKeyModule: ws.Module().String(),
-			common.ColKeyName:   ws.Workspace().String(),
-			common.ColKeyData:   ws,
-		})
-	}
-	return rows
 }
 
 func (m workspaceListModel) Update(msg tea.Msg) (common.Model, tea.Cmd) {
@@ -87,6 +78,10 @@ func (m workspaceListModel) Update(msg tea.Msg) (common.Model, tea.Cmd) {
 			row := m.table.HighlightedRow()
 			ws := row.Data[common.ColKeyData].(*workspace.Workspace)
 			return m, initCmd(m.modules, ws.Module().ID)
+		case key.Matches(msg, common.Keys.Plan):
+			row := m.table.HighlightedRow()
+			ws := row.Data[common.ColKeyData].(*workspace.Workspace)
+			return m, runCmd(m.runs, ws.ID)
 		}
 	case common.ViewSizeMsg:
 		// Accomodate margin of size 1 on either side
@@ -94,7 +89,6 @@ func (m workspaceListModel) Update(msg tea.Msg) (common.Model, tea.Cmd) {
 		return m, nil
 	case common.BulkInsertMsg[*workspace.Workspace]:
 		// TODO: filter by parent
-		m.workspaces = make(map[resource.ID]*workspace.Workspace, len(msg))
 		for _, ws := range msg {
 			m.workspaces[ws.ID] = ws
 		}
@@ -132,4 +126,29 @@ func (m workspaceListModel) View() string {
 func (m workspaceListModel) HelpBindings() (bindings []key.Binding) {
 	bindings = append(bindings, common.Keys.CloseHelp)
 	return
+}
+
+func (m workspaceListModel) toRows() []table.Row {
+	rows := make([]table.Row, len(m.workspaces))
+	for i, ws := range maps.Values(m.workspaces) {
+		rows[i] = table.NewRow(table.RowData{
+			common.ColKeyID:     ws.ID.String(),
+			common.ColKeyModule: ws.Module().String(),
+			common.ColKeyName:   ws.Workspace().String(),
+			common.ColKeyData:   ws,
+		})
+	}
+	return rows
+}
+
+func runCmd(runs *run.Service, workspaceID resource.ID) tea.Cmd {
+	return func() tea.Msg {
+		_, task, err := runs.Create(workspaceID, run.CreateOptions{})
+		if err != nil {
+			return common.NewErrorCmd(err, "creating run")
+		}
+		return navigationMsg{
+			target: page{kind: TaskKind, resource: task.Resource},
+		}
+	}
 }

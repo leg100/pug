@@ -8,9 +8,10 @@ import (
 // buffer lets downward implementations know when there is a write via a
 // channel, and allows them, via a mutex, to copy bytes from the buffer.
 type buffer struct {
-	buf   *bytes.Buffer
-	avail chan struct{}
-	mu    sync.Mutex
+	buf    *bytes.Buffer
+	avail  chan struct{}
+	closed bool
+	mu     sync.Mutex
 }
 
 func newBuffer() *buffer {
@@ -38,4 +39,5 @@ func (b *buffer) Write(p []byte) (int, error) {
 
 func (b *buffer) Close() {
 	close(b.avail)
+	b.closed = true
 }

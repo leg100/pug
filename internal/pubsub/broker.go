@@ -50,6 +50,10 @@ func (b *Broker[T]) Subscribe(ctx context.Context) (<-chan resource.Event[T], fu
 	return sub, func() { b.unsubscribe(sub) }
 }
 
+// Publish an event to subscribers.
+//
+// TODO: don't forceably unsubscribe full subscribers: subscribers in pug
+// typically aren't setup to re-subscribe
 func (b *Broker[T]) Publish(t resource.EventType, payload T) {
 	var fullSubscribers []chan resource.Event[T]
 

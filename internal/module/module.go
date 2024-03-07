@@ -16,18 +16,19 @@ type Module struct {
 	// Uniquely identifies module
 	resource.Resource
 
-	// Path is the path to the module relative to the pug working directory. The
-	// path also uniquely identifies a module.
-	//
-	// TODO: remove path and instead add a method that extracts path from
-	// resource.Resource above.
-	Path string
+	// Name of its current workspace
+	Current string
 }
 
-func (m *Module) String() string      { return m.Path }
-func (m *Module) Title() string       { return m.Path }
-func (m *Module) Description() string { return m.Path }
-func (m *Module) FilterValue() string { return m.Path }
+// Path is the path to the module relative to the pug working directory. The
+// path also uniquely identifies a module.
+func New(path string) *Module {
+	return &Module{
+		Resource: resource.New(resource.Module, path, nil),
+	}
+}
+
+func (m *Module) Path() string { return m.String() }
 
 // findModules finds root modules that are descendents of the given path and
 // returns their paths. Determining what is a root module is difficult and

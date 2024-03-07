@@ -25,14 +25,6 @@ const (
 	Canceled           Status = "canceled"
 )
 
-func PugDirectory(module *module.Module, ws *workspace.Workspace, run *Run) string {
-	return filepath.Join(workspace.PugDirectory(module.Path, ws.String()), run.String())
-}
-
-func PlanPath(module *module.Module, ws *workspace.Workspace, run *Run) string {
-	return filepath.Join(PugDirectory(module, ws, run), "plan.out")
-}
-
 type Run struct {
 	resource.Resource
 
@@ -70,14 +62,38 @@ func newRun(mod *module.Module, ws *workspace.Workspace, opts CreateOptions) (*R
 		Created:     time.Now(),
 		afterUpdate: opts.afterUpdate,
 	}
-	if err := os.MkdirAll(PugDirectory(mod, ws, run), 0o755); err != nil {
+
+	// create a dedicated pug directory for the run, in which the plan file
+	// goes, etc.
+	pugdir := filepath.Join(run.ModulePath(), run.PugDirectory())
+	if err := os.MkdirAll(pugdir, 0o755); err != nil {
 		return nil, err
 	}
+
 	return run, nil
 }
 
 func (r *Run) Workspace() resource.Resource {
 	return *r.Parent
+}
+
+func (r *Run) Module() resource.Resource {
+	return *r.Workspace().Parent
+}
+
+func (r *Run) ModulePath() string {
+	return r.Module().String()
+}
+
+// PugDirectory is the run's pug directory, relative to the module's directory.
+func (r *Run) PugDirectory() string {
+	return filepath.Join(workspace.PugDirectory(r.Workspace().String()), r.ID.String())
+}
+
+// PlanPath is the path to the run's plan file, relative to the module's
+// directory.
+func (r *Run) PlanPath() string {
+	return filepath.Join(r.PugDirectory(), "plan.out")
 }
 
 func (r *Run) IsFinished() bool {

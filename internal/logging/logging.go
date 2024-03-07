@@ -1,14 +1,16 @@
 package logging
 
 import (
+	"bytes"
 	"context"
-	"encoding/json"
+	"fmt"
 	"io"
 	"os"
 	"time"
 
 	"log/slog"
 
+	"github.com/go-logfmt/logfmt"
 	"github.com/leg100/pug/internal/pubsub"
 	"github.com/leg100/pug/internal/resource"
 )
@@ -20,12 +22,12 @@ var levels = map[string]slog.Level{
 	"error": slog.LevelError,
 }
 
-// Message is the event payload type
+// Message is the event payload for a log message
 type Message struct {
-	Time    time.Time
-	Level   string
-	Message string `json:"msg"`
-	Error   string
+	Time       time.Time
+	Level      string
+	Message    string `json:"msg"`
+	Attributes map[string]string
 }
 
 type Logger struct {
@@ -46,7 +48,7 @@ func NewLogger(level string) *Logger {
 		file:   f,
 	}
 
-	handler := slog.NewJSONHandler(
+	handler := slog.NewTextHandler(
 		logger,
 		&slog.HandlerOptions{
 			Level: slog.Level(levels[level]),
@@ -58,17 +60,39 @@ func NewLogger(level string) *Logger {
 }
 
 func (l *Logger) Write(p []byte) (int, error) {
-	var msg Message
-	if err := json.Unmarshal(p, &msg); err != nil {
-		return 0, err
+	msgs := make([]Message, 0, 1)
+	d := logfmt.NewDecoder(bytes.NewReader(p))
+	for d.ScanRecord() {
+		var msg Message
+		for d.ScanKeyval() {
+			switch string(d.Key()) {
+			case "time":
+				parsed, err := time.Parse(time.RFC3339, string(d.Value()))
+				if err != nil {
+					return 0, fmt.Errorf("parsing time: %w", err)
+				}
+				msg.Time = parsed
+			case "level":
+				msg.Level = string(d.Value())
+			case "msg":
+				msg.Message = string(d.Value())
+			default:
+				if msg.Attributes == nil {
+					msg.Attributes = make(map[string]string)
+				}
+				msg.Attributes[string(d.Key())] = string(d.Value())
+			}
+		}
+		msgs = append(msgs, msg)
+		l.broker.Publish(resource.CreatedEvent, msg)
 	}
-
-	l.Messages = append(l.Messages, msg)
-	l.broker.Publish(resource.CreatedEvent, msg)
+	if d.Err() != nil {
+		return 0, d.Err()
+	}
+	l.Messages = append(l.Messages, msgs...)
 	if _, err := l.file.Write(p); err != nil {
 		return 0, err
 	}
-
 	return len(p), nil
 }
 

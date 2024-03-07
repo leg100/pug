@@ -1,6 +1,8 @@
 package resource
 
 import (
+	"log/slog"
+
 	"github.com/btcsuite/btcutil/base58"
 	"github.com/google/uuid"
 )
@@ -16,6 +18,10 @@ type ID uuid.UUID
 
 func (id ID) String() string {
 	return base58.Encode(id[:])
+}
+
+func (id ID) LogValue() slog.Value {
+	return slog.StringValue(id.String())
 }
 
 func IDFromString(id string) (ID, error) {

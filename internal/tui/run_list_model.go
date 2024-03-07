@@ -28,7 +28,7 @@ func (m *runListModelMaker) makeModel(parent resource.Resource) (common.Model, e
 		table.NewColumn(common.ColKeyModule, "MODULE", 10),
 		table.NewColumn(common.ColKeyWorkspace, "WORKSPACE", 10),
 		table.NewColumn(common.ColKeyStatus, "STATUS", 10),
-		table.NewColumn(common.ColKeyAge, "AGE", 10),
+		table.NewColumn(common.ColKeyAgo, "AGE", 10),
 	}
 	return runListModel{
 		table:  table.New(columns),
@@ -66,7 +66,7 @@ func (m runListModel) toRows() []table.Row {
 			common.ColKeyModule:    run.Module().String(),
 			common.ColKeyWorkspace: run.Workspace().String(),
 			common.ColKeyStatus:    string(run.Status),
-			common.ColKeyAge:       run.Created.Round(time.Second).String(),
+			common.ColKeyAgo:       run.Created.Round(time.Second).String(),
 			common.ColKeyData:      run,
 		})
 	}

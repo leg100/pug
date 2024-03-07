@@ -2,6 +2,7 @@ package task
 
 import (
 	"context"
+	"log/slog"
 	"slices"
 	"sync"
 
@@ -42,15 +43,14 @@ func NewService(ctx context.Context, opts ServiceOptions) *Service {
 		factory: factory,
 	}
 
-	// subscribe to task events
-	sub, _ := broker.Subscribe(ctx)
-
 	// Start task enqueuer in background
-	go startEnqueuer(ctx, svc, sub)
+	enqueuerSub, _ := broker.Subscribe(ctx)
+	go startEnqueuer(ctx, svc, enqueuerSub)
 
 	// Start task runner in background
 	runner := newRunner(opts.MaxTasks, svc)
-	go runner.start(ctx, sub)
+	runnerSub, _ := broker.Subscribe(ctx)
+	go runner.start(ctx, runnerSub)
 
 	return svc
 }
@@ -79,21 +79,24 @@ func (s *Service) Create(opts CreateOptions) (*Task, error) {
 	}()
 
 	s.broker.Publish(resource.CreatedEvent, task)
+	slog.Info("created task", "task_id", task.ID, "command", task.Command)
 	return task, nil
 }
 
 // Enqueue moves the task onto the global queue for processing.
-func (s *Service) Enqueue(id resource.ID) (*Task, error) {
+func (s *Service) Enqueue(taskID resource.ID) (*Task, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	task, ok := s.tasks[id]
+	task, ok := s.tasks[taskID]
 	if !ok {
+		slog.Error("enqueuing task", "error", "task not found", "task_id", taskID.String())
 		return nil, resource.ErrNotFound
 	}
 
 	task.updateState(Queued)
 	s.broker.Publish(resource.UpdatedEvent, task)
+	slog.Info("enqueued task", "task_id", task.ID, "command", task.Command)
 	return task, nil
 }
 
@@ -110,6 +113,10 @@ type ListOptions struct {
 	Blocking bool
 	// Filter tasks by only those that have an ancestor with the given ID.
 	Ancestor resource.ID
+}
+
+type taskLister interface {
+	List(opts ListOptions) []*Task
 }
 
 func (s *Service) List(opts ListOptions) []*Task {

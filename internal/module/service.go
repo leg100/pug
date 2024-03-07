@@ -51,10 +51,7 @@ func (s *Service) Reload() error {
 	for _, path := range found {
 		// Add module if it isn't in pug already
 		if _, err := s.GetByPath(path); err == resource.ErrNotFound {
-			mod := &Module{
-				Resource: resource.New(resource.Module, path, nil),
-				Path:     path,
-			}
+			mod := New(path)
 			s.mu.Lock()
 			s.modules[mod.ID] = mod
 			s.mu.Unlock()
@@ -66,7 +63,7 @@ func (s *Service) Reload() error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	for id, existing := range s.modules {
-		if !slices.Contains(found, existing.Path) {
+		if !slices.Contains(found, existing.Path()) {
 			s.broker.Publish(resource.DeletedEvent, existing)
 			delete(s.modules, id)
 		}
@@ -83,7 +80,7 @@ func (s *Service) Init(moduleID resource.ID) (*Module, *task.Task, error) {
 	// create asynchronous task that runs terraform init
 	tsk, err := s.tasks.Create(task.CreateOptions{
 		Parent:   mod.Resource,
-		Path:     mod.Path,
+		Path:     mod.Path(),
 		Command:  []string{"init"},
 		Args:     []string{"-input=false"},
 		Blocking: true,
@@ -129,7 +126,7 @@ func (s *Service) GetByPath(path string) (*Module, error) {
 	defer s.mu.Unlock()
 
 	for _, mod := range s.modules {
-		if path == mod.Path {
+		if path == mod.Path() {
 			return mod, nil
 		}
 	}

@@ -41,8 +41,7 @@ func (c *cache) updateAll(msg tea.Msg) []tea.Cmd {
 }
 
 func (c *cache) update(key cacheKey, msg tea.Msg) tea.Cmd {
-	v := c.cache[key]
-	updated, cmd := v.Update(msg)
+	updated, cmd := c.cache[key].Update(msg)
 	c.cache[key] = updated
 	return cmd
 }

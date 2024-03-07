@@ -45,14 +45,16 @@ func (m *taskListModelMaker) makeModel(parent resource.Resource) (common.Model, 
 			lipgloss.NewStyle().
 				Align(lipgloss.Left),
 		),
-		table.NewColumn(common.ColKeyAge, "AGE", 10).WithStyle(
+		table.NewColumn(common.ColKeyAgo, "AGE", 10).WithStyle(
 			lipgloss.NewStyle().
 				Align(lipgloss.Left),
 		),
 	}
 
 	return taskListModel{
-		table:  table.New(columns).Focused(true).SortByDesc(common.ColKeyTime),
+		table: table.New(columns).
+			Focused(true).
+			SortByDesc(common.ColKeyTime),
 		svc:    m.svc,
 		parent: parent,
 		tasks:  make(map[resource.ID]*task.Task),
@@ -101,16 +103,13 @@ func (m taskListModel) Update(msg tea.Msg) (common.Model, tea.Cmd) {
 		m.table = m.table.WithTargetWidth(msg.Width - 2)
 		m.table = m.table.WithMinimumHeight(msg.Height)
 	case common.BulkInsertMsg[*task.Task]:
-		m.tasks = make(map[resource.ID]*task.Task, len(msg))
 		for _, run := range msg {
 			m.tasks[run.ID] = run
 		}
 		m.table = m.table.WithRows(m.toRows())
 	case resource.Event[*task.Task]:
 		switch msg.Type {
-		case resource.CreatedEvent:
-			m.tasks[msg.Payload.ID] = msg.Payload
-		case resource.UpdatedEvent:
+		case resource.CreatedEvent, resource.UpdatedEvent:
 			m.tasks[msg.Payload.ID] = msg.Payload
 		case resource.DeletedEvent:
 			delete(m.tasks, msg.Payload.ID)
@@ -151,8 +150,9 @@ func (m taskListModel) toRows() []table.Row {
 			common.ColKeyID:      task.ID.String(),
 			common.ColKeyCommand: strings.Join(task.Command, " "),
 			common.ColKeyStatus:  string(task.State),
-			common.ColKeyAge:     ago(time.Now(), task.Created),
+			common.ColKeyAgo:     ago(time.Now(), task.Updated),
 			common.ColKeyData:    task,
+			common.ColKeyTime:    task.Updated,
 		}
 		if mod := task.Module(); mod != nil {
 			row[common.ColKeyModule] = mod.String()

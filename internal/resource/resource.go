@@ -1,6 +1,8 @@
 package resource
 
 import (
+	"log/slog"
+
 	"github.com/btcsuite/btcutil/base58"
 	"github.com/google/uuid"
 )
@@ -73,4 +75,8 @@ func (r Resource) Workspace() *Resource {
 		}
 	}
 	return nil
+}
+
+func (r Resource) LogValue() slog.Value {
+	return slog.StringValue(r.String())
 }

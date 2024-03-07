@@ -88,33 +88,33 @@ func Start() error {
 	)
 
 	// Relay resource events to TUI.
+	logEvents, _ := logger.Subscribe(ctx)
 	go func() {
-		events, _ := logger.Subscribe(ctx)
-		for ev := range events {
+		for ev := range logEvents {
 			p.Send(ev)
 		}
 	}()
+	modEvents, _ := modules.Subscribe(ctx)
 	go func() {
-		events, _ := modules.Subscribe(ctx)
-		for ev := range events {
+		for ev := range modEvents {
 			p.Send(ev)
 		}
 	}()
+	wsEvents, _ := workspaces.Subscribe(ctx)
 	go func() {
-		events, _ := workspaces.Subscribe(ctx)
-		for ev := range events {
+		for ev := range wsEvents {
 			p.Send(ev)
 		}
 	}()
+	runEvents, _ := runs.Subscribe(ctx)
 	go func() {
-		events, _ := runs.Subscribe(ctx)
-		for ev := range events {
+		for ev := range runEvents {
 			p.Send(ev)
 		}
 	}()
+	taskEvents, _ := tasks.Subscribe(ctx)
 	go func() {
-		events, _ := tasks.Subscribe(ctx)
-		for ev := range events {
+		for ev := range taskEvents {
 			p.Send(ev)
 		}
 	}()

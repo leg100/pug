@@ -17,7 +17,7 @@ func TestBuffer_singleRead(t *testing.T) {
 
 	got := make([]byte, len("hello world"))
 	_, err = r.Read(got)
-	require.Equal(t, io.EOF, err)
+	require.NoError(t, err)
 	assert.Equal(t, "hello world", string(got))
 }
 
@@ -39,6 +39,9 @@ func TestBuffer_multiRead(t *testing.T) {
 	assert.Equal(t, 5, n)
 	assert.Equal(t, " worl", string(got))
 
+	// mimic task completion
+	buf.Close()
+
 	got = make([]byte, 5)
 	n, err = r.Read(got)
 	require.Equal(t, io.EOF, err)
@@ -54,6 +57,9 @@ func TestBuffer_multiWrite(t *testing.T) {
 
 	_, err = buf.Write([]byte(" world"))
 	require.NoError(t, err)
+
+	// mimic task completion
+	buf.Close()
 
 	got := make([]byte, 13)
 	n, err := r.Read(got)
@@ -95,6 +101,9 @@ func TestBuffer_blockRead(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, 5, n)
 	assert.Equal(t, " worl", string(got))
+
+	// mimic task completion
+	buf.Close()
 
 	got = make([]byte, 5)
 	n, err = r.Read(got)

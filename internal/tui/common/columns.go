@@ -10,7 +10,7 @@ const (
 	ColKeyModule    = "module"
 	ColKeyWorkspace = "workspace"
 	ColKeyStatus    = "status"
-	ColKeyAge       = "age"
+	ColKeyAgo       = "ago"
 	ColKeyCommand   = "command"
 	ColKeyData      = "data"
 )

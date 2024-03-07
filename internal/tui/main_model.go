@@ -1,16 +1,15 @@
 package tui
 
 import (
-	"fmt"
 	"os"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/davecgh/go-spew/spew"
 	"github.com/leg100/pug/internal/logging"
 	"github.com/leg100/pug/internal/module"
-	"github.com/leg100/pug/internal/resource"
 	"github.com/leg100/pug/internal/run"
 	"github.com/leg100/pug/internal/task"
 	"github.com/leg100/pug/internal/tui/common"
@@ -54,6 +53,7 @@ func New(opts Options) (mainModel, error) {
 		WorkspaceListKind: &workspaceListModelMaker{
 			svc:     opts.WorkspaceService,
 			modules: opts.ModuleService,
+			runs:    opts.RunService,
 		},
 		RunListKind: &runListModelMaker{
 			svc:   opts.RunService,
@@ -88,16 +88,13 @@ func (m mainModel) Init() tea.Cmd {
 func (m mainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmds []tea.Cmd
 
-	fmt.Fprintf(m.dump, "%#v\n", msg)
+	spew.Fdump(m.dump, msg)
 
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
-		cmds = append(cmds, m.resizeCmd)
-	case resource.Event[any], common.ViewSizeMsg:
-		// Send resource and view resize events to all cached models
-		cmds = append(cmds, m.cache.updateAll(msg)...)
+		return m, m.resizeCmd
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, common.Keys.Quit):
@@ -128,6 +125,10 @@ func (m mainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, common.Keys.Tasks):
 			// 'T' lists all tasks
 			return m, navigate(page{kind: TaskListKind})
+		default:
+			// Send other keys to current model.
+			cmd := m.updateCurrent(msg)
+			return m, cmd
 		}
 	case navigationMsg:
 		created, err := m.setCurrent(msg)
@@ -135,12 +136,14 @@ func (m mainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, common.NewErrorCmd(err, "setting current page")
 		}
 		if created {
-			cmds = append(cmds, m.currentModel().Init(), m.resizeCmd)
+			return m, tea.Batch(m.currentModel().Init(), m.resizeCmd)
 		}
+	default:
+		// Send remaining msg types to all cached models
+		cmds = append(cmds, m.cache.updateAll(msg)...)
+		return m, tea.Batch(cmds...)
 	}
-	// Send messages to current model
-	cmd := m.updateCurrent(msg)
-	return m, tea.Batch(append(cmds, cmd)...)
+	return m, nil
 }
 
 func (m mainModel) View() string {
@@ -167,15 +170,18 @@ func (m mainModel) View() string {
 
 	rows := []string{
 		m.header(),
+		// breadcrumbs
 		lipgloss.JoinHorizontal(
 			lipgloss.Top,
 			"─",
 			top,
 			strings.Repeat("─", max(0, m.width-topWidth)),
 		),
+		// content
 		common.Regular.Copy().
 			Height(m.viewHeight()).
 			Width(m.viewWidth()).
+			//MaxHeight(m.viewHeight()).
 			Render(content),
 	}
 	return lipgloss.JoinVertical(lipgloss.Top, rows...)

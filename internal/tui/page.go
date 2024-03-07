@@ -11,7 +11,6 @@ const (
 	TaskListKind
 	TaskKind
 	LogsKind
-	HelpKind
 )
 
 // page identifies an instance of a model

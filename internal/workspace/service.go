@@ -62,6 +62,7 @@ func (s *Service) Reload(module resource.Resource) (*task.Task, error) {
 		Command: []string{"workspace", "list"},
 		AfterError: func(t *task.Task) {
 			// TODO: log error and prune workspaces
+			slog.Error("workspace list task failed", "status", t.State)
 		},
 		AfterExited: func(t *task.Task) {
 			found, current, err := parseList(t.NewReader())
@@ -69,6 +70,7 @@ func (s *Service) Reload(module resource.Resource) (*task.Task, error) {
 				slog.Error("reloading workspaces", "error", err, "module", module)
 				return
 			}
+			slog.Info("found workspaces", "found", found, "current", current)
 			s.resetWorkspaces(module, found, current)
 		},
 	})
@@ -99,9 +101,10 @@ func (s *Service) resetWorkspaces(module resource.Resource, discovered []string,
 		if !slices.ContainsFunc(existing, func(ws *Workspace) bool {
 			return ws.String() == name
 		}) {
-			add := newWorkspace(module, name, false)
+			add := New(module, name, false)
 			s.workspaces[add.ID] = add
 			s.broker.Publish(resource.CreatedEvent, add)
+			slog.Info("added workspace", "name", name, "module", module)
 		}
 	}
 	// Remove workspaces from pug that no longer exist
@@ -109,6 +112,7 @@ func (s *Service) resetWorkspaces(module resource.Resource, discovered []string,
 		if !slices.Contains(discovered, ws.String()) {
 			delete(s.workspaces, ws.ID)
 			s.broker.Publish(resource.DeletedEvent, ws)
+			slog.Info("removed workspace", "name", ws.String(), "module", module)
 		}
 	}
 	// Reset current workspace
@@ -155,7 +159,7 @@ func (s *Service) Create(path, name string) (*Workspace, *task.Task, error) {
 	}
 	// `terraform workspace new` below implicitly makes the created workspace
 	// the *current* workspace.
-	ws := newWorkspace(mod.Resource, name, true)
+	ws := New(mod.Resource, name, true)
 
 	task, err := s.createTask(ws, task.CreateOptions{
 		Command: []string{"workspace", "new"},
@@ -258,6 +262,6 @@ func (s *Service) createTask(ws *Workspace, opts task.CreateOptions) (*task.Task
 		return nil, err
 	}
 	opts.Parent = ws.Resource
-	opts.Path = mod.Path
+	opts.Path = mod.Path()
 	return s.tasks.Create(opts)
 }

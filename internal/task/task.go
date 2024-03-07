@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"os"
 	"os/exec"
 	"sync"
@@ -92,9 +93,10 @@ type CreateOptions struct {
 }
 
 func (f *factory) newTask(opts CreateOptions) (*Task, error) {
+	res := resource.New(resource.Task, "", &opts.Parent)
 	return &Task{
 		State:         Pending,
-		Resource:      resource.New(resource.Task, "", &opts.Parent),
+		Resource:      res,
 		Created:       time.Now(),
 		Updated:       time.Now(),
 		finished:      make(chan struct{}),
@@ -229,24 +231,31 @@ func (t *Task) updateState(state Status) {
 			t.AfterRunning(t)
 		}
 	case Canceled:
+		t.cleanup()
 		if t.AfterCanceled != nil {
 			t.AfterCanceled(t)
 		}
-		close(t.finished)
 	case Errored:
+		t.cleanup()
 		if t.AfterError != nil {
 			t.AfterError(t)
 		}
-		close(t.finished)
 	case Exited:
+		t.cleanup()
 		if t.AfterExited != nil {
 			t.AfterExited(t)
 		}
-		close(t.finished)
 	}
+
+	slog.Info("updated task state", "task_id", t.ID, "command", t.Command, "state", t.State)
 }
 
 func (t *Task) setErrored(err error) {
 	t.Err = err
 	t.updateState(Errored)
+}
+
+func (t *Task) cleanup() {
+	t.buf.Close()
+	close(t.finished)
 }
