@@ -2,6 +2,7 @@ package module
 
 import (
 	"context"
+	"fmt"
 	"slices"
 
 	"github.com/leg100/pug/internal/pubsub"
@@ -66,7 +67,7 @@ func (s *Service) Reload() error {
 func (s *Service) Init(moduleID resource.ID) (*Module, *task.Task, error) {
 	mod, err := s.Get(moduleID)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("initializing module: %w", err)
 	}
 	// create asynchronous task that runs terraform init
 	tsk, err := s.tasks.Create(task.CreateOptions{
@@ -113,4 +114,14 @@ func (s *Service) GetByPath(path string) (*Module, error) {
 
 func (s *Service) Subscribe(ctx context.Context) (<-chan resource.Event[*Module], func()) {
 	return s.broker.Subscribe(ctx)
+}
+
+func (s *Service) SetCurrent(moduleID resource.ID, workspace string) error {
+	err := s.table.Update(moduleID, func(existing *Module) {
+		existing.Current = workspace
+	})
+	if err != nil {
+		return fmt.Errorf("setting current workspace for module: %w", err)
+	}
+	return nil
 }

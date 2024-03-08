@@ -97,7 +97,7 @@ func (s *Service) resetWorkspaces(module resource.Resource, discovered []string,
 		if !slices.ContainsFunc(existing, func(ws *Workspace) bool {
 			return ws.String() == name
 		}) {
-			add := New(module, name, false)
+			add := New(module, name)
 			s.table.Add(add.ID, add)
 			slog.Info("added workspace", "name", name, "module", module)
 		}
@@ -110,9 +110,7 @@ func (s *Service) resetWorkspaces(module resource.Resource, discovered []string,
 		}
 	}
 	// Reset current workspace
-	for _, ws := range s.table.List() {
-		ws.Current = (ws.String() == current)
-	}
+	s.modules.SetCurrent(module.ID, current)
 }
 
 // Parse workspaces from the output of `terraform workspace list`.
@@ -151,15 +149,18 @@ func (s *Service) Create(path, name string) (*Workspace, *task.Task, error) {
 	if err != nil {
 		return nil, nil, fmt.Errorf("checking for module: %s: %w", path, err)
 	}
-	// `terraform workspace new` below implicitly makes the created workspace
-	// the *current* workspace.
-	ws := New(mod.Resource, name, true)
+	ws := New(mod.Resource, name)
 
 	task, err := s.createTask(ws, task.CreateOptions{
 		Command: []string{"workspace", "new"},
 		Args:    []string{name},
 		AfterExited: func(*task.Task) {
 			s.table.Add(ws.ID, ws)
+			// `workspace new` implicitly makes the created workspace the
+			// *current* workspace, so better tell pug that too.
+			if err := s.modules.SetCurrent(mod.ID, name); err != nil {
+				slog.Error("creating workspace: %w", err)
+			}
 		},
 	})
 	if err != nil {
@@ -170,21 +171,6 @@ func (s *Service) Create(path, name string) (*Workspace, *task.Task, error) {
 
 func (s *Service) Get(workspaceID resource.ID) (*Workspace, error) {
 	return s.table.Get(workspaceID)
-}
-
-// Get the current workspace for a module
-func (s *Service) GetCurrent(moduleID resource.ID) (*Workspace, error) {
-	moduleWorkspaces := s.List(ListOptions{
-		ModuleID: &moduleID,
-	})
-
-	for _, ws := range moduleWorkspaces {
-		if ws.Current {
-			return ws, nil
-		}
-	}
-	// Should never happen.
-	return nil, resource.ErrNotFound
 }
 
 type ListOptions struct {
