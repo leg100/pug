@@ -13,6 +13,8 @@ import (
 	"github.com/leg100/pug/internal/tui/common"
 )
 
+var defaultHighlightStyle = lipgloss.NewStyle().Background(lipgloss.Color("#334"))
+
 type logsModelMaker struct {
 	logger *logging.Logger
 }
@@ -38,6 +40,33 @@ func (m *logsModelMaker) makeModel(taskResource resource.Resource) (common.Model
 			Focused(true).
 			WithMultiline(false).
 			SortByDesc(common.ColKeyTime).
+			WithHeaderVisibility(true).
+			WithFooterVisibility(false).
+			HighlightStyle(lipgloss.NewStyle().
+				Foreground(lipgloss.Color("#fff")).
+				Background(lipgloss.Color("#334")),
+			).
+			Border(
+				table.Border{
+					Top:    " ",
+					Left:   " ",
+					Right:  " ",
+					Bottom: " ",
+
+					TopRight:    " ",
+					TopLeft:     " ",
+					BottomRight: " ",
+					BottomLeft:  " ",
+
+					TopJunction:    " ",
+					LeftJunction:   " ",
+					RightJunction:  " ",
+					BottomJunction: " ",
+					InnerJunction:  " ",
+
+					InnerDivider: " ",
+				},
+			).
 			WithPaginationWrapping(false),
 	}, nil
 }

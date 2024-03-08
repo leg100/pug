@@ -8,7 +8,9 @@ import (
 type Model interface {
 	Init() tea.Cmd
 	Update(tea.Msg) (Model, tea.Cmd)
-	// Title is the text to render in the title bar at the top of the screen.
+	// Title is the single line bar that separates the header from the content.
+	//
+	// TODO: rename to breadcrumbs
 	Title() string
 	View() string
 	// HelpBindings are those bindings that help should show when this model is

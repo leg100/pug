@@ -119,7 +119,7 @@ func (m taskModel) Title() string {
 func (m taskModel) View() string {
 	status := lipgloss.NewStyle().
 		Background(lipgloss.Color("#353533")).
-		Foreground(common.White).
+		Foreground(White).
 		Padding(0, 1).
 		Render(strings.ToUpper(string((m.task.State))))
 
@@ -132,8 +132,8 @@ func (m taskModel) View() string {
 			lipgloss.Left,
 			status,
 			lipgloss.NewStyle().
-				Background(common.DarkGrey).
-				Foreground(common.White).
+				Background(DarkGrey).
+				Foreground(White).
 				Width(m.width-common.Width(status)).
 				Align(lipgloss.Right).
 				Padding(0, 1).

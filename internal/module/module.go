@@ -13,7 +13,6 @@ import (
 )
 
 type Module struct {
-	// Uniquely identifies module
 	resource.Resource
 
 	// Name of its current workspace

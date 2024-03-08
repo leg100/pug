@@ -166,8 +166,8 @@ func (m mainModel) View() string {
 
 	top := lipgloss.NewStyle().
 		Bold(true).
-		Background(lipgloss.Color(common.DarkGrey)).
-		Foreground(common.White).
+		Background(lipgloss.Color(DarkGrey)).
+		Foreground(White).
 		Padding(0, 1).
 		Render(title)
 	topWidth := lipgloss.Width(top)
@@ -200,7 +200,7 @@ var (
 	renderedLogo = common.Bold.
 			Copy().
 			Padding(0, 1).
-			Foreground(common.Pink).
+			Foreground(Pink).
 			Render(logo)
 	logoWidth = lipgloss.Width(renderedLogo)
 )

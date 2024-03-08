@@ -8,6 +8,7 @@ import (
 	"github.com/leg100/pug/internal/module"
 	"github.com/leg100/pug/internal/resource"
 	"github.com/leg100/pug/internal/run"
+	"github.com/leg100/pug/internal/task"
 	"github.com/leg100/pug/internal/tui/common"
 	"github.com/leg100/pug/internal/workspace"
 	"golang.org/x/exp/maps"
@@ -20,20 +21,21 @@ type workspaceListModelMaker struct {
 }
 
 func (m *workspaceListModelMaker) makeModel(parent resource.Resource) (common.Model, error) {
-	// TODO: depending upon kind of parent, hide certain redundant columns, e.g.
-	// a module parent kind would render the module column redundant.
-	columns := []table.Column{
-		table.NewFlexColumn(common.ColKeyModule, "MODULE", 1).WithStyle(
+	var cols []table.Column
+	if parent == resource.NilResource {
+		// TODO: depending upon kind of parent, hide certain redundant columns, e.g.
+		// a module parent kind would render the module column redundant.
+		cols = append(cols, table.NewFlexColumn(common.ColKeyModule, "MODULE", 1).WithStyle(
 			lipgloss.NewStyle().
 				Align(lipgloss.Left),
-		),
-		table.NewFlexColumn(common.ColKeyName, "NAME", 2).WithStyle(
-			lipgloss.NewStyle().
-				Align(lipgloss.Left),
-		),
+		))
 	}
+	cols = append(cols, table.NewFlexColumn(common.ColKeyName, "NAME", 2).WithStyle(
+		lipgloss.NewStyle().
+			Align(lipgloss.Left),
+	))
 	return workspaceListModel{
-		table:      table.New(columns).Focused(true),
+		table:      table.New(cols).Focused(true),
 		svc:        m.svc,
 		modules:    m.modules,
 		runs:       m.runs,
@@ -54,9 +56,9 @@ type workspaceListModel struct {
 func (m workspaceListModel) Init() tea.Cmd {
 	return func() tea.Msg {
 		var opts workspace.ListOptions
-		//if m.parent != resource.NilResource {
-		//	opts.ModuleID = &m.parent.ID
-		//}
+		if m.parent != resource.NilResource {
+			opts.ModuleID = &m.parent.ID
+		}
 		return common.BulkInsertMsg[*workspace.Workspace](m.svc.List(opts))
 	}
 }
@@ -77,7 +79,10 @@ func (m workspaceListModel) Update(msg tea.Msg) (common.Model, tea.Cmd) {
 		case key.Matches(msg, common.Keys.Init):
 			row := m.table.HighlightedRow()
 			ws := row.Data[common.ColKeyData].(*workspace.Workspace)
-			return m, initCmd(m.modules, ws.Module().ID)
+			return m, moduleCmd(func(id resource.ID) (*task.Task, error) {
+				_, task, err := m.modules.Init(id)
+				return task, err
+			}, ws.Module().ID)
 		case key.Matches(msg, common.Keys.Plan):
 			row := m.table.HighlightedRow()
 			ws := row.Data[common.ColKeyData].(*workspace.Workspace)
@@ -123,7 +128,9 @@ func (m workspaceListModel) Update(msg tea.Msg) (common.Model, tea.Cmd) {
 }
 
 func (m workspaceListModel) Title() string {
-	// TODO: add optional module
+	if m.parent != resource.NilResource {
+		return m.parent.String() + " | workspaces"
+	}
 	return "workspaces"
 }
 
@@ -139,12 +146,17 @@ func (m workspaceListModel) HelpBindings() (bindings []key.Binding) {
 func (m workspaceListModel) toRows() []table.Row {
 	rows := make([]table.Row, len(m.workspaces))
 	for i, ws := range maps.Values(m.workspaces) {
-		rows[i] = table.NewRow(table.RowData{
-			common.ColKeyID:     ws.ID.String(),
-			common.ColKeyModule: ws.Module().String(),
-			common.ColKeyName:   ws.Workspace().String(),
-			common.ColKeyData:   ws,
-		})
+		data := table.RowData{
+			common.ColKeyID:   ws.ID.String(),
+			common.ColKeyName: ws.Workspace().String(),
+			common.ColKeyData: ws,
+		}
+		// Only show module column if workspaces are not filtered by a parent
+		// module.
+		if m.parent == resource.NilResource {
+			data[common.ColKeyModule] = ws.Module().String()
+		}
+		rows[i] = table.NewRow(data)
 	}
 	return rows
 }

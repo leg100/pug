@@ -25,6 +25,7 @@ type keyMap struct {
 	Enter      key.Binding
 	Help       key.Binding
 	CloseHelp  key.Binding
+	SelectAll  key.Binding
 }
 
 var Keys = keyMap{
@@ -99,6 +100,10 @@ var Keys = keyMap{
 	CloseHelp: key.NewBinding(
 		key.WithKeys("?"),
 		key.WithHelp("?", "close help"),
+	),
+	SelectAll: key.NewBinding(
+		key.WithKeys("ctrl+a"),
+		key.WithHelp("ctrl+a", "select all"),
 	),
 }
 
