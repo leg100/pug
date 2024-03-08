@@ -9,7 +9,7 @@ import (
 // Table is an in-memory database table that emits events upon changes.
 type Table[T any] struct {
 	rows map[ID]T
-	mu   sync.Mutex
+	mu   sync.RWMutex
 
 	pub Publisher[T]
 }
@@ -33,12 +33,20 @@ func (t *Table[T]) Add(id ID, row T) {
 	t.pub.Publish(CreatedEvent, row)
 }
 
-func (t *Table[T]) Update(id ID, row T) {
+func (t *Table[T]) Update(id ID, updater func(existing T)) error {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
+	// Retrieve row and update
+	row, ok := t.rows[id]
+	if !ok {
+		return ErrNotFound
+	}
+	updater(row)
 	t.rows[id] = row
+
 	t.pub.Publish(UpdatedEvent, row)
+	return nil
 }
 
 func (t *Table[T]) Delete(id ID) {
@@ -51,8 +59,8 @@ func (t *Table[T]) Delete(id ID) {
 }
 
 func (t *Table[T]) Get(id ID) (T, error) {
-	t.mu.Lock()
-	defer t.mu.Unlock()
+	t.mu.RLock()
+	defer t.mu.RUnlock()
 
 	row, ok := t.rows[id]
 	if !ok {
@@ -62,8 +70,8 @@ func (t *Table[T]) Get(id ID) (T, error) {
 }
 
 func (t *Table[T]) List() []T {
-	t.mu.Lock()
-	defer t.mu.Unlock()
+	t.mu.RLock()
+	defer t.mu.RUnlock()
 
 	return maps.Values(t.rows)
 }
