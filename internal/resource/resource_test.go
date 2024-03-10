@@ -13,7 +13,7 @@ func TestResource(t *testing.T) {
 	task := New(Task, "", &run)
 
 	t.Run("string", func(t *testing.T) {
-		assert.Equal(t, task.ID.String(), task.String())
+		assert.Equal(t, task.id.String(), task.String())
 		assert.Equal(t, "dev", ws.String())
 	})
 
@@ -27,8 +27,8 @@ func TestResource(t *testing.T) {
 	})
 
 	t.Run("has ancestor", func(t *testing.T) {
-		assert.True(t, task.HasAncestor(mod.ID))
-		assert.False(t, mod.HasAncestor(task.ID))
+		assert.True(t, task.HasAncestor(mod.ID()()))
+		assert.False(t, mod.HasAncestor(task.ID()()))
 	})
 
 	t.Run("module", func(t *testing.T) {

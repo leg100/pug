@@ -54,11 +54,11 @@ func TestService_List(t *testing.T) {
 			svc := &Service{
 				table: resource.NewTable(&fakePublisher[*Task]{}),
 			}
-			svc.table.Add(pending.ID, pending)
-			svc.table.Add(queued.ID, queued)
-			svc.table.Add(running.ID, running)
-			svc.table.Add(exited.ID, exited)
-			svc.table.Add(errored.ID, errored)
+			svc.table.Add(pending.ID(), pending)
+			svc.table.Add(queued.ID(), queued)
+			svc.table.Add(running.ID(), running)
+			svc.table.Add(exited.ID(), exited)
+			svc.table.Add(errored.ID(), errored)
 
 			tt.want(t, svc.List(tt.opts))
 		})

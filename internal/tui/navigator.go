@@ -3,9 +3,9 @@ package tui
 import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/leg100/pug/internal/resource"
-	"github.com/leg100/pug/internal/tui/common"
 )
 
+// navigationMsg is an instruction to traverse to a page.
 type navigationMsg struct {
 	target page
 }
@@ -16,8 +16,11 @@ func navigate(target page) tea.Cmd {
 	}
 }
 
+// currentMsg informs a model that it is now the current model.
+type currentMsg struct{}
+
 type maker interface {
-	makeModel(target resource.Resource) (common.Model, error)
+	makeModel(target resource.Resource) (Model, error)
 }
 
 // navigator traverses the user from page to page, creating and caching the
@@ -35,7 +38,7 @@ func newNavigator(start modelKind, makers map[modelKind]maker) (*navigator, erro
 	n := &navigator{
 		makers: makers,
 		cache: &cache{
-			cache: make(map[cacheKey]common.Model),
+			cache: make(map[cacheKey]Model),
 		},
 	}
 	// ignore returned init cmd; instead the main model should invoke it
@@ -50,7 +53,7 @@ func (n *navigator) currentPage() page {
 	return n.history[len(n.history)-1]
 }
 
-func (n *navigator) currentModel() common.Model {
+func (n *navigator) currentModel() Model {
 	return n.cache.get(n.currentPage())
 }
 

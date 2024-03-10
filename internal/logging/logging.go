@@ -11,6 +11,7 @@ import (
 	"log/slog"
 
 	"github.com/go-logfmt/logfmt"
+	"github.com/google/uuid"
 	"github.com/leg100/pug/internal/pubsub"
 	"github.com/leg100/pug/internal/resource"
 )
@@ -28,6 +29,19 @@ type Message struct {
 	Level      string
 	Message    string `json:"msg"`
 	Attributes map[string]string
+
+	// id uniquely identifies the log message.
+	id resource.ID
+}
+
+func (r Message) ID() resource.ID {
+	return r.id
+}
+
+// HasAncestor is only implemented in order to satisfy the tableItem interface
+// used in the tui table
+func (r Message) HasAncestor(id resource.ID) bool {
+	return true
 }
 
 type Logger struct {
@@ -63,7 +77,9 @@ func (l *Logger) Write(p []byte) (int, error) {
 	msgs := make([]Message, 0, 1)
 	d := logfmt.NewDecoder(bytes.NewReader(p))
 	for d.ScanRecord() {
-		var msg Message
+		msg := Message{
+			id: resource.ID(uuid.New()),
+		}
 		for d.ScanKeyval() {
 			switch string(d.Key()) {
 			case "time":

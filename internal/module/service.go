@@ -50,29 +50,27 @@ func (s *Service) Reload() error {
 		// Add module if it isn't in pug already
 		if _, err := s.GetByPath(path); err == resource.ErrNotFound {
 			mod := New(path)
-			s.table.Add(mod.ID, mod)
+			s.table.Add(mod.ID(), mod)
 		}
 	}
 
 	// Cleanup existing modules, removing those that are no longer to be found
 	for _, existing := range s.table.List() {
 		if !slices.Contains(found, existing.Path()) {
-			s.table.Delete(existing.ID)
+			s.table.Delete(existing.ID())
 		}
 	}
 	return nil
 }
 
 // Init invokes terraform init on the module.
-func (s *Service) Init(moduleID resource.ID) (*Module, *task.Task, error) {
+func (s *Service) Init(moduleID resource.ID) (*task.Task, error) {
 	mod, err := s.Get(moduleID)
 	if err != nil {
-		return nil, nil, fmt.Errorf("initializing module: %w", err)
+		return nil, fmt.Errorf("initializing module: %w", err)
 	}
 	// create asynchronous task that runs terraform init
-	tsk, err := s.tasks.Create(task.CreateOptions{
-		Parent:   mod.Resource,
-		Path:     mod.Path(),
+	tsk, err := s.createTask(mod, task.CreateOptions{
 		Command:  []string{"init"},
 		Args:     []string{"-input=false"},
 		Blocking: true,
@@ -90,9 +88,9 @@ func (s *Service) Init(moduleID resource.ID) (*Module, *task.Task, error) {
 		},
 	})
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
-	return mod, tsk, nil
+	return tsk, nil
 }
 
 func (s *Service) List() []*Module {
@@ -124,4 +122,32 @@ func (s *Service) SetCurrent(moduleID resource.ID, workspace string) error {
 		return fmt.Errorf("setting current workspace for module: %w", err)
 	}
 	return nil
+}
+
+func (s *Service) Format(moduleID resource.ID) (*task.Task, error) {
+	ws, err := s.table.Get(moduleID)
+	if err != nil {
+		return nil, fmt.Errorf("formatting module: %w", err)
+	}
+
+	return s.createTask(ws, task.CreateOptions{
+		Command: []string{"fmt"},
+	})
+}
+
+func (s *Service) Validate(moduleID resource.ID) (*task.Task, error) {
+	ws, err := s.table.Get(moduleID)
+	if err != nil {
+		return nil, fmt.Errorf("validating module: %w", err)
+	}
+
+	return s.createTask(ws, task.CreateOptions{
+		Command: []string{"validate"},
+	})
+}
+
+func (s *Service) createTask(mod *Module, opts task.CreateOptions) (*task.Task, error) {
+	opts.Parent = mod.Resource
+	opts.Path = mod.Path()
+	return s.tasks.Create(opts)
 }

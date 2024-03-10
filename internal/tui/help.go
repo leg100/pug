@@ -6,7 +6,6 @@ import (
 
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/leg100/pug/internal/tui/common"
 )
 
 func RenderShort(current []key.Binding) string {
@@ -19,8 +18,8 @@ func renderHelp(bindings []key.Binding, rows int) string {
 		// the number of pairs of columns is determined by the number of
 		// bindings and the number of rows.
 		cols      = make([]string, 2*int(math.Ceil(float64(len(bindings))/float64(rows))))
-		keyStyle  = common.Regular.Copy().Bold(true).Align(lipgloss.Right).Margin(0, 1, 0, 2)
-		descStyle = common.Regular.Copy().Align(lipgloss.Left)
+		keyStyle  = Regular.Copy().Bold(true).Align(lipgloss.Right).Margin(0, 1, 0, 2)
+		descStyle = Regular.Copy().Align(lipgloss.Left)
 	)
 
 	// iterate thru each pair of columns of keys/descs

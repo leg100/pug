@@ -87,7 +87,7 @@ func (s *Service) resetWorkspaces(module resource.Resource, discovered []string,
 	// Gather existing workspaces for the module.
 	var existing []*Workspace
 	for _, ws := range s.table.List() {
-		if ws.Module().ID == module.ID {
+		if ws.Module().ID() == module.ID() {
 			existing = append(existing, ws)
 		}
 	}
@@ -98,19 +98,19 @@ func (s *Service) resetWorkspaces(module resource.Resource, discovered []string,
 			return ws.String() == name
 		}) {
 			add := New(module, name)
-			s.table.Add(add.ID, add)
+			s.table.Add(add.ID(), add)
 			slog.Info("added workspace", "name", name, "module", module)
 		}
 	}
 	// Remove workspaces from pug that no longer exist
 	for _, ws := range existing {
 		if !slices.Contains(discovered, ws.String()) {
-			s.table.Delete(ws.ID)
+			s.table.Delete(ws.ID())
 			slog.Info("removed workspace", "name", ws.String(), "module", module)
 		}
 	}
 	// Reset current workspace
-	s.modules.SetCurrent(module.ID, current)
+	s.modules.SetCurrent(module.ID(), current)
 }
 
 // Parse workspaces from the output of `terraform workspace list`.
@@ -155,10 +155,10 @@ func (s *Service) Create(path, name string) (*Workspace, *task.Task, error) {
 		Command: []string{"workspace", "new"},
 		Args:    []string{name},
 		AfterExited: func(*task.Task) {
-			s.table.Add(ws.ID, ws)
+			s.table.Add(ws.ID(), ws)
 			// `workspace new` implicitly makes the created workspace the
 			// *current* workspace, so better tell pug that too.
-			if err := s.modules.SetCurrent(mod.ID, name); err != nil {
+			if err := s.modules.SetCurrent(mod.ID(), name); err != nil {
 				slog.Error("creating workspace: %w", err)
 			}
 		},
@@ -174,14 +174,14 @@ func (s *Service) Get(workspaceID resource.ID) (*Workspace, error) {
 }
 
 type ListOptions struct {
-	ModuleID *resource.ID
+	ModuleID resource.ID
 }
 
 func (s *Service) List(opts ListOptions) []*Workspace {
 	var existing []*Workspace
 	for _, ws := range s.table.List() {
-		if opts.ModuleID != nil {
-			if ws.Module().ID != *opts.ModuleID {
+		if opts.ModuleID != resource.NilID {
+			if ws.Module().ID() != opts.ModuleID {
 				continue
 			}
 		}
@@ -206,35 +206,13 @@ func (s *Service) Delete(id resource.ID) (*task.Task, error) {
 		Args:     []string{ws.String()},
 		Blocking: true,
 		AfterExited: func(*task.Task) {
-			s.table.Delete(ws.ID)
+			s.table.Delete(ws.ID())
 		},
 	})
 }
 
-func (s *Service) Format(workspaceID resource.ID) (*task.Task, error) {
-	ws, err := s.table.Get(workspaceID)
-	if err != nil {
-		return nil, fmt.Errorf("formatting workspace: %w", err)
-	}
-
-	return s.createTask(ws, task.CreateOptions{
-		Command: []string{"fmt"},
-	})
-}
-
-func (s *Service) Validate(workspaceID resource.ID) (*task.Task, error) {
-	ws, err := s.table.Get(workspaceID)
-	if err != nil {
-		return nil, fmt.Errorf("validating workspace: %w", err)
-	}
-
-	return s.createTask(ws, task.CreateOptions{
-		Command: []string{"validate"},
-	})
-}
-
 func (s *Service) createTask(ws *Workspace, opts task.CreateOptions) (*task.Task, error) {
-	mod, err := s.modules.Get(ws.Module().ID)
+	mod, err := s.modules.Get(ws.Module().ID())
 	if err != nil {
 		return nil, err
 	}

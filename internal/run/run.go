@@ -28,8 +28,10 @@ const (
 type Run struct {
 	resource.Resource
 
+	Created time.Time
+	Updated time.Time
+
 	Status    Status
-	Created   time.Time
 	AutoApply bool
 	PlanOnly  bool
 
@@ -60,6 +62,7 @@ func newRun(mod *module.Module, ws *workspace.Workspace, opts CreateOptions) (*R
 		AutoApply:   opts.AutoApply,
 		PlanOnly:    opts.PlanOnly,
 		Created:     time.Now(),
+		Updated:     time.Now(),
 		afterUpdate: opts.afterUpdate,
 	}
 
@@ -87,7 +90,7 @@ func (r *Run) ModulePath() string {
 
 // PugDirectory is the run's pug directory, relative to the module's directory.
 func (r *Run) PugDirectory() string {
-	return filepath.Join(workspace.PugDirectory(r.Workspace().String()), r.ID.String())
+	return filepath.Join(workspace.PugDirectory(r.Workspace().String()), r.ID().String())
 }
 
 // PlanPath is the path to the run's plan file, relative to the module's
@@ -109,6 +112,7 @@ func (r *Run) CurrentTask() resource.Resource {
 	if r.ApplyTask != nil {
 		return *r.ApplyTask
 	}
+	// Run is guaranteed to always have at least a plan task.
 	return *r.PlanTask
 }
 
@@ -129,6 +133,7 @@ func (r *Run) addPlan(pfile planFile) (apply bool) {
 
 func (r *Run) updateStatus(status Status) {
 	r.Status = status
+	r.Updated = time.Now()
 	if r.afterUpdate != nil {
 		r.afterUpdate(r)
 	}

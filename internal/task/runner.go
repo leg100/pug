@@ -11,7 +11,6 @@ import (
 // Runner is the global task Runner that provides a couple of invariants:
 // (a) no more than MAX tasks run at any given time
 // (b) no more than one 'exclusive' task runs at any given time
-// (c)
 type runner struct {
 	max       int
 	exclusive chan struct{}
@@ -30,6 +29,7 @@ func newRunner(maxTasks int, lister taskLister) *runner {
 }
 
 func (r *runner) start(ctx context.Context, sub <-chan resource.Event[*Task]) {
+	//g, ctx := errgroup.WithContext(ctx)
 	// On each task event, get a list of tasks to be run, start them, and wait
 	// for them to complete in the background.
 	for range sub {

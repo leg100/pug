@@ -3,7 +3,6 @@ package tui
 import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/leg100/pug/internal/resource"
-	"github.com/leg100/pug/internal/tui/common"
 )
 
 // page cache: not so much for performance but to retain memory of user
@@ -11,7 +10,7 @@ import (
 // from the page and later return to the page, and they would expect the same
 // row still to be hightlighted.
 type cache struct {
-	cache map[cacheKey]common.Model
+	cache map[cacheKey]Model
 }
 
 type cacheKey struct {
@@ -24,11 +23,11 @@ func (c *cache) exists(page page) bool {
 	return ok
 }
 
-func (c *cache) get(page page) common.Model {
+func (c *cache) get(page page) Model {
 	return c.cache[page.cacheKey()]
 }
 
-func (c *cache) put(page page, model common.Model) {
+func (c *cache) put(page page, model Model) {
 	c.cache[page.cacheKey()] = model
 }
 

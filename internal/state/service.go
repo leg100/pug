@@ -67,9 +67,9 @@ func (s *Service) RemoveItems(workspaceID uuid.UUID, addrs ...string) (*task.Tas
 	if err != nil {
 		return nil, fmt.Errorf("retrieving workspace: %s: %w", workspaceID, err)
 	}
-	mod, err := s.modules.Get(ws.Module().ID)
+	mod, err := s.modules.Get(ws.Module().ID())
 	if err != nil {
-		return nil, fmt.Errorf("retrieving module: %s: %w", ws.Module().ID, err)
+		return nil, fmt.Errorf("retrieving module: %s: %w", ws.Module().ID(), err)
 	}
 	return s.tasks.Create(task.CreateOptions{
 		Parent:   ws.Resource,
@@ -86,9 +86,9 @@ func (s *Service) Taint(workspaceID uuid.UUID, addr string) (*task.Task, error) 
 	if err != nil {
 		return nil, fmt.Errorf("retrieving workspace: %s: %w", workspaceID, err)
 	}
-	mod, err := s.modules.Get(ws.Module().ID)
+	mod, err := s.modules.Get(ws.Module().ID())
 	if err != nil {
-		return nil, fmt.Errorf("retrieving module: %s: %w", ws.Module().ID, err)
+		return nil, fmt.Errorf("retrieving module: %s: %w", ws.Module().ID(), err)
 	}
 	return s.tasks.Create(task.CreateOptions{
 		Parent:   ws.Resource,

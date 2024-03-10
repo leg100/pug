@@ -62,7 +62,7 @@ func (s *Service) Create(opts CreateOptions) (*Task, error) {
 		return nil, err
 	}
 
-	s.table.Add(task.ID, task)
+	s.table.Add(task.ID(), task)
 
 	if opts.AfterCreate != nil {
 		opts.AfterCreate(task)
@@ -75,7 +75,7 @@ func (s *Service) Create(opts CreateOptions) (*Task, error) {
 		}
 	}()
 
-	slog.Info("created task", "task_id", task.ID, "command", task.Command)
+	slog.Info("created task", "task_id", task.ID(), "command", task.Command)
 	return task, nil
 }
 
@@ -89,7 +89,7 @@ func (s *Service) Enqueue(taskID resource.ID) (*Task, error) {
 
 	task.updateState(Queued)
 	s.broker.Publish(resource.UpdatedEvent, task)
-	slog.Info("enqueued task", "task_id", task.ID, "command", task.Command)
+	slog.Info("enqueued task", "task_id", task.ID(), "command", task.Command)
 	return task, nil
 }
 

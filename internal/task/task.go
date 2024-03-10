@@ -115,10 +115,7 @@ func (f *factory) newTask(opts CreateOptions) (*Task, error) {
 	}, nil
 }
 
-func (t *Task) String() string      { return t.Resource.String() }
-func (t *Task) Title() string       { return t.Resource.String() }
-func (t *Task) Description() string { return string(t.State) }
-func (t *Task) FilterValue() string { return t.Resource.String() }
+func (t *Task) String() string { return t.Resource.String() }
 
 // NewReader provides a reader from which to read the task output from start to
 // end.
@@ -247,7 +244,7 @@ func (t *Task) updateState(state Status) {
 		}
 	}
 
-	slog.Info("updated task state", "task_id", t.ID, "command", t.Command, "state", t.State)
+	slog.Info("updated task state", "task_id", t.ID(), "command", t.Command, "state", t.State)
 }
 
 func (t *Task) setErrored(err error) {

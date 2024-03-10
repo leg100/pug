@@ -23,7 +23,7 @@ func startEnqueuer(
 	for range sub {
 		for _, t := range e.enqueue() {
 			// TODO: log error
-			_, _ = tasks.Enqueue(t.ID)
+			_, _ = tasks.Enqueue(t.ID())
 		}
 	}
 }

@@ -1,6 +1,7 @@
 package resource
 
 import (
+	"fmt"
 	"sync"
 
 	"golang.org/x/exp/maps"
@@ -64,7 +65,7 @@ func (t *Table[T]) Get(id ID) (T, error) {
 
 	row, ok := t.rows[id]
 	if !ok {
-		return *new(T), ErrNotFound
+		return *new(T), fmt.Errorf("%s: %w", id, ErrNotFound)
 	}
 	return row, nil
 }

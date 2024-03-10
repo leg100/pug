@@ -81,10 +81,14 @@ func Start() error {
 	}
 	p := tea.NewProgram(
 		model,
-		// use the full size of the terminal in its "alternate screen buffer"
+		// use the full size of the terminal with its "alternate screen buffer"
 		tea.WithAltScreen(),
-		// turn on mouse support so we can track the mouse wheel
-		tea.WithMouseCellMotion(),
+		// Enabling mouse cell motion removes the ability to "blackboard" text
+		// with the mouse, which is useful for then copying text into the
+		// clipboard. Therefore we've decided to disable it and leave it
+		// commented out for posterity.
+		//
+		//tea.WithMouseCellMotion(),
 	)
 
 	// Relay resource events to TUI.

@@ -1,28 +1,33 @@
 package tui
 
 import (
+	"fmt"
 	"os"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/key"
+	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/davecgh/go-spew/spew"
 	"github.com/leg100/pug/internal/logging"
 	"github.com/leg100/pug/internal/module"
+	"github.com/leg100/pug/internal/resource"
 	"github.com/leg100/pug/internal/run"
 	"github.com/leg100/pug/internal/task"
-	"github.com/leg100/pug/internal/tui/common"
 	"github.com/leg100/pug/internal/workspace"
 )
 
 type mainModel struct {
+	runs *run.Service
+
 	*navigator
 
 	width  int
 	height int
 
 	showHelp bool
+	err      string
 
 	dump *os.File
 }
@@ -75,6 +80,7 @@ func New(opts Options) (mainModel, error) {
 		return mainModel{}, err
 	}
 	m := mainModel{
+		runs:      opts.RunService,
 		navigator: navigator,
 		dump:      messages,
 	}
@@ -91,38 +97,47 @@ func (m mainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	spew.Fdump(m.dump, msg)
 
 	switch msg := msg.(type) {
+	case resource.Event[*workspace.Workspace]:
+		switch msg.Type {
+		case resource.CreatedEvent:
+			//return m, navigate(page{kind: WorkspaceListKind, resource: *msg.Payload.Parent})
+			cmds = append(cmds, runCmd(m.runs, msg.Payload.ID()))
+		}
+	}
+
+	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
 		return m, m.resizeCmd
 	case tea.KeyMsg:
 		switch {
-		case key.Matches(msg, common.Keys.Quit):
+		case key.Matches(msg, Keys.Quit):
 			// ctrl-c quits the app
 			return m, tea.Quit
-		case key.Matches(msg, common.Keys.Escape):
+		case key.Matches(msg, Keys.Escape):
 			// <esc> whilst in help turns off help
 			if m.showHelp {
 				m.showHelp = false
 			} else {
 				m.goBack()
 			}
-		case key.Matches(msg, common.Keys.Help):
+		case key.Matches(msg, Keys.Help):
 			// '?' toggles help
 			m.showHelp = !m.showHelp
-		case key.Matches(msg, common.Keys.Logs):
+		case key.Matches(msg, Keys.Logs):
 			// 'l' shows logs
 			return m, navigate(page{kind: LogsKind})
-		case key.Matches(msg, common.Keys.Modules):
+		case key.Matches(msg, Keys.Modules):
 			// 'm' lists all modules
 			return m, navigate(page{kind: ModuleListKind})
-		case key.Matches(msg, common.Keys.Workspaces):
+		case key.Matches(msg, Keys.Workspaces):
 			// 'W' lists all workspaces
 			return m, navigate(page{kind: WorkspaceListKind})
-		case key.Matches(msg, common.Keys.Runs):
+		case key.Matches(msg, Keys.Runs):
 			// 'R' lists all runs
 			return m, navigate(page{kind: RunListKind})
-		case key.Matches(msg, common.Keys.Tasks):
+		case key.Matches(msg, Keys.Tasks):
 			// 'T' lists all tasks
 			return m, navigate(page{kind: TaskListKind})
 		default:
@@ -131,17 +146,22 @@ func (m mainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, cmd
 		}
 	case tea.MouseMsg:
-		// Send mouse events to current model.
+		return m, nil
+	case spinner.TickMsg, currentMsg:
+		// Events to be sent only to the current model.
 		cmd := m.updateCurrent(msg)
 		return m, cmd
 	case navigationMsg:
 		created, err := m.setCurrent(msg)
 		if err != nil {
-			return m, common.NewErrorCmd(err, "setting current page")
+			return m, newErrorCmd(err, "setting current page")
 		}
 		if created {
 			return m, tea.Batch(m.currentModel().Init(), m.resizeCmd)
 		}
+		return m, tea.Batch(m.resizeCmd, cmdHandler(currentMsg{}))
+	case errorMsg:
+		m.err = fmt.Sprintf("%s: %s", fmt.Sprintf(msg.Message, msg.Args...), msg.Error.Error())
 	default:
 		// Send remaining msg types to all cached models
 		cmds = append(cmds, m.cache.updateAll(msg)...)
@@ -150,79 +170,80 @@ func (m mainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-func (m mainModel) View() string {
-	var (
-		title   string
-		content string
-	)
-
-	if m.showHelp {
-		title = "help"
-		content = renderHelp(m.currentModel().HelpBindings(), max(1, m.height-2))
-	} else {
-		title = m.currentModel().Title()
-		content = m.currentModel().View()
-	}
-
-	top := lipgloss.NewStyle().
-		Bold(true).
-		Background(lipgloss.Color(DarkGrey)).
-		Foreground(White).
-		Padding(0, 1).
-		Render(title)
-	topWidth := lipgloss.Width(top)
-
-	rows := []string{
-		m.header(),
-		// breadcrumbs
-		lipgloss.JoinHorizontal(
-			lipgloss.Top,
-			"─",
-			top,
-			strings.Repeat("─", max(0, m.width-topWidth)),
-		),
-		// content
-		common.Regular.Copy().
-			Height(m.viewHeight()).
-			Width(m.viewWidth()).
-			//MaxHeight(m.viewHeight()).
-			Render(content),
-	}
-	return lipgloss.JoinVertical(lipgloss.Top, rows...)
-}
-
 var (
 	logo = strings.Join([]string{
 		"▄▄▄ ▄ ▄ ▄▄▄",
 		"█▄█ █ █ █ ▄",
 		"▀   ▀▀▀ ▀▀▀",
 	}, "\n")
-	renderedLogo = common.Bold.
+	renderedLogo = Bold.
 			Copy().
 			Padding(0, 1).
 			Foreground(Pink).
 			Render(logo)
-	logoWidth = lipgloss.Width(renderedLogo)
+	logoWidth         = lipgloss.Width(renderedLogo)
+	headerHeight      = 3
+	breadcrumbsHeight = 1
+	messageFooter     = 1
 )
 
-func (m mainModel) header() string {
-	help := lipgloss.NewStyle().
-		Width(m.width - logoWidth).
-		Render(RenderShort(m.currentModel().HelpBindings()))
-	return lipgloss.JoinHorizontal(lipgloss.Top,
-		help,
-		renderedLogo,
+func (m mainModel) View() string {
+	var (
+		content    string
+		pagination string
+	)
+
+	if m.showHelp {
+		content = renderHelp(m.currentModel().HelpBindings(), max(1, m.height-2))
+	} else {
+		content = m.currentModel().View()
+		pagination = m.currentModel().Pagination()
+	}
+
+	return lipgloss.JoinVertical(
+		lipgloss.Top,
+		// header
+		lipgloss.JoinHorizontal(
+			lipgloss.Top,
+			// key bindings
+			lipgloss.NewStyle().
+				Width(m.width-logoWidth).
+				Render(RenderShort(m.currentModel().HelpBindings())),
+			renderedLogo,
+		),
+		// breadcrumbs
+		lipgloss.NewStyle().
+			// Prohibit overflowing breadcrumb components wrapping to another line.
+			MaxHeight(1).
+			Width(m.width).
+			Background(grey).
+			Render(m.currentModel().Title()),
+		// content
+		lipgloss.NewStyle().
+			Height(m.viewHeight()).
+			Width(m.viewWidth()).
+			//MaxHeight(m.viewHeight()).
+			Render(content),
+		// footer
+		lipgloss.JoinHorizontal(
+			lipgloss.Top,
+			// error messages
+			lipgloss.NewStyle().
+				Width(m.width-Width(pagination)).
+				Padding(0, 1).
+				Padding(0, 1).
+				Foreground(Red).
+				Render(m.err),
+			// pagination
+			pagination,
+		),
 	)
 }
 
-// viewHeight retrieves the height available within the main view
+// viewHeight retrieves the height available beneath the header and breadcrumbs,
+// and the message footer.
 func (m mainModel) viewHeight() int {
-	// hardcode height adjustment for performance reasons:
-	// heading: 3
-	// hr: 1
-	// title: 1
-	// hr: 1
-	return m.height - 4
+	return m.height - headerHeight - breadcrumbsHeight - messageFooter
 }
 
 // viewWidth retrieves the width available within the main view
@@ -231,5 +252,5 @@ func (m mainModel) viewWidth() int {
 }
 
 func (m mainModel) resizeCmd() tea.Msg {
-	return common.ViewSizeMsg{Width: m.viewWidth(), Height: m.viewHeight()}
+	return ViewSizeMsg{Width: m.viewWidth(), Height: m.viewHeight()}
 }

@@ -45,7 +45,7 @@ func (s *Service) Create(workspaceID resource.ID, opts CreateOptions) (*Run, *ta
 	if err != nil {
 		return nil, nil, fmt.Errorf("creating run: %w", err)
 	}
-	mod, err := s.modules.Get(ws.Module().ID)
+	mod, err := s.modules.Get(ws.Module().ID())
 	if err != nil {
 		return nil, nil, fmt.Errorf("creating run: %w", err)
 	}
@@ -82,7 +82,7 @@ func (s *Service) Create(workspaceID resource.ID, opts CreateOptions) (*Run, *ta
 	}
 	run.PlanTask = &task.Resource
 
-	s.table.Add(run.ID, run)
+	s.table.Add(run.ID(), run)
 	return run, task, nil
 }
 
@@ -108,7 +108,7 @@ func (s *Service) afterPlan(mod *module.Module, ws *workspace.Workspace, run *Ru
 					return
 				}
 				if run.addPlan(pfile) {
-					if _, _, err := s.Apply(run.ID); err != nil {
+					if _, _, err := s.Apply(run.ID()); err != nil {
 						run.setErrored(err)
 						return
 					}
@@ -128,7 +128,7 @@ func (s *Service) Apply(runID resource.ID) (*Run, *task.Task, error) {
 	if err != nil {
 		return nil, nil, fmt.Errorf("applying run: %w", err)
 	}
-	ws, err := s.workspaces.Get(run.Workspace().ID)
+	ws, err := s.workspaces.Get(run.Workspace().ID())
 	if err != nil {
 		return nil, nil, fmt.Errorf("applying run: %w", err)
 	}
@@ -166,6 +166,7 @@ func (s *Service) Apply(runID resource.ID) (*Run, *task.Task, error) {
 				return
 			}
 			run.ApplyReport = report
+			run.updateStatus(Applied)
 		},
 	})
 	if err != nil {
@@ -180,14 +181,14 @@ func (s *Service) Get(runID resource.ID) (*Run, error) {
 }
 
 type ListOptions struct {
-	ParentID *resource.ID
+	ParentID resource.ID
 }
 
 func (s *Service) List(opts ListOptions) []*Run {
 	var runs []*Run
 	for _, run := range s.table.List() {
-		if opts.ParentID != nil {
-			if !run.HasAncestor(*opts.ParentID) {
+		if opts.ParentID != resource.NilID {
+			if !run.HasAncestor(opts.ParentID) {
 				continue
 			}
 		}
