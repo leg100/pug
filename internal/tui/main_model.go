@@ -15,6 +15,7 @@ import (
 	"github.com/leg100/pug/internal/resource"
 	"github.com/leg100/pug/internal/run"
 	"github.com/leg100/pug/internal/task"
+	"github.com/leg100/pug/internal/tui/common"
 	"github.com/leg100/pug/internal/workspace"
 )
 
@@ -252,5 +253,5 @@ func (m mainModel) viewWidth() int {
 }
 
 func (m mainModel) resizeCmd() tea.Msg {
-	return ViewSizeMsg{Width: m.viewWidth(), Height: m.viewHeight()}
+	return common.ViewSizeMsg{Width: m.viewWidth(), Height: m.viewHeight()}
 }

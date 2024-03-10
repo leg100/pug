@@ -7,9 +7,9 @@ import (
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/evertras/bubble-table/table"
 	"github.com/leg100/pug/internal/logging"
 	"github.com/leg100/pug/internal/resource"
+	"github.com/leg100/pug/internal/tui/table"
 )
 
 var defaultHighlightStyle = lipgloss.NewStyle().Background(lipgloss.Color("#334"))
@@ -18,25 +18,17 @@ type logsModelMaker struct {
 	logger *logging.Logger
 }
 
-func (m *logsModelMaker) makeModel(taskResource resource.Resource) (Model, error) {
+func (mm *logsModelMaker) makeModel(taskResource resource.Resource) (Model, error) {
 	columns := []table.Column{
-		table.NewColumn(ColKeyTime, "TIME", 24).WithStyle(
-			lipgloss.NewStyle().
-				Align(lipgloss.Left),
-		),
-		table.NewColumn(ColKeyLevel, "LEVEL", 5).WithStyle(
-			lipgloss.NewStyle().
-				Align(lipgloss.Left),
-		),
-		table.NewFlexColumn(ColKeyMessage, "MESSAGE", 30).WithStyle(
-			lipgloss.NewStyle().
-				Align(lipgloss.Left),
-		),
+		{Title: "TIME", Width: 24},
+		{Title: "LEVEL", Width: 5},
+		// make flex
+		{Title: "MESSAGE", Width: 60},
 	}
-	rowMaker := func(msg logging.Message) table.RowData {
-		data := table.RowData{
-			ColKeyTime:  msg.Time.Format("2006-01-02T15:04:05.000"),
-			ColKeyLevel: msg.Level,
+	cellsFunc := func(msg logging.Message) []string {
+		cells := []string{
+			msg.Time.Format("2006-01-02T15:04:05.000"),
+			msg.Level,
 		}
 
 		// combine message and attributes, separated by spaces, with each
@@ -46,29 +38,26 @@ func (m *logsModelMaker) makeModel(taskResource resource.Resource) (Model, error
 		for k, v := range msg.Attributes {
 			parts = append(parts, fmt.Sprintf("%s=%s", k, v))
 		}
-		data[ColKeyMessage] = strings.Join(parts, " ")
-		return data
+		return append(cells, strings.Join(parts, " "))
 	}
-	return logsModel{
-		logger: m.logger,
-		table: newTableModel(tableModelOptions[logging.Message]{
-			rowMaker:          rowMaker,
-			columns:           columns,
-			disableSelections: true,
-		}),
-	}, nil
+	table := table.New[logging.Message](columns).
+		WithCellsFunc(cellsFunc).
+		WithSortFunc(logging.ByTimeDesc).
+		WithSelectable(false)
+
+	return logsModel{logger: mm.logger, table: table}, nil
 }
 
 type logMsg string
 
 type logsModel struct {
 	logger *logging.Logger
-	table  tableModel[logging.Message]
+	table  table.Model[logging.Message]
 }
 
 func (m logsModel) Init() tea.Cmd {
 	return func() tea.Msg {
-		return bulkInsertMsg[logging.Message](m.logger.Messages)
+		return table.BulkInsertMsg[logging.Message](m.logger.Messages)
 	}
 }
 
@@ -90,7 +79,7 @@ func (m logsModel) Title() string {
 		Background(DarkGrey).
 		Foreground(White).
 		Bold(true).
-		Width(m.table.width).
+		//Width(m.table.width).
 		Padding(0, 1).
 		Render("logs")
 }
@@ -101,7 +90,7 @@ func (m logsModel) View() string {
 }
 
 func (m logsModel) Pagination() string {
-	return m.table.Pagination()
+	return ""
 }
 
 func (m logsModel) HelpBindings() (bindings []key.Binding) {

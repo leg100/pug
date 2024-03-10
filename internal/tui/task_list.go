@@ -5,13 +5,14 @@ import (
 	"strings"
 	"time"
 
-	"github.com/evertras/bubble-table/table"
-
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/leg100/pug/internal/resource"
 	"github.com/leg100/pug/internal/task"
+	"github.com/leg100/pug/internal/tui/table"
+	"github.com/mattn/go-runewidth"
+	"golang.org/x/exp/maps"
 )
 
 type taskListModelMaker struct {
@@ -20,62 +21,55 @@ type taskListModelMaker struct {
 }
 
 func (m *taskListModelMaker) makeModel(parent resource.Resource) (Model, error) {
-	// TODO: depending upon kind of parent, hide certain redundant columns, e.g.
+	// Depending upon kind of parent, hide certain redundant columns, e.g.
 	// a module parent kind would render the module column redundant.
-	columns := []table.Column{
-		table.NewColumn(ColKeyID, "ID", resource.IDEncodedMaxLen).WithStyle(
-			lipgloss.NewStyle().
-				Align(lipgloss.Left),
-		),
-		table.NewFlexColumn(ColKeyModule, "MODULE", 2).WithStyle(
-			lipgloss.NewStyle().
-				Align(lipgloss.Left),
-		),
-		table.NewColumn(ColKeyWorkspace, "WORKSPACE", 10).WithStyle(
-			lipgloss.NewStyle().
-				Align(lipgloss.Left),
-		),
-		table.NewFlexColumn(ColKeyCommand, "COMMAND", 1).WithStyle(
-			lipgloss.NewStyle().
-				Align(lipgloss.Left),
-		),
-		table.NewColumn(ColKeyStatus, "STATUS", 10).WithStyle(
-			lipgloss.NewStyle().
-				Align(lipgloss.Left),
-		),
-		table.NewColumn(ColKeyAgo, "AGE", 10).WithStyle(
-			lipgloss.NewStyle().
-				Align(lipgloss.Left),
-		),
+	var (
+		columns            []table.Column
+		hasModuleColumn    bool
+		hasWorkspaceColumn bool
+	)
+	columns = append(columns,
+		table.Column{Title: "MODULE", Width: 20, TruncationFunc: runewidth.TruncateLeft})
+	hasModuleColumn = true
+	columns = append(columns, table.Column{Title: "WORKSPACE", Width: 10})
+	hasWorkspaceColumn = true
+	columns = append(columns,
+		table.Column{Title: "COMMAND", Width: 20},
+		table.Column{Title: "STATUS", Width: 10},
+		table.Column{Title: "AGE", Width: 10},
+		table.Column{Title: "ID", Width: resource.IDEncodedMaxLen},
+	)
+	cellsFunc := func(task *task.Task) []string {
+		cells := make([]string, 0, len(columns))
+		if hasModuleColumn {
+			if mod := task.Module(); mod != nil {
+				cells = append(cells, mod.String())
+			} else {
+				cells = append(cells, "")
+			}
+		}
+		if hasWorkspaceColumn {
+			if ws := task.Workspace(); ws != nil {
+				cells = append(cells, ws.String())
+			} else {
+				cells = append(cells, "")
+			}
+		}
+		cells = append(cells,
+			strings.Join(task.Command, " "),
+			string(task.State),
+			ago(time.Now(), task.Updated),
+			task.ID().String(),
+		)
+		return cells
 	}
+	table := table.New[*task.Task](columns).
+		WithCellsFunc(cellsFunc).
+		WithSortFunc(task.ByState)
+		//WithWidth(60)
 
-	rowMaker := func(task *task.Task) table.RowData {
-		// TODO: categorise and sort tasks according to a specific schema:
-		// 1. running (newest first)
-		// 2. queued (oldest first)
-		// 3. pending (oldest first)
-		// 4. finished (newest first)
-		row := table.RowData{
-			ColKeyID:      task.ID().String(),
-			ColKeyCommand: strings.Join(task.Command, " "),
-			ColKeyStatus:  string(task.State),
-			ColKeyAgo:     ago(time.Now(), task.Updated),
-			ColKeyData:    task,
-			ColKeyTime:    task.Updated,
-		}
-		if mod := task.Module(); mod != nil {
-			row[ColKeyModule] = mod.String()
-		}
-		if ws := task.Workspace(); ws != nil {
-			row[ColKeyWorkspace] = ws.String()
-		}
-		return row
-	}
 	return taskListModel{
-		table: newTableModel(tableModelOptions[*task.Task]{
-			rowMaker: rowMaker,
-			columns:  columns,
-		}),
+		table:  table,
 		svc:    m.svc,
 		parent: parent,
 		max:    m.maxTasks,
@@ -83,7 +77,7 @@ func (m *taskListModelMaker) makeModel(parent resource.Resource) (Model, error) 
 }
 
 type taskListModel struct {
-	table  tableModel[*task.Task]
+	table  table.Model[*task.Task]
 	svc    *task.Service
 	parent resource.Resource
 	max    int
@@ -95,7 +89,7 @@ func (m taskListModel) Init() tea.Cmd {
 		if m.parent != resource.NilResource {
 			opts.Ancestor = m.parent.ID()
 		}
-		return bulkInsertMsg[*task.Task](m.svc.List(opts))
+		return table.BulkInsertMsg[*task.Task](m.svc.List(opts))
 	}
 }
 
@@ -109,11 +103,11 @@ func (m taskListModel) Update(msg tea.Msg) (Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, Keys.Enter):
-			if ok, task := m.table.highlighted(); ok {
+			if task, ok := m.table.Highlighted(); ok {
 				return m, navigate(page{kind: TaskKind, resource: task.Resource})
 			}
 		case key.Matches(msg, Keys.Cancel):
-			return m, taskCmd(m.svc.Cancel, m.table.highlightedOrSelectedIDs()...)
+			return m, taskCmd(m.svc.Cancel, maps.Keys(m.table.HighlightedOrSelected())...)
 		}
 	}
 	// Handle keyboard and mouse events in the table widget
@@ -137,7 +131,7 @@ func (m taskListModel) View() string {
 }
 
 func (m taskListModel) Pagination() string {
-	return m.table.Pagination()
+	return ""
 }
 
 func (m taskListModel) HelpBindings() (bindings []key.Binding) {

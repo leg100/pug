@@ -6,10 +6,11 @@ import (
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/evertras/bubble-table/table"
 	"github.com/leg100/pug/internal/module"
 	"github.com/leg100/pug/internal/resource"
+	"github.com/leg100/pug/internal/tui/table"
 	"github.com/leg100/pug/internal/workspace"
+	"golang.org/x/exp/maps"
 )
 
 type moduleListModelMaker struct {
@@ -20,31 +21,22 @@ type moduleListModelMaker struct {
 
 func (m *moduleListModelMaker) makeModel(_ resource.Resource) (Model, error) {
 	columns := []table.Column{
-		table.NewFlexColumn(ColKeyModule, "PATH", 1).WithStyle(
-			lipgloss.NewStyle().
-				Align(lipgloss.Left),
-		),
-		table.NewColumn(ColKeyWorkspace, "CURRENT WORKSPACE", 20).WithStyle(
-			lipgloss.NewStyle().
-				Align(lipgloss.Left),
-		),
-		table.NewColumn(ColKeyID, "ID", resource.IDEncodedMaxLen).WithStyle(
-			lipgloss.NewStyle().
-				Align(lipgloss.Left),
-		),
+		{Title: "PATH", Width: 30},
+		{Title: "CURRENT WORKSPACE", Width: 20},
+		{Title: "ID", Width: resource.IDEncodedMaxLen},
 	}
-	rowMaker := func(mod *module.Module) table.RowData {
-		return table.RowData{
-			ColKeyID:        mod.ID().String(),
-			ColKeyModule:    mod.Path(),
-			ColKeyWorkspace: mod.Current,
-		}
-	}
+	table := table.New[*module.Module](columns).
+		WithCellsFunc(func(mod *module.Module) []string {
+			return []string{
+				mod.Path(),
+				mod.Current,
+				mod.ID().String(),
+			}
+		}).
+		WithSortFunc(module.ByPath)
+
 	return moduleListModel{
-		table: newTableModel(tableModelOptions[*module.Module]{
-			rowMaker: rowMaker,
-			columns:  columns,
-		}),
+		table:      table,
 		svc:        m.svc,
 		workspaces: m.workspaces,
 		workdir:    m.workdir,
@@ -52,7 +44,8 @@ func (m *moduleListModelMaker) makeModel(_ resource.Resource) (Model, error) {
 }
 
 type moduleListModel struct {
-	table      tableModel[*module.Module]
+	table table.Model[*module.Module]
+
 	svc        *module.Service
 	workspaces *workspace.Service
 
@@ -61,7 +54,7 @@ type moduleListModel struct {
 
 func (mlm moduleListModel) Init() tea.Cmd {
 	return func() tea.Msg {
-		return bulkInsertMsg[*module.Module](mlm.svc.List())
+		return table.BulkInsertMsg[*module.Module](mlm.svc.List())
 	}
 }
 
@@ -75,16 +68,15 @@ func (m moduleListModel) Update(msg tea.Msg) (Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, Keys.Enter):
-			if ok, mod := m.table.highlighted(); ok {
+			if mod, ok := m.table.Highlighted(); ok {
 				return m, navigate(page{kind: WorkspaceListKind, resource: mod.Resource})
 			}
 		case key.Matches(msg, Keys.Init):
-			// TODO: consider sending another msg to clear selections
-			return m, taskCmd(m.svc.Init, m.table.highlightedOrSelectedIDs()...)
+			return m, taskCmd(m.svc.Init, maps.Keys(m.table.HighlightedOrSelected())...)
 		case key.Matches(msg, Keys.Validate):
-			return m, taskCmd(m.svc.Validate, m.table.highlightedOrSelectedIDs()...)
+			return m, taskCmd(m.svc.Validate, maps.Keys(m.table.HighlightedOrSelected())...)
 		case key.Matches(msg, Keys.Format):
-			return m, taskCmd(m.svc.Format, m.table.highlightedOrSelectedIDs()...)
+			return m, taskCmd(m.svc.Format, maps.Keys(m.table.HighlightedOrSelected())...)
 		}
 	}
 
@@ -97,9 +89,7 @@ func (mlm moduleListModel) Title() string {
 	return lipgloss.NewStyle().
 		Inherit(Breadcrumbs).
 		Padding(0, 0, 0, 1).
-		Render(
-			fmt.Sprintf("modules (%s)", mlm.workdir),
-		)
+		Render(fmt.Sprintf("modules (%s)", mlm.workdir))
 }
 
 func (mlm moduleListModel) View() string {
@@ -114,7 +104,7 @@ func (mlm moduleListModel) Footer(width int) string {
 }
 
 func (m moduleListModel) Pagination() string {
-	return m.table.Pagination()
+	return ""
 }
 
 func (mlm moduleListModel) HelpBindings() (bindings []key.Binding) {

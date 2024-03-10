@@ -9,10 +9,10 @@ import (
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/evertras/bubble-table/table"
 	"github.com/leg100/pug/internal/resource"
 	"github.com/leg100/pug/internal/run"
 	"github.com/leg100/pug/internal/task"
+	"github.com/leg100/pug/internal/tui/table"
 )
 
 type runListModelMaker struct {
@@ -23,38 +23,38 @@ type runListModelMaker struct {
 func (m *runListModelMaker) makeModel(parent resource.Resource) (Model, error) {
 	// TODO: depending upon kind of parent, hide certain redundant columns, e.g.
 	// a module parent kind would render the module column redundant.
-	cols := []table.Column{
-		table.NewFlexColumn(ColKeyModule, "MODULE", 3),
-		table.NewFlexColumn(ColKeyWorkspace, "WORKSPACE", 2),
-		table.NewColumn(ColKeyStatus, "STATUS", 20),
-		table.NewColumn(ColKeyAgo, "AGE", 10).WithStyle(
-			lipgloss.NewStyle().
-				Align(lipgloss.Left),
-		),
-		table.NewColumn(ColKeyID, "ID", resource.IDEncodedMaxLen),
+	columns := []table.Column{
+		{Title: "MODULE", Width: 30},
+		{Title: "WORKSPACE", Width: 20},
+		{Title: "STATUS", Width: 20},
+		{Title: "AGE", Width: 10},
+		{Title: "ID", Width: resource.IDEncodedMaxLen},
 	}
-	rowMaker := func(run *run.Run) table.RowData {
-		data := table.RowData{
-			ColKeyID:     run.ID().String(),
-			ColKeyModule: run.Module().String(),
-			ColKeyStatus: string(run.Status),
-			ColKeyAgo:    ago(time.Now(), run.Created),
+	cellsFunc := func(run *run.Run) []string {
+		cells := []string{
+			run.Module().String(),
+			run.Workspace().String(),
+			string(run.Status),
+			ago(time.Now(), run.Created),
+			run.ID().String(),
 		}
-		// Only show module column if not filtered by a parent module.
-		if parent == resource.NilResource {
-			data[ColKeyModule] = run.Module().String()
-		}
-		// Only show workspace column if not filtered by a parent workspace.
-		if parent == resource.NilResource {
-			data[ColKeyWorkspace] = run.Workspace().String()
-		}
-		return data
+		//// Only show module column if not filtered by a parent module.
+		//if parent == resource.NilResource {
+		//	data[ColKeyModule] = run.Module().String()
+		//}
+		//// Only show workspace column if not filtered by a parent workspace.
+		//if parent == resource.NilResource {
+		//	data[ColKeyWorkspace] = run.Workspace().String()
+		//}
+		//return data
+		return cells
 	}
+	table := table.New[*run.Run](columns).
+		WithCellsFunc(cellsFunc).
+		WithSortFunc(run.ByUpdatedDesc)
+
 	return runListModel{
-		table: newTableModel(tableModelOptions[*run.Run]{
-			rowMaker: rowMaker,
-			columns:  cols,
-		}),
+		table:  table,
 		svc:    m.svc,
 		tasks:  m.tasks,
 		parent: parent,
@@ -62,7 +62,7 @@ func (m *runListModelMaker) makeModel(parent resource.Resource) (Model, error) {
 }
 
 type runListModel struct {
-	table  tableModel[*run.Run]
+	table  table.Model[*run.Run]
 	svc    *run.Service
 	tasks  *task.Service
 	parent resource.Resource
@@ -91,14 +91,14 @@ func (m runListModel) Update(msg tea.Msg) (Model, tea.Cmd) {
 			// When user presses enter on a run, then it should navigate to the
 			// task for its plan if only a plan has been run, or to the task for
 			// its apply, if that has been run.
-			if ok, run := m.table.highlighted(); ok {
+			if run, ok := m.table.Highlighted(); ok {
 				return m, m.navigateLatestTask(run.ID())
 			}
 		case key.Matches(msg, Keys.Cancel):
 			// get all highlighted or selected runs, and get the current task
 			// for each run, and then cancel those tasks.
 		case key.Matches(msg, Keys.Apply):
-			ok, hl := m.table.highlighted()
+			hl, ok := m.table.Highlighted()
 			if !ok {
 				return m, nil
 			}
@@ -138,7 +138,7 @@ func (m runListModel) View() string {
 }
 
 func (m runListModel) Pagination() string {
-	return m.table.Pagination()
+	return ""
 }
 
 func (m runListModel) HelpBindings() (bindings []key.Binding) {

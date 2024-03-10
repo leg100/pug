@@ -3,11 +3,11 @@ package tui
 import (
 	"fmt"
 
-	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/evertras/bubble-table/table"
 	"github.com/leg100/pug/internal/resource"
+	"github.com/leg100/pug/internal/tui/common"
 )
 
 const (
@@ -97,19 +97,6 @@ func (m tableModel[T]) Update(msg tea.Msg) (tableModel[T], tea.Cmd) {
 	)
 
 	switch msg := msg.(type) {
-	case tea.KeyMsg:
-		switch {
-		case key.Matches(msg, Keys.SelectAll):
-			// ctrl+a toggles selecting all rows
-			m.selectAll = !m.selectAll
-			m.updateRows(func(row table.Row) table.Row {
-				return row.Selected(m.selectAll)
-			})
-		}
-	case deselectMsg:
-		m.updateRows(func(row table.Row) table.Row {
-			return row.Selected(false)
-		})
 	case bulkInsertMsg[T]:
 		for _, res := range msg {
 			// Only add resource to table if the resource is a child of the
@@ -135,7 +122,7 @@ func (m tableModel[T]) Update(msg tea.Msg) (tableModel[T], tea.Cmd) {
 			delete(m.data, msg.Payload.ID())
 		}
 		m.Model = m.WithRows(m.toRows())
-	case ViewSizeMsg:
+	case common.ViewSizeMsg:
 		m.Model = m.WithTargetWidth(msg.Width)
 		m.Model = m.WithPageSize(msg.Height - tableMetaHeight)
 		m.height = msg.Height

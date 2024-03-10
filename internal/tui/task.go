@@ -12,6 +12,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/leg100/pug/internal/resource"
 	"github.com/leg100/pug/internal/task"
+	"github.com/leg100/pug/internal/tui/common"
 	"github.com/muesli/reflow/wordwrap"
 )
 
@@ -105,7 +106,7 @@ func (m taskModel) Update(msg tea.Msg) (Model, tea.Cmd) {
 		if m.task.State == task.Running {
 			return m, m.spinner.Tick
 		}
-	case ViewSizeMsg:
+	case common.ViewSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
 		// subtract 2 to account for margins (1: left, 1: right)

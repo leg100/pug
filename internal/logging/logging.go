@@ -116,3 +116,10 @@ func (l *Logger) Write(p []byte) (int, error) {
 func (l *Logger) Subscribe(ctx context.Context) (<-chan resource.Event[Message], func()) {
 	return l.broker.Subscribe(ctx)
 }
+
+func ByTimeDesc(i, j Message) int {
+	if i.Time.Before(j.Time) {
+		return 1
+	}
+	return -1
+}

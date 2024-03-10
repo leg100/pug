@@ -61,7 +61,3 @@ func newErrorMsg(err error, msg string, args ...any) errorMsg {
 func newErrorCmd(err error, msg string, args ...any) tea.Cmd {
 	return cmdHandler(newErrorMsg(err, msg, args...))
 }
-
-type ViewSizeMsg struct {
-	Width, Height int
-}
