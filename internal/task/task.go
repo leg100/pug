@@ -247,11 +247,6 @@ func (t *Task) updateState(state Status) {
 	slog.Info("updated task state", "task_id", t.ID(), "command", t.Command, "state", t.State)
 }
 
-func (t *Task) setErrored(err error) {
-	t.Err = err
-	t.updateState(Errored)
-}
-
 func (t *Task) cleanup() {
 	t.buf.Close()
 	close(t.finished)

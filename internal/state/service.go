@@ -3,7 +3,6 @@ package state
 import (
 	"fmt"
 
-	"github.com/leg100/pug/internal/module"
 	"github.com/leg100/pug/internal/resource"
 	"github.com/leg100/pug/internal/task"
 	"github.com/leg100/pug/internal/workspace"
@@ -12,7 +11,6 @@ import (
 type Service struct {
 	tasks      *task.Service
 	workspaces *workspace.Service
-	modules    *module.Service
 }
 
 // Get creates a task to retreive the state.

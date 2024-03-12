@@ -42,6 +42,7 @@ func (pf *planFile) resourceChanges() (resource report) {
 	return
 }
 
+//lint:ignore U1000 intend to use shortly
 func (pf *planFile) outputChanges() (output report) {
 	for _, rc := range pf.OutputChanges {
 		for _, action := range rc.Actions {

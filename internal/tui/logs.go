@@ -12,8 +12,6 @@ import (
 	"github.com/leg100/pug/internal/tui/table"
 )
 
-var defaultHighlightStyle = lipgloss.NewStyle().Background(lipgloss.Color("#334"))
-
 type logsModelMaker struct {
 	logger *logging.Logger
 }
@@ -47,8 +45,6 @@ func (mm *logsModelMaker) makeModel(taskResource resource.Resource) (Model, erro
 
 	return logsModel{logger: mm.logger, table: table}, nil
 }
-
-type logMsg string
 
 type logsModel struct {
 	logger *logging.Logger

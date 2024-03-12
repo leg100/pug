@@ -2,7 +2,6 @@ package tui
 
 import (
 	"errors"
-	"fmt"
 	"slices"
 	"time"
 
@@ -136,9 +135,7 @@ func (m runListModel) Title() string {
 	return lipgloss.NewStyle().
 		Inherit(Breadcrumbs).
 		Padding(0, 0, 0, 1).
-		Render(
-			fmt.Sprintf("runs"),
-		)
+		Render("runs")
 }
 
 func (m runListModel) View() string {

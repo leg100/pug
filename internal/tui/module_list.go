@@ -120,22 +120,3 @@ func (mlm moduleListModel) HelpBindings() (bindings []key.Binding) {
 	bindings = append(bindings, Keys.CloseHelp)
 	return
 }
-
-func (mlm moduleListModel) reload() tea.Cmd {
-	return func() tea.Msg {
-		if err := mlm.svc.Reload(); err != nil {
-			return newErrorMsg(err, "reloading modules")
-		}
-		return nil
-	}
-}
-
-func (mlm moduleListModel) reloadWorkspaces(module resource.Resource) tea.Cmd {
-	return func() tea.Msg {
-		_, err := mlm.workspaces.Reload(module)
-		if err != nil {
-			return newErrorMsg(err, "reloading workspaces")
-		}
-		return nil
-	}
-}

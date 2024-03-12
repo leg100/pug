@@ -24,7 +24,7 @@ test:
 
 .PHONY: lint
 lint:
-	go list ./... | grep -v pggen | xargs staticcheck
+	go list ./... | xargs staticcheck
 
 # Run go fmt against code
 .PHONY: fmt

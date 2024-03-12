@@ -13,6 +13,7 @@ import (
 	"github.com/leg100/pug/internal/resource"
 	"github.com/leg100/pug/internal/task"
 	"github.com/leg100/pug/internal/tui/common"
+	"github.com/leg100/pug/internal/tui/table"
 	"github.com/muesli/reflow/wordwrap"
 )
 
@@ -231,7 +232,7 @@ func taskCmd(fn func(resource.ID) (*task.Task, error), ids ...resource.ID) tea.C
 	// If items have been selected then clear the selection
 	var deselectCmd tea.Cmd
 	if len(ids) > 1 {
-		deselectCmd = cmdHandler(deselectMsg{})
+		deselectCmd = cmdHandler(table.DeselectMsg{})
 	}
 
 	taskCmd := func() tea.Msg {
