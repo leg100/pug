@@ -102,7 +102,7 @@ func (m mainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch msg.Type {
 		case resource.CreatedEvent:
 			//return m, navigate(page{kind: WorkspaceListKind, resource: *msg.Payload.Parent})
-			cmds = append(cmds, runCmd(m.runs, msg.Payload.ID()))
+			//cmds = append(cmds, runCmd(m.runs, msg.Payload.ID()))
 		}
 	}
 

@@ -70,4 +70,4 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
-replace github.com/muesli/reflow => ../reflow
+replace github.com/muesli/reflow => github.com/leg100/reflow v0.0.0-20240312091107-2e299b65d8cf

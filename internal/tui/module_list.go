@@ -117,6 +117,5 @@ func (m moduleListModel) Pagination() string {
 }
 
 func (mlm moduleListModel) HelpBindings() (bindings []key.Binding) {
-	bindings = append(bindings, Keys.CloseHelp)
-	return
+	return keyMapToSlice(mlm.table.KeyMap)
 }
