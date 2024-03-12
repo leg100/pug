@@ -17,15 +17,29 @@ import (
 
 type Service struct {
 	broker *pubsub.Broker[*Workspace]
-	table  *resource.Table[*Workspace]
+	table  workspaceTable
 
-	modules *module.Service
+	modules moduleService
 	tasks   *task.Service
 }
 
 type ServiceOptions struct {
 	TaskService   *task.Service
 	ModuleService *module.Service
+}
+
+type workspaceTable interface {
+	Add(id resource.ID, row *Workspace)
+	Update(id resource.ID, updater func(existing *Workspace)) error
+	Delete(id resource.ID)
+	Get(id resource.ID) (*Workspace, error)
+	List() []*Workspace
+}
+
+type moduleService interface {
+	Get(id resource.ID) (*module.Module, error)
+	GetByPath(path string) (*module.Module, error)
+	SetCurrent(moduleID resource.ID, workspace string) error
 }
 
 func NewService(ctx context.Context, opts ServiceOptions) *Service {
@@ -69,11 +83,11 @@ func (s *Service) Reload(module resource.Resource) (*task.Task, error) {
 				slog.Error("reloading workspaces", "error", err, "module", module)
 				return
 			}
-			slog.Info("found workspaces", "found", found, "current", current)
 			if err := s.resetWorkspaces(module, found, current); err != nil {
 				slog.Error("reloading workspaces", "error", err, "module", module)
 				return
 			}
+			slog.Info("found workspaces", "found", found, "current", current)
 		},
 	})
 	if err != nil {
