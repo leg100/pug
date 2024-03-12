@@ -3,9 +3,8 @@ package state
 import (
 	"fmt"
 
-	"github.com/google/uuid"
-
 	"github.com/leg100/pug/internal/module"
+	"github.com/leg100/pug/internal/resource"
 	"github.com/leg100/pug/internal/task"
 	"github.com/leg100/pug/internal/workspace"
 )
@@ -16,20 +15,16 @@ type Service struct {
 	modules    *module.Service
 }
 
-// Get asynchronously retrieves the state for a workspace.
-func (s *Service) Get(workspaceID uuid.UUID) (*task.Task, error) {
+// Get creates a task to retreive the state.
+func (s *Service) Get(workspaceID resource.ID) (*task.Task, error) {
 	ws, err := s.workspaces.Get(workspaceID)
-	if err != nil {
-		return nil, fmt.Errorf("getting state: %w", err)
-	}
-	mod, err := s.modules.Get(ws.Module().ID)
 	if err != nil {
 		return nil, fmt.Errorf("getting state: %w", err)
 	}
 	return s.tasks.Create(task.CreateOptions{
 		Parent:  ws.Resource,
 		Command: []string{"state", "pull"},
-		Path:    mod.Path,
+		Path:    ws.ModulePath(),
 		Env:     []string{ws.TerraformEnv()},
 	})
 }
@@ -60,42 +55,34 @@ func (s *Service) Get(workspaceID uuid.UUID) (*task.Task, error) {
 // }
 
 // RemoveItems removes items from the state. Aynchronous.
-func (s *Service) RemoveItems(workspaceID uuid.UUID, addrs ...string) (*task.Task, error) {
+func (s *Service) RemoveItems(workspaceID resource.ID, addrs ...string) (*task.Task, error) {
 	// create task invoking "terraform state rm [<addr>...]"
 	//
 	ws, err := s.workspaces.Get(workspaceID)
 	if err != nil {
 		return nil, fmt.Errorf("retrieving workspace: %s: %w", workspaceID, err)
 	}
-	mod, err := s.modules.Get(ws.Module().ID())
-	if err != nil {
-		return nil, fmt.Errorf("retrieving module: %s: %w", ws.Module().ID(), err)
-	}
 	return s.tasks.Create(task.CreateOptions{
 		Parent:   ws.Resource,
 		Blocking: true,
 		Command:  []string{"state", "rm"},
 		Args:     addrs,
-		Path:     mod.Path,
+		Path:     ws.ModulePath(),
 		Env:      []string{ws.TerraformEnv()},
 	})
 }
 
-func (s *Service) Taint(workspaceID uuid.UUID, addr string) (*task.Task, error) {
+func (s *Service) Taint(workspaceID resource.ID, addr string) (*task.Task, error) {
 	ws, err := s.workspaces.Get(workspaceID)
 	if err != nil {
 		return nil, fmt.Errorf("retrieving workspace: %s: %w", workspaceID, err)
-	}
-	mod, err := s.modules.Get(ws.Module().ID())
-	if err != nil {
-		return nil, fmt.Errorf("retrieving module: %s: %w", ws.Module().ID(), err)
 	}
 	return s.tasks.Create(task.CreateOptions{
 		Parent:   ws.Resource,
 		Blocking: true,
 		Command:  []string{"taint"},
 		Args:     []string{addr},
-		Path:     mod.Path,
+		Path:     ws.ModulePath(),
 		Env:      []string{ws.TerraformEnv()},
 	})
 }

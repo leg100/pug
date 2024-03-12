@@ -27,8 +27,8 @@ func TestResource(t *testing.T) {
 	})
 
 	t.Run("has ancestor", func(t *testing.T) {
-		assert.True(t, task.HasAncestor(mod.ID()()))
-		assert.False(t, mod.HasAncestor(task.ID()()))
+		assert.True(t, task.HasAncestor(mod.ID()))
+		assert.False(t, mod.HasAncestor(task.ID()))
 	})
 
 	t.Run("module", func(t *testing.T) {

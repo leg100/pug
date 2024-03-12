@@ -1,4 +1,4 @@
-package help
+package tui
 
 import (
 	"testing"
@@ -48,7 +48,7 @@ func Test_render(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := render(tt.bindings, 3)
+			got := renderHelp(tt.bindings, 3)
 			assert.Equal(t, tt.want, got)
 		})
 	}

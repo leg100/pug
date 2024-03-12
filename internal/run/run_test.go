@@ -13,7 +13,7 @@ import (
 
 func TestRun_MakePugDirectory(t *testing.T) {
 	mod := module.New("a/b/c")
-	ws := workspace.New(mod.Resource, "dev", true)
+	ws := workspace.New(mod.Resource, "dev")
 
 	testutils.ChTempDir(t)
 
@@ -26,7 +26,7 @@ func TestRun_MakePugDirectory(t *testing.T) {
 
 func TestRun_PugDirectory(t *testing.T) {
 	mod := module.New("a/b/c")
-	ws := workspace.New(mod.Resource, "dev", true)
+	ws := workspace.New(mod.Resource, "dev")
 
 	run, err := newRun(mod, ws, CreateOptions{})
 	require.NoError(t, err)
@@ -37,7 +37,7 @@ func TestRun_PugDirectory(t *testing.T) {
 
 func TestRun_PlanPath(t *testing.T) {
 	mod := module.New("a/b/c")
-	ws := workspace.New(mod.Resource, "dev", true)
+	ws := workspace.New(mod.Resource, "dev")
 
 	run, err := newRun(mod, ws, CreateOptions{})
 	require.NoError(t, err)
