@@ -1,7 +1,6 @@
 package task
 
-// ByState implements sort.Interface for []*Task based on state, with the
-// following ordering:
+// ByState sorts tasks according to the following order:
 //
 // 1. running (ordered by last updated desc)
 // 2. queued (ordered by last updated asc)
@@ -12,11 +11,11 @@ func ByState(i, j *Task) int {
 	case Pending:
 		switch j.State {
 		case Pending:
-			// pending==pending, ordered by last udpated desc
+			// pending==pending, ordered by last updated desc
 			if i.Updated.Before(j.Updated) {
-				return -1
+				return 1
 			}
-			return 1
+			return -1
 		case Queued, Running:
 			// pending is after queued and running
 			return 1
@@ -28,10 +27,10 @@ func ByState(i, j *Task) int {
 		switch j.State {
 		case Queued:
 			// queued=queued (ordered by last updated desc)
-			if i.Updated.After(j.Updated) {
-				return -1
+			if i.Updated.Before(j.Updated) {
+				return 1
 			}
-			return 1
+			return -1
 		case Running:
 			// queued is after running
 			return 1

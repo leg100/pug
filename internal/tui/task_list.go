@@ -11,7 +11,6 @@ import (
 	"github.com/leg100/pug/internal/resource"
 	"github.com/leg100/pug/internal/task"
 	"github.com/leg100/pug/internal/tui/table"
-	"github.com/mattn/go-runewidth"
 	"golang.org/x/exp/maps"
 )
 
@@ -28,10 +27,9 @@ func (m *taskListModelMaker) makeModel(parent resource.Resource) (Model, error) 
 		hasModuleColumn    bool
 		hasWorkspaceColumn bool
 	)
-	columns = append(columns,
-		table.Column{Title: "MODULE", Width: 20, TruncationFunc: runewidth.TruncateLeft})
+	columns = append(columns, moduleColumn)
 	hasModuleColumn = true
-	columns = append(columns, table.Column{Title: "WORKSPACE", Width: 10})
+	columns = append(columns, table.Column{Title: "WORKSPACE", Width: 10, FlexFactor: 1})
 	hasWorkspaceColumn = true
 	columns = append(columns,
 		table.Column{Title: "COMMAND", Width: 20},
@@ -39,27 +37,37 @@ func (m *taskListModelMaker) makeModel(parent resource.Resource) (Model, error) 
 		table.Column{Title: "AGE", Width: 10},
 		table.Column{Title: "ID", Width: resource.IDEncodedMaxLen},
 	)
-	cellsFunc := func(task *task.Task) []string {
-		cells := make([]string, 0, len(columns))
+	cellsFunc := func(t *task.Task) []table.Cell {
+		cells := make([]table.Cell, 0, len(columns))
 		if hasModuleColumn {
-			if mod := task.Module(); mod != nil {
-				cells = append(cells, mod.String())
+			if mod := t.Module(); mod != nil {
+				cells = append(cells, table.Cell{Str: mod.String()})
 			} else {
-				cells = append(cells, "")
+				cells = append(cells, table.Cell{})
 			}
 		}
 		if hasWorkspaceColumn {
-			if ws := task.Workspace(); ws != nil {
-				cells = append(cells, ws.String())
+			if ws := t.Workspace(); ws != nil {
+				cells = append(cells, table.Cell{Str: ws.String()})
 			} else {
-				cells = append(cells, "")
+				cells = append(cells, table.Cell{})
 			}
 		}
+		cells = append(cells, table.Cell{Str: strings.Join(t.Command, " ")})
+
+		stateStyle := lipgloss.NewStyle()
+		switch t.State {
+		case task.Errored:
+			stateStyle = stateStyle.Foreground(Red)
+		case task.Exited:
+			stateStyle = stateStyle.Foreground(lipgloss.Color("40"))
+		default:
+		}
+
 		cells = append(cells,
-			strings.Join(task.Command, " "),
-			string(task.State),
-			ago(time.Now(), task.Updated),
-			task.ID().String(),
+			table.Cell{Str: string(t.State), Style: stateStyle},
+			table.Cell{Str: ago(time.Now(), t.Updated)},
+			table.Cell{Str: t.ID().String()},
 		)
 		return cells
 	}

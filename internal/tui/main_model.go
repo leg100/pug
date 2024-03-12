@@ -106,6 +106,22 @@ func (m mainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 
+	if m.showHelp {
+		switch msg := msg.(type) {
+		case tea.WindowSizeMsg:
+			m.width = msg.Width
+			m.height = msg.Height
+			return m, m.resizeCmd
+		case tea.KeyMsg:
+			switch {
+			case key.Matches(msg, Keys.Escape, Keys.CloseHelp):
+				// <esc>, '?' closes help
+				m.showHelp = false
+			}
+		}
+		return m, nil
+	}
+
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
@@ -117,15 +133,10 @@ func (m mainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// ctrl-c quits the app
 			return m, tea.Quit
 		case key.Matches(msg, Keys.Escape):
-			// <esc> whilst in help turns off help
-			if m.showHelp {
-				m.showHelp = false
-			} else {
-				m.goBack()
-			}
+			m.goBack()
 		case key.Matches(msg, Keys.Help):
-			// '?' toggles help
-			m.showHelp = !m.showHelp
+			// '?' shows help
+			m.showHelp = true
 		case key.Matches(msg, Keys.Logs):
 			// 'l' shows logs
 			return m, navigate(page{kind: LogsKind})
@@ -182,10 +193,11 @@ var (
 			Padding(0, 1).
 			Foreground(Pink).
 			Render(logo)
-	logoWidth         = lipgloss.Width(renderedLogo)
-	headerHeight      = 3
-	breadcrumbsHeight = 1
-	messageFooter     = 1
+	logoWidth            = lipgloss.Width(renderedLogo)
+	headerHeight         = 3
+	breadcrumbsHeight    = 1
+	horizontalRuleHeight = 1
+	messageFooterHeight  = 1
 )
 
 func (m mainModel) View() string {
@@ -195,7 +207,11 @@ func (m mainModel) View() string {
 	)
 
 	if m.showHelp {
-		content = renderHelp(m.currentModel().HelpBindings(), max(1, m.height-2))
+		content = lipgloss.NewStyle().
+			Margin(1).
+			Render(
+				renderHelp(m.currentModel().HelpBindings(), max(1, m.height-2)),
+			)
 	} else {
 		content = m.currentModel().View()
 		pagination = m.currentModel().Pagination()
@@ -222,9 +238,14 @@ func (m mainModel) View() string {
 		// content
 		lipgloss.NewStyle().
 			Height(m.viewHeight()).
-			Width(m.viewWidth()).
+			//Width(m.viewWidth()).
+			// 1: margin; 24: time; 5: level; 60: msg; 1: margin
+			//Width(1+24+1+1+5+1+1+81+1).
 			//MaxHeight(m.viewHeight()).
 			Render(content),
+		// horizontal rule
+		lipgloss.NewStyle().
+			Render(strings.Repeat("─", m.width)),
 		// footer
 		lipgloss.JoinHorizontal(
 			lipgloss.Top,
@@ -244,7 +265,7 @@ func (m mainModel) View() string {
 // viewHeight retrieves the height available beneath the header and breadcrumbs,
 // and the message footer.
 func (m mainModel) viewHeight() int {
-	return m.height - headerHeight - breadcrumbsHeight - messageFooter
+	return m.height - headerHeight - breadcrumbsHeight - horizontalRuleHeight - messageFooterHeight
 }
 
 // viewWidth retrieves the width available within the main view

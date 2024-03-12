@@ -14,15 +14,17 @@ type Status string
 
 const (
 	Pending            Status = "pending"
-	PlanQueued         Status = "plan_queued"
+	PlanQueued         Status = "plan queued"
 	Planning           Status = "planning"
 	Planned            Status = "planned"
-	PlannedAndFinished Status = "planned_and_finished"
-	ApplyQueued        Status = "apply_queued"
+	PlannedAndFinished Status = "planned & finished"
+	ApplyQueued        Status = "apply queued"
 	Applying           Status = "applying"
 	Applied            Status = "applied"
 	Errored            Status = "errored"
 	Canceled           Status = "canceled"
+
+	MaxStatusLen = len(PlannedAndFinished)
 )
 
 type Run struct {

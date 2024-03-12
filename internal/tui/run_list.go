@@ -24,20 +24,28 @@ func (m *runListModelMaker) makeModel(parent resource.Resource) (Model, error) {
 	// TODO: depending upon kind of parent, hide certain redundant columns, e.g.
 	// a module parent kind would render the module column redundant.
 	columns := []table.Column{
-		{Title: "MODULE", Width: 30},
-		{Title: "WORKSPACE", Width: 20},
-		{Title: "STATUS", Width: 20},
+		moduleColumn,
+		workspaceColumn,
+		// TODO: if 1 is not added then the last char is chopped off and an
+		// ellipsis is added... not sure why
+		{Title: "STATUS", Width: run.MaxStatusLen + 1},
+		{Title: "CHANGES", Width: 12},
 		{Title: "AGE", Width: 10},
-		{Title: "ID", Width: resource.IDEncodedMaxLen},
 	}
-	cellsFunc := func(run *run.Run) []string {
-		cells := []string{
-			run.Module().String(),
-			run.Workspace().String(),
-			string(run.Status),
-			ago(time.Now(), run.Created),
-			run.ID().String(),
-		}
+	cellsFunc := func(r *run.Run) []table.Cell {
+		cells := make([]table.Cell, len(columns))
+
+		cells[0] = table.Cell{Str: r.Module().String()}
+		cells[1] = table.Cell{Str: r.Workspace().String()}
+		cells[2] = table.Cell{Str: string(r.Status)}
+		cells[4] = table.Cell{Str: ago(time.Now(), r.Created)}
+
+		//switch r.Status {
+		//case run.Planned, run.PlannedAndFinished, run.ApplyQueued, run.Applying:
+		//case run.Applied:
+		//}
+		cells[3] = table.Cell{Str: r.PlanReport.String()}
+
 		//// Only show module column if not filtered by a parent module.
 		//if parent == resource.NilResource {
 		//	data[ColKeyModule] = run.Module().String()
@@ -74,7 +82,7 @@ func (m runListModel) Init() tea.Cmd {
 		if m.parent != resource.NilResource {
 			opts.ParentID = m.parent.ID()
 		}
-		return bulkInsertMsg[*run.Run](m.svc.List(opts))
+		return table.BulkInsertMsg[*run.Run](m.svc.List(opts))
 	}
 }
 
@@ -175,13 +183,12 @@ func (m runListModel) navigateLatestTask(runID resource.ID) tea.Cmd {
 
 func runCmd(runs *run.Service, workspaceID resource.ID) tea.Cmd {
 	return func() tea.Msg {
-		_, _, err := runs.Create(workspaceID, run.CreateOptions{})
+		_, task, err := runs.Create(workspaceID, run.CreateOptions{})
 		if err != nil {
 			return newErrorMsg(err, "creating run")
 		}
-		return nil
-		//return navigationMsg{
-		//	target: page{kind: TaskKind, resource: task.Resource},
-		//}
+		return navigationMsg{
+			target: page{kind: TaskKind, resource: task.Resource},
+		}
 	}
 }

@@ -6,12 +6,19 @@ import (
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/evertras/bubble-table/table"
 	"github.com/leg100/pug/internal/module"
 	"github.com/leg100/pug/internal/resource"
 	"github.com/leg100/pug/internal/run"
+	"github.com/leg100/pug/internal/tui/table"
 	"github.com/leg100/pug/internal/workspace"
+	"golang.org/x/exp/maps"
 )
+
+var workspaceColumn = table.Column{
+	Title:      "WORKSPACE",
+	Width:      20,
+	FlexFactor: 1,
+}
 
 type workspaceListModelMaker struct {
 	svc     *workspace.Service
@@ -20,58 +27,42 @@ type workspaceListModelMaker struct {
 }
 
 func (m *workspaceListModelMaker) makeModel(parent resource.Resource) (Model, error) {
-	var cols []table.Column
-	if parent == resource.NilResource {
-		// TODO: depending upon kind of parent, hide certain redundant columns, e.g.
-		// a module parent kind would render the module column redundant.
-		cols = append(cols, table.NewFlexColumn(ColKeyModule, "MODULE", 1).WithStyle(
-			lipgloss.NewStyle().
-				Align(lipgloss.Left),
-		))
+	// TODO: depending upon kind of parent, hide certain redundant columns, e.g.
+	// a module parent kind would render the module column redundant.
+	columns := []table.Column{
+		moduleColumn,
+		workspaceColumn,
+		table.IDColumn,
 	}
-	cols = append(cols,
-		table.NewFlexColumn(ColKeyName, "NAME", 2).WithStyle(
-			lipgloss.NewStyle().
-				Align(lipgloss.Left),
-		),
-		table.NewColumn(ColKeyID, "ID", resource.IDEncodedMaxLen).WithStyle(
-			lipgloss.NewStyle().
-				Align(lipgloss.Left),
-		),
-	)
-	rowMaker := func(ws *workspace.Workspace) table.RowData {
-		data := table.RowData{
-			ColKeyID:   ws.ID().String(),
-			ColKeyName: ws.Workspace().String(),
-			ColKeyData: ws,
+	cellsFunc := func(ws *workspace.Workspace) []table.Cell {
+		cells := []table.Cell{
+			{Str: ws.Module().String()},
+			{Str: ws.Workspace().String()},
+			{Str: ws.ID().String()},
 		}
-		// Only show module column if workspaces are not filtered by a parent
+		// TODO: Only show module column if workspaces are not filtered by a parent
 		// module.
-		if parent == resource.NilResource {
-			data[ColKeyModule] = ws.Module().String()
-		}
-		return data
+		return cells
 	}
+	table := table.New[*workspace.Workspace](columns).
+		WithCellsFunc(cellsFunc).
+		WithSortFunc(workspace.Sort)
+
 	return workspaceListModel{
-		table: newTableModel(tableModelOptions[*workspace.Workspace]{
-			rowMaker: rowMaker,
-			columns:  cols,
-		}),
-		svc:        m.svc,
-		modules:    m.modules,
-		runs:       m.runs,
-		parent:     parent,
-		workspaces: make(map[resource.ID]*workspace.Workspace, 0),
+		table:   table,
+		svc:     m.svc,
+		modules: m.modules,
+		runs:    m.runs,
+		parent:  parent,
 	}, nil
 }
 
 type workspaceListModel struct {
-	table      tableModel[*workspace.Workspace]
-	svc        *workspace.Service
-	modules    *module.Service
-	runs       *run.Service
-	parent     resource.Resource
-	workspaces map[resource.ID]*workspace.Workspace
+	table   table.Model[*workspace.Workspace]
+	svc     *workspace.Service
+	modules *module.Service
+	runs    *run.Service
+	parent  resource.Resource
 }
 
 func (m workspaceListModel) Init() tea.Cmd {
@@ -80,7 +71,7 @@ func (m workspaceListModel) Init() tea.Cmd {
 		if m.parent != resource.NilResource {
 			opts.ModuleID = m.parent.ID()
 		}
-		return bulkInsertMsg[*workspace.Workspace](m.svc.List(opts))
+		return table.BulkInsertMsg[*workspace.Workspace](m.svc.List(opts))
 	}
 }
 
@@ -94,7 +85,7 @@ func (m workspaceListModel) Update(msg tea.Msg) (Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, Keys.Enter):
-			if ok, ws := m.table.highlighted(); ok {
+			if ws, ok := m.table.Highlighted(); ok {
 				return m, navigate(page{kind: RunListKind, resource: ws.Resource})
 			}
 		case key.Matches(msg, Keys.Init):
@@ -104,7 +95,7 @@ func (m workspaceListModel) Update(msg tea.Msg) (Model, tea.Cmd) {
 		case key.Matches(msg, Keys.Validate):
 			return m, taskCmd(m.modules.Validate, m.highlightedOrSelectedModuleIDs()...)
 		case key.Matches(msg, Keys.Plan):
-			if ok, ws := m.table.highlighted(); ok {
+			if ws, ok := m.table.Highlighted(); ok {
 				return m, runCmd(m.runs, ws.ID())
 			}
 		}
@@ -148,7 +139,7 @@ func (m workspaceListModel) View() string {
 }
 
 func (m workspaceListModel) Pagination() string {
-	return m.table.Pagination()
+	return ""
 }
 
 func (m workspaceListModel) HelpBindings() (bindings []key.Binding) {
@@ -157,7 +148,7 @@ func (m workspaceListModel) HelpBindings() (bindings []key.Binding) {
 }
 
 func (m workspaceListModel) highlightedOrSelectedModuleIDs() []resource.ID {
-	selected := m.table.highlightedOrSelected()
+	selected := maps.Values(m.table.HighlightedOrSelected())
 	moduleIDs := make([]resource.ID, len(selected))
 	for i, s := range selected {
 		moduleIDs[i] = s.Module().ID()

@@ -30,6 +30,10 @@ func (ws *Workspace) Module() resource.Resource {
 	return *ws.Parent
 }
 
+func (ws *Workspace) ModulePath() string {
+	return ws.Parent.String()
+}
+
 func (ws *Workspace) PugDirectory() string {
 	return PugDirectory(ws.String())
 }

@@ -10,8 +10,16 @@ import (
 	"github.com/leg100/pug/internal/resource"
 	"github.com/leg100/pug/internal/tui/table"
 	"github.com/leg100/pug/internal/workspace"
+	"github.com/muesli/reflow/truncateleft"
 	"golang.org/x/exp/maps"
 )
+
+var moduleColumn = table.Column{
+	Title:          "MODULE",
+	Width:          20,
+	TruncationFunc: truncateleft.StringWithPrefix,
+	FlexFactor:     2,
+}
 
 type moduleListModelMaker struct {
 	svc        *module.Service
@@ -21,16 +29,21 @@ type moduleListModelMaker struct {
 
 func (m *moduleListModelMaker) makeModel(_ resource.Resource) (Model, error) {
 	columns := []table.Column{
-		{Title: "PATH", Width: 30},
+		{
+			Title:          "MODULE",
+			Width:          30,
+			TruncationFunc: truncateleft.StringWithPrefix,
+			FlexFactor:     1,
+		},
 		{Title: "CURRENT WORKSPACE", Width: 20},
 		{Title: "ID", Width: resource.IDEncodedMaxLen},
 	}
 	table := table.New[*module.Module](columns).
-		WithCellsFunc(func(mod *module.Module) []string {
-			return []string{
-				mod.Path(),
-				mod.Current,
-				mod.ID().String(),
+		WithCellsFunc(func(mod *module.Module) []table.Cell {
+			return []table.Cell{
+				{Str: mod.Path()},
+				{Str: mod.Current},
+				{Str: mod.ID().String()},
 			}
 		}).
 		WithSortFunc(module.ByPath)
@@ -97,10 +110,6 @@ func (mlm moduleListModel) View() string {
 		lipgloss.Top,
 		mlm.table.View(),
 	)
-}
-
-func (mlm moduleListModel) Footer(width int) string {
-	return "logs"
 }
 
 func (m moduleListModel) Pagination() string {

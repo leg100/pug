@@ -23,12 +23,12 @@ func (mm *logsModelMaker) makeModel(taskResource resource.Resource) (Model, erro
 		{Title: "TIME", Width: 24},
 		{Title: "LEVEL", Width: 5},
 		// make flex
-		{Title: "MESSAGE", Width: 60},
+		{Title: "MESSAGE", Width: 60, FlexFactor: 1},
 	}
-	cellsFunc := func(msg logging.Message) []string {
-		cells := []string{
-			msg.Time.Format("2006-01-02T15:04:05.000"),
-			msg.Level,
+	cellsFunc := func(msg logging.Message) []table.Cell {
+		cells := []table.Cell{
+			{Str: msg.Time.Format("2006-01-02T15:04:05.000")},
+			{Str: msg.Level},
 		}
 
 		// combine message and attributes, separated by spaces, with each
@@ -38,7 +38,7 @@ func (mm *logsModelMaker) makeModel(taskResource resource.Resource) (Model, erro
 		for k, v := range msg.Attributes {
 			parts = append(parts, fmt.Sprintf("%s=%s", k, v))
 		}
-		return append(cells, strings.Join(parts, " "))
+		return append(cells, table.Cell{Str: strings.Join(parts, " ")})
 	}
 	table := table.New[logging.Message](columns).
 		WithCellsFunc(cellsFunc).
@@ -94,6 +94,5 @@ func (m logsModel) Pagination() string {
 }
 
 func (m logsModel) HelpBindings() (bindings []key.Binding) {
-	bindings = append(bindings, Keys.CloseHelp)
-	return
+	return keyMapToSlice(m.table.KeyMap)
 }
