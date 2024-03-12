@@ -14,8 +14,6 @@ func (m *Model[T]) recalculateWidth() {
 		if col.FlexFactor == 0 {
 			// Column not using flex
 			totalFlexWidth -= col.Width
-			// Does this actually do anything?
-			//m.cols[index].style = col.style.Width(col.width)
 		} else {
 			totalFlexFactor += col.FlexFactor
 			flexGCD = gcd(flexGCD, col.FlexFactor)
@@ -53,45 +51,5 @@ func (m *Model[T]) recalculateWidth() {
 		width = max(width, 1)
 
 		m.cols[index].Width = width
-
-		// Take borders into account for the actual style
-		//m.cols[index].style = m.cols[index].style.Width(width)
 	}
 }
-
-//func (m *Model[T]) recalculateLastHorizontalColumn() {
-//	//if m.horizontalScrollFreezeColumnsCount >= len(m.columns) {
-//	//	m.maxHorizontalColumnIndex = 0
-//
-//	//	return
-//	//}
-//
-//	//if m.totalWidth <= m.maxTotalWidth {
-//	//	m.maxHorizontalColumnIndex = 0
-//
-//	//	return
-//	//}
-//
-//	const (
-//		leftOverflowWidth = 2
-//		borderAdjustment  = 1
-//	)
-//
-//	// Always have left border
-//	visibleWidth := borderAdjustment + leftOverflowWidth
-//
-//	for i := 0; i < m.horizontalScrollFreezeColumnsCount; i++ {
-//		visibleWidth += m.columns[i].width + borderAdjustment
-//	}
-//
-//	m.maxHorizontalColumnIndex = len(m.columns) - 1
-//
-//	// Work backwards from the right
-//	for i := len(m.columns) - 1; i >= m.horizontalScrollFreezeColumnsCount && visibleWidth <= m.maxTotalWidth; i-- {
-//		visibleWidth += m.columns[i].width + borderAdjustment
-//
-//		if visibleWidth <= m.maxTotalWidth {
-//			m.maxHorizontalColumnIndex = i - m.horizontalScrollFreezeColumnsCount
-//		}
-//	}
-//}

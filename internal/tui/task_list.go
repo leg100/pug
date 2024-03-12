@@ -74,7 +74,7 @@ func (m *taskListModelMaker) makeModel(parent resource.Resource) (Model, error) 
 	table := table.New[*task.Task](columns).
 		WithCellsFunc(cellsFunc).
 		WithSortFunc(task.ByState)
-		//WithWidth(60)
+		// WithWidth(60)
 
 	return taskListModel{
 		table:  table,

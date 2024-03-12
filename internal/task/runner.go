@@ -29,7 +29,6 @@ func newRunner(maxTasks int, lister taskLister) *runner {
 }
 
 func (r *runner) start(ctx context.Context, sub <-chan resource.Event[*Task]) {
-	//g, ctx := errgroup.WithContext(ctx)
 	// On each task event, get a list of tasks to be run, start them, and wait
 	// for them to complete in the background.
 	for range sub {

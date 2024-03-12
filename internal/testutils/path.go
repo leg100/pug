@@ -12,8 +12,12 @@ func ChTempDir(t *testing.T) {
 
 	wd, err := os.Getwd()
 	require.NoError(t, err)
-	os.Chdir(t.TempDir())
+
+	err = os.Chdir(t.TempDir())
+	require.NoError(t, err)
+
 	t.Cleanup(func() {
-		os.Chdir(wd)
+		err := os.Chdir(wd)
+		require.NoError(t, err)
 	})
 }

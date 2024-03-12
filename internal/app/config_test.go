@@ -131,7 +131,8 @@ func TestConfig(t *testing.T) {
 
 			// set config file
 			if tt.file != "" {
-				os.WriteFile("pug.yaml", []byte(tt.file), 0o400)
+				err := os.WriteFile("pug.yaml", []byte(tt.file), 0o400)
+				require.NoError(t, err)
 			}
 
 			// and pass in flags

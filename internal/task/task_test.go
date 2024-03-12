@@ -56,36 +56,36 @@ func TestTask_cancel(t *testing.T) {
 	assert.Equal(t, Exited, task.State)
 }
 
-//func TestTask_WaitFor_immediateExit(t *testing.T) {
-//	f := factory{program: "../testdata/task"}
-//	task, err := f.newTask(".")
-//	require.NoError(t, err)
-//	task.run()()
+// func TestTask_WaitFor_immediateExit(t *testing.T) {
+// 	f := factory{program: "../testdata/task"}
+// 	task, err := f.newTask(".")
+// 	require.NoError(t, err)
+// 	task.run()()
 //
-//	require.True(t, task.WaitFor(Exited))
-//}
+// 	require.True(t, task.WaitFor(Exited))
+// }
 //
-//func TestTask_WaitFor(t *testing.T) {
-//	f := factory{program: "../testdata/killme"}
-//	task, err := f.newTask(".")
-//	require.NoError(t, err)
+// func TestTask_WaitFor(t *testing.T) {
+// 	f := factory{program: "../testdata/killme"}
+// 	task, err := f.newTask(".")
+// 	require.NoError(t, err)
 //
-//	// wait for task to exit in background
-//	got := make(chan bool)
-//	go func() {
-//		got <- task.WaitFor(Exited)
-//	}()
+// 	// wait for task to exit in background
+// 	got := make(chan bool)
+// 	go func() {
+// 		got <- task.WaitFor(Exited)
+// 	}()
 //
-//	// start task in background
-//	go func() {
-//		task.run()()
-//	}()
+// 	// start task in background
+// 	go func() {
+// 		task.run()()
+// 	}()
 //
-//	// wait for task to start
-//	assert.Equal(t, "ok, you can kill me now\n", <-iochan.DelimReader(task.NewReader(), '\n'))
-//	// then cancel
-//	task.cancel()
+// 	// wait for task to start
+// 	assert.Equal(t, "ok, you can kill me now\n", <-iochan.DelimReader(task.NewReader(), '\n'))
+// 	// then cancel
+// 	task.cancel()
 //
-//	// verify task exits
-//	require.True(t, <-got)
-//}
+// 	// verify task exits
+// 	require.True(t, <-got)
+// }

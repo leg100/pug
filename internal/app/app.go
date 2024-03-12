@@ -88,7 +88,7 @@ func Start() error {
 		// clipboard. Therefore we've decided to disable it and leave it
 		// commented out for posterity.
 		//
-		//tea.WithMouseCellMotion(),
+		// tea.WithMouseCellMotion(),
 	)
 
 	// Relay resource events to TUI.

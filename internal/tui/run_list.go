@@ -39,21 +39,21 @@ func (m *runListModelMaker) makeModel(parent resource.Resource) (Model, error) {
 		cells[2] = table.Cell{Str: string(r.Status)}
 		cells[4] = table.Cell{Str: ago(time.Now(), r.Created)}
 
-		//switch r.Status {
-		//case run.Planned, run.PlannedAndFinished, run.ApplyQueued, run.Applying:
-		//case run.Applied:
-		//}
+		// switch r.Status {
+		// case run.Planned, run.PlannedAndFinished, run.ApplyQueued, run.Applying:
+		// case run.Applied:
+		// }
 		cells[3] = table.Cell{Str: r.PlanReport.String()}
 
-		//// Only show module column if not filtered by a parent module.
-		//if parent == resource.NilResource {
-		//	data[ColKeyModule] = run.Module().String()
-		//}
-		//// Only show workspace column if not filtered by a parent workspace.
-		//if parent == resource.NilResource {
-		//	data[ColKeyWorkspace] = run.Workspace().String()
-		//}
-		//return data
+		// // Only show module column if not filtered by a parent module.
+		// if parent == resource.NilResource {
+		// 	data[ColKeyModule] = run.Module().String()
+		// }
+		// // Only show workspace column if not filtered by a parent workspace.
+		// if parent == resource.NilResource {
+		// 	data[ColKeyWorkspace] = run.Workspace().String()
+		// }
+		// return data
 		return cells
 	}
 	table := table.New[*run.Run](columns).

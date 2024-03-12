@@ -70,7 +70,10 @@ func (s *Service) Reload(module resource.Resource) (*task.Task, error) {
 				return
 			}
 			slog.Info("found workspaces", "found", found, "current", current)
-			s.resetWorkspaces(module, found, current)
+			if err := s.resetWorkspaces(module, found, current); err != nil {
+				slog.Error("reloading workspaces", "error", err, "module", module)
+				return
+			}
 		},
 	})
 	if err != nil {
@@ -83,7 +86,7 @@ func (s *Service) Reload(module resource.Resource) (*task.Task, error) {
 // resetWorkspaces resets the workspaces for a module, adding newly discovered
 // workspaces, removing workspaces that no longer exist, and setting the current
 // workspace for the module.
-func (s *Service) resetWorkspaces(module resource.Resource, discovered []string, current string) {
+func (s *Service) resetWorkspaces(module resource.Resource, discovered []string, current string) error {
 	// Gather existing workspaces for the module.
 	var existing []*Workspace
 	for _, ws := range s.table.List() {
@@ -110,7 +113,7 @@ func (s *Service) resetWorkspaces(module resource.Resource, discovered []string,
 		}
 	}
 	// Reset current workspace
-	s.modules.SetCurrent(module.ID(), current)
+	return s.modules.SetCurrent(module.ID(), current)
 }
 
 // Parse workspaces from the output of `terraform workspace list`.

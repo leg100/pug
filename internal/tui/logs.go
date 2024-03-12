@@ -75,7 +75,6 @@ func (m logsModel) Title() string {
 		Background(DarkGrey).
 		Foreground(White).
 		Bold(true).
-		//Width(m.table.width).
 		Padding(0, 1).
 		Render("logs")
 }

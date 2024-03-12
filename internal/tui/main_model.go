@@ -101,8 +101,8 @@ func (m mainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case resource.Event[*workspace.Workspace]:
 		switch msg.Type {
 		case resource.CreatedEvent:
-			//return m, navigate(page{kind: WorkspaceListKind, resource: *msg.Payload.Parent})
-			//cmds = append(cmds, runCmd(m.runs, msg.Payload.ID()))
+			// return m, navigate(page{kind: WorkspaceListKind, resource: *msg.Payload.Parent})
+			// cmds = append(cmds, runCmd(m.runs, msg.Payload.ID()))
 		}
 	}
 
@@ -238,10 +238,10 @@ func (m mainModel) View() string {
 		// content
 		lipgloss.NewStyle().
 			Height(m.viewHeight()).
-			//Width(m.viewWidth()).
-			// 1: margin; 24: time; 5: level; 60: msg; 1: margin
-			//Width(1+24+1+1+5+1+1+81+1).
-			//MaxHeight(m.viewHeight()).
+			// Width(m.viewWidth()).
+			//  1: margin; 24: time; 5: level; 60: msg; 1: margin
+			// Width(1+24+1+1+5+1+1+81+1).
+			// MaxHeight(m.viewHeight()).
 			Render(content),
 		// horizontal rule
 		lipgloss.NewStyle().

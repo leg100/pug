@@ -208,8 +208,6 @@ func (m Model[T]) Update(msg tea.Msg) (Model[T], tea.Cmd) {
 			m.MoveUp(m.viewport.Height / 2)
 		case key.Matches(msg, m.KeyMap.HalfPageDown):
 			m.MoveDown(m.viewport.Height / 2)
-		case key.Matches(msg, m.KeyMap.LineDown):
-			m.MoveDown(1)
 		case key.Matches(msg, m.KeyMap.GotoTop):
 			m.GotoTop()
 		case key.Matches(msg, m.KeyMap.GotoBottom):
@@ -243,7 +241,7 @@ func (m Model[T]) Update(msg tea.Msg) (Model[T], tea.Cmd) {
 		// minimum width of 80.
 		//
 		// Does this need to be set on the viewport?
-		//m.viewport.Width = max(80, msg.Width)
+		// m.viewport.Width = max(80, msg.Width)
 		m.viewport.Height = msg.Height - headerHeight
 		m.width = max(80, msg.Width)
 		m.recalculateWidth()
@@ -393,9 +391,9 @@ func (m *Model[T]) SetItems(items []T) {
 	// Convert items into rows, and carry across matching selections
 	for i, it := range items {
 		// Skip items that are not a descendent of the parent.
-		//if !it.HasAncestor(m.parent.ID()) {
-		//	continue
-		//}
+		// if !it.HasAncestor(m.parent.ID()) {
+		// 	continue
+		// }
 		m.rows[i] = Row[T]{
 			Cells:  m.cellsFunc(it),
 			Entity: it,
