@@ -26,6 +26,7 @@ type keyMap struct {
 	Help       key.Binding
 	CloseHelp  key.Binding
 	SelectAll  key.Binding
+	Reload     key.Binding
 }
 
 var Keys = keyMap{
@@ -105,6 +106,10 @@ var Keys = keyMap{
 		key.WithKeys("ctrl+a"),
 		key.WithHelp("ctrl+a", "select all"),
 	),
+	Reload: key.NewBinding(
+		key.WithKeys("ctrl+r"),
+		key.WithHelp("ctrl+r", "reload"),
+	),
 }
 
 // keyMapToSlice takes a struct of fields of type key.Binding and returns it as
@@ -119,4 +124,55 @@ func keyMapToSlice(t any) (bindings []key.Binding) {
 		bindings = append(bindings, v.Interface().(key.Binding))
 	}
 	return
+}
+
+type generalKeyMap struct {
+	Quit       key.Binding
+	Modules    key.Binding
+	Workspaces key.Binding
+	Runs       key.Binding
+	Tasks      key.Binding
+	Logs       key.Binding
+	Escape     key.Binding
+	SelectAll  key.Binding
+	Help       key.Binding
+}
+
+var generalKeys = generalKeyMap{
+	Quit: key.NewBinding(
+		key.WithKeys("ctrl+c"),
+		key.WithHelp("^c", "exit"),
+	),
+	Modules: key.NewBinding(
+		key.WithKeys("m"),
+		key.WithHelp("m", "modules"),
+	),
+	Workspaces: key.NewBinding(
+		key.WithKeys("w"),
+		key.WithHelp("w", "workspaces"),
+	),
+	Runs: key.NewBinding(
+		key.WithKeys("r"),
+		key.WithHelp("r", "runs"),
+	),
+	Tasks: key.NewBinding(
+		key.WithKeys("t"),
+		key.WithHelp("t", "tasks"),
+	),
+	Logs: key.NewBinding(
+		key.WithKeys("l"),
+		key.WithHelp("l", "logs"),
+	),
+	Escape: key.NewBinding(
+		key.WithKeys("esc", "`"),
+		key.WithHelp("esc, `", "back"),
+	),
+	SelectAll: key.NewBinding(
+		key.WithKeys("ctrl+a"),
+		key.WithHelp("ctrl+a", "select all"),
+	),
+	Help: key.NewBinding(
+		key.WithKeys("?"),
+		key.WithHelp("?", "help"),
+	),
 }

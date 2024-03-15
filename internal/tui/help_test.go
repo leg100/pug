@@ -20,7 +20,7 @@ func Test_render(t *testing.T) {
 				key.NewBinding(key.WithHelp("b", "bbb")),
 				key.NewBinding(key.WithHelp("c", "ccc")),
 			},
-			"  a aaa\n  b bbb\n  c ccc",
+			"a aaa   \nb bbb   \nc ccc   ",
 		},
 		{
 			"two columns",
@@ -30,7 +30,7 @@ func Test_render(t *testing.T) {
 				key.NewBinding(key.WithHelp("c", "ccc")),
 				key.NewBinding(key.WithHelp("d", "ddd")),
 			},
-			"  a aaa  d ddd\n  b bbb       \n  c ccc       ",
+			"a aaa   d ddd   \nb bbb           \nc ccc           ",
 		},
 		{
 			"three columns",
@@ -43,12 +43,12 @@ func Test_render(t *testing.T) {
 				key.NewBinding(key.WithHelp("f", "fff")),
 				key.NewBinding(key.WithHelp("g", "ggg")),
 			},
-			"  a aaa  d ddd  g ggg\n  b bbb  e eee       \n  c ccc  f fff       ",
+			"a aaa   d ddd   g ggg   \nb bbb   e eee           \nc ccc   f fff           ",
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := renderHelp(tt.bindings, 3)
+			got := shortHelpView(tt.bindings, 30)
 			assert.Equal(t, tt.want, got)
 		})
 	}

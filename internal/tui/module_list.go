@@ -80,6 +80,13 @@ func (m moduleListModel) Update(msg tea.Msg) (Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch {
+		case key.Matches(msg, Keys.Reload):
+			return m, func() tea.Msg {
+				if err := m.svc.Reload(); err != nil {
+					return newErrorMsg(err, "reloading modules")
+				}
+				return nil
+			}
 		case key.Matches(msg, Keys.Enter):
 			if mod, ok := m.table.Highlighted(); ok {
 				return m, navigate(page{kind: WorkspaceListKind, resource: mod.Resource})
@@ -117,5 +124,9 @@ func (m moduleListModel) Pagination() string {
 }
 
 func (mlm moduleListModel) HelpBindings() (bindings []key.Binding) {
-	return keyMapToSlice(mlm.table.KeyMap)
+	return []key.Binding{
+		Keys.Init,
+		Keys.Validate,
+		Keys.Format,
+	}
 }

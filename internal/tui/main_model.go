@@ -7,6 +7,7 @@ import (
 
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/spinner"
+	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/davecgh/go-spew/spew"
@@ -117,9 +118,9 @@ func (m mainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case key.Matches(msg, Keys.Escape, Keys.CloseHelp):
 				// <esc>, '?' closes help
 				m.showHelp = false
+				return m, nil
 			}
 		}
-		return m, nil
 	}
 
 	switch msg := msg.(type) {
@@ -190,7 +191,7 @@ var (
 	}, "\n")
 	renderedLogo = Bold.
 			Copy().
-			Padding(0, 1).
+			Margin(0, 1).
 			Foreground(Pink).
 			Render(logo)
 	logoWidth            = lipgloss.Width(renderedLogo)
@@ -202,31 +203,50 @@ var (
 
 func (m mainModel) View() string {
 	var (
-		content    string
-		pagination string
+		content           string
+		shortHelpBindings []key.Binding
+		pagination        string
 	)
 
 	if m.showHelp {
 		content = lipgloss.NewStyle().
 			Margin(1).
 			Render(
-				renderHelp(m.currentModel().HelpBindings(), max(1, m.height-2)),
+				fullHelpView(
+					m.currentModel().HelpBindings(),
+					keyMapToSlice(generalKeys),
+					keyMapToSlice(viewport.DefaultKeyMap()),
+				),
 			)
+		shortHelpBindings = []key.Binding{
+			key.NewBinding(
+				key.WithKeys("?"),
+				key.WithHelp("?", "close help"),
+			),
+		}
 	} else {
 		content = m.currentModel().View()
 		pagination = m.currentModel().Pagination()
+		shortHelpBindings = append(
+			m.currentModel().HelpBindings(),
+			keyMapToSlice(generalKeys)...,
+		)
 	}
 
 	return lipgloss.JoinVertical(
 		lipgloss.Top,
 		// header
 		lipgloss.JoinHorizontal(
-			lipgloss.Top,
-			// key bindings
+			lipgloss.Left,
+			// help
 			lipgloss.NewStyle().
-				Width(m.width-logoWidth).
-				Render(RenderShort(m.currentModel().HelpBindings())),
-			renderedLogo,
+				Margin(0, 1).
+				// -2 for vertical margins
+				Width(m.width-logoWidth-2).
+				Render(shortHelpView(shortHelpBindings, m.width-logoWidth-2)),
+			// logo
+			lipgloss.NewStyle().
+				Render(renderedLogo),
 		),
 		// breadcrumbs
 		lipgloss.NewStyle().
