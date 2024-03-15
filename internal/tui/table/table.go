@@ -331,10 +331,10 @@ func (m *Model[T]) ToggleSelection() {
 		return
 	}
 
-	if entity, isSelected := m.Selected[highlighted.ID()]; isSelected {
+	if _, isSelected := m.Selected[highlighted.ID()]; isSelected {
 		delete(m.Selected, highlighted.ID())
 	} else {
-		m.Selected[highlighted.ID()] = entity
+		m.Selected[highlighted.ID()] = highlighted
 	}
 	m.UpdateViewport()
 }
@@ -384,7 +384,9 @@ func (m *Model[T]) SetItems(items []T) {
 	seen := make(map[resource.ID]T)
 
 	// Sort items in-place
-	slices.SortFunc(items, m.sortFunc)
+	if m.sortFunc != nil {
+		slices.SortFunc(items, m.sortFunc)
+	}
 
 	// Overwrite existing rows
 	m.rows = make([]Row[T], len(items))
