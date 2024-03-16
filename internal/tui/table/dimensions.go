@@ -2,17 +2,20 @@ package table
 
 // Updates column width in-place.  This could be optimized but should be called
 // very rarely so we prioritize simplicity over performance here.
+//
+// TODO: unit test
 func (m *Model[T]) recalculateWidth() {
 	var (
-		// Where do these numbers come from? Padding?
-		totalFlexWidth  = m.width - len(m.cols) - 1
+		// total available flex width initialized to total viewport width minus
+		// the padding on each col (2)
+		totalFlexWidth  = m.width - 2*len(m.cols)
 		totalFlexFactor int
 		flexGCD         int
 	)
 
 	for _, col := range m.cols {
 		if col.FlexFactor == 0 {
-			// Column not using flex
+			// Column not using flex so subtract its width from avail width
 			totalFlexWidth -= col.Width
 		} else {
 			totalFlexFactor += col.FlexFactor

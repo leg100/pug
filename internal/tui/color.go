@@ -15,4 +15,5 @@ const (
 	DarkGrey  = lipgloss.Color("#606362")
 	White     = lipgloss.Color("#ffffff")
 	OffWhite  = lipgloss.Color("#a8a7a5")
+	lightGrey = lipgloss.Color("245")
 )

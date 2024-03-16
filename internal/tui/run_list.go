@@ -7,7 +7,6 @@ import (
 
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 	"github.com/leg100/pug/internal/resource"
 	"github.com/leg100/pug/internal/run"
 	"github.com/leg100/pug/internal/task"
@@ -20,45 +19,54 @@ type runListModelMaker struct {
 }
 
 func (m *runListModelMaker) makeModel(parent resource.Resource) (Model, error) {
-	// TODO: depending upon kind of parent, hide certain redundant columns, e.g.
-	// a module parent kind would render the module column redundant.
 	columns := []table.Column{
-		moduleColumn,
-		workspaceColumn,
 		// TODO: if 1 is not added then the last char is chopped off and an
 		// ellipsis is added... not sure why
 		{Title: "STATUS", Width: run.MaxStatusLen + 1},
 		{Title: "CHANGES", Width: 12},
 		{Title: "AGE", Width: 10},
 	}
+	switch parent.Kind {
+	case resource.Module:
+		// Omit the module column
+		columns = append([]table.Column{workspaceColumn}, columns...)
+	case resource.Workspace:
+		// Omit both module and workspace columns
+	default:
+		columns = append([]table.Column{moduleColumn, workspaceColumn}, columns...)
+	}
 	cellsFunc := func(r *run.Run) []table.Cell {
-		cells := make([]table.Cell, len(columns))
+		var cells []table.Cell
 
-		cells[0] = table.Cell{Str: r.Module().String()}
-		cells[1] = table.Cell{Str: r.Workspace().String()}
-		cells[2] = table.Cell{Str: string(r.Status)}
-		cells[4] = table.Cell{Str: ago(time.Now(), r.Created)}
+		// Omit certain cells depending upon parent
+		switch parent.Kind {
+		case resource.Module:
+			// Omit module cell
+			cells = append([]table.Cell{{Str: r.Workspace().String()}}, cells...)
+		case resource.Workspace:
+			// Omit both module and workspace cells
+		default:
+			cells = append([]table.Cell{
+				{Str: r.Module().String()},
+				{Str: r.Workspace().String()},
+			}, cells...)
+		}
+		cells = append(cells, table.Cell{Str: string(r.Status)})
 
 		// switch r.Status {
 		// case run.Planned, run.PlannedAndFinished, run.ApplyQueued, run.Applying:
 		// case run.Applied:
 		// }
-		cells[3] = table.Cell{Str: r.PlanReport.String()}
+		cells = append(cells, table.Cell{Str: r.PlanReport.String()})
 
-		// // Only show module column if not filtered by a parent module.
-		// if parent == resource.NilResource {
-		// 	data[ColKeyModule] = run.Module().String()
-		// }
-		// // Only show workspace column if not filtered by a parent workspace.
-		// if parent == resource.NilResource {
-		// 	data[ColKeyWorkspace] = run.Workspace().String()
-		// }
-		// return data
+		cells = append(cells, table.Cell{Str: ago(time.Now(), r.Created)})
+
 		return cells
 	}
 	table := table.New[*run.Run](columns).
 		WithCellsFunc(cellsFunc).
-		WithSortFunc(run.ByUpdatedDesc)
+		WithSortFunc(run.ByUpdatedDesc).
+		WithParent(parent)
 
 	return runListModel{
 		table:  table,
@@ -78,7 +86,7 @@ type runListModel struct {
 func (m runListModel) Init() tea.Cmd {
 	return func() tea.Msg {
 		var opts run.ListOptions
-		if m.parent != resource.NilResource {
+		if m.parent != resource.GlobalResource {
 			opts.ParentID = m.parent.ID()
 		}
 		return table.BulkInsertMsg[*run.Run](m.svc.List(opts))
@@ -95,11 +103,8 @@ func (m runListModel) Update(msg tea.Msg) (Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, Keys.Enter):
-			// When user presses enter on a run, then it should navigate to the
-			// task for its plan if only a plan has been run, or to the task for
-			// its apply, if that has been run.
 			if run, ok := m.table.Highlighted(); ok {
-				return m, m.navigateLatestTask(run.ID())
+				return m, navigate(page{kind: TaskListKind, resource: run.Resource})
 			}
 		case key.Matches(msg, Keys.Cancel):
 			// get all highlighted or selected runs, and get the current task
@@ -132,10 +137,7 @@ func (m runListModel) Update(msg tea.Msg) (Model, tea.Cmd) {
 }
 
 func (m runListModel) Title() string {
-	return lipgloss.NewStyle().
-		Inherit(Breadcrumbs).
-		Padding(0, 0, 0, 1).
-		Render("runs")
+	return breadcrumbs("Runs", m.parent)
 }
 
 func (m runListModel) View() string {
@@ -155,6 +157,7 @@ func (m runListModel) HelpBindings() (bindings []key.Binding) {
 	return
 }
 
+//lint:ignore U1000 intend to use shortly
 func (m runListModel) navigateLatestTask(runID resource.ID) tea.Cmd {
 	return func() tea.Msg {
 		tasks := m.tasks.List(task.ListOptions{

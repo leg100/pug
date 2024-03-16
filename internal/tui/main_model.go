@@ -44,13 +44,19 @@ type Options struct {
 	Workdir   string
 	FirstPage int
 	MaxTasks  int
+	Debug     bool
 }
 
 func New(opts Options) (mainModel, error) {
-	messages, err := os.OpenFile("messages.log", os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0o755)
-	if err != nil {
-		return mainModel{}, err
+	var dump *os.File
+	if opts.Debug {
+		var err error
+		dump, err = os.OpenFile("messages.log", os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0o755)
+		if err != nil {
+			return mainModel{}, err
+		}
 	}
+
 	makers := map[modelKind]maker{
 		ModuleListKind: &moduleListModelMaker{
 			svc:        opts.ModuleService,
@@ -84,7 +90,7 @@ func New(opts Options) (mainModel, error) {
 	m := mainModel{
 		runs:      opts.RunService,
 		navigator: navigator,
-		dump:      messages,
+		dump:      dump,
 	}
 	return m, nil
 }
@@ -96,14 +102,16 @@ func (m mainModel) Init() tea.Cmd {
 func (m mainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmds []tea.Cmd
 
-	spew.Fdump(m.dump, msg)
+	if m.dump != nil {
+		spew.Fdump(m.dump, msg)
+	}
 
 	switch msg := msg.(type) {
 	case resource.Event[*workspace.Workspace]:
 		switch msg.Type {
 		case resource.CreatedEvent:
-			// return m, navigate(page{kind: WorkspaceListKind, resource: *msg.Payload.Parent})
-			// cmds = append(cmds, runCmd(m.runs, msg.Payload.ID()))
+			//return m, navigate(page{kind: WorkspaceListKind, resource: *msg.Payload.Parent})
+			cmds = append(cmds, runCmd(m.runs, msg.Payload.ID()))
 		}
 	}
 
@@ -201,6 +209,30 @@ var (
 	messageFooterHeight  = 1
 )
 
+// breadcrumbs renders the breadcrumbs for a page, i.e. the ancestry of the
+// page's resource.
+func breadcrumbs(title string, parent resource.Resource) string {
+	// format: <title>(<path>:<workspace>:<run>)
+	var crumbs []string
+	switch parent.Kind {
+	case resource.Run:
+		// if parented by a run, then include its ID
+		runID := Regular.Copy().Foreground(lightGrey).Render(parent.Run().String())
+		crumbs = append([]string{fmt.Sprintf("{%s}", runID)}, crumbs...)
+		fallthrough
+	case resource.Workspace:
+		// if parented by a workspace, then include its name
+		name := Regular.Copy().Foreground(Red).Render(parent.Workspace().String())
+		crumbs = append([]string{fmt.Sprintf("[%s]", name)}, crumbs...)
+		fallthrough
+	case resource.Module:
+		// if parented by a module, then include its path
+		path := Regular.Copy().Foreground(Blue).Render(parent.Module().String())
+		crumbs = append([]string{fmt.Sprintf("(%s)", path)}, crumbs...)
+	}
+	return fmt.Sprintf("%s%s", Bold.Render(title), strings.Join(crumbs, ""))
+}
+
 func (m mainModel) View() string {
 	var (
 		content           string
@@ -233,6 +265,15 @@ func (m mainModel) View() string {
 		)
 	}
 
+	// Center title within a horizontal rule
+	title := m.currentModel().Title()
+	titleRemainingWidth := m.width - Width(title)
+	titleRemainingWidthHalved := titleRemainingWidth / 2
+	titleLeftRule := strings.Repeat("─", max(0, titleRemainingWidthHalved))
+	titleLeftRuleAndTitle := fmt.Sprintf("%s %s ", titleLeftRule, title)
+	titleRightRule := strings.Repeat("─", max(0, m.width-Width(titleLeftRuleAndTitle)))
+	renderedTitle := fmt.Sprintf("%s%s", titleLeftRuleAndTitle, titleRightRule)
+
 	return lipgloss.JoinVertical(
 		lipgloss.Top,
 		// header
@@ -248,13 +289,12 @@ func (m mainModel) View() string {
 			lipgloss.NewStyle().
 				Render(renderedLogo),
 		),
-		// breadcrumbs
+		// title
 		lipgloss.NewStyle().
-			// Prohibit overflowing breadcrumb components wrapping to another line.
+			// Prohibit overflowing title wrapping to another line.
 			MaxHeight(1).
 			Width(m.width).
-			Background(grey).
-			Render(m.currentModel().Title()),
+			Render(renderedTitle),
 		// content
 		lipgloss.NewStyle().
 			Height(m.viewHeight()).

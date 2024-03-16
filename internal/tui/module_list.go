@@ -5,7 +5,6 @@ import (
 
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 	"github.com/leg100/pug/internal/module"
 	"github.com/leg100/pug/internal/resource"
 	"github.com/leg100/pug/internal/tui/table"
@@ -106,17 +105,11 @@ func (m moduleListModel) Update(msg tea.Msg) (Model, tea.Cmd) {
 }
 
 func (mlm moduleListModel) Title() string {
-	return lipgloss.NewStyle().
-		Inherit(Breadcrumbs).
-		Padding(0, 0, 0, 1).
-		Render(fmt.Sprintf("modules (%s)", mlm.workdir))
+	return fmt.Sprintf("%s(%s)", Bold.Copy().Render("Modules"), mlm.workdir)
 }
 
 func (mlm moduleListModel) View() string {
-	return lipgloss.JoinVertical(
-		lipgloss.Top,
-		mlm.table.View(),
-	)
+	return mlm.table.View()
 }
 
 func (m moduleListModel) Pagination() string {

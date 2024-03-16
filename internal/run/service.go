@@ -2,7 +2,6 @@ package run
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"io"
 
@@ -61,7 +60,7 @@ func (s *Service) Create(workspaceID resource.ID, opts CreateOptions) (*Run, *ta
 		Parent:  run.Resource,
 		Path:    mod.Path(),
 		Command: []string{"plan"},
-		Args:    []string{"-input=false", "-out", run.PlanPath()},
+		Args:    []string{"-lock=false", "-input=false", "-out", run.PlanPath()},
 		Env:     []string{ws.TerraformEnv()},
 		AfterQueued: func(*task.Task) {
 			run.updateStatus(PlanQueued)
@@ -75,7 +74,32 @@ func (s *Service) Create(workspaceID resource.ID, opts CreateOptions) (*Run, *ta
 		AfterCanceled: func(*task.Task) {
 			run.updateStatus(Canceled)
 		},
-		AfterExited: s.afterPlan(mod, ws, run),
+		AfterExited: func(t *task.Task) {
+			out, err := io.ReadAll(t.NewReader())
+			if err != nil {
+				run.setErrored(err)
+				return
+			}
+			changes, report, err := parsePlanReport(string(out))
+			if err != nil {
+				run.setErrored(err)
+				return
+			}
+			run.PlanReport = report
+
+			// Determine status and whether to automatically proceed to apply
+			if !changes {
+				run.updateStatus(PlannedAndFinished)
+				return
+			}
+			run.updateStatus(Planned)
+			if run.AutoApply {
+				if _, _, err := s.Apply(run.ID()); err != nil {
+					run.setErrored(err)
+					return
+				}
+			}
+		},
 	})
 	if err != nil {
 		return nil, nil, fmt.Errorf("creating plan task: %w", err)
@@ -84,42 +108,6 @@ func (s *Service) Create(workspaceID resource.ID, opts CreateOptions) (*Run, *ta
 
 	s.table.Add(run.ID(), run)
 	return run, task, nil
-}
-
-func (s *Service) afterPlan(mod *module.Module, ws *workspace.Workspace, run *Run) func(*task.Task) {
-	return func(plan *task.Task) {
-		// Convert binary plan file to json plan file.
-		_, err := s.tasks.Create(task.CreateOptions{
-			Parent:  run.Resource,
-			Path:    mod.Path(),
-			Command: []string{"show"},
-			Args:    []string{"-json", run.PlanPath()},
-			Env:     []string{ws.TerraformEnv()},
-			AfterError: func(t *task.Task) {
-				run.setErrored(t.Err)
-			},
-			AfterCanceled: func(*task.Task) {
-				run.updateStatus(Canceled)
-			},
-			AfterExited: func(t *task.Task) {
-				var pfile planFile
-				if err := json.NewDecoder(t.NewReader()).Decode(&pfile); err != nil {
-					run.setErrored(err)
-					return
-				}
-				if run.addPlan(pfile) {
-					if _, _, err := s.Apply(run.ID()); err != nil {
-						run.setErrored(err)
-						return
-					}
-				}
-			},
-		})
-		if err != nil {
-			run.setErrored(err)
-			return
-		}
-	}
 }
 
 // Apply triggers an apply task for a run. The run must be in the planned state.
@@ -157,12 +145,12 @@ func (s *Service) Apply(runID resource.ID) (*Run, *task.Task, error) {
 		AfterExited: func(t *task.Task) {
 			out, err := io.ReadAll(t.NewReader())
 			if err != nil {
-				// log error
+				run.setErrored(err)
 				return
 			}
-			report, err := parseApplyOutput(string(out))
+			report, err := parseApplyReport(string(out))
 			if err != nil {
-				// log error
+				run.setErrored(err)
 				return
 			}
 			run.ApplyReport = report

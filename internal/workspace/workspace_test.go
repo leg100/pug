@@ -1,5 +1,12 @@
 package workspace
 
+import (
+	"testing"
+
+	"github.com/leg100/pug/internal/module"
+	"github.com/stretchr/testify/assert"
+)
+
 // TODO: rewrite as test for resetWorkspaces()
 //
 // func TestFindWorkspaces(t *testing.T) {
@@ -17,3 +24,11 @@ package workspace
 // 	assert.Contains(t, got, workspace{"default", Module{"testdata/configs/envs/prod", true}})
 // 	assert.Contains(t, got, workspace{"default", Module{"testdata/configs/envs/staging", true}})
 // }
+//
+
+func TestWorkspace_TerraformEnv(t *testing.T) {
+	mod := module.New("a/b/c")
+	ws := New(mod.Resource, "dev")
+
+	assert.Equal(t, "TF_WORKSPACE=dev", ws.TerraformEnv())
+}

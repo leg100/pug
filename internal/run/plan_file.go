@@ -26,6 +26,7 @@ type (
 	ChangeAction string
 )
 
+//lint:ignore U1000 intend to use shortly
 func (pf *planFile) resourceChanges() (resource report) {
 	for _, rc := range pf.ResourceChanges {
 		for _, action := range rc.Change.Actions {

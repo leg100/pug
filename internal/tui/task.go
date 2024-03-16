@@ -112,7 +112,8 @@ func (m taskModel) Update(msg tea.Msg) (Model, tea.Cmd) {
 		m.height = msg.Height
 		// subtract 2 to account for margins (1: left, 1: right)
 		m.viewport.Width = msg.Width - 2
-		m.viewport.Height = msg.Height
+		// subtract 2 to account for task metadata rendered above viewport
+		m.viewport.Height = msg.Height - 2
 	case spinner.TickMsg:
 		// Keep spinning the spinner until the task stops.
 		var cmd tea.Cmd
@@ -130,70 +131,80 @@ func (m taskModel) Update(msg tea.Msg) (Model, tea.Cmd) {
 }
 
 func (m taskModel) Title() string {
-	inherit := lipgloss.NewStyle().
-		Bold(true).
-		Background(lipgloss.Color(DarkGrey)).
-		Foreground(White)
-
-	// Module path
-	components := []string{
-		lipgloss.NewStyle().
-			Inherit(inherit).
-			Padding(0, 0, 0, 1).
-			Render(m.task.Module().String()),
-	}
-	// Workspace
-	if ws := m.task.Workspace(); ws != nil {
-		components = append(components,
-			lipgloss.NewStyle().
-				Inherit(inherit).
-				Render(ws.String()))
-	}
+	return breadcrumbs("Task", *m.task.Parent)
 	// Command
-	components = append(components,
-		lipgloss.NewStyle().
-			Inherit(inherit).
-			Align(lipgloss.Right).
-			Render(strings.Join(m.task.Command, " ")))
-	// Render breadcrumbs together
-	breadcrumbs := strings.Join(components,
-		lipgloss.NewStyle().
-			Inherit(inherit).
-			Render(" › "),
-	)
-	// spinner+status
-	var renderedSpinner string
-	if m.task.State == task.Running {
-		renderedSpinner = m.spinner.View()
-	}
-	commandAndStatus := lipgloss.NewStyle().
-		Width(m.width-max(0, Width(breadcrumbs))).
-		Align(lipgloss.Right).
-		Inherit(inherit).
-		Padding(0, 1).
-		Render(
-			lipgloss.JoinHorizontal(
-				lipgloss.Top,
-				renderedSpinner,
-				// status
-				lipgloss.NewStyle().
-					Inherit(inherit).
-					Render(strings.ToUpper(string((m.task.State)))),
-			),
-		)
+	//components = append(components,
+	//	lipgloss.NewStyle().
+	//		Inherit(inherit).
+	//		Align(lipgloss.Right).
+	//		Render(strings.Join(m.task.Command, " ")))
+	//// Render breadcrumbs together
+	//breadcrumbs := strings.Join(components,
+	//	lipgloss.NewStyle().
+	//		Inherit(inherit).
+	//		Render(" › "),
+	//)
+	//// spinner+status
+	//var renderedSpinner string
+	//if m.task.State == task.Running {
+	//	renderedSpinner = m.spinner.View()
+	//}
+	//commandAndStatus := lipgloss.NewStyle().
+	//	Width(m.width-max(0, Width(breadcrumbs))).
+	//	Align(lipgloss.Right).
+	//	Inherit(inherit).
+	//	Padding(0, 1).
+	//	Render(
+	//		lipgloss.JoinHorizontal(
+	//			lipgloss.Top,
+	//			renderedSpinner,
+	//			// status
+	//			lipgloss.NewStyle().
+	//				Inherit(inherit).
+	//				Render(strings.ToUpper(string((m.task.State)))),
+	//		),
+	//	)
 
-	return lipgloss.JoinHorizontal(
-		lipgloss.Left,
-		breadcrumbs,
-		commandAndStatus,
-	)
+	//return lipgloss.JoinHorizontal(
+	//	lipgloss.Left,
+	//	breadcrumbs,
+	//	commandAndStatus,
+	//)
 }
 
 // View renders the viewport
 func (m taskModel) View() string {
+	// task metadata
+	command := strings.Join(append(m.task.Command, m.task.Args...), " ")
+	metadata := lipgloss.JoinHorizontal(
+		lipgloss.Left,
+		lipgloss.NewStyle().
+			Foreground(lipgloss.Color("237")).
+			Bold(true).
+			Padding(0, 1).
+			Render(command),
+		lipgloss.NewStyle().
+			Foreground(lipgloss.Color("36")).
+			Width(m.width-Width(command)-2).
+			Align(lipgloss.Right).
+			Padding(0, 1).
+			Render(string(m.task.State)),
+	)
+
 	return lipgloss.NewStyle().
-		Margin(0, 1).
-		Render(m.viewport.View())
+		Render(
+			lipgloss.JoinVertical(
+				lipgloss.Top,
+				// task output
+				lipgloss.NewStyle().
+					Margin(0, 1).
+					Render(m.viewport.View()),
+				lipgloss.NewStyle().
+					Render(strings.Repeat("─", m.width)),
+				// task metadata
+				metadata,
+			),
+		)
 }
 
 func (m taskModel) Pagination() string {

@@ -1,13 +1,17 @@
 package resource
 
 import (
+	"fmt"
 	"log/slog"
+	"strings"
 
 	"github.com/btcsuite/btcutil/base58"
 	"github.com/google/uuid"
 )
 
-var NilResource = Resource{}
+// GlobalResource is the zero value of resource, representing the top-level
+// entity to which all resources belong.
+var GlobalResource = Resource{}
 
 // Resource is an entity of a particular kind and occupies a particular position
 // in the pug hierarchy w.r.t to other resources.
@@ -48,7 +52,9 @@ func (r Resource) String() string {
 	if r.ident != "" {
 		return r.ident
 	}
-	return base58.Encode(r.id[:])
+	encodedID := base58.Encode(r.id[:])
+	kind := strings.ToLower(r.Kind.String())
+	return fmt.Sprintf("%s-%s", kind, encodedID)
 }
 
 // Ancestors provides a list of successive parents, starting with the direct parents.

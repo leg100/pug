@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/bubbles/key"
+	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/leg100/pug/internal/logging"
@@ -71,12 +72,7 @@ func (m logsModel) Update(msg tea.Msg) (Model, tea.Cmd) {
 }
 
 func (m logsModel) Title() string {
-	return lipgloss.NewStyle().
-		Background(DarkGrey).
-		Foreground(White).
-		Bold(true).
-		Padding(0, 1).
-		Render("logs")
+	return Bold.Render("Logs")
 }
 
 func (m logsModel) View() string {
@@ -89,5 +85,5 @@ func (m logsModel) Pagination() string {
 }
 
 func (m logsModel) HelpBindings() (bindings []key.Binding) {
-	return keyMapToSlice(m.table.KeyMap)
+	return keyMapToSlice(viewport.DefaultKeyMap())
 }

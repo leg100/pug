@@ -75,6 +75,7 @@ func Start() error {
 		FirstPage:        cfg.FirstPage,
 		Workdir:          workdir,
 		MaxTasks:         cfg.MaxTasks,
+		Debug:            cfg.Debug,
 	})
 	if err != nil {
 		return err

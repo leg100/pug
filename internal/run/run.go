@@ -123,16 +123,6 @@ func (r *Run) setErrored(err error) {
 	r.updateStatus(Errored)
 }
 
-func (r *Run) addPlan(pfile planFile) (apply bool) {
-	r.PlanReport = pfile.resourceChanges()
-	if !r.PlanReport.HasChanges() {
-		r.updateStatus(PlannedAndFinished)
-		return false
-	}
-	r.updateStatus(Planned)
-	return r.AutoApply
-}
-
 func (r *Run) updateStatus(status Status) {
 	r.Status = status
 	r.Updated = time.Now()

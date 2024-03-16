@@ -1,7 +1,6 @@
 package tui
 
 import (
-	"fmt"
 	"strings"
 	"time"
 
@@ -26,11 +25,30 @@ func (m *taskListModelMaker) makeModel(parent resource.Resource) (Model, error) 
 		columns            []table.Column
 		hasModuleColumn    bool
 		hasWorkspaceColumn bool
+		hasRunColumn       bool
 	)
-	columns = append(columns, moduleColumn)
-	hasModuleColumn = true
-	columns = append(columns, table.Column{Title: "WORKSPACE", Width: 10, FlexFactor: 1})
-	hasWorkspaceColumn = true
+	switch parent.Kind {
+	case resource.Module:
+		// Omit the module column
+		hasWorkspaceColumn = true
+	case resource.Workspace:
+		// Omit both module and workspace columns
+		hasRunColumn = true
+	case resource.Run:
+		// Omit module, workspace, and run columns
+	default:
+		hasWorkspaceColumn = true
+		hasModuleColumn = true
+	}
+	if hasModuleColumn {
+		columns = append(columns, moduleColumn)
+	}
+	if hasWorkspaceColumn {
+		columns = append(columns, workspaceColumn)
+	}
+	if hasRunColumn {
+		columns = append(columns, table.Column{Title: "RUN", Width: 23})
+	}
 	columns = append(columns,
 		table.Column{Title: "COMMAND", Width: 20},
 		table.Column{Title: "STATUS", Width: 10},
@@ -49,6 +67,13 @@ func (m *taskListModelMaker) makeModel(parent resource.Resource) (Model, error) 
 		if hasWorkspaceColumn {
 			if ws := t.Workspace(); ws != nil {
 				cells = append(cells, table.Cell{Str: ws.String()})
+			} else {
+				cells = append(cells, table.Cell{})
+			}
+		}
+		if hasRunColumn {
+			if run := t.Run(); run != nil {
+				cells = append(cells, table.Cell{Str: run.String()})
 			} else {
 				cells = append(cells, table.Cell{})
 			}
@@ -73,7 +98,8 @@ func (m *taskListModelMaker) makeModel(parent resource.Resource) (Model, error) 
 	}
 	table := table.New[*task.Task](columns).
 		WithCellsFunc(cellsFunc).
-		WithSortFunc(task.ByState)
+		WithSortFunc(task.ByState).
+		WithParent(parent)
 		// WithWidth(60)
 
 	return taskListModel{
@@ -94,7 +120,7 @@ type taskListModel struct {
 func (m taskListModel) Init() tea.Cmd {
 	return func() tea.Msg {
 		var opts task.ListOptions
-		if m.parent != resource.NilResource {
+		if m.parent != resource.GlobalResource {
 			opts.Ancestor = m.parent.ID()
 		}
 		return table.BulkInsertMsg[*task.Task](m.svc.List(opts))
@@ -126,12 +152,7 @@ func (m taskListModel) Update(msg tea.Msg) (Model, tea.Cmd) {
 }
 
 func (m taskListModel) Title() string {
-	return lipgloss.NewStyle().
-		Inherit(Breadcrumbs).
-		Padding(0, 0, 0, 1).
-		Render(
-			fmt.Sprintf("global tasks (max: %d)", m.max),
-		)
+	return breadcrumbs(Bold.Render("Tasks"), m.parent)
 }
 
 func (m taskListModel) View() string {

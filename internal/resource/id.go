@@ -9,7 +9,7 @@ import (
 
 // IDEncodedMaxLen is the max length of an encoded ID (it can sometimes encode
 // to something shorter).
-const IDEncodedMaxLen = 22
+const IDEncodedMaxLen = 23
 
 // NilID is the zero value of ID
 var NilID = ID(uuid.Nil)

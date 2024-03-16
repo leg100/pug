@@ -3,7 +3,8 @@ package resource
 type Kind int
 
 const (
-	Module Kind = iota
+	Global Kind = iota
+	Module
 	Workspace
 	Run
 	Task

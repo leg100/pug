@@ -1,11 +1,8 @@
 package tui
 
 import (
-	"strings"
-
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 	"github.com/leg100/pug/internal/module"
 	"github.com/leg100/pug/internal/resource"
 	"github.com/leg100/pug/internal/run"
@@ -27,26 +24,29 @@ type workspaceListModelMaker struct {
 }
 
 func (m *workspaceListModelMaker) makeModel(parent resource.Resource) (Model, error) {
-	// TODO: depending upon kind of parent, hide certain redundant columns, e.g.
-	// a module parent kind would render the module column redundant.
 	columns := []table.Column{
-		moduleColumn,
 		workspaceColumn,
 		table.IDColumn,
 	}
+	// Only include the module column if not already filtered by a module
+	if parent == resource.GlobalResource {
+		columns = append([]table.Column{moduleColumn}, columns...)
+	}
 	cellsFunc := func(ws *workspace.Workspace) []table.Cell {
 		cells := []table.Cell{
-			{Str: ws.Module().String()},
 			{Str: ws.Workspace().String()},
 			{Str: ws.ID().String()},
 		}
-		// TODO: Only show module column if workspaces are not filtered by a parent
-		// module.
+		// Only include the module if not already filtered by a module
+		if parent == resource.GlobalResource {
+			cells = append([]table.Cell{{Str: ws.Module().String()}}, cells...)
+		}
 		return cells
 	}
 	table := table.New[*workspace.Workspace](columns).
 		WithCellsFunc(cellsFunc).
-		WithSortFunc(workspace.Sort)
+		WithSortFunc(workspace.Sort).
+		WithParent(parent)
 
 	return workspaceListModel{
 		table:   table,
@@ -68,7 +68,7 @@ type workspaceListModel struct {
 func (m workspaceListModel) Init() tea.Cmd {
 	return func() tea.Msg {
 		var opts workspace.ListOptions
-		if m.parent != resource.NilResource {
+		if m.parent != resource.GlobalResource {
 			opts.ModuleID = m.parent.ID()
 		}
 		return table.BulkInsertMsg[*workspace.Workspace](m.svc.List(opts))
@@ -109,29 +109,7 @@ func (m workspaceListModel) Update(msg tea.Msg) (Model, tea.Cmd) {
 }
 
 func (m workspaceListModel) Title() string {
-	var components []string
-	if m.parent != resource.NilResource {
-		components = append(components,
-			lipgloss.NewStyle().
-				Background(DarkGrey).
-				Foreground(White).
-				Bold(true).
-				Padding(0, 1).
-				Render(m.parent.String()))
-	}
-	components = append(components,
-		lipgloss.NewStyle().
-			Background(DarkGrey).
-			Foreground(White).
-			Bold(true).
-			Padding(0, 1).
-			Render("workspaces"))
-	// Render breadcrumbs together
-	return strings.Join(components,
-		lipgloss.NewStyle().
-			Inherit(Breadcrumbs).
-			Render(" › "),
-	)
+	return breadcrumbs("Workspaces", m.parent)
 }
 
 func (m workspaceListModel) View() string {

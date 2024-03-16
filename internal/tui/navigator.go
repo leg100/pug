@@ -5,7 +5,7 @@ import (
 	"github.com/leg100/pug/internal/resource"
 )
 
-// navigationMsg is an instruction to traverse to a page.
+// navigationMsg is an instruction to navigate to a page.
 type navigationMsg struct {
 	target page
 }
@@ -19,11 +19,12 @@ func navigate(target page) tea.Cmd {
 // currentMsg informs a model that it is now the current model.
 type currentMsg struct{}
 
+// maker makes new bubbletea models
 type maker interface {
 	makeModel(target resource.Resource) (Model, error)
 }
 
-// navigator traverses the user from page to page, creating and caching the
+// navigator navigates the user from page to page, creating and caching
 // corresponding models accordingly.
 type navigator struct {
 	// history tracks the pages a user has visited, in LIFO order.
