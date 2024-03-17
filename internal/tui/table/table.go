@@ -10,7 +10,6 @@ import (
 	"github.com/leg100/pug/internal/resource"
 	"github.com/leg100/pug/internal/tui/common"
 	"github.com/mattn/go-runewidth"
-	"github.com/muesli/reflow/truncate"
 	"golang.org/x/exp/maps"
 )
 
@@ -57,7 +56,7 @@ type Column struct {
 	Title          string
 	Width          int
 	FlexFactor     int
-	TruncationFunc func(s string, w uint, tail string) string
+	TruncationFunc func(s string, w int, tail string) string
 }
 
 // Row represents one line in the table.
@@ -119,7 +118,7 @@ func New[T Item](columns []Column) Model[T] {
 	for _, col := range columns {
 		// Set default truncation function if unset
 		if col.TruncationFunc == nil {
-			col.TruncationFunc = truncate.StringWithTail
+			col.TruncationFunc = runewidth.Truncate
 		}
 		m.cols = append(m.cols, col)
 	}
@@ -521,7 +520,7 @@ func (m *Model[T]) renderRow(rowID int) string {
 	var renderedCells = make([]string, 0, len(m.cols))
 	for i, value := range m.rows[rowID].Cells {
 		boxStyle := lipgloss.NewStyle().Width(m.cols[i].Width).MaxWidth(m.cols[i].Width).Inline(true)
-		content := boxStyle.Render(m.cols[i].TruncationFunc(value.Str, uint(m.cols[i].Width), "…"))
+		content := boxStyle.Render(m.cols[i].TruncationFunc(value.Str, m.cols[i].Width, "…"))
 		renderedCell := value.Style.
 			Copy().
 			Padding(0, 1).

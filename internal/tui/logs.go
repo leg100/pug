@@ -21,8 +21,7 @@ func (mm *logsModelMaker) makeModel(taskResource resource.Resource) (Model, erro
 	columns := []table.Column{
 		{Title: "TIME", Width: 24},
 		{Title: "LEVEL", Width: 5},
-		// make flex
-		{Title: "MESSAGE", Width: 60, FlexFactor: 1},
+		{Title: "MESSAGE", FlexFactor: 1},
 	}
 	cellsFunc := func(msg logging.Message) []table.Cell {
 		cells := []table.Cell{

@@ -19,38 +19,13 @@ type runListModelMaker struct {
 }
 
 func (m *runListModelMaker) makeModel(parent resource.Resource) (Model, error) {
-	columns := []table.Column{
-		// TODO: if 1 is not added then the last char is chopped off and an
-		// ellipsis is added... not sure why
-		{Title: "STATUS", Width: run.MaxStatusLen + 1},
-		{Title: "CHANGES", Width: 12},
-		{Title: "AGE", Width: 10},
-	}
-	switch parent.Kind {
-	case resource.Module:
-		// Omit the module column
-		columns = append([]table.Column{workspaceColumn}, columns...)
-	case resource.Workspace:
-		// Omit both module and workspace columns
-	default:
-		columns = append([]table.Column{moduleColumn, workspaceColumn}, columns...)
-	}
+	columns := append(parentColumns(RunListKind, parent.Kind),
+		table.Column{Title: "STATUS", Width: run.MaxStatusLen},
+		table.Column{Title: "CHANGES", Width: 14},
+		table.Column{Title: "AGE", Width: 10},
+	)
 	cellsFunc := func(r *run.Run) []table.Cell {
-		var cells []table.Cell
-
-		// Omit certain cells depending upon parent
-		switch parent.Kind {
-		case resource.Module:
-			// Omit module cell
-			cells = append([]table.Cell{{Str: r.Workspace().String()}}, cells...)
-		case resource.Workspace:
-			// Omit both module and workspace cells
-		default:
-			cells = append([]table.Cell{
-				{Str: r.Module().String()},
-				{Str: r.Workspace().String()},
-			}, cells...)
-		}
+		cells := parentCells(RunListKind, parent.Kind, r.Resource)
 		cells = append(cells, table.Cell{Str: string(r.Status)})
 
 		// switch r.Status {
@@ -58,7 +33,6 @@ func (m *runListModelMaker) makeModel(parent resource.Resource) (Model, error) {
 		// case run.Applied:
 		// }
 		cells = append(cells, table.Cell{Str: r.PlanReport.String()})
-
 		cells = append(cells, table.Cell{Str: ago(time.Now(), r.Created)})
 
 		return cells
@@ -183,12 +157,12 @@ func (m runListModel) navigateLatestTask(runID resource.ID) tea.Cmd {
 
 func runCmd(runs *run.Service, workspaceID resource.ID) tea.Cmd {
 	return func() tea.Msg {
-		_, task, err := runs.Create(workspaceID, run.CreateOptions{})
+		_, _, err := runs.Create(workspaceID, run.CreateOptions{})
 		if err != nil {
 			return newErrorMsg(err, "creating run")
 		}
 		return navigationMsg{
-			target: page{kind: TaskKind, resource: task.Resource},
+			target: page{kind: TaskListKind},
 		}
 	}
 }

@@ -11,12 +11,6 @@ import (
 	"golang.org/x/exp/maps"
 )
 
-var workspaceColumn = table.Column{
-	Title:      "WORKSPACE",
-	Width:      20,
-	FlexFactor: 1,
-}
-
 type workspaceListModelMaker struct {
 	svc     *workspace.Service
 	modules *module.Service
@@ -24,24 +18,12 @@ type workspaceListModelMaker struct {
 }
 
 func (m *workspaceListModelMaker) makeModel(parent resource.Resource) (Model, error) {
-	columns := []table.Column{
-		workspaceColumn,
-		table.IDColumn,
-	}
-	// Only include the module column if not already filtered by a module
-	if parent == resource.GlobalResource {
-		columns = append([]table.Column{moduleColumn}, columns...)
-	}
+	columns := parentColumns(WorkspaceListKind, parent.Kind)
+	columns = append(columns, table.IDColumn)
+
 	cellsFunc := func(ws *workspace.Workspace) []table.Cell {
-		cells := []table.Cell{
-			{Str: ws.Workspace().String()},
-			{Str: ws.ID().String()},
-		}
-		// Only include the module if not already filtered by a module
-		if parent == resource.GlobalResource {
-			cells = append([]table.Cell{{Str: ws.Module().String()}}, cells...)
-		}
-		return cells
+		cells := parentCells(WorkspaceListKind, parent.Kind, ws.Resource)
+		return append(cells, table.Cell{Str: string(ws.ID().String())})
 	}
 	table := table.New[*workspace.Workspace](columns).
 		WithCellsFunc(cellsFunc).

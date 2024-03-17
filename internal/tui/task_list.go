@@ -19,65 +19,13 @@ type taskListModelMaker struct {
 }
 
 func (m *taskListModelMaker) makeModel(parent resource.Resource) (Model, error) {
-	// Depending upon kind of parent, hide certain redundant columns, e.g.
-	// a module parent kind would render the module column redundant.
-	var (
-		columns            []table.Column
-		hasModuleColumn    bool
-		hasWorkspaceColumn bool
-		hasRunColumn       bool
-	)
-	switch parent.Kind {
-	case resource.Module:
-		// Omit the module column
-		hasWorkspaceColumn = true
-	case resource.Workspace:
-		// Omit both module and workspace columns
-		hasRunColumn = true
-	case resource.Run:
-		// Omit module, workspace, and run columns
-	default:
-		hasWorkspaceColumn = true
-		hasModuleColumn = true
-	}
-	if hasModuleColumn {
-		columns = append(columns, moduleColumn)
-	}
-	if hasWorkspaceColumn {
-		columns = append(columns, workspaceColumn)
-	}
-	if hasRunColumn {
-		columns = append(columns, table.Column{Title: "RUN", Width: 23})
-	}
-	columns = append(columns,
+	columns := append(parentColumns(TaskListKind, parent.Kind),
 		table.Column{Title: "COMMAND", Width: 20},
 		table.Column{Title: "STATUS", Width: 10},
 		table.Column{Title: "AGE", Width: 10},
-		table.Column{Title: "ID", Width: resource.IDEncodedMaxLen},
 	)
 	cellsFunc := func(t *task.Task) []table.Cell {
-		cells := make([]table.Cell, 0, len(columns))
-		if hasModuleColumn {
-			if mod := t.Module(); mod != nil {
-				cells = append(cells, table.Cell{Str: mod.String()})
-			} else {
-				cells = append(cells, table.Cell{})
-			}
-		}
-		if hasWorkspaceColumn {
-			if ws := t.Workspace(); ws != nil {
-				cells = append(cells, table.Cell{Str: ws.String()})
-			} else {
-				cells = append(cells, table.Cell{})
-			}
-		}
-		if hasRunColumn {
-			if run := t.Run(); run != nil {
-				cells = append(cells, table.Cell{Str: run.String()})
-			} else {
-				cells = append(cells, table.Cell{})
-			}
-		}
+		cells := parentCells(TaskListKind, parent.Kind, t.Resource)
 		cells = append(cells, table.Cell{Str: strings.Join(t.Command, " ")})
 
 		stateStyle := lipgloss.NewStyle()
@@ -92,7 +40,6 @@ func (m *taskListModelMaker) makeModel(parent resource.Resource) (Model, error) 
 		cells = append(cells,
 			table.Cell{Str: string(t.State), Style: stateStyle},
 			table.Cell{Str: ago(time.Now(), t.Updated)},
-			table.Cell{Str: t.ID().String()},
 		)
 		return cells
 	}

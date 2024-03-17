@@ -1,7 +1,6 @@
 package table
 
-// Updates column width in-place.  This could be optimized but should be called
-// very rarely so we prioritize simplicity over performance here.
+// Update column widths in-place.
 //
 // TODO: unit test
 func (m *Model[T]) recalculateWidth() {

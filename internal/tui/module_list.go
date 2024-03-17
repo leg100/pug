@@ -9,16 +9,8 @@ import (
 	"github.com/leg100/pug/internal/resource"
 	"github.com/leg100/pug/internal/tui/table"
 	"github.com/leg100/pug/internal/workspace"
-	"github.com/muesli/reflow/truncateleft"
 	"golang.org/x/exp/maps"
 )
-
-var moduleColumn = table.Column{
-	Title:          "MODULE",
-	Width:          20,
-	TruncationFunc: truncateleft.StringWithPrefix,
-	FlexFactor:     2,
-}
 
 type moduleListModelMaker struct {
 	svc        *module.Service
@@ -27,16 +19,15 @@ type moduleListModelMaker struct {
 }
 
 func (m *moduleListModelMaker) makeModel(_ resource.Resource) (Model, error) {
-	columns := []table.Column{
-		{
-			Title:          "MODULE",
-			Width:          30,
-			TruncationFunc: truncateleft.StringWithPrefix,
-			FlexFactor:     1,
+	columns := parentColumns(ModuleListKind, resource.Global)
+	columns = append(columns,
+		table.Column{
+			Title:      "CURRENT WORKSPACE",
+			FlexFactor: 2,
 		},
-		{Title: "CURRENT WORKSPACE", Width: 20},
-		{Title: "ID", Width: resource.IDEncodedMaxLen},
-	}
+		table.Column{Title: "ID", Width: resource.IDEncodedMaxLen},
+	)
+
 	table := table.New[*module.Module](columns).
 		WithCellsFunc(func(mod *module.Module) []table.Cell {
 			return []table.Cell{

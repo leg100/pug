@@ -1,3 +1,6 @@
+# direnv
+.envrc
+# debug
 messages.log
 # terraform artifacts
 .terraform
