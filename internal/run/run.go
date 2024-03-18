@@ -14,6 +14,7 @@ type Status string
 
 const (
 	Pending            Status = "pending"
+	Scheduled          Status = "scheduled"
 	PlanQueued         Status = "plan queued"
 	Planning           Status = "planning"
 	Planned            Status = "planned"
@@ -23,6 +24,7 @@ const (
 	Applied            Status = "applied"
 	Errored            Status = "errored"
 	Canceled           Status = "canceled"
+	Discarded          Status = "discarded"
 
 	MaxStatusLen = len(PlannedAndFinished)
 )
@@ -40,6 +42,7 @@ type Run struct {
 	PlanReport  report
 	ApplyReport report
 
+	// TODO: are these needed?
 	PlanTask  *resource.Resource
 	ApplyTask *resource.Resource
 
@@ -51,8 +54,7 @@ type Run struct {
 }
 
 type CreateOptions struct {
-	AutoApply bool
-	PlanOnly  bool
+	PlanOnly bool
 
 	afterUpdate func(run *Run)
 }
@@ -61,8 +63,7 @@ func newRun(mod *module.Module, ws *workspace.Workspace, opts CreateOptions) (*R
 	run := &Run{
 		Resource:    resource.New(resource.Run, "", &ws.Resource),
 		Status:      Pending,
-		AutoApply:   opts.AutoApply,
-		PlanOnly:    opts.PlanOnly,
+		AutoApply:   ws.AutoApply,
 		Created:     time.Now(),
 		Updated:     time.Now(),
 		afterUpdate: opts.afterUpdate,
@@ -80,6 +81,10 @@ func newRun(mod *module.Module, ws *workspace.Workspace, opts CreateOptions) (*R
 
 func (r *Run) Workspace() resource.Resource {
 	return *r.Parent
+}
+
+func (r *Run) WorkspaceName() string {
+	return r.Parent.String()
 }
 
 func (r *Run) Module() resource.Resource {
@@ -108,14 +113,6 @@ func (r *Run) IsFinished() bool {
 	default:
 		return false
 	}
-}
-
-func (r *Run) CurrentTask() resource.Resource {
-	if r.ApplyTask != nil {
-		return *r.ApplyTask
-	}
-	// Run is guaranteed to always have at least a plan task.
-	return *r.PlanTask
 }
 
 func (r *Run) setErrored(err error) {

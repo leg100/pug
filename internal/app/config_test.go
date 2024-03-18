@@ -11,7 +11,8 @@ import (
 )
 
 func TestConfig(t *testing.T) {
-	cpus := runtime.NumCPU()
+	// Unset environment variables set on host computer
+	t.Setenv("PUG_DEBUG", "")
 
 	tests := []struct {
 		name string
@@ -28,8 +29,8 @@ func TestConfig(t *testing.T) {
 			func(t *testing.T, got config) {
 				want := config{
 					Program:   "terraform",
-					MaxTasks:  2 * cpus,
-					FirstPage: 0,
+					MaxTasks:  2 * runtime.NumCPU(),
+					FirstPage: "modules",
 					LogLevel:  "info",
 				}
 				assert.Equal(t, want, got)
@@ -111,9 +112,9 @@ func TestConfig(t *testing.T) {
 			"set first page via environment variable",
 			"",
 			nil,
-			[]string{"PUG_FIRST_PAGE=4"},
+			[]string{"PUG_FIRST_PAGE=runs"},
 			func(t *testing.T, got config) {
-				assert.Equal(t, got.FirstPage, 4)
+				assert.Equal(t, got.FirstPage, "runs")
 			},
 		},
 	}

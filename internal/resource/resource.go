@@ -70,7 +70,7 @@ func (r Resource) Ancestors() (ancestors []Resource) {
 func (r Resource) HasAncestor(id ID) bool {
 	// Every resource is considered an ancestor of the nil ID (equivalent to the
 	// ID of the "site" or "global"...).
-	if id == NilID {
+	if id == GlobalID {
 		return true
 	}
 	if r.Parent == nil {

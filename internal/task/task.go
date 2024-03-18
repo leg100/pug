@@ -10,9 +10,14 @@ import (
 	"sync"
 	"time"
 
+	"github.com/leg100/pug/internal/pubsub"
 	"github.com/leg100/pug/internal/resource"
 )
 
+// Func is a function that creates a task.
+type Func func(resource.ID) (*Task, error)
+
+// Task is an execution of a CLI program.
 type Task struct {
 	resource.Resource
 
@@ -43,8 +48,6 @@ type Task struct {
 	// this channel is closed once the task is finished
 	finished chan struct{}
 
-	// call this whenever state is updated
-	afterUpdate func(*Task)
 	// Call this function after the task has successfully finished
 	AfterExited func(*Task)
 	// Call this function after the task is enqueued.
@@ -55,11 +58,18 @@ type Task struct {
 	AfterError func(*Task)
 	// Call this function after the task is successfully canceled
 	AfterCanceled func(*Task)
+
+	// call this whenever state is updated
+	afterUpdate func(*Task)
+
+	// call this once the task has terminated
+	afterFinish func(*Task)
 }
 
 type factory struct {
-	program     string
-	afterUpdate func(*Task)
+	counter *int
+	program string
+	broker  *pubsub.Broker[*Task]
 }
 
 type CreateOptions struct {
@@ -106,12 +116,19 @@ func (f *factory) newTask(opts CreateOptions) (*Task, error) {
 		Path:          opts.Path,
 		Args:          opts.Args,
 		exclusive:     opts.Exclusive,
-		afterUpdate:   f.afterUpdate,
 		AfterExited:   opts.AfterExited,
 		AfterError:    opts.AfterError,
 		AfterCanceled: opts.AfterCanceled,
 		AfterRunning:  opts.AfterRunning,
 		AfterQueued:   opts.AfterQueued,
+		// Publish an event whenever task state is updated
+		afterUpdate: func(t *Task) {
+			f.broker.Publish(resource.UpdatedEvent, t)
+		},
+		// Decrement live task counter whenever task terminates
+		afterFinish: func(t *Task) {
+			*f.counter--
+		},
 	}, nil
 }
 
@@ -214,9 +231,7 @@ func (t *Task) start() (func(), error) {
 func (t *Task) updateState(state Status) {
 	t.Updated = time.Now()
 	t.State = state
-	if t.afterUpdate != nil {
-		t.afterUpdate(t)
-	}
+	t.afterUpdate(t)
 
 	switch state {
 	case Queued:
@@ -250,4 +265,5 @@ func (t *Task) updateState(state Status) {
 func (t *Task) cleanup() {
 	t.buf.Close()
 	close(t.finished)
+	t.afterFinish(t)
 }

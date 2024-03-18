@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"slices"
 
 	"github.com/leg100/pug/internal/module"
 	"github.com/leg100/pug/internal/pubsub"
@@ -13,8 +14,8 @@ import (
 )
 
 type Service struct {
+	Broker *pubsub.Broker[*Run]
 	table  *resource.Table[*Run]
-	broker *pubsub.Broker[*Run]
 
 	tasks      *task.Service
 	modules    *module.Service
@@ -31,37 +32,40 @@ func NewService(opts ServiceOptions) *Service {
 	broker := pubsub.NewBroker[*Run]()
 	return &Service{
 		table:      resource.NewTable[*Run](broker),
-		broker:     broker,
+		Broker:     broker,
 		tasks:      opts.TaskService,
 		modules:    opts.ModuleService,
 		workspaces: opts.WorkspaceService,
 	}
 }
 
-// Create a run, triggering a plan task.
-func (s *Service) Create(workspaceID resource.ID, opts CreateOptions) (*Run, *task.Task, error) {
+// Create a run.
+func (s *Service) Create(workspaceID resource.ID, opts CreateOptions) (*Run, error) {
 	ws, err := s.workspaces.Get(workspaceID)
 	if err != nil {
-		return nil, nil, fmt.Errorf("creating run: %w", err)
+		return nil, fmt.Errorf("creating run: %w", err)
 	}
 	mod, err := s.modules.Get(ws.Module().ID())
 	if err != nil {
-		return nil, nil, fmt.Errorf("creating run: %w", err)
+		return nil, fmt.Errorf("creating run: %w", err)
 	}
 	// Publish an event upon every run status update
 	opts.afterUpdate = func(run *Run) {
-		s.broker.Publish(resource.UpdatedEvent, run)
+		s.Broker.Publish(resource.UpdatedEvent, run)
 	}
 	run, err := newRun(mod, ws, opts)
 	if err != nil {
-		return nil, nil, fmt.Errorf("creating run: %w", err)
+		return nil, fmt.Errorf("creating run: %w", err)
 	}
-	task, err := s.tasks.Create(task.CreateOptions{
-		Parent:  run.Resource,
-		Path:    mod.Path(),
+	s.table.Add(run.ID(), run)
+	return run, nil
+}
+
+// Trigger a plan task for a run. Only to be called by the scheduler.
+func (s *Service) plan(run *Run) (*task.Task, error) {
+	task, err := s.createTask(run, task.CreateOptions{
 		Command: []string{"plan"},
 		Args:    []string{"-lock=false", "-input=false", "-out", run.PlanPath()},
-		Env:     []string{ws.TerraformEnv()},
 		AfterQueued: func(*task.Task) {
 			run.updateStatus(PlanQueued)
 		},
@@ -94,7 +98,7 @@ func (s *Service) Create(workspaceID resource.ID, opts CreateOptions) (*Run, *ta
 			}
 			run.updateStatus(Planned)
 			if run.AutoApply {
-				if _, _, err := s.Apply(run.ID()); err != nil {
+				if _, err := s.Apply(run.ID()); err != nil {
 					run.setErrored(err)
 					return
 				}
@@ -102,34 +106,32 @@ func (s *Service) Create(workspaceID resource.ID, opts CreateOptions) (*Run, *ta
 		},
 	})
 	if err != nil {
-		return nil, nil, fmt.Errorf("creating plan task: %w", err)
+		return nil, fmt.Errorf("creating plan task: %w", err)
 	}
-	run.PlanTask = &task.Resource
-
-	s.table.Add(run.ID(), run)
-	return run, task, nil
+	return task, err
 }
 
 // Apply triggers an apply task for a run. The run must be in the planned state.
-func (s *Service) Apply(runID resource.ID) (*Run, *task.Task, error) {
+func (s *Service) Apply(runID resource.ID) (*task.Task, error) {
 	run, err := s.table.Get(runID)
 	if err != nil {
-		return nil, nil, fmt.Errorf("applying run: %w", err)
+		return nil, fmt.Errorf("applying run: %w", err)
 	}
 	ws, err := s.workspaces.Get(run.Workspace().ID())
 	if err != nil {
-		return nil, nil, fmt.Errorf("applying run: %w", err)
+		return nil, fmt.Errorf("applying run: %w", err)
 	}
 
 	if run.Status != Planned {
-		return nil, nil, fmt.Errorf("run is not in the planned state: %s", run.Status)
+		return nil, fmt.Errorf("run is not in the planned state: %s", run.Status)
 	}
 	task, err := s.tasks.Create(task.CreateOptions{
-		Parent:  run.Resource,
-		Path:    run.ModulePath(),
-		Command: []string{"apply"},
-		Args:    []string{"-input=false", run.PlanPath()},
-		Env:     []string{ws.TerraformEnv()},
+		Parent:   run.Resource,
+		Path:     run.ModulePath(),
+		Blocking: true,
+		Command:  []string{"apply"},
+		Args:     []string{"-input=false", run.PlanPath()},
+		Env:      []string{ws.TerraformEnv()},
 		AfterQueued: func(*task.Task) {
 			run.updateStatus(ApplyQueued)
 		},
@@ -158,10 +160,10 @@ func (s *Service) Apply(runID resource.ID) (*Run, *task.Task, error) {
 		},
 	})
 	if err != nil {
-		return nil, nil, fmt.Errorf("applying run: %w", err)
+		return nil, fmt.Errorf("applying run: %w", err)
 	}
 	run.ApplyTask = &task.Resource
-	return run, task, nil
+	return task, nil
 }
 
 func (s *Service) Get(runID resource.ID) (*Run, error) {
@@ -169,24 +171,62 @@ func (s *Service) Get(runID resource.ID) (*Run, error) {
 }
 
 type ListOptions struct {
-	ParentID resource.ID
+	// Filter runs by those that belong to the given ancestor, e.g. a module or workspace
+	AncestorID resource.ID
+	// Filter runs by status: match run if it has one of these statuses.
+	Status []Status
+	// Order runs by oldest first (true), or newest first (false)
+	Oldest bool
+	// Filter runs by plan-only (true), not plan-only (false), or either (nil)
+	PlanOnly *bool
 }
 
 func (s *Service) List(opts ListOptions) []*Run {
-	var runs []*Run
-	for _, run := range s.table.List() {
-		if opts.ParentID != resource.NilID {
-			if !run.HasAncestor(opts.ParentID) {
+	runs := s.table.List()
+
+	// Filter list according to options
+	var i int
+	for _, r := range runs {
+		if opts.Status != nil {
+			if !slices.Contains(opts.Status, r.Status) {
 				continue
 			}
 		}
-		runs = append(runs, run)
+		if opts.AncestorID != resource.GlobalID {
+			if !r.HasAncestor(opts.AncestorID) {
+				continue
+			}
+		}
+		if opts.PlanOnly != nil {
+			if *opts.PlanOnly {
+				if !r.PlanOnly {
+					// Exclude runs that are not plan-only
+					continue
+				}
+			} else if r.PlanOnly {
+				// Exclude plan-only runs
+				continue
+			}
+		}
+		runs[i] = r
+		i++
 	}
+	runs = runs[:i]
+
+	// Sort list according to options
+	slices.SortFunc(runs, func(a, b *Run) int {
+		cmp := a.Updated.Compare(b.Updated)
+		if opts.Oldest {
+			return cmp
+		}
+		return -cmp
+	})
+
 	return runs
 }
 
 func (s *Service) Subscribe(ctx context.Context) (<-chan resource.Event[*Run], func()) {
-	return s.broker.Subscribe(ctx)
+	return s.Broker.Subscribe(ctx)
 }
 
 func (s *Service) Delete(id resource.ID) error {
@@ -201,4 +241,11 @@ func (s *Service) Delete(id resource.ID) error {
 
 	s.table.Delete(id)
 	return nil
+}
+
+func (s *Service) createTask(run *Run, opts task.CreateOptions) (*task.Task, error) {
+	opts.Parent = run.Resource
+	opts.Path = run.ModulePath()
+	opts.Env = []string{workspace.TerraformEnv(run.WorkspaceName())}
+	return s.tasks.Create(opts)
 }

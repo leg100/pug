@@ -77,9 +77,7 @@ func (m workspaceListModel) Update(msg tea.Msg) (Model, tea.Cmd) {
 		case key.Matches(msg, Keys.Validate):
 			return m, taskCmd(m.modules.Validate, m.highlightedOrSelectedModuleIDs()...)
 		case key.Matches(msg, Keys.Plan):
-			if ws, ok := m.table.Highlighted(); ok {
-				return m, runCmd(m.runs, ws.ID())
-			}
+			return m, m.createRun(run.CreateOptions{})
 		}
 	}
 
@@ -114,4 +112,32 @@ func (m workspaceListModel) highlightedOrSelectedModuleIDs() []resource.ID {
 		moduleIDs[i] = s.Module().ID()
 	}
 	return moduleIDs
+}
+
+func (m workspaceListModel) createRun(opts run.CreateOptions) tea.Cmd {
+	// Handle the case where a user has pressed a key on an empty table with
+	// zero rows
+	if len(m.table.Items()) == 0 {
+		return nil
+	}
+
+	// If items have been selected then clear the selection
+	var deselectCmd tea.Cmd
+	if len(m.table.Selected) > 0 {
+		deselectCmd = cmdHandler(table.DeselectMsg{})
+	}
+
+	cmd := func() tea.Msg {
+		workspaces := m.table.HighlightedOrSelected()
+		for workspaceID := range workspaces {
+			_, err := m.runs.Create(workspaceID, opts)
+			if err != nil {
+				return newErrorMsg(err, "creating run")
+			}
+		}
+		return navigationMsg{
+			target: page{kind: RunListKind, resource: m.parent},
+		}
+	}
+	return tea.Batch(cmd, deselectCmd)
 }

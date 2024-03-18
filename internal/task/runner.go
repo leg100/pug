@@ -3,9 +3,6 @@ package task
 import (
 	"context"
 	"log/slog"
-
-	"github.com/leg100/pug/internal/pubsub"
-	"github.com/leg100/pug/internal/resource"
 )
 
 // Runner is the global task Runner that provides a couple of invariants:
@@ -15,20 +12,17 @@ type runner struct {
 	max       int
 	exclusive chan struct{}
 
-	broker *pubsub.Broker[*Task]
-	tasks  taskLister
+	tasks taskLister
 }
 
-func newRunner(maxTasks int, lister taskLister) *runner {
-	return &runner{
+func StartRunner(ctx context.Context, tasks *Service, maxTasks int) {
+	sub, _ := tasks.Broker.Subscribe(ctx)
+	r := &runner{
 		max:       maxTasks,
 		exclusive: make(chan struct{}, 1),
-		broker:    pubsub.NewBroker[*Task](),
-		tasks:     lister,
+		tasks:     tasks,
 	}
-}
 
-func (r *runner) start(ctx context.Context, sub <-chan resource.Event[*Task]) {
 	// On each task event, get a list of tasks to be run, start them, and wait
 	// for them to complete in the background.
 	for range sub {

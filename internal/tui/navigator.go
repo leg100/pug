@@ -2,7 +2,6 @@ package tui
 
 import (
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/leg100/pug/internal/resource"
 )
 
 // navigationMsg is an instruction to navigate to a page.
@@ -14,14 +13,6 @@ func navigate(target page) tea.Cmd {
 	return func() tea.Msg {
 		return navigationMsg{target: target}
 	}
-}
-
-// currentMsg informs a model that it is now the current model.
-type currentMsg struct{}
-
-// maker makes new bubbletea models
-type maker interface {
-	makeModel(target resource.Resource) (Model, error)
 }
 
 // navigator navigates the user from page to page, creating and caching

@@ -10,6 +10,11 @@ import (
 type Workspace struct {
 	// Uniquely identifies workspace and the module it belongs to.
 	resource.Resource
+
+	// The workspace's current or last active run.
+	CurrentRun *resource.Resource
+
+	AutoApply bool
 }
 
 func New(module resource.Resource, name string) *Workspace {
@@ -19,7 +24,7 @@ func New(module resource.Resource, name string) *Workspace {
 }
 
 func (ws *Workspace) TerraformEnv() string {
-	return fmt.Sprintf("TF_WORKSPACE=%s", ws)
+	return TerraformEnv(ws.String())
 }
 
 func (ws *Workspace) Name() string {
@@ -40,4 +45,8 @@ func (ws *Workspace) PugDirectory() string {
 
 func PugDirectory(name string) string {
 	return filepath.Join(".pug", name)
+}
+
+func TerraformEnv(name string) string {
+	return fmt.Sprintf("TF_WORKSPACE=%s", name)
 }

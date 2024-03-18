@@ -61,7 +61,8 @@ type Column struct {
 
 // Row represents one line in the table.
 type Row[T resource.Entity] struct {
-	Cells  []Cell
+	Cells []Cell
+	// The entity associated with the row
 	Entity T
 }
 
@@ -130,6 +131,8 @@ func New[T Item](columns []Column) Model[T] {
 }
 
 // WithCellsFunc specifies a function that creates row cells for an entity.
+//
+// TODO: move from option to table constructor and rename to RowFunc
 func (m Model[T]) WithCellsFunc(fn func(T) []Cell) Model[T] {
 	m.cellsFunc = fn
 	return m

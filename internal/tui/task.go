@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/bubbles/key"
-	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -21,47 +20,57 @@ type taskModelMaker struct {
 	svc *task.Service
 }
 
-func (m *taskModelMaker) makeModel(taskResource resource.Resource) (Model, error) {
-	task, err := m.svc.Get(taskResource.ID())
+func (m *taskModelMaker) makeModel(tr resource.Resource) (Model, error) {
+	return makeTaskModel(m.svc, tr, makeTaskModelOptions{})
+}
+
+type makeTaskModelOptions struct {
+	// heightAdjustment adjusts the height of the rendered view by the given
+	// number of rows.
+	heightAdjustment int
+	// isChild is true when the model is instantiated as a child tab of the run
+	// model.
+	isChild bool
+}
+
+func makeTaskModel(svc *task.Service, tr resource.Resource, opts makeTaskModelOptions) (taskModel, error) {
+	task, err := svc.Get(tr.ID())
 	if err != nil {
 		return taskModel{}, err
 	}
 
-	spin := spinner.New()
-	spin.Spinner = spinner.MiniDot
-	spin.Style = lipgloss.NewStyle().
-		Inherit(Breadcrumbs).
-		Padding(0, 1)
-
 	return taskModel{
-		svc:    m.svc,
+		svc:    svc,
 		task:   task,
 		output: task.NewReader(),
 		// read upto 1kb at a time
-		buf:      make([]byte, 1024),
-		viewport: viewport.New(0, 0),
-		spinner:  spin,
+		buf:              make([]byte, 1024),
+		viewport:         viewport.New(0, 0),
+		isChild:          opts.isChild,
+		heightAdjustment: opts.heightAdjustment,
 	}, nil
 }
 
 type taskOutputMsg struct {
-	taskID resource.ID
-	output string
-	eof    bool
+	isChild bool
+	taskID  resource.ID
+	output  string
+	eof     bool
 }
 
 type taskModel struct {
-	svc    *task.Service
-	task   *task.Task
-	output io.Reader
+	svc  *task.Service
+	task *task.Task
 
+	output   io.Reader
 	buf      []byte
 	content  string
 	viewport viewport.Model
-	spinner  spinner.Model
+	isChild  bool
 
-	width  int
-	height int
+	width            int
+	height           int
+	heightAdjustment int
 }
 
 func (m taskModel) Init() tea.Cmd {
@@ -80,9 +89,19 @@ func (m taskModel) Update(msg tea.Msg) (Model, tea.Cmd) {
 		case key.Matches(msg, Keys.Cancel):
 			return m, taskCmd(m.svc.Cancel, m.task.ID())
 			// TODO: retry
+		case key.Matches(msg, Keys.Apply):
+
+			return m, taskCmd(m.svc.Cancel, m.task.ID())
+			// TODO: retry
 		}
 	case taskOutputMsg:
 		if msg.taskID != m.task.ID() {
+			return m, nil
+		}
+		// isChild is true when this msg is for a task model that is a child of a
+		// run model, i.e. a tab. Without this flag, output would be duplicated in
+		// both the tab and on the generic task view.
+		if msg.isChild != m.isChild {
 			return m, nil
 		}
 		m.content += msg.output
@@ -98,29 +117,15 @@ func (m taskModel) Update(msg tea.Msg) (Model, tea.Cmd) {
 			return m, nil
 		}
 		m.task = msg.Payload
-		if m.task.State == task.Running {
-			// Start the spinner once the task enters the running state.
-			return m, m.spinner.Tick
-		}
-	case currentMsg:
-		// Ensure spinner is spinning if user returns to this page.
-		if m.task.State == task.Running {
-			return m, m.spinner.Tick
-		}
 	case common.ViewSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
 		// subtract 2 to account for margins (1: left, 1: right)
 		m.viewport.Width = msg.Width - 2
-		// subtract 2 to account for task metadata rendered above viewport
-		m.viewport.Height = msg.Height - 2
-	case spinner.TickMsg:
-		// Keep spinning the spinner until the task stops.
-		var cmd tea.Cmd
-		m.spinner, cmd = m.spinner.Update(msg)
-		if !m.task.IsFinished() {
-			return m, cmd
-		}
+		// subtract 2 to account for task metadata rendered beneath viewport,
+		// and make any necessary further adjustments according to whether
+		// viewport is in a run tab or not.
+		m.viewport.Height = msg.Height - 2 - m.heightAdjustment
 	}
 
 	// Handle keyboard and mouse events in the viewport
@@ -132,77 +137,43 @@ func (m taskModel) Update(msg tea.Msg) (Model, tea.Cmd) {
 
 func (m taskModel) Title() string {
 	return breadcrumbs("Task", *m.task.Parent)
-	// Command
-	//components = append(components,
-	//	lipgloss.NewStyle().
-	//		Inherit(inherit).
-	//		Align(lipgloss.Right).
-	//		Render(strings.Join(m.task.Command, " ")))
-	//// Render breadcrumbs together
-	//breadcrumbs := strings.Join(components,
-	//	lipgloss.NewStyle().
-	//		Inherit(inherit).
-	//		Render(" › "),
-	//)
-	//// spinner+status
-	//var renderedSpinner string
-	//if m.task.State == task.Running {
-	//	renderedSpinner = m.spinner.View()
-	//}
-	//commandAndStatus := lipgloss.NewStyle().
-	//	Width(m.width-max(0, Width(breadcrumbs))).
-	//	Align(lipgloss.Right).
-	//	Inherit(inherit).
-	//	Padding(0, 1).
-	//	Render(
-	//		lipgloss.JoinHorizontal(
-	//			lipgloss.Top,
-	//			renderedSpinner,
-	//			// status
-	//			lipgloss.NewStyle().
-	//				Inherit(inherit).
-	//				Render(strings.ToUpper(string((m.task.State)))),
-	//		),
-	//	)
-
-	//return lipgloss.JoinHorizontal(
-	//	lipgloss.Left,
-	//	breadcrumbs,
-	//	commandAndStatus,
-	//)
 }
 
 // View renders the viewport
 func (m taskModel) View() string {
-	// task metadata
-	command := strings.Join(append(m.task.Command, m.task.Args...), " ")
-	metadata := lipgloss.JoinHorizontal(
-		lipgloss.Left,
-		lipgloss.NewStyle().
-			Foreground(lipgloss.Color("237")).
-			Bold(true).
-			Padding(0, 1).
-			Render(command),
-		lipgloss.NewStyle().
-			Foreground(lipgloss.Color("36")).
-			Width(m.width-Width(command)-2).
-			Align(lipgloss.Right).
-			Padding(0, 1).
-			Render(string(m.task.State)),
-	)
+	components := []string{
+		Regular.Copy().
+			Margin(0, 1).
+			Render(m.viewport.View()),
+	}
+	// render task metadata only if task is not a child of a run model
+	if !m.isChild {
+		command := strings.Join(append(m.task.Command, m.task.Args...), " ")
+		metadata := lipgloss.JoinHorizontal(
+			lipgloss.Left,
+			lipgloss.NewStyle().
+				Foreground(lipgloss.Color("237")).
+				Bold(true).
+				Padding(0, 1).
+				Render(command),
+			lipgloss.NewStyle().
+				Foreground(lipgloss.Color("36")).
+				Width(m.width-Width(command)-2).
+				Align(lipgloss.Right).
+				Padding(0, 1).
+				Render(string(m.task.State)),
+		)
+		components = append(components,
+			strings.Repeat("─", m.width),
+			metadata,
+		)
+	}
 
 	return lipgloss.NewStyle().
 		Render(
 			lipgloss.JoinVertical(
 				lipgloss.Top,
-				// task output
-				lipgloss.NewStyle().
-					Margin(0, 1).
-					Render(m.viewport.View()),
-				lipgloss.NewStyle().
-					Render(strings.Repeat("─", m.width)),
-				// task metadata
-				metadata,
+				components...,
 			),
 		)
 }
@@ -222,8 +193,8 @@ func (m taskModel) HelpBindings() (bindings []key.Binding) {
 	return
 }
 
-func (m *taskModel) getOutput() tea.Msg {
-	msg := taskOutputMsg{taskID: m.task.ID()}
+func (m taskModel) getOutput() tea.Msg {
+	msg := taskOutputMsg{taskID: m.task.ID(), isChild: m.isChild}
 
 	n, err := m.output.Read(m.buf)
 	if err == io.EOF {
@@ -235,7 +206,10 @@ func (m *taskModel) getOutput() tea.Msg {
 	return msg
 }
 
-func taskCmd(fn func(resource.ID) (*task.Task, error), ids ...resource.ID) tea.Cmd {
+// taskCmd returns a command that creates one or more tasks using the given IDs.
+func taskCmd(fn task.Func, ids ...resource.ID) tea.Cmd {
+	// Handle the case where a user has pressed a key on an empty table with
+	// zero rows
 	if len(ids) == 0 {
 		return nil
 	}
@@ -246,30 +220,31 @@ func taskCmd(fn func(resource.ID) (*task.Task, error), ids ...resource.ID) tea.C
 		deselectCmd = cmdHandler(table.DeselectMsg{})
 	}
 
-	taskCmd := func() tea.Msg {
-		var task *task.Task
+	cmd := func() tea.Msg {
+		//var task *task.Task
 		for _, id := range ids {
 			var err error
-			if task, err = fn(id); err != nil {
+			if _, err = fn(id); err != nil {
 				return newErrorMsg(err, "creating task")
 			}
 		}
-		if len(ids) > 1 {
-			// User has selected multiple rows, so send them to the task *list*
-			// page
-			//
-			// TODO: pass in parameter specifying the parent resource for the
-			// task listing, i.e. module, workspace, run, etc.
-			return navigationMsg{
-				target: page{kind: TaskListKind},
-			}
-		} else {
-			// User has highlighted a single row, so send them to the task page.
-			return navigationMsg{
-				target: page{kind: TaskKind, resource: task.Resource},
-			}
-		}
+		//if len(ids) > 1 {
+		//	// User has selected multiple rows, so send them to the task *list*
+		//	// page
+		//	//
+		//	// TODO: pass in parameter specifying the parent resource for the
+		//	// task listing, i.e. module, workspace, run, etc.
+		//	return navigationMsg{
+		//		target: page{kind: TaskListKind},
+		//	}
+		//} else {
+		//	// User has highlighted a single row, so send them to the task page.
+		//	return navigationMsg{
+		//		target: page{kind: TaskKind, resource: task.Resource},
+		//	}
+		//}
+		return nil
 	}
 
-	return tea.Batch(taskCmd, deselectCmd)
+	return tea.Batch(cmd, deselectCmd)
 }

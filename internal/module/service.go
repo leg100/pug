@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"slices"
 
+	"github.com/leg100/pug/internal"
 	"github.com/leg100/pug/internal/pubsub"
 	"github.com/leg100/pug/internal/resource"
 	"github.com/leg100/pug/internal/task"
@@ -114,9 +115,9 @@ func (s *Service) Subscribe(ctx context.Context) (<-chan resource.Event[*Module]
 	return s.broker.Subscribe(ctx)
 }
 
-func (s *Service) SetCurrent(moduleID resource.ID, workspace string) error {
+func (s *Service) SetCurrent(moduleID resource.ID, workspace resource.Resource) error {
 	err := s.table.Update(moduleID, func(existing *Module) {
-		existing.Current = workspace
+		existing.CurrentWorkspace = &workspace
 	})
 	if err != nil {
 		return fmt.Errorf("setting current workspace for module: %w", err)
@@ -125,24 +126,58 @@ func (s *Service) SetCurrent(moduleID resource.ID, workspace string) error {
 }
 
 func (s *Service) Format(moduleID resource.ID) (*task.Task, error) {
-	ws, err := s.table.Get(moduleID)
+	mod, err := s.table.Get(moduleID)
 	if err != nil {
 		return nil, fmt.Errorf("formatting module: %w", err)
 	}
 
-	return s.createTask(ws, task.CreateOptions{
+	return s.createTask(mod, task.CreateOptions{
 		Command: []string{"fmt"},
+		AfterCreate: func(*task.Task) {
+			s.table.Update(moduleID, func(mod *Module) {
+				mod.FormatInProgress = true
+			})
+		},
+		AfterExited: func(*task.Task) {
+			s.table.Update(moduleID, func(mod *Module) {
+				mod.Formatted = internal.Bool(true)
+				mod.FormatInProgress = false
+			})
+		},
+		AfterError: func(*task.Task) {
+			s.table.Update(moduleID, func(mod *Module) {
+				mod.Formatted = internal.Bool(false)
+				mod.FormatInProgress = false
+			})
+		},
 	})
 }
 
 func (s *Service) Validate(moduleID resource.ID) (*task.Task, error) {
-	ws, err := s.table.Get(moduleID)
+	mod, err := s.table.Get(moduleID)
 	if err != nil {
 		return nil, fmt.Errorf("validating module: %w", err)
 	}
 
-	return s.createTask(ws, task.CreateOptions{
+	return s.createTask(mod, task.CreateOptions{
 		Command: []string{"validate"},
+		AfterCreate: func(*task.Task) {
+			s.table.Update(moduleID, func(mod *Module) {
+				mod.ValidationInProgress = true
+			})
+		},
+		AfterExited: func(*task.Task) {
+			s.table.Update(moduleID, func(mod *Module) {
+				mod.Valid = internal.Bool(true)
+				mod.ValidationInProgress = false
+			})
+		},
+		AfterError: func(*task.Task) {
+			s.table.Update(moduleID, func(mod *Module) {
+				mod.Valid = internal.Bool(false)
+				mod.ValidationInProgress = false
+			})
+		},
 	})
 }
 

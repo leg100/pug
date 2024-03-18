@@ -64,8 +64,8 @@ func parentColumns(table modelKind, parentKind resource.Kind) (columns []table.C
 			// Show workspace, run, and task columns on module tasks table.
 			columns = append(columns, workspaceColumn)
 			fallthrough
-		case resource.Run:
-			// Show run, and task columns on module tasks table.
+		case resource.Workspace:
+			// Show run and task columns on workspace tasks table.
 			columns = append(columns, runColumn)
 		}
 		// Always render task ID on tasks table
@@ -117,8 +117,8 @@ func parentCells(tbl modelKind, parentKind resource.Kind, res resource.Resource)
 				cells = append(cells, table.Cell{})
 			}
 			fallthrough
-		case resource.Run:
-			// Show run, and task cells on module tasks table. A task doesn't
+		case resource.Workspace:
+			// Show run and task cells on workspace tasks table. A task doesn't
 			// always belong to a run however, so render a blank string for run
 			// if it doesn't.
 			if res.Run() != nil {

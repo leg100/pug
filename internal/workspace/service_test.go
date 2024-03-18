@@ -33,7 +33,7 @@ func TestWorkspace_resetWorkspaces(t *testing.T) {
 	dev := New(mod.Resource, "dev")
 	staging := New(mod.Resource, "staging")
 
-	var gotCurrent string
+	var gotCurrent resource.Resource
 	table := &fakeWorkspaceTable{
 		existing: []*Workspace{dev, staging},
 	}
@@ -52,16 +52,16 @@ func TestWorkspace_resetWorkspaces(t *testing.T) {
 	assert.Equal(t, "prod", table.added[0].Name())
 
 	// expect dev to have been made the current workspace
-	assert.Equal(t, "dev", gotCurrent)
+	assert.Equal(t, dev.Resource, gotCurrent)
 }
 
 type fakeModuleService struct {
-	current *string
+	current *resource.Resource
 
 	moduleService
 }
 
-func (f *fakeModuleService) SetCurrent(moduleID resource.ID, workspace string) error {
+func (f *fakeModuleService) SetCurrent(moduleID resource.ID, workspace resource.Resource) error {
 	*f.current = workspace
 	return nil
 }

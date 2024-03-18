@@ -71,10 +71,14 @@ func TestRunner_runnable(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			runner := newRunner(tt.max, &fakeRunnerLister{
-				queued:  tt.queued,
-				running: tt.running,
-			})
+			runner := &runner{
+				max:       tt.max,
+				exclusive: make(chan struct{}, 1),
+				tasks: &fakeRunnerLister{
+					queued:  tt.queued,
+					running: tt.running,
+				},
+			}
 			assert.Equal(t, tt.want, runner.runnable())
 		})
 	}

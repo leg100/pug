@@ -17,7 +17,7 @@ type config struct {
 	MaxTasks    int
 	PluginCache bool
 	LogLevel    string
-	FirstPage   int
+	FirstPage   string
 	Debug       bool
 }
 
@@ -29,7 +29,7 @@ func parse(args []string) (config, error) {
 	fs := ff.NewFlagSet("pug")
 	fs.StringVar(&cfg.Program, 'p', "program", "terraform", "The default program to use with pug.")
 	fs.IntVar(&cfg.MaxTasks, 't', "max-tasks", 2*runtime.NumCPU(), "The maximum number of parallel tasks.")
-	fs.IntVar(&cfg.FirstPage, 'f', "first-page", 0, "The first page to open on startup.")
+	fs.StringEnumVar(&cfg.FirstPage, 'f', "first-page", "The first page to open on startup.", "modules", "workspaces", "runs", "tasks")
 	fs.BoolVar(&cfg.Debug, 'd', "debug", "Log bubbletea messages to messages.log")
 	fs.StringEnumVar(&cfg.LogLevel, 'l', "log-level", "Logging level.", "info", "debug", "error", "warn")
 	_ = fs.String('c', "config", "pug.yaml", "Path to config file.")

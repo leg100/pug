@@ -71,3 +71,5 @@ require (
 )
 
 replace github.com/mattn/go-runewidth => ../go-runewidth
+
+replace github.com/charmbracelet/bubbletea => ../bubbletea

@@ -7,12 +7,13 @@ import (
 	"github.com/google/uuid"
 )
 
+// GlobalID is the zero value of ID, representing the ID of the abstract
+// top-level "global" entity to which all resources belong.
+var GlobalID = ID(uuid.Nil)
+
 // IDEncodedMaxLen is the max length of an encoded ID (it can sometimes encode
 // to something shorter).
 const IDEncodedMaxLen = 22
-
-// NilID is the zero value of ID
-var NilID = ID(uuid.Nil)
 
 type ID uuid.UUID
 

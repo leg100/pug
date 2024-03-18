@@ -18,12 +18,12 @@ import (
 	"github.com/leg100/pug/internal/workspace"
 )
 
-func Start() error {
+func Start(args []string) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	// Parse configuration from env vars and flags
-	cfg, err := parse(os.Args[1:])
+	cfg, err := parse(args)
 	if err != nil {
 		return fmt.Errorf("parsing config: %w", err)
 	}
@@ -60,11 +60,6 @@ func Start() error {
 		WorkspaceService: workspaces,
 	})
 
-	// Search directory for modules
-	if err := modules.Reload(); err != nil {
-		return fmt.Errorf("searching for modules: %w", err)
-	}
-
 	// Construct TUI programme.
 	model, err := tui.New(tui.Options{
 		TaskService:      tasks,
@@ -92,7 +87,8 @@ func Start() error {
 		// tea.WithMouseCellMotion(),
 	)
 
-	// Relay resource events to TUI.
+	// Relay resource events to TUI. Deliberately set up subscriptions *before*
+	// any events are triggered, to ensure the TUI receives all messages.
 	logEvents, _ := logger.Subscribe(ctx)
 	go func() {
 		for ev := range logEvents {
@@ -123,6 +119,16 @@ func Start() error {
 			p.Send(ev)
 		}
 	}()
+
+	// Start daemons
+	go task.StartEnqueuer(ctx, tasks)
+	go task.StartRunner(ctx, tasks, cfg.MaxTasks)
+	go run.StartScheduler(ctx, runs)
+
+	// Search directory for modules
+	if err := modules.Reload(); err != nil {
+		return fmt.Errorf("searching for modules: %w", err)
+	}
 
 	// Blocks until user quits
 	if _, err := p.Run(); err != nil {

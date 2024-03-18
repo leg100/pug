@@ -7,7 +7,6 @@ import (
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 	"github.com/leg100/pug/internal/logging"
 	"github.com/leg100/pug/internal/resource"
 	"github.com/leg100/pug/internal/tui/table"
@@ -75,8 +74,7 @@ func (m logsModel) Title() string {
 }
 
 func (m logsModel) View() string {
-	return lipgloss.NewStyle().
-		Render(m.table.View())
+	return m.table.View()
 }
 
 func (m logsModel) Pagination() string {

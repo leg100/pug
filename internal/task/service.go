@@ -6,14 +6,15 @@ import (
 	"log/slog"
 	"slices"
 
-	"github.com/google/uuid"
 	"github.com/leg100/pug/internal/pubsub"
 	"github.com/leg100/pug/internal/resource"
 )
 
 type Service struct {
-	table  *resource.Table[*Task]
-	broker *pubsub.Broker[*Task]
+	Broker *pubsub.Broker[*Task]
+
+	table   *resource.Table[*Task]
+	counter *int
 
 	*factory
 }
@@ -24,33 +25,21 @@ type ServiceOptions struct {
 }
 
 func NewService(ctx context.Context, opts ServiceOptions) *Service {
+	var counter int
+
 	broker := pubsub.NewBroker[*Task]()
 	factory := &factory{
+		broker:  broker,
+		counter: &counter,
 		program: opts.Program,
-		// Publish an event whenever task state is updated
-		afterUpdate: func(t *Task) {
-			broker.Publish(resource.UpdatedEvent, t)
-		},
 	}
 
 	svc := &Service{
 		table:   resource.NewTable[*Task](broker),
-		broker:  broker,
+		Broker:  broker,
 		factory: factory,
+		counter: &counter,
 	}
-
-	// Start task enqueuer in background
-	//
-	// TODO: move this into separate routing, to allow easy testing of service
-	// (cannot use constructor without startign these daemons).
-	enqueuerSub, _ := broker.Subscribe(ctx)
-	go startEnqueuer(ctx, svc, enqueuerSub)
-
-	// Start task runner in background
-	runner := newRunner(opts.MaxTasks, svc)
-	runnerSub, _ := broker.Subscribe(ctx)
-	go runner.start(ctx, runnerSub)
-
 	return svc
 }
 
@@ -62,7 +51,10 @@ func (s *Service) Create(opts CreateOptions) (*Task, error) {
 		return nil, err
 	}
 
+	// Add to db
 	s.table.Add(task.ID(), task)
+	// Increment counter of number of live tasks
+	*s.counter++
 
 	if opts.AfterCreate != nil {
 		opts.AfterCreate(task)
@@ -88,7 +80,6 @@ func (s *Service) Enqueue(taskID resource.ID) (*Task, error) {
 	}
 
 	task.updateState(Queued)
-	s.broker.Publish(resource.UpdatedEvent, task)
 	slog.Info("enqueued task", "task_id", task.ID(), "command", task.Command)
 	return task, nil
 }
@@ -105,6 +96,8 @@ type ListOptions struct {
 	// non-blocking tasks are returned.
 	Blocking bool
 	// Filter tasks by only those that have an ancestor with the given ID.
+	// Defaults the zero value, which is the ID of the abstract global entity to
+	// which all resources belong.
 	Ancestor resource.ID
 }
 
@@ -131,10 +124,8 @@ func (s *Service) List(opts ListOptions) []*Task {
 				continue
 			}
 		}
-		if opts.Ancestor != resource.ID(uuid.Nil) {
-			if !t.HasAncestor(opts.Ancestor) {
-				continue
-			}
+		if !t.HasAncestor(opts.Ancestor) {
+			continue
 		}
 		tasks[i] = t
 		i++
@@ -158,7 +149,7 @@ func (s *Service) Get(taskID resource.ID) (*Task, error) {
 }
 
 func (s *Service) Subscribe(ctx context.Context) (<-chan resource.Event[*Task], func()) {
-	return s.broker.Subscribe(ctx)
+	return s.Broker.Subscribe(ctx)
 }
 
 func (s *Service) Cancel(taskID resource.ID) (*Task, error) {
@@ -176,4 +167,8 @@ func (s *Service) Delete(taskID resource.ID) error {
 	// instruct user to cancel task first).
 	s.table.Delete(taskID)
 	return nil
+}
+
+func (s *Service) Counter() int {
+	return *s.counter
 }

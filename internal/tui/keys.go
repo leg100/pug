@@ -8,6 +8,7 @@ import (
 
 type keyMap struct {
 	Quit       key.Binding
+	Edit       key.Binding
 	Modules    key.Binding
 	Workspaces key.Binding
 	Runs       key.Binding
@@ -27,12 +28,18 @@ type keyMap struct {
 	CloseHelp  key.Binding
 	SelectAll  key.Binding
 	Reload     key.Binding
+	Tab        key.Binding
+	TabLeft    key.Binding
 }
 
 var Keys = keyMap{
 	Quit: key.NewBinding(
 		key.WithKeys("ctrl+c"),
 		key.WithHelp("^c", "exit"),
+	),
+	Edit: key.NewBinding(
+		key.WithKeys("e"),
+		key.WithHelp("e", "edit"),
 	),
 	Modules: key.NewBinding(
 		key.WithKeys("m"),
@@ -109,6 +116,14 @@ var Keys = keyMap{
 	Reload: key.NewBinding(
 		key.WithKeys("ctrl+r"),
 		key.WithHelp("ctrl+r", "reload"),
+	),
+	Tab: key.NewBinding(
+		key.WithKeys("tab", "ctrl+pgdown"),
+		key.WithHelp("tab", "forward tab"),
+	),
+	TabLeft: key.NewBinding(
+		key.WithKeys("shift+tab", "ctrl+pgup"),
+		key.WithHelp("shift+tab", "back tab"),
 	),
 }
 

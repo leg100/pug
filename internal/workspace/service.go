@@ -39,7 +39,7 @@ type workspaceTable interface {
 type moduleService interface {
 	Get(id resource.ID) (*module.Module, error)
 	GetByPath(path string) (*module.Module, error)
-	SetCurrent(moduleID resource.ID, workspace string) error
+	SetCurrent(moduleID resource.ID, workspace resource.Resource) error
 }
 
 func NewService(ctx context.Context, opts ServiceOptions) *Service {
@@ -127,7 +127,11 @@ func (s *Service) resetWorkspaces(module resource.Resource, discovered []string,
 		}
 	}
 	// Reset current workspace
-	return s.modules.SetCurrent(module.ID(), current)
+	currentWorkspace, err := s.GetByName(module.ID(), current)
+	if err != nil {
+		return fmt.Errorf("cannot find current workspace: %s: %w", current, err)
+	}
+	return s.modules.SetCurrent(module.ID(), currentWorkspace.Resource)
 }
 
 // Parse workspaces from the output of `terraform workspace list`.
@@ -175,7 +179,7 @@ func (s *Service) Create(path, name string) (*Workspace, *task.Task, error) {
 			s.table.Add(ws.ID(), ws)
 			// `workspace new` implicitly makes the created workspace the
 			// *current* workspace, so better tell pug that too.
-			if err := s.modules.SetCurrent(mod.ID(), name); err != nil {
+			if err := s.modules.SetCurrent(mod.ID(), ws.Resource); err != nil {
 				slog.Error("creating workspace: %w", err)
 			}
 		},
@@ -190,6 +194,15 @@ func (s *Service) Get(workspaceID resource.ID) (*Workspace, error) {
 	return s.table.Get(workspaceID)
 }
 
+func (s *Service) GetByName(moduleID resource.ID, name string) (*Workspace, error) {
+	for _, ws := range s.table.List() {
+		if ws.Module().ID() == moduleID && ws.Name() == name {
+			return ws, nil
+		}
+	}
+	return nil, resource.ErrNotFound
+}
+
 type ListOptions struct {
 	ModuleID resource.ID
 }
@@ -197,7 +210,7 @@ type ListOptions struct {
 func (s *Service) List(opts ListOptions) []*Workspace {
 	var existing []*Workspace
 	for _, ws := range s.table.List() {
-		if opts.ModuleID != resource.NilID {
+		if opts.ModuleID != resource.GlobalID {
 			if ws.Module().ID() != opts.ModuleID {
 				continue
 			}
@@ -229,11 +242,7 @@ func (s *Service) Delete(id resource.ID) (*task.Task, error) {
 }
 
 func (s *Service) createTask(ws *Workspace, opts task.CreateOptions) (*task.Task, error) {
-	mod, err := s.modules.Get(ws.Module().ID())
-	if err != nil {
-		return nil, err
-	}
 	opts.Parent = ws.Resource
-	opts.Path = mod.Path()
+	opts.Path = ws.ModulePath()
 	return s.tasks.Create(opts)
 }

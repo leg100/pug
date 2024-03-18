@@ -15,8 +15,18 @@ import (
 type Module struct {
 	resource.Resource
 
-	// Name of its current workspace
-	Current string
+	// The module's current workspace.
+	CurrentWorkspace *resource.Resource
+
+	// Whether module is formatted correctly. Nil means it is unknown.
+	Formatted *bool
+	// Whether formatting is in progress.
+	FormatInProgress bool
+
+	// Whether module is valid. Nil means it is unknown.
+	Valid *bool
+	// Whether validation is in progress.
+	ValidationInProgress bool
 }
 
 // Path is the path to the module relative to the pug working directory. The

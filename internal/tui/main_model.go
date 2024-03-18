@@ -21,8 +21,6 @@ import (
 )
 
 type mainModel struct {
-	runs *run.Service
-
 	*navigator
 
 	width  int
@@ -30,6 +28,9 @@ type mainModel struct {
 
 	showHelp bool
 	err      string
+
+	tasks   *task.Service
+	spinner *spinner.Model
 
 	dump *os.File
 }
@@ -42,12 +43,17 @@ type Options struct {
 
 	Logger    *logging.Logger
 	Workdir   string
-	FirstPage int
+	FirstPage string
 	MaxTasks  int
 	Debug     bool
 }
 
 func New(opts Options) (mainModel, error) {
+	firstKind, err := firstPageKind(opts.FirstPage)
+	if err != nil {
+		return mainModel{}, err
+	}
+
 	var dump *os.File
 	if opts.Debug {
 		var err error
@@ -57,10 +63,18 @@ func New(opts Options) (mainModel, error) {
 		}
 	}
 
+	spinner := spinner.New(spinner.WithSpinner(spinner.Globe))
+
+	taskModelMaker := &taskModelMaker{
+		svc: opts.TaskService,
+	}
+
 	makers := map[modelKind]maker{
 		ModuleListKind: &moduleListModelMaker{
 			svc:        opts.ModuleService,
 			workspaces: opts.WorkspaceService,
+			runs:       opts.RunService,
+			spinner:    &spinner,
 			workdir:    opts.Workdir,
 		},
 		WorkspaceListKind: &workspaceListModelMaker{
@@ -76,20 +90,24 @@ func New(opts Options) (mainModel, error) {
 			svc:      opts.TaskService,
 			maxTasks: opts.MaxTasks,
 		},
-		TaskKind: &taskModelMaker{
-			svc: opts.TaskService,
+		RunKind: &runModelMaker{
+			svc:     opts.RunService,
+			tasks:   opts.TaskService,
+			spinner: &spinner,
 		},
+		TaskKind: taskModelMaker,
 		LogsKind: &logsModelMaker{
 			logger: opts.Logger,
 		},
 	}
-	navigator, err := newNavigator(modelKind(opts.FirstPage), makers)
+	navigator, err := newNavigator(firstKind, makers)
 	if err != nil {
 		return mainModel{}, err
 	}
 	m := mainModel{
-		runs:      opts.RunService,
 		navigator: navigator,
+		spinner:   &spinner,
+		tasks:     opts.TaskService,
 		dump:      dump,
 	}
 	return m, nil
@@ -106,15 +124,6 @@ func (m mainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		spew.Fdump(m.dump, msg)
 	}
 
-	switch msg := msg.(type) {
-	case resource.Event[*workspace.Workspace]:
-		switch msg.Type {
-		case resource.CreatedEvent:
-			//return m, navigate(page{kind: WorkspaceListKind, resource: *msg.Payload.Parent})
-			cmds = append(cmds, runCmd(m.runs, msg.Payload.ID()))
-		}
-	}
-
 	if m.showHelp {
 		switch msg := msg.(type) {
 		case tea.WindowSizeMsg:
@@ -128,6 +137,21 @@ func (m mainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.showHelp = false
 				return m, nil
 			}
+		}
+	}
+
+	// Keep tally of the number of running tasks.
+	switch msg := msg.(type) {
+	case resource.Event[*task.Task]:
+		if m.tasks.Counter() > 0 {
+			cmds = append(cmds, m.spinner.Tick)
+		}
+	case spinner.TickMsg:
+		var cmd tea.Cmd
+		*m.spinner, cmd = m.spinner.Update(msg)
+		// Only continue spinning the spinner while there are tasks running
+		if m.tasks.Counter() > 0 {
+			return m, cmd
 		}
 	}
 
@@ -166,12 +190,6 @@ func (m mainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			cmd := m.updateCurrent(msg)
 			return m, cmd
 		}
-	case tea.MouseMsg:
-		return m, nil
-	case spinner.TickMsg, currentMsg:
-		// Events to be sent only to the current model.
-		cmd := m.updateCurrent(msg)
-		return m, cmd
 	case navigationMsg:
 		created, err := m.setCurrent(msg)
 		if err != nil {
@@ -180,9 +198,11 @@ func (m mainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if created {
 			return m, tea.Batch(m.currentModel().Init(), m.resizeCmd)
 		}
-		return m, tea.Batch(m.resizeCmd, cmdHandler(currentMsg{}))
+		return m, m.resizeCmd
 	case errorMsg:
-		m.err = fmt.Sprintf("%s: %s", fmt.Sprintf(msg.Message, msg.Args...), msg.Error.Error())
+		if msg.Error != nil {
+			m.err = fmt.Sprintf("%s: %s", fmt.Sprintf(msg.Message, msg.Args...), msg.Error.Error())
+		}
 	default:
 		// Send remaining msg types to all cached models
 		cmds = append(cmds, m.cache.updateAll(msg)...)
@@ -229,6 +249,10 @@ func breadcrumbs(title string, parent resource.Resource) string {
 		// if parented by a module, then include its path
 		path := Regular.Copy().Foreground(Blue).Render(parent.Module().String())
 		crumbs = append([]string{fmt.Sprintf("(%s)", path)}, crumbs...)
+	case resource.Global:
+		// if parented by global, then state it is global
+		global := Regular.Copy().Foreground(Blue).Render("global")
+		crumbs = append([]string{fmt.Sprintf("(%s)", global)}, crumbs...)
 	}
 	return fmt.Sprintf("%s%s", Bold.Render(title), strings.Join(crumbs, ""))
 }
@@ -237,7 +261,9 @@ func (m mainModel) View() string {
 	var (
 		content           string
 		shortHelpBindings []key.Binding
-		pagination        string
+		pagination        = Regular.Padding(0, 1).Render(
+			fmt.Sprintf("%d/%d tasks", m.tasks.Counter(), 32),
+		)
 	)
 
 	if m.showHelp {
@@ -258,7 +284,6 @@ func (m mainModel) View() string {
 		}
 	} else {
 		content = m.currentModel().View()
-		pagination = m.currentModel().Pagination()
 		shortHelpBindings = append(
 			m.currentModel().HelpBindings(),
 			keyMapToSlice(generalKeys)...,
@@ -298,10 +323,6 @@ func (m mainModel) View() string {
 		// content
 		lipgloss.NewStyle().
 			Height(m.viewHeight()).
-			// Width(m.viewWidth()).
-			//  1: margin; 24: time; 5: level; 60: msg; 1: margin
-			// Width(1+24+1+1+5+1+1+81+1).
-			// MaxHeight(m.viewHeight()).
 			Render(content),
 		// horizontal rule
 		lipgloss.NewStyle().

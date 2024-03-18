@@ -12,13 +12,9 @@ type enqueuer struct {
 	tasks taskLister
 }
 
-func startEnqueuer(
-	ctx context.Context,
-	tasks *Service,
-	sub <-chan resource.Event[*Task],
-) {
-
+func StartEnqueuer(ctx context.Context, tasks *Service) {
 	e := enqueuer{tasks: tasks}
+	sub, _ := tasks.Broker.Subscribe(ctx)
 
 	for range sub {
 		for _, t := range e.enqueue() {
@@ -50,9 +46,10 @@ func (e *enqueuer) enqueue() []*Task {
 	})
 	// Remove tasks from pending that should not be enqueued
 	for i, t := range pending {
-		// Recursively walk task's owners and check if they are currently
+		// Recursively walk task's ancestors and check if they are currently
 		// blocked; if so then task cannot be enqueued.
 		if hasBlockedParent(blocked, *t.Parent) {
+			// Remove from pending
 			pending = append(pending[:i], pending[i+1:]...)
 		} else if t.Blocking {
 			// Found blocking task in pending queue; no further tasks shall be

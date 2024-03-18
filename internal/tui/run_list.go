@@ -61,7 +61,7 @@ func (m runListModel) Init() tea.Cmd {
 	return func() tea.Msg {
 		var opts run.ListOptions
 		if m.parent != resource.GlobalResource {
-			opts.ParentID = m.parent.ID()
+			opts.AncestorID = m.parent.ID()
 		}
 		return table.BulkInsertMsg[*run.Run](m.svc.List(opts))
 	}
@@ -78,7 +78,7 @@ func (m runListModel) Update(msg tea.Msg) (Model, tea.Cmd) {
 		switch {
 		case key.Matches(msg, Keys.Enter):
 			if run, ok := m.table.Highlighted(); ok {
-				return m, navigate(page{kind: TaskListKind, resource: run.Resource})
+				return m, navigate(page{kind: RunKind, resource: run.Resource})
 			}
 		case key.Matches(msg, Keys.Cancel):
 			// get all highlighted or selected runs, and get the current task
@@ -92,7 +92,7 @@ func (m runListModel) Update(msg tea.Msg) (Model, tea.Cmd) {
 				return m, nil
 			}
 			cmds = append(cmds, func() tea.Msg {
-				_, task, err := m.svc.Apply(hl.ID())
+				task, err := m.svc.Apply(hl.ID())
 				if err != nil {
 					return newErrorMsg(err, "creating apply task")
 				}
@@ -152,17 +152,5 @@ func (m runListModel) navigateLatestTask(runID resource.ID) tea.Cmd {
 			return newErrorMsg(errors.New("no plan or apply task found for run"), "")
 		}
 		return navigationMsg{page{kind: TaskKind, resource: latest.Resource}}
-	}
-}
-
-func runCmd(runs *run.Service, workspaceID resource.ID) tea.Cmd {
-	return func() tea.Msg {
-		_, _, err := runs.Create(workspaceID, run.CreateOptions{})
-		if err != nil {
-			return newErrorMsg(err, "creating run")
-		}
-		return navigationMsg{
-			target: page{kind: TaskListKind},
-		}
 	}
 }
