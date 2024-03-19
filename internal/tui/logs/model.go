@@ -1,4 +1,4 @@
-package tui
+package logs
 
 import (
 	"fmt"
@@ -9,14 +9,15 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/leg100/pug/internal/logging"
 	"github.com/leg100/pug/internal/resource"
+	"github.com/leg100/pug/internal/tui"
 	"github.com/leg100/pug/internal/tui/table"
 )
 
-type logsModelMaker struct {
-	logger *logging.Logger
+type Maker struct {
+	Logger *logging.Logger
 }
 
-func (mm *logsModelMaker) makeModel(taskResource resource.Resource) (Model, error) {
+func (mm *Maker) Make(_ resource.Resource, width, height int) (tui.Model, error) {
 	columns := []table.Column{
 		{Title: "TIME", Width: 24},
 		{Title: "LEVEL", Width: 5},
@@ -42,21 +43,21 @@ func (mm *logsModelMaker) makeModel(taskResource resource.Resource) (Model, erro
 		WithSortFunc(logging.ByTimeDesc).
 		WithSelectable(false)
 
-	return logsModel{logger: mm.logger, table: table}, nil
+	return model{logger: mm.Logger, table: table}, nil
 }
 
-type logsModel struct {
+type model struct {
 	logger *logging.Logger
 	table  table.Model[logging.Message]
 }
 
-func (m logsModel) Init() tea.Cmd {
+func (m model) Init() tea.Cmd {
 	return func() tea.Msg {
 		return table.BulkInsertMsg[logging.Message](m.logger.Messages)
 	}
 }
 
-func (m logsModel) Update(msg tea.Msg) (Model, tea.Cmd) {
+func (m model) Update(msg tea.Msg) (tui.Model, tea.Cmd) {
 	var (
 		cmd  tea.Cmd
 		cmds []tea.Cmd
@@ -69,18 +70,18 @@ func (m logsModel) Update(msg tea.Msg) (Model, tea.Cmd) {
 	return m, tea.Batch(cmds...)
 }
 
-func (m logsModel) Title() string {
-	return Bold.Render("Logs")
+func (m model) Title() string {
+	return tui.Bold.Render("Logs")
 }
 
-func (m logsModel) View() string {
+func (m model) View() string {
 	return m.table.View()
 }
 
-func (m logsModel) Pagination() string {
+func (m model) Pagination() string {
 	return ""
 }
 
-func (m logsModel) HelpBindings() (bindings []key.Binding) {
-	return keyMapToSlice(viewport.DefaultKeyMap())
+func (m model) HelpBindings() (bindings []key.Binding) {
+	return tui.KeyMapToSlice(viewport.DefaultKeyMap())
 }

@@ -6,23 +6,25 @@ import (
 	"github.com/leg100/pug/internal/module"
 	"github.com/leg100/pug/internal/resource"
 	"github.com/leg100/pug/internal/run"
+	"github.com/leg100/pug/internal/tui"
 	"github.com/leg100/pug/internal/tui/table"
+	tasktui "github.com/leg100/pug/internal/tui/task"
 	"github.com/leg100/pug/internal/workspace"
 	"golang.org/x/exp/maps"
 )
 
-type workspaceListModelMaker struct {
-	svc     *workspace.Service
-	modules *module.Service
-	runs    *run.Service
+type ListMaker struct {
+	WorkspaceService *workspace.Service
+	ModuleService    *module.Service
+	RunService       *run.Service
 }
 
-func (m *workspaceListModelMaker) makeModel(parent resource.Resource) (Model, error) {
-	columns := parentColumns(WorkspaceListKind, parent.Kind)
+func (m *ListMaker) Make(parent resource.Resource, width, height int) (tui.Model, error) {
+	columns := tui.ParentColumns(tui.WorkspaceListKind, parent.Kind)
 	columns = append(columns, table.IDColumn)
 
 	cellsFunc := func(ws *workspace.Workspace) []table.Cell {
-		cells := parentCells(WorkspaceListKind, parent.Kind, ws.Resource)
+		cells := tui.ParentCells(tui.WorkspaceListKind, parent.Kind, ws.Resource)
 		return append(cells, table.Cell{Str: string(ws.ID().String())})
 	}
 	table := table.New[*workspace.Workspace](columns).
@@ -30,16 +32,16 @@ func (m *workspaceListModelMaker) makeModel(parent resource.Resource) (Model, er
 		WithSortFunc(workspace.Sort).
 		WithParent(parent)
 
-	return workspaceListModel{
+	return list{
 		table:   table,
-		svc:     m.svc,
-		modules: m.modules,
-		runs:    m.runs,
+		svc:     m.WorkspaceService,
+		modules: m.ModuleService,
+		runs:    m.RunService,
 		parent:  parent,
 	}, nil
 }
 
-type workspaceListModel struct {
+type list struct {
 	table   table.Model[*workspace.Workspace]
 	svc     *workspace.Service
 	modules *module.Service
@@ -47,7 +49,7 @@ type workspaceListModel struct {
 	parent  resource.Resource
 }
 
-func (m workspaceListModel) Init() tea.Cmd {
+func (m list) Init() tea.Cmd {
 	return func() tea.Msg {
 		var opts workspace.ListOptions
 		if m.parent != resource.GlobalResource {
@@ -57,7 +59,7 @@ func (m workspaceListModel) Init() tea.Cmd {
 	}
 }
 
-func (m workspaceListModel) Update(msg tea.Msg) (Model, tea.Cmd) {
+func (m list) Update(msg tea.Msg) (tui.Model, tea.Cmd) {
 	var (
 		cmd  tea.Cmd
 		cmds []tea.Cmd
@@ -66,17 +68,17 @@ func (m workspaceListModel) Update(msg tea.Msg) (Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch {
-		case key.Matches(msg, Keys.Enter):
+		case key.Matches(msg, tui.Keys.Enter):
 			if ws, ok := m.table.Highlighted(); ok {
-				return m, navigate(page{kind: RunListKind, resource: ws.Resource})
+				return m, tui.Navigate(tui.Page{Kind: tui.RunListKind, Resource: ws.Resource})
 			}
-		case key.Matches(msg, Keys.Init):
-			return m, taskCmd(m.modules.Init, m.highlightedOrSelectedModuleIDs()...)
-		case key.Matches(msg, Keys.Format):
-			return m, taskCmd(m.modules.Format, m.highlightedOrSelectedModuleIDs()...)
-		case key.Matches(msg, Keys.Validate):
-			return m, taskCmd(m.modules.Validate, m.highlightedOrSelectedModuleIDs()...)
-		case key.Matches(msg, Keys.Plan):
+		case key.Matches(msg, tui.Keys.Init):
+			return m, tasktui.TaskCmd(m.modules.Init, m.highlightedOrSelectedModuleIDs()...)
+		case key.Matches(msg, tui.Keys.Format):
+			return m, tasktui.TaskCmd(m.modules.Format, m.highlightedOrSelectedModuleIDs()...)
+		case key.Matches(msg, tui.Keys.Validate):
+			return m, tasktui.TaskCmd(m.modules.Validate, m.highlightedOrSelectedModuleIDs()...)
+		case key.Matches(msg, tui.Keys.Plan):
 			return m, m.createRun(run.CreateOptions{})
 		}
 	}
@@ -88,24 +90,24 @@ func (m workspaceListModel) Update(msg tea.Msg) (Model, tea.Cmd) {
 	return m, tea.Batch(cmds...)
 }
 
-func (m workspaceListModel) Title() string {
-	return breadcrumbs("Workspaces", m.parent)
+func (m list) Title() string {
+	return tui.Breadcrumbs("Workspaces", m.parent)
 }
 
-func (m workspaceListModel) View() string {
+func (m list) View() string {
 	return m.table.View()
 }
 
-func (m workspaceListModel) Pagination() string {
+func (m list) Pagination() string {
 	return ""
 }
 
-func (m workspaceListModel) HelpBindings() (bindings []key.Binding) {
-	bindings = append(bindings, Keys.CloseHelp)
+func (m list) HelpBindings() (bindings []key.Binding) {
+	bindings = append(bindings, tui.Keys.CloseHelp)
 	return
 }
 
-func (m workspaceListModel) highlightedOrSelectedModuleIDs() []resource.ID {
+func (m list) highlightedOrSelectedModuleIDs() []resource.ID {
 	selected := maps.Values(m.table.HighlightedOrSelected())
 	moduleIDs := make([]resource.ID, len(selected))
 	for i, s := range selected {
@@ -114,7 +116,7 @@ func (m workspaceListModel) highlightedOrSelectedModuleIDs() []resource.ID {
 	return moduleIDs
 }
 
-func (m workspaceListModel) createRun(opts run.CreateOptions) tea.Cmd {
+func (m list) createRun(opts run.CreateOptions) tea.Cmd {
 	// Handle the case where a user has pressed a key on an empty table with
 	// zero rows
 	if len(m.table.Items()) == 0 {
@@ -124,7 +126,7 @@ func (m workspaceListModel) createRun(opts run.CreateOptions) tea.Cmd {
 	// If items have been selected then clear the selection
 	var deselectCmd tea.Cmd
 	if len(m.table.Selected) > 0 {
-		deselectCmd = cmdHandler(table.DeselectMsg{})
+		deselectCmd = tui.CmdHandler(table.DeselectMsg{})
 	}
 
 	cmd := func() tea.Msg {
@@ -132,11 +134,11 @@ func (m workspaceListModel) createRun(opts run.CreateOptions) tea.Cmd {
 		for workspaceID := range workspaces {
 			_, err := m.runs.Create(workspaceID, opts)
 			if err != nil {
-				return newErrorMsg(err, "creating run")
+				return tui.NewErrorMsg(err, "creating run")
 			}
 		}
-		return navigationMsg{
-			target: page{kind: RunListKind, resource: m.parent},
+		return tui.NavigationMsg{
+			Target: tui.Page{Kind: tui.RunListKind, Resource: m.parent},
 		}
 	}
 	return tea.Batch(cmd, deselectCmd)

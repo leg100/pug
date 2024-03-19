@@ -1,8 +1,9 @@
-package tui
+package top
 
 import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/leg100/pug/internal/resource"
+	"github.com/leg100/pug/internal/tui"
 )
 
 // page cache: not so much for performance but to retain memory of user
@@ -10,25 +11,25 @@ import (
 // from the page and later return to the page, and they would expect the same
 // row still to be hightlighted.
 type cache struct {
-	cache map[cacheKey]Model
+	cache map[cacheKey]tui.Model
 }
 
 type cacheKey struct {
-	kind modelKind
+	kind tui.Kind
 	id   resource.ID
 }
 
-func (c *cache) exists(page page) bool {
-	_, ok := c.cache[page.cacheKey()]
+func (c *cache) exists(page tui.Page) bool {
+	_, ok := c.cache[pageKey(page)]
 	return ok
 }
 
-func (c *cache) get(page page) Model {
-	return c.cache[page.cacheKey()]
+func (c *cache) get(page tui.Page) tui.Model {
+	return c.cache[pageKey(page)]
 }
 
-func (c *cache) put(page page, model Model) {
-	c.cache[page.cacheKey()] = model
+func (c *cache) put(page tui.Page, model tui.Model) {
+	c.cache[pageKey(page)] = model
 }
 
 func (c *cache) updateAll(msg tea.Msg) []tea.Cmd {
@@ -43,4 +44,8 @@ func (c *cache) update(key cacheKey, msg tea.Msg) tea.Cmd {
 	updated, cmd := c.cache[key].Update(msg)
 	c.cache[key] = updated
 	return cmd
+}
+
+func pageKey(page tui.Page) cacheKey {
+	return cacheKey{kind: page.Kind, id: page.Resource.ID()}
 }

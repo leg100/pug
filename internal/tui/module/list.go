@@ -10,23 +10,22 @@ import (
 	"github.com/leg100/pug/internal/module"
 	"github.com/leg100/pug/internal/resource"
 	"github.com/leg100/pug/internal/run"
+	"github.com/leg100/pug/internal/tui"
 	"github.com/leg100/pug/internal/tui/table"
+	tasktui "github.com/leg100/pug/internal/tui/task"
 	"github.com/leg100/pug/internal/workspace"
 	"golang.org/x/exp/maps"
 )
 
-type moduleListModelMaker struct {
-	svc        *module.Service
-	workspaces *workspace.Service
-	runs       *run.Service
-
-	workdir string
-
-	spinner *spinner.Model
+type ListMaker struct {
+	ModuleService *module.Service
+	RunService    *run.Service
+	Spinner       *spinner.Model
+	Workdir       string
 }
 
-func (m *moduleListModelMaker) makeModel(_ resource.Resource) (Model, error) {
-	columns := parentColumns(ModuleListKind, resource.Global)
+func (m *ListMaker) Make(_ resource.Resource, width, height int) (tui.Model, error) {
+	columns := tui.ParentColumns(tui.ModuleListKind, resource.Global)
 	columns = append(columns,
 		table.Column{
 			Title:      "CURRENT WORKSPACE",
@@ -47,7 +46,7 @@ func (m *moduleListModelMaker) makeModel(_ resource.Resource) (Model, error) {
 	)
 	boolToUnicode := func(inprog bool, b *bool) string {
 		if inprog {
-			return m.spinner.View()
+			return m.Spinner.View()
 		}
 		if b == nil {
 			return "-"
@@ -75,34 +74,31 @@ func (m *moduleListModelMaker) makeModel(_ resource.Resource) (Model, error) {
 		}).
 		WithSortFunc(module.ByPath)
 
-	return moduleListModel{
-		table:      table,
-		spinner:    m.spinner,
-		svc:        m.svc,
-		workspaces: m.workspaces,
-		runs:       m.runs,
-		workdir:    m.workdir,
+	return list{
+		table:         table,
+		spinner:       m.Spinner,
+		ModuleService: m.ModuleService,
+		RunService:    m.RunService,
+		workdir:       m.Workdir,
 	}, nil
 }
 
-type moduleListModel struct {
+type list struct {
+	ModuleService *module.Service
+	RunService    *run.Service
+
 	table   table.Model[*module.Module]
 	spinner *spinner.Model
-
-	svc        *module.Service
-	workspaces *workspace.Service
-	runs       *run.Service
-
 	workdir string
 }
 
-func (mlm moduleListModel) Init() tea.Cmd {
+func (m list) Init() tea.Cmd {
 	return func() tea.Msg {
-		return table.BulkInsertMsg[*module.Module](mlm.svc.List())
+		return table.BulkInsertMsg[*module.Module](m.ModuleService.List())
 	}
 }
 
-func (m moduleListModel) Update(msg tea.Msg) (Model, tea.Cmd) {
+func (m list) Update(msg tea.Msg) (tui.Model, tea.Cmd) {
 	var (
 		cmd  tea.Cmd
 		cmds []tea.Cmd
@@ -118,7 +114,7 @@ func (m moduleListModel) Update(msg tea.Msg) (Model, tea.Cmd) {
 		switch msg.Type {
 		case resource.UpdatedEvent:
 			if msg.Payload.Status == run.Planned {
-				return m, navigate(page{kind: RunKind, resource: msg.Payload.Resource})
+				return m, tui.Navigate(tui.Page{Kind: tui.RunKind, Resource: msg.Payload.Resource})
 			}
 		}
 	}
@@ -126,34 +122,34 @@ func (m moduleListModel) Update(msg tea.Msg) (Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch {
-		case key.Matches(msg, Keys.Reload):
+		case key.Matches(msg, tui.Keys.Reload):
 			return m, func() tea.Msg {
-				if err := m.svc.Reload(); err != nil {
-					return newErrorMsg(err, "reloading modules")
+				if err := m.ModuleService.Reload(); err != nil {
+					return tui.NewErrorMsg(err, "reloading modules")
 				}
 				return nil
 			}
-		case key.Matches(msg, Keys.Edit):
+		case key.Matches(msg, tui.Keys.Edit):
 			if mod, ok := m.table.Highlighted(); ok {
 				// TODO: use env var EDITOR
 				// TODO: check for side effects of exec blocking the tui - do
 				// messages get queued up?
 				c := exec.Command("vim", mod.Path())
 				return m, tea.ExecProcess(c, func(err error) tea.Msg {
-					return newErrorMsg(err, "opening vim")
+					return tui.NewErrorMsg(err, "opening vim")
 				})
 			}
-		case key.Matches(msg, Keys.Enter):
+		case key.Matches(msg, tui.Keys.Enter):
 			if mod, ok := m.table.Highlighted(); ok {
-				return m, navigate(page{kind: WorkspaceListKind, resource: mod.Resource})
+				return m, tui.Navigate(tui.Page{Kind: tui.WorkspaceListKind, Resource: mod.Resource})
 			}
-		case key.Matches(msg, Keys.Init):
-			return m, taskCmd(m.svc.Init, maps.Keys(m.table.HighlightedOrSelected())...)
-		case key.Matches(msg, Keys.Validate):
-			return m, taskCmd(m.svc.Validate, maps.Keys(m.table.HighlightedOrSelected())...)
-		case key.Matches(msg, Keys.Format):
-			return m, taskCmd(m.svc.Format, maps.Keys(m.table.HighlightedOrSelected())...)
-		case key.Matches(msg, Keys.Plan):
+		case key.Matches(msg, tui.Keys.Init):
+			return m, tasktui.TaskCmd(m.ModuleService.Init, maps.Keys(m.table.HighlightedOrSelected())...)
+		case key.Matches(msg, tui.Keys.Validate):
+			return m, tasktui.TaskCmd(m.ModuleService.Validate, maps.Keys(m.table.HighlightedOrSelected())...)
+		case key.Matches(msg, tui.Keys.Format):
+			return m, tasktui.TaskCmd(m.ModuleService.Format, maps.Keys(m.table.HighlightedOrSelected())...)
+		case key.Matches(msg, tui.Keys.Plan):
 			return m, m.createRun(run.CreateOptions{})
 		}
 	}
@@ -163,54 +159,54 @@ func (m moduleListModel) Update(msg tea.Msg) (Model, tea.Cmd) {
 	return m, tea.Batch(cmds...)
 }
 
-func (mlm moduleListModel) Title() string {
-	workdir := Regular.Copy().Foreground(Blue).Render(mlm.workdir)
-	modules := Bold.Copy().Render("Modules")
+func (m list) Title() string {
+	workdir := tui.Regular.Copy().Foreground(tui.Blue).Render(m.workdir)
+	modules := tui.Bold.Copy().Render("Modules")
 	return fmt.Sprintf("%s(%s)", modules, workdir)
 }
 
-func (mlm moduleListModel) View() string {
-	return mlm.table.View()
+func (m list) View() string {
+	return m.table.View()
 }
 
-func (m moduleListModel) Pagination() string {
+func (m list) Pagination() string {
 	return ""
 }
 
-func (mlm moduleListModel) HelpBindings() (bindings []key.Binding) {
+func (m list) HelpBindings() (bindings []key.Binding) {
 	return []key.Binding{
-		Keys.Init,
-		Keys.Validate,
-		Keys.Format,
-		Keys.Plan,
-		Keys.Edit,
+		tui.Keys.Init,
+		tui.Keys.Validate,
+		tui.Keys.Format,
+		tui.Keys.Plan,
+		tui.Keys.Edit,
 	}
 }
 
-func (mlm moduleListModel) createRun(opts run.CreateOptions) tea.Cmd {
+func (m list) createRun(opts run.CreateOptions) tea.Cmd {
 	// Handle the case where a user has pressed a key on an empty table with
 	// zero rows
-	if len(mlm.table.Items()) == 0 {
+	if len(m.table.Items()) == 0 {
 		return nil
 	}
 
 	// If items have been selected then clear the selection
 	var deselectCmd tea.Cmd
-	if len(mlm.table.Selected) > 0 {
-		deselectCmd = cmdHandler(table.DeselectMsg{})
+	if len(m.table.Selected) > 0 {
+		deselectCmd = tui.CmdHandler(table.DeselectMsg{})
 	}
 
 	cmd := func() tea.Msg {
-		modules := mlm.table.HighlightedOrSelected()
+		modules := m.table.HighlightedOrSelected()
 		var run *run.Run
 		for _, mod := range modules {
 			if mod.CurrentWorkspace == nil {
 				continue
 			}
 			var err error
-			run, err = mlm.runs.Create(mod.CurrentWorkspace.ID(), opts)
+			run, err = m.RunService.Create(mod.CurrentWorkspace.ID(), opts)
 			if err != nil {
-				return newErrorMsg(err, "creating run")
+				return tui.NewErrorMsg(err, "creating run")
 			}
 		}
 		if run == nil {
@@ -221,13 +217,13 @@ func (mlm moduleListModel) createRun(opts run.CreateOptions) tea.Cmd {
 		}
 		// If user triggered more than one run go to the run listing, otherwise
 		// go to the run itself.
-		var target page
+		var target tui.Page
 		if len(modules) > 1 {
-			target = page{kind: RunListKind}
+			target = tui.Page{Kind: tui.RunListKind}
 		} else {
-			target = page{kind: RunKind, resource: run.Resource}
+			target = tui.Page{Kind: tui.RunKind, Resource: run.Resource}
 		}
-		return navigationMsg{target: target}
+		return tui.NavigationMsg{Target: target}
 	}
 	return tea.Batch(cmd, deselectCmd)
 }

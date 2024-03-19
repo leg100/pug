@@ -7,76 +7,78 @@ import (
 )
 
 var (
-	moduleColumn = table.Column{
+	ModuleColumn = table.Column{
 		Title:          "MODULE",
 		TruncationFunc: runewidth.TruncateLeft,
 		FlexFactor:     3,
 	}
-	workspaceColumn = table.Column{
+	WorkspaceColumn = table.Column{
 		Title:      "WORKSPACE",
 		FlexFactor: 2,
 	}
-	runColumn = table.Column{
+	RunColumn = table.Column{
 		Title:      "RUN",
 		Width:      resource.IDEncodedMaxLen,
 		FlexFactor: 1,
 	}
-	taskColumn = table.Column{
+	TaskColumn = table.Column{
 		Title:      "TASK",
 		Width:      resource.IDEncodedMaxLen,
 		FlexFactor: 1,
 	}
 )
 
-// parentColumns returns appropriate columns for a table depending upon the parent kind.
-func parentColumns(table modelKind, parentKind resource.Kind) (columns []table.Column) {
+// ParentColumns returns appropriate columns for a table depending upon the parent kind.
+func ParentColumns(table Kind, parentKind resource.Kind) (columns []table.Column) {
 	switch table {
 	case ModuleListKind:
 		// Always render module path on modules table
-		columns = append(columns, moduleColumn)
+		columns = append(columns, ModuleColumn)
 	case WorkspaceListKind:
 		switch parentKind {
 		case resource.Global:
 			// Only show module path if global workspaces table.
-			columns = append(columns, moduleColumn)
+			columns = append(columns, ModuleColumn)
 		}
 		// Always render workspace name on workspaces table
-		columns = append(columns, workspaceColumn)
+		columns = append(columns, WorkspaceColumn)
 	case RunListKind:
 		switch parentKind {
 		case resource.Global:
 			// Show all parent columns on global runs table
-			columns = append(columns, moduleColumn)
+			columns = append(columns, ModuleColumn)
 			fallthrough
 		case resource.Module:
 			// Show workspace and run columns on module runs table.
-			columns = append(columns, workspaceColumn)
+			columns = append(columns, WorkspaceColumn)
 		}
 		// Always render run ID on runs table
-		columns = append(columns, runColumn)
+		columns = append(columns, RunColumn)
 	case TaskListKind:
 		switch parentKind {
 		case resource.Global:
 			// Show all parent columns on global tasks table
-			columns = append(columns, moduleColumn)
+			columns = append(columns, ModuleColumn)
 			fallthrough
 		case resource.Module:
 			// Show workspace, run, and task columns on module tasks table.
-			columns = append(columns, workspaceColumn)
+			columns = append(columns, WorkspaceColumn)
 			fallthrough
 		case resource.Workspace:
 			// Show run and task columns on workspace tasks table.
-			columns = append(columns, runColumn)
+			columns = append(columns, RunColumn)
 		}
 		// Always render task ID on tasks table
-		columns = append(columns, taskColumn)
+		columns = append(columns, TaskColumn)
 	}
 	return
 }
 
-// parentCells returns appropriate cells depending upon the table and the parent
+// ParentCells returns appropriate cells depending upon the table and the parent
 // resource.
-func parentCells(tbl modelKind, parentKind resource.Kind, res resource.Resource) (cells []table.Cell) {
+//
+// TODO: rename to ParentRows
+func ParentCells(tbl Kind, parentKind resource.Kind, res resource.Resource) (cells []table.Cell) {
 	switch tbl {
 	case ModuleListKind:
 		// Always render module path on modules table

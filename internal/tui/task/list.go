@@ -9,29 +9,30 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/leg100/pug/internal/resource"
 	"github.com/leg100/pug/internal/task"
+	"github.com/leg100/pug/internal/tui"
 	"github.com/leg100/pug/internal/tui/table"
 	"golang.org/x/exp/maps"
 )
 
-type taskListModelMaker struct {
-	svc      *task.Service
-	maxTasks int
+type ListMaker struct {
+	TaskService *task.Service
+	MaxTasks    int
 }
 
-func (m *taskListModelMaker) makeModel(parent resource.Resource) (Model, error) {
-	columns := append(parentColumns(TaskListKind, parent.Kind),
+func (m *ListMaker) Make(parent resource.Resource, width, height int) (tui.Model, error) {
+	columns := append(tui.ParentColumns(tui.TaskListKind, parent.Kind),
 		table.Column{Title: "COMMAND", Width: 20},
 		table.Column{Title: "STATUS", Width: 10},
 		table.Column{Title: "AGE", Width: 10},
 	)
 	cellsFunc := func(t *task.Task) []table.Cell {
-		cells := parentCells(TaskListKind, parent.Kind, t.Resource)
+		cells := tui.ParentCells(tui.TaskListKind, parent.Kind, t.Resource)
 		cells = append(cells, table.Cell{Str: strings.Join(t.Command, " ")})
 
 		stateStyle := lipgloss.NewStyle()
 		switch t.State {
 		case task.Errored:
-			stateStyle = stateStyle.Foreground(Red)
+			stateStyle = stateStyle.Foreground(tui.Red)
 		case task.Exited:
 			stateStyle = stateStyle.Foreground(lipgloss.Color("40"))
 		default:
@@ -39,7 +40,7 @@ func (m *taskListModelMaker) makeModel(parent resource.Resource) (Model, error) 
 
 		cells = append(cells,
 			table.Cell{Str: string(t.State), Style: stateStyle},
-			table.Cell{Str: ago(time.Now(), t.Updated)},
+			table.Cell{Str: tui.Ago(time.Now(), t.Updated)},
 		)
 		return cells
 	}
@@ -49,22 +50,22 @@ func (m *taskListModelMaker) makeModel(parent resource.Resource) (Model, error) 
 		WithParent(parent)
 		// WithWidth(60)
 
-	return taskListModel{
+	return list{
 		table:  table,
-		svc:    m.svc,
+		svc:    m.TaskService,
 		parent: parent,
-		max:    m.maxTasks,
+		max:    m.MaxTasks,
 	}, nil
 }
 
-type taskListModel struct {
+type list struct {
 	table  table.Model[*task.Task]
 	svc    *task.Service
 	parent resource.Resource
 	max    int
 }
 
-func (m taskListModel) Init() tea.Cmd {
+func (m list) Init() tea.Cmd {
 	return func() tea.Msg {
 		var opts task.ListOptions
 		if m.parent != resource.GlobalResource {
@@ -74,7 +75,7 @@ func (m taskListModel) Init() tea.Cmd {
 	}
 }
 
-func (m taskListModel) Update(msg tea.Msg) (Model, tea.Cmd) {
+func (m list) Update(msg tea.Msg) (tui.Model, tea.Cmd) {
 	var (
 		cmd  tea.Cmd
 		cmds []tea.Cmd
@@ -83,12 +84,12 @@ func (m taskListModel) Update(msg tea.Msg) (Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch {
-		case key.Matches(msg, Keys.Enter):
+		case key.Matches(msg, tui.Keys.Enter):
 			if task, ok := m.table.Highlighted(); ok {
-				return m, navigate(page{kind: TaskKind, resource: task.Resource})
+				return m, tui.Navigate(tui.Page{Kind: tui.TaskKind, Resource: task.Resource})
 			}
-		case key.Matches(msg, Keys.Cancel):
-			return m, taskCmd(m.svc.Cancel, maps.Keys(m.table.HighlightedOrSelected())...)
+		case key.Matches(msg, tui.Keys.Cancel):
+			return m, TaskCmd(m.svc.Cancel, maps.Keys(m.table.HighlightedOrSelected())...)
 		}
 	}
 	// Handle keyboard and mouse events in the table widget
@@ -98,19 +99,19 @@ func (m taskListModel) Update(msg tea.Msg) (Model, tea.Cmd) {
 	return m, tea.Batch(cmds...)
 }
 
-func (m taskListModel) Title() string {
-	return breadcrumbs(Bold.Render("Tasks"), m.parent)
+func (m list) Title() string {
+	return tui.Breadcrumbs(tui.Bold.Render("Tasks"), m.parent)
 }
 
-func (m taskListModel) View() string {
+func (m list) View() string {
 	return m.table.View()
 }
 
-func (m taskListModel) Pagination() string {
+func (m list) Pagination() string {
 	return ""
 }
 
-func (m taskListModel) HelpBindings() (bindings []key.Binding) {
-	bindings = append(bindings, Keys.CloseHelp)
+func (m list) HelpBindings() (bindings []key.Binding) {
+	bindings = append(bindings, tui.Keys.CloseHelp)
 	return
 }

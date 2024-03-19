@@ -11,36 +11,43 @@ import (
 	"github.com/leg100/pug/internal/resource"
 	"github.com/leg100/pug/internal/run"
 	"github.com/leg100/pug/internal/task"
+	"github.com/leg100/pug/internal/tui"
 	"github.com/leg100/pug/internal/tui/common"
+	tasktui "github.com/leg100/pug/internal/tui/task"
 )
 
-type runModelMaker struct {
-	svc     *run.Service
-	tasks   *task.Service
-	spinner *spinner.Model
+type Maker struct {
+	RunService  *run.Service
+	TaskService *task.Service
+	Spinner     *spinner.Model
 }
 
-func (mm *runModelMaker) makeModel(rr resource.Resource) (Model, error) {
-	run, err := mm.svc.Get(rr.ID())
+func (mm *Maker) Make(rr resource.Resource, width, height int) (tui.Model, error) {
+	run, err := mm.RunService.Get(rr.ID())
 	if err != nil {
-		return runModel{}, err
+		return model{}, err
 	}
-	m := runModel{
-		svc:     mm.svc,
-		tasks:   mm.tasks,
+	m := model{
+		svc:     mm.RunService,
+		tasks:   mm.TaskService,
 		run:     run,
-		spinner: mm.spinner,
+		spinner: mm.Spinner,
+		tabMaker: &tasktui.Maker{
+			TaskService: mm.TaskService,
+			IsRunTab:    true,
+		},
 	}
 	return m, nil
 }
 
-type runModel struct {
+type model struct {
 	svc   *run.Service
 	tasks *task.Service
 	run   *run.Run
 
 	tabs      []tab
 	activeTab int
+	tabMaker  *tasktui.Maker
 
 	width  int
 	height int
@@ -49,23 +56,23 @@ type runModel struct {
 }
 
 type tab struct {
-	model Model
+	model tui.Model
 	task  *task.Task
 }
 
-type initRunTasksMsg []*task.Task
+type initTasksMsg []*task.Task
 
 // Init retrieves the run's existing tasks.
-func (m runModel) Init() tea.Cmd {
+func (m model) Init() tea.Cmd {
 	return func() tea.Msg {
 		tasks := m.tasks.List(task.ListOptions{
 			Ancestor: m.run.ID(),
 		})
-		return initRunTasksMsg(tasks)
+		return initTasksMsg(tasks)
 	}
 }
 
-func (m runModel) Update(msg tea.Msg) (Model, tea.Cmd) {
+func (m model) Update(msg tea.Msg) (tui.Model, tea.Cmd) {
 	var (
 		cmds []tea.Cmd
 	)
@@ -73,14 +80,14 @@ func (m runModel) Update(msg tea.Msg) (Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch {
-		case key.Matches(msg, Keys.Apply):
+		case key.Matches(msg, tui.Keys.Apply):
 			return m, func() tea.Msg {
 				if _, err := m.svc.Apply(m.run.ID()); err != nil {
-					return newErrorMsg(err, "applying run")
+					return tui.NewErrorMsg(err, "applying run")
 				}
 				return nil
 			}
-		case key.Matches(msg, Keys.Tab):
+		case key.Matches(msg, tui.Keys.Tab):
 			// Cycle tabs, going back to tab #0 after the last tab
 			if m.activeTab == len(m.tabs)-1 {
 				m.activeTab = 0
@@ -88,7 +95,7 @@ func (m runModel) Update(msg tea.Msg) (Model, tea.Cmd) {
 				m.activeTab = m.activeTab + 1
 			}
 			return m, nil
-		case key.Matches(msg, Keys.TabLeft):
+		case key.Matches(msg, tui.Keys.TabLeft):
 			m.activeTab = max(m.activeTab-1, 0)
 			return m, nil
 		}
@@ -106,7 +113,7 @@ func (m runModel) Update(msg tea.Msg) (Model, tea.Cmd) {
 			}
 			cmds = append(cmds, m.createTab(msg.Payload))
 		}
-	case initRunTasksMsg:
+	case initTasksMsg:
 		// Create tabs for existing run tasks
 		for _, t := range msg {
 			if !t.HasAncestor(m.run.ID()) {
@@ -130,21 +137,20 @@ func (m runModel) Update(msg tea.Msg) (Model, tea.Cmd) {
 	return m, tea.Batch(cmds...)
 }
 
-func (m runModel) Title() string {
-	return breadcrumbs("Run", m.run.Resource)
+func (m model) Title() string {
+	return tui.Breadcrumbs("Run", m.run.Resource)
 }
 
-func (m *runModel) createTab(task *task.Task) tea.Cmd {
+func (m *model) createTab(task *task.Task) tea.Cmd {
 	// dont create a tab if there is already a tab for the given task.
 	for _, existing := range m.tabs {
 		if existing.task.ID() == task.ID() {
 			return nil
 		}
 	}
-	opts := makeTaskModelOptions{height: m.height, width: m.width, isChild: true}
-	model, err := makeTaskModel(m.tasks, task.Resource, opts)
+	model, err := m.tabMaker.Make(task.Resource, m.width, m.height)
 	if err != nil {
-		return newErrorCmd(err, "creating run task tab")
+		return tui.NewErrorCmd(err, "creating run task tab")
 	}
 	tab := tab{
 		model: model,
@@ -156,13 +162,13 @@ func (m *runModel) createTab(task *task.Task) tea.Cmd {
 	return tab.model.Init()
 }
 
-func (m runModel) View() string {
+func (m model) View() string {
 	var (
 		tabComponents          []string
-		activeTabStyle         = Bold.Copy().Foreground(lipgloss.Color("13"))
-		activeStatusStyle      = Regular.Copy().Foreground(lipgloss.Color("13"))
-		inactiveTabStyle       = Regular.Copy().Foreground(lipgloss.Color("250"))
-		inactiveStatusStyle    = Regular.Copy().Foreground(lipgloss.Color("250"))
+		activeTabStyle         = tui.Bold.Copy().Foreground(lipgloss.Color("13"))
+		activeStatusStyle      = tui.Regular.Copy().Foreground(lipgloss.Color("13"))
+		inactiveTabStyle       = tui.Regular.Copy().Foreground(lipgloss.Color("250"))
+		inactiveStatusStyle    = tui.Regular.Copy().Foreground(lipgloss.Color("250"))
 		renderedTabsTotalWidth int
 	)
 	for i, t := range m.tabs {
@@ -191,15 +197,15 @@ func (m runModel) View() string {
 			statusSymbol = "✗"
 		}
 		heading += statusStyle.Padding(0, 1, 0, 0).Render(statusSymbol)
-		underline := headingStyle.Render(strings.Repeat(underlineChar, Width(heading)))
+		underline := headingStyle.Render(strings.Repeat(underlineChar, tui.Width(heading)))
 		rendered := lipgloss.JoinVertical(lipgloss.Top, heading, underline)
 		tabComponents = append(tabComponents, rendered)
-		renderedTabsTotalWidth += Width(heading)
+		renderedTabsTotalWidth += tui.Width(heading)
 	}
 	remainingWidth := max(0, m.width-renderedTabsTotalWidth)
 	runStatusSection := lipgloss.JoinVertical(lipgloss.Top,
 		// run status
-		Regular.Copy().Width(remainingWidth).Align(lipgloss.Right).Padding(0, 1).Render(string(m.run.Status)),
+		tui.Regular.Copy().Width(remainingWidth).Align(lipgloss.Right).Padding(0, 1).Render(string(m.run.Status)),
 		// faint grey underline
 		inactiveTabStyle.Copy().Render(strings.Repeat("─", remainingWidth)),
 	)
@@ -213,12 +219,12 @@ func (m runModel) View() string {
 	return lipgloss.JoinVertical(lipgloss.Top, tabSection, tabContent)
 }
 
-func (m runModel) Pagination() string {
+func (m model) Pagination() string {
 	return fmt.Sprintf("tabs: %d; active: %d", len(m.tabs), m.activeTab)
 }
 
-func (m runModel) HelpBindings() (bindings []key.Binding) {
+func (m model) HelpBindings() (bindings []key.Binding) {
 	return []key.Binding{
-		Keys.Apply,
+		tui.Keys.Apply,
 	}
 }

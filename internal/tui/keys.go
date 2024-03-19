@@ -127,9 +127,9 @@ var Keys = keyMap{
 	),
 }
 
-// keyMapToSlice takes a struct of fields of type key.Binding and returns it as
+// KeyMapToSlice takes a struct of fields of type key.Binding and returns it as
 // a slice instead.
-func keyMapToSlice(t any) (bindings []key.Binding) {
+func KeyMapToSlice(t any) (bindings []key.Binding) {
 	typ := reflect.TypeOf(t)
 	if typ.Kind() != reflect.Struct {
 		return nil
@@ -153,7 +153,7 @@ type generalKeyMap struct {
 	Help       key.Binding
 }
 
-var generalKeys = generalKeyMap{
+var GeneralKeys = generalKeyMap{
 	Quit: key.NewBinding(
 		key.WithKeys("ctrl+c"),
 		key.WithHelp("^c", "exit"),

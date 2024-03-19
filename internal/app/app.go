@@ -14,7 +14,7 @@ import (
 	"github.com/leg100/pug/internal/module"
 	"github.com/leg100/pug/internal/run"
 	"github.com/leg100/pug/internal/task"
-	"github.com/leg100/pug/internal/tui"
+	toptui "github.com/leg100/pug/internal/tui/top"
 	"github.com/leg100/pug/internal/workspace"
 )
 
@@ -65,7 +65,7 @@ func Start(args []string) error {
 	})
 
 	// Construct TUI programme.
-	model, err := tui.New(tui.Options{
+	model, err := toptui.New(toptui.Options{
 		TaskService:      tasks,
 		ModuleService:    modules,
 		WorkspaceService: workspaces,

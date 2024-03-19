@@ -1,65 +1,58 @@
-package tui
+package top
 
 import (
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/leg100/pug/internal/tui"
 )
-
-// navigationMsg is an instruction to navigate to a page.
-type navigationMsg struct {
-	target page
-}
-
-func navigate(target page) tea.Cmd {
-	return func() tea.Msg {
-		return navigationMsg{target: target}
-	}
-}
 
 // navigator navigates the user from page to page, creating and caching
 // corresponding models accordingly.
 type navigator struct {
 	// history tracks the pages a user has visited, in LIFO order.
-	history []page
+	history []tui.Page
 	// cache each unique page visited
 	cache *cache
 	// directory of model makers for each kind
-	makers map[modelKind]maker
+	makers map[tui.Kind]tui.Maker
+	// navigator needs to know width and height when making a model
+	width  int
+	height int
 }
 
-func newNavigator(start modelKind, makers map[modelKind]maker) (*navigator, error) {
+func newNavigator(start tui.Kind, makers map[tui.Kind]tui.Maker) (*navigator, error) {
 	n := &navigator{
 		makers: makers,
 		cache: &cache{
-			cache: make(map[cacheKey]Model),
+			cache: make(map[cacheKey]tui.Model),
 		},
 	}
 	// ignore returned init cmd; instead the main model should invoke it
-	_, err := n.setCurrent(navigationMsg{target: page{kind: start}})
+	_, err := n.setCurrent(tui.Page{Kind: start})
 	if err != nil {
 		return nil, err
 	}
 	return n, nil
 }
 
-func (n *navigator) currentPage() page {
+func (n *navigator) currentPage() tui.Page {
 	return n.history[len(n.history)-1]
 }
 
-func (n *navigator) currentModel() Model {
+func (n *navigator) currentModel() tui.Model {
 	return n.cache.get(n.currentPage())
 }
 
-func (n *navigator) setCurrent(msg navigationMsg) (created bool, err error) {
+func (n *navigator) setCurrent(page tui.Page) (created bool, err error) {
 	// Silently ignore the user's request to navigate again to the current page.
-	if len(n.history) > 0 && msg.target == n.currentPage() {
+	if len(n.history) > 0 && page == n.currentPage() {
 		return false, nil
 	}
 
 	// Push target page to history
-	n.history = append(n.history, msg.target)
+	n.history = append(n.history, page)
 	// Check target page model is cached; if not then create and cache it
-	if !n.cache.exists(msg.target) {
-		model, err := n.makers[n.currentPage().kind].makeModel(n.currentPage().resource)
+	if !n.cache.exists(page) {
+		model, err := n.makers[n.currentPage().Kind].Make(n.currentPage().Resource, n.width, n.height)
 		if err != nil {
 			return false, err
 		}
@@ -70,7 +63,7 @@ func (n *navigator) setCurrent(msg navigationMsg) (created bool, err error) {
 }
 
 func (n *navigator) updateCurrent(msg tea.Msg) tea.Cmd {
-	return n.cache.update(n.currentPage().cacheKey(), msg)
+	return n.cache.update(pageKey(n.currentPage()), msg)
 }
 
 func (n *navigator) goBack() {

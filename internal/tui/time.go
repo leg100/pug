@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-func ago(now, t time.Time) string {
+func Ago(now, t time.Time) string {
 	diff := now.Sub(t)
 	var (
 		n      int

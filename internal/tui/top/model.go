@@ -1,4 +1,4 @@
-package tui
+package top
 
 import (
 	"fmt"
@@ -16,11 +16,17 @@ import (
 	"github.com/leg100/pug/internal/resource"
 	"github.com/leg100/pug/internal/run"
 	"github.com/leg100/pug/internal/task"
+	"github.com/leg100/pug/internal/tui"
 	"github.com/leg100/pug/internal/tui/common"
+	"github.com/leg100/pug/internal/tui/logs"
+	moduletui "github.com/leg100/pug/internal/tui/module"
+	runtui "github.com/leg100/pug/internal/tui/run"
+	tasktui "github.com/leg100/pug/internal/tui/task"
+	workspacetui "github.com/leg100/pug/internal/tui/workspace"
 	"github.com/leg100/pug/internal/workspace"
 )
 
-type mainModel struct {
+type model struct {
 	*navigator
 
 	width  int
@@ -48,10 +54,11 @@ type Options struct {
 	Debug     bool
 }
 
-func New(opts Options) (mainModel, error) {
-	firstKind, err := firstPageKind(opts.FirstPage)
+// New constructs the top-level TUI model.
+func New(opts Options) (model, error) {
+	firstKind, err := tui.FirstPageKind(opts.FirstPage)
 	if err != nil {
-		return mainModel{}, err
+		return model{}, err
 	}
 
 	var dump *os.File
@@ -59,52 +66,50 @@ func New(opts Options) (mainModel, error) {
 		var err error
 		dump, err = os.OpenFile("messages.log", os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0o755)
 		if err != nil {
-			return mainModel{}, err
+			return model{}, err
 		}
 	}
 
 	spinner := spinner.New(spinner.WithSpinner(spinner.Globe))
 
-	taskModelMaker := &taskModelMaker{
-		svc: opts.TaskService,
+	taskMaker := &tasktui.Maker{
+		TaskService: opts.TaskService,
 	}
 
-	makers := map[modelKind]maker{
-		ModuleListKind: &moduleListModelMaker{
-			svc:        opts.ModuleService,
-			workspaces: opts.WorkspaceService,
-			runs:       opts.RunService,
-			spinner:    &spinner,
-			workdir:    opts.Workdir,
+	makers := map[tui.Kind]tui.Maker{
+		tui.ModuleListKind: &moduletui.ListMaker{
+			ModuleService: opts.ModuleService,
+			Spinner:       &spinner,
+			Workdir:       opts.Workdir,
 		},
-		WorkspaceListKind: &workspaceListModelMaker{
-			svc:     opts.WorkspaceService,
-			modules: opts.ModuleService,
-			runs:    opts.RunService,
+		tui.WorkspaceListKind: &workspacetui.ListMaker{
+			WorkspaceService: opts.WorkspaceService,
+			ModuleService:    opts.ModuleService,
+			RunService:       opts.RunService,
 		},
-		RunListKind: &runListModelMaker{
-			svc:   opts.RunService,
-			tasks: opts.TaskService,
+		tui.RunListKind: &runtui.ListMaker{
+			RunService:  opts.RunService,
+			TaskService: opts.TaskService,
 		},
-		TaskListKind: &taskListModelMaker{
-			svc:      opts.TaskService,
-			maxTasks: opts.MaxTasks,
+		tui.TaskListKind: &tasktui.ListMaker{
+			TaskService: opts.TaskService,
+			MaxTasks:    opts.MaxTasks,
 		},
-		RunKind: &runModelMaker{
-			svc:     opts.RunService,
-			tasks:   opts.TaskService,
-			spinner: &spinner,
+		tui.RunKind: &runtui.Maker{
+			RunService:  opts.RunService,
+			TaskService: opts.TaskService,
+			Spinner:     &spinner,
 		},
-		TaskKind: taskModelMaker,
-		LogsKind: &logsModelMaker{
-			logger: opts.Logger,
+		tui.TaskKind: taskMaker,
+		tui.LogsKind: &logs.Maker{
+			Logger: opts.Logger,
 		},
 	}
 	navigator, err := newNavigator(firstKind, makers)
 	if err != nil {
-		return mainModel{}, err
+		return model{}, err
 	}
-	m := mainModel{
+	m := model{
 		navigator: navigator,
 		spinner:   &spinner,
 		tasks:     opts.TaskService,
@@ -113,34 +118,18 @@ func New(opts Options) (mainModel, error) {
 	return m, nil
 }
 
-func (m mainModel) Init() tea.Cmd {
+func (m model) Init() tea.Cmd {
 	return m.currentModel().Init()
 }
 
-func (m mainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmds []tea.Cmd
 
 	if m.dump != nil {
 		spew.Fdump(m.dump, msg)
 	}
 
-	if m.showHelp {
-		switch msg := msg.(type) {
-		case tea.WindowSizeMsg:
-			m.width = msg.Width
-			m.height = msg.Height
-			return m, m.resizeCmd
-		case tea.KeyMsg:
-			switch {
-			case key.Matches(msg, Keys.Escape, Keys.CloseHelp):
-				// <esc>, '?' closes help
-				m.showHelp = false
-				return m, nil
-			}
-		}
-	}
-
-	// Keep tally of the number of running tasks.
+	// Keep shared spinner spinning as long as there are tasks running.
 	switch msg := msg.(type) {
 	case resource.Event[*task.Task]:
 		if m.tasks.Counter() > 0 {
@@ -149,7 +138,6 @@ func (m mainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case spinner.TickMsg:
 		var cmd tea.Cmd
 		*m.spinner, cmd = m.spinner.Update(msg)
-		// Only continue spinning the spinner while there are tasks running
 		if m.tasks.Counter() > 0 {
 			return m, cmd
 		}
@@ -159,47 +147,55 @@ func (m mainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
+		m.navigator.width = msg.Width
+		m.navigator.height = msg.Height
+
 		return m, m.resizeCmd
 	case tea.KeyMsg:
 		switch {
-		case key.Matches(msg, Keys.Quit):
+		case key.Matches(msg, tui.Keys.Quit):
 			// ctrl-c quits the app
 			return m, tea.Quit
-		case key.Matches(msg, Keys.Escape):
-			m.goBack()
-		case key.Matches(msg, Keys.Help):
-			// '?' shows help
-			m.showHelp = true
-		case key.Matches(msg, Keys.Logs):
+		case key.Matches(msg, tui.Keys.Escape):
+			// <esc> closes help or goes back to last page
+			if m.showHelp {
+				m.showHelp = false
+			} else {
+				m.goBack()
+			}
+		case key.Matches(msg, tui.Keys.Help):
+			// '?' toggles help
+			m.showHelp = !m.showHelp
+		case key.Matches(msg, tui.Keys.Logs):
 			// 'l' shows logs
-			return m, navigate(page{kind: LogsKind})
-		case key.Matches(msg, Keys.Modules):
+			return m, tui.Navigate(tui.Page{Kind: tui.LogsKind})
+		case key.Matches(msg, tui.Keys.Modules):
 			// 'm' lists all modules
-			return m, navigate(page{kind: ModuleListKind})
-		case key.Matches(msg, Keys.Workspaces):
+			return m, tui.Navigate(tui.Page{Kind: tui.ModuleListKind})
+		case key.Matches(msg, tui.Keys.Workspaces):
 			// 'W' lists all workspaces
-			return m, navigate(page{kind: WorkspaceListKind})
-		case key.Matches(msg, Keys.Runs):
+			return m, tui.Navigate(tui.Page{Kind: tui.WorkspaceListKind})
+		case key.Matches(msg, tui.Keys.Runs):
 			// 'R' lists all runs
-			return m, navigate(page{kind: RunListKind})
-		case key.Matches(msg, Keys.Tasks):
+			return m, tui.Navigate(tui.Page{Kind: tui.RunListKind})
+		case key.Matches(msg, tui.Keys.Tasks):
 			// 'T' lists all tasks
-			return m, navigate(page{kind: TaskListKind})
+			return m, tui.Navigate(tui.Page{Kind: tui.TaskListKind})
 		default:
 			// Send other keys to current model.
 			cmd := m.updateCurrent(msg)
 			return m, cmd
 		}
-	case navigationMsg:
-		created, err := m.setCurrent(msg)
+	case tui.NavigationMsg:
+		created, err := m.setCurrent(msg.Target)
 		if err != nil {
-			return m, newErrorCmd(err, "setting current page")
+			return m, tui.NewErrorCmd(err, "setting current page")
 		}
 		if created {
-			return m, tea.Batch(m.currentModel().Init(), m.resizeCmd)
+			return m, m.currentModel().Init()
 		}
-		return m, m.resizeCmd
-	case errorMsg:
+		return m, nil
+	case tui.ErrorMsg:
 		if msg.Error != nil {
 			m.err = fmt.Sprintf("%s: %s", fmt.Sprintf(msg.Message, msg.Args...), msg.Error.Error())
 		}
@@ -217,10 +213,10 @@ var (
 		"█▄█ █ █ █ ▄",
 		"▀   ▀▀▀ ▀▀▀",
 	}, "\n")
-	renderedLogo = Bold.
+	renderedLogo = tui.Bold.
 			Copy().
 			Margin(0, 1).
-			Foreground(Pink).
+			Foreground(tui.Pink).
 			Render(logo)
 	logoWidth            = lipgloss.Width(renderedLogo)
 	headerHeight         = 3
@@ -229,39 +225,11 @@ var (
 	messageFooterHeight  = 1
 )
 
-// breadcrumbs renders the breadcrumbs for a page, i.e. the ancestry of the
-// page's resource.
-func breadcrumbs(title string, parent resource.Resource) string {
-	// format: <title>(<path>:<workspace>:<run>)
-	var crumbs []string
-	switch parent.Kind {
-	case resource.Run:
-		// if parented by a run, then include its ID
-		runID := Regular.Copy().Foreground(lightGrey).Render(parent.Run().String())
-		crumbs = append([]string{fmt.Sprintf("{%s}", runID)}, crumbs...)
-		fallthrough
-	case resource.Workspace:
-		// if parented by a workspace, then include its name
-		name := Regular.Copy().Foreground(Red).Render(parent.Workspace().String())
-		crumbs = append([]string{fmt.Sprintf("[%s]", name)}, crumbs...)
-		fallthrough
-	case resource.Module:
-		// if parented by a module, then include its path
-		path := Regular.Copy().Foreground(Blue).Render(parent.Module().String())
-		crumbs = append([]string{fmt.Sprintf("(%s)", path)}, crumbs...)
-	case resource.Global:
-		// if parented by global, then state it is global
-		global := Regular.Copy().Foreground(Blue).Render("global")
-		crumbs = append([]string{fmt.Sprintf("(%s)", global)}, crumbs...)
-	}
-	return fmt.Sprintf("%s%s", Bold.Render(title), strings.Join(crumbs, ""))
-}
-
-func (m mainModel) View() string {
+func (m model) View() string {
 	var (
 		content           string
 		shortHelpBindings []key.Binding
-		pagination        = Regular.Padding(0, 1).Render(
+		pagination        = tui.Regular.Padding(0, 1).Render(
 			fmt.Sprintf("%d/%d tasks", m.tasks.Counter(), 32),
 		)
 	)
@@ -272,8 +240,8 @@ func (m mainModel) View() string {
 			Render(
 				fullHelpView(
 					m.currentModel().HelpBindings(),
-					keyMapToSlice(generalKeys),
-					keyMapToSlice(viewport.DefaultKeyMap()),
+					tui.KeyMapToSlice(tui.GeneralKeys),
+					tui.KeyMapToSlice(viewport.DefaultKeyMap()),
 				),
 			)
 		shortHelpBindings = []key.Binding{
@@ -286,17 +254,17 @@ func (m mainModel) View() string {
 		content = m.currentModel().View()
 		shortHelpBindings = append(
 			m.currentModel().HelpBindings(),
-			keyMapToSlice(generalKeys)...,
+			tui.KeyMapToSlice(tui.GeneralKeys)...,
 		)
 	}
 
 	// Center title within a horizontal rule
 	title := m.currentModel().Title()
-	titleRemainingWidth := m.width - Width(title)
+	titleRemainingWidth := m.width - tui.Width(title)
 	titleRemainingWidthHalved := titleRemainingWidth / 2
 	titleLeftRule := strings.Repeat("─", max(0, titleRemainingWidthHalved))
 	titleLeftRuleAndTitle := fmt.Sprintf("%s %s ", titleLeftRule, title)
-	titleRightRule := strings.Repeat("─", max(0, m.width-Width(titleLeftRuleAndTitle)))
+	titleRightRule := strings.Repeat("─", max(0, m.width-tui.Width(titleLeftRuleAndTitle)))
 	renderedTitle := fmt.Sprintf("%s%s", titleLeftRuleAndTitle, titleRightRule)
 
 	return lipgloss.JoinVertical(
@@ -332,10 +300,10 @@ func (m mainModel) View() string {
 			lipgloss.Top,
 			// error messages
 			lipgloss.NewStyle().
-				Width(m.width-Width(pagination)).
+				Width(m.width-tui.Width(pagination)).
 				Padding(0, 1).
 				Padding(0, 1).
-				Foreground(Red).
+				Foreground(tui.Red).
 				Render(m.err),
 			// pagination
 			pagination,
@@ -345,15 +313,15 @@ func (m mainModel) View() string {
 
 // viewHeight retrieves the height available beneath the header and breadcrumbs,
 // and the message footer.
-func (m mainModel) viewHeight() int {
+func (m model) viewHeight() int {
 	return m.height - headerHeight - breadcrumbsHeight - horizontalRuleHeight - messageFooterHeight
 }
 
 // viewWidth retrieves the width available within the main view
-func (m mainModel) viewWidth() int {
+func (m model) viewWidth() int {
 	return m.width
 }
 
-func (m mainModel) resizeCmd() tea.Msg {
+func (m model) resizeCmd() tea.Msg {
 	return common.ViewSizeMsg{Width: m.viewWidth(), Height: m.viewHeight()}
 }

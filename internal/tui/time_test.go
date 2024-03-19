@@ -10,5 +10,5 @@ import (
 func TestAgo(t *testing.T) {
 	now := time.Now()
 
-	assert.Equal(t, "47s ago", ago(now, now.Add(-47*time.Second)))
+	assert.Equal(t, "47s ago", Ago(now, now.Add(-47*time.Second)))
 }

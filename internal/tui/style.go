@@ -9,8 +9,4 @@ var (
 
 	Width  = lipgloss.Width
 	Height = lipgloss.Height
-
-	Breadcrumbs = Bold.Copy().
-			Background(lipgloss.Color(DarkGrey)).
-			Foreground(White)
 )

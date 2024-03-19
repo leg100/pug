@@ -10,22 +10,23 @@ import (
 	"github.com/leg100/pug/internal/resource"
 	"github.com/leg100/pug/internal/run"
 	"github.com/leg100/pug/internal/task"
+	"github.com/leg100/pug/internal/tui"
 	"github.com/leg100/pug/internal/tui/table"
 )
 
-type runListModelMaker struct {
-	svc   *run.Service
-	tasks *task.Service
+type ListMaker struct {
+	RunService  *run.Service
+	TaskService *task.Service
 }
 
-func (m *runListModelMaker) makeModel(parent resource.Resource) (Model, error) {
-	columns := append(parentColumns(RunListKind, parent.Kind),
+func (m *ListMaker) Make(parent resource.Resource, width, height int) (tui.Model, error) {
+	columns := append(tui.ParentColumns(tui.RunListKind, parent.Kind),
 		table.Column{Title: "STATUS", Width: run.MaxStatusLen},
 		table.Column{Title: "CHANGES", Width: 14},
 		table.Column{Title: "AGE", Width: 10},
 	)
 	cellsFunc := func(r *run.Run) []table.Cell {
-		cells := parentCells(RunListKind, parent.Kind, r.Resource)
+		cells := tui.ParentCells(tui.RunListKind, parent.Kind, r.Resource)
 		cells = append(cells, table.Cell{Str: string(r.Status)})
 
 		// switch r.Status {
@@ -33,7 +34,7 @@ func (m *runListModelMaker) makeModel(parent resource.Resource) (Model, error) {
 		// case run.Applied:
 		// }
 		cells = append(cells, table.Cell{Str: r.PlanReport.String()})
-		cells = append(cells, table.Cell{Str: ago(time.Now(), r.Created)})
+		cells = append(cells, table.Cell{Str: tui.Ago(time.Now(), r.Created)})
 
 		return cells
 	}
@@ -42,22 +43,22 @@ func (m *runListModelMaker) makeModel(parent resource.Resource) (Model, error) {
 		WithSortFunc(run.ByUpdatedDesc).
 		WithParent(parent)
 
-	return runListModel{
+	return list{
 		table:  table,
-		svc:    m.svc,
-		tasks:  m.tasks,
+		svc:    m.RunService,
+		tasks:  m.TaskService,
 		parent: parent,
 	}, nil
 }
 
-type runListModel struct {
+type list struct {
 	table  table.Model[*run.Run]
 	svc    *run.Service
 	tasks  *task.Service
 	parent resource.Resource
 }
 
-func (m runListModel) Init() tea.Cmd {
+func (m list) Init() tea.Cmd {
 	return func() tea.Msg {
 		var opts run.ListOptions
 		if m.parent != resource.GlobalResource {
@@ -67,7 +68,7 @@ func (m runListModel) Init() tea.Cmd {
 	}
 }
 
-func (m runListModel) Update(msg tea.Msg) (Model, tea.Cmd) {
+func (m list) Update(msg tea.Msg) (tui.Model, tea.Cmd) {
 	var (
 		cmd  tea.Cmd
 		cmds []tea.Cmd
@@ -76,14 +77,14 @@ func (m runListModel) Update(msg tea.Msg) (Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch {
-		case key.Matches(msg, Keys.Enter):
+		case key.Matches(msg, tui.Keys.Enter):
 			if run, ok := m.table.Highlighted(); ok {
-				return m, navigate(page{kind: RunKind, resource: run.Resource})
+				return m, tui.Navigate(tui.Page{Kind: tui.RunKind, Resource: run.Resource})
 			}
-		case key.Matches(msg, Keys.Cancel):
+		case key.Matches(msg, tui.Keys.Cancel):
 			// get all highlighted or selected runs, and get the current task
 			// for each run, and then cancel those tasks.
-		case key.Matches(msg, Keys.Apply):
+		case key.Matches(msg, tui.Keys.Apply):
 			hl, ok := m.table.Highlighted()
 			if !ok {
 				return m, nil
@@ -94,10 +95,10 @@ func (m runListModel) Update(msg tea.Msg) (Model, tea.Cmd) {
 			cmds = append(cmds, func() tea.Msg {
 				task, err := m.svc.Apply(hl.ID())
 				if err != nil {
-					return newErrorMsg(err, "creating apply task")
+					return tui.NewErrorMsg(err, "creating apply task")
 				}
-				return navigationMsg{
-					target: page{kind: TaskKind, resource: task.Resource},
+				return tui.NavigationMsg{
+					Target: tui.Page{Kind: tui.TaskKind, Resource: task.Resource},
 				}
 			})
 		}
@@ -110,29 +111,29 @@ func (m runListModel) Update(msg tea.Msg) (Model, tea.Cmd) {
 	return m, tea.Batch(cmds...)
 }
 
-func (m runListModel) Title() string {
-	return breadcrumbs("Runs", m.parent)
+func (m list) Title() string {
+	return tui.Breadcrumbs("Runs", m.parent)
 }
 
-func (m runListModel) View() string {
+func (m list) View() string {
 	return m.table.View()
 }
 
-func (m runListModel) Pagination() string {
+func (m list) Pagination() string {
 	return ""
 }
 
-func (m runListModel) HelpBindings() (bindings []key.Binding) {
+func (m list) HelpBindings() (bindings []key.Binding) {
 	bindings = append(bindings,
-		Keys.Plan,
-		Keys.Apply,
-		Keys.Cancel,
+		tui.Keys.Plan,
+		tui.Keys.Apply,
+		tui.Keys.Cancel,
 	)
 	return
 }
 
 //lint:ignore U1000 intend to use shortly
-func (m runListModel) navigateLatestTask(runID resource.ID) tea.Cmd {
+func (m list) navigateLatestTask(runID resource.ID) tea.Cmd {
 	return func() tea.Msg {
 		tasks := m.tasks.List(task.ListOptions{
 			Ancestor: runID,
@@ -149,8 +150,8 @@ func (m runListModel) navigateLatestTask(runID resource.ID) tea.Cmd {
 			}
 		}
 		if latest == nil {
-			return newErrorMsg(errors.New("no plan or apply task found for run"), "")
+			return tui.NewErrorMsg(errors.New("no plan or apply task found for run"), "")
 		}
-		return navigationMsg{page{kind: TaskKind, resource: latest.Resource}}
+		return tui.NavigationMsg{Target: tui.Page{Kind: tui.TaskKind, Resource: latest.Resource}}
 	}
 }

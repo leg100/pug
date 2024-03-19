@@ -11,56 +11,42 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/leg100/pug/internal/resource"
 	"github.com/leg100/pug/internal/task"
+	"github.com/leg100/pug/internal/tui"
 	"github.com/leg100/pug/internal/tui/common"
 	"github.com/leg100/pug/internal/tui/table"
 	"github.com/muesli/reflow/wordwrap"
 )
 
-type taskModelMaker struct {
-	svc *task.Service
+type Maker struct {
+	TaskService *task.Service
+
+	// If IsRunTab is true then Maker makes task models that are a tab within
+	// the run model.
+	IsRunTab bool
 }
 
-func (m *taskModelMaker) makeModel(tr resource.Resource) (Model, error) {
-	return makeTaskModel(m.svc, tr, makeTaskModelOptions{})
-}
-
-type makeTaskModelOptions struct {
-	height int
-	width  int
-	// heightAdjustment adjusts the height of the rendered view by the given
-	// number of rows.
-	heightAdjustment int
-	// isChild is true when the model is instantiated as a child tab of the run
-	// model.
-	isChild bool
-}
-
-func makeTaskModel(svc *task.Service, tr resource.Resource, opts makeTaskModelOptions) (taskModel, error) {
-	task, err := svc.Get(tr.ID())
+func (mm *Maker) Make(tr resource.Resource, width, height int) (tui.Model, error) {
+	task, err := mm.TaskService.Get(tr.ID())
 	if err != nil {
-		return taskModel{}, err
+		return model{}, err
 	}
 
-	return taskModel{
-		svc:    svc,
-		task:   task,
-		output: task.NewReader(),
+	m := model{
+		svc:      mm.TaskService,
+		task:     task,
+		output:   task.NewReader(),
+		viewport: viewport.New(0, 0),
+		isRunTab: mm.IsRunTab,
 		// read upto 1kb at a time
-		buf:              make([]byte, 1024),
-		viewport:         viewport.New(max(0, opts.width-2), max(0, opts.height-2)),
-		isChild:          opts.isChild,
-		heightAdjustment: opts.heightAdjustment,
-	}, nil
+		buf: make([]byte, 1024),
+	}
+
+	m.setViewportDimensions(width, height)
+
+	return m, nil
 }
 
-type taskOutputMsg struct {
-	isChild bool
-	taskID  resource.ID
-	output  string
-	eof     bool
-}
-
-type taskModel struct {
+type model struct {
 	svc  *task.Service
 	task *task.Task
 
@@ -68,18 +54,17 @@ type taskModel struct {
 	buf      []byte
 	content  string
 	viewport viewport.Model
-	isChild  bool
+	isRunTab bool
 
-	width            int
-	height           int
-	heightAdjustment int
+	width  int
+	height int
 }
 
-func (m taskModel) Init() tea.Cmd {
+func (m model) Init() tea.Cmd {
 	return m.getOutput
 }
 
-func (m taskModel) Update(msg tea.Msg) (Model, tea.Cmd) {
+func (m model) Update(msg tea.Msg) (tui.Model, tea.Cmd) {
 	var (
 		cmd  tea.Cmd
 		cmds []tea.Cmd
@@ -88,22 +73,22 @@ func (m taskModel) Update(msg tea.Msg) (Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch {
-		case key.Matches(msg, Keys.Cancel):
-			return m, taskCmd(m.svc.Cancel, m.task.ID())
+		case key.Matches(msg, tui.Keys.Cancel):
+			return m, TaskCmd(m.svc.Cancel, m.task.ID())
 			// TODO: retry
-		case key.Matches(msg, Keys.Apply):
+		case key.Matches(msg, tui.Keys.Apply):
 
-			return m, taskCmd(m.svc.Cancel, m.task.ID())
+			return m, TaskCmd(m.svc.Cancel, m.task.ID())
 			// TODO: retry
 		}
-	case taskOutputMsg:
+	case outputMsg:
 		if msg.taskID != m.task.ID() {
 			return m, nil
 		}
 		// isChild is true when this msg is for a task model that is a child of a
 		// run model, i.e. a tab. Without this flag, output would be duplicated in
 		// both the tab and on the generic task view.
-		if msg.isChild != m.isChild {
+		if msg.isRunTab != m.isRunTab {
 			return m, nil
 		}
 		m.content += msg.output
@@ -122,12 +107,7 @@ func (m taskModel) Update(msg tea.Msg) (Model, tea.Cmd) {
 	case common.ViewSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
-		// subtract 2 to account for margins (1: left, 1: right)
-		m.viewport.Width = msg.Width - 2
-		// subtract 2 to account for task metadata rendered beneath viewport,
-		// and make any necessary further adjustments according to whether
-		// viewport is in a run tab or not.
-		m.viewport.Height = msg.Height - 2 - m.heightAdjustment
+		m.setViewportDimensions(msg.Width, msg.Height)
 	}
 
 	// Handle keyboard and mouse events in the viewport
@@ -137,25 +117,40 @@ func (m taskModel) Update(msg tea.Msg) (Model, tea.Cmd) {
 	return m, tea.Batch(cmds...)
 }
 
-func (m taskModel) Title() string {
-	return breadcrumbs("Task", *m.task.Parent)
+func (m model) Title() string {
+	return tui.Breadcrumbs("Task", *m.task.Parent)
+}
+
+func (m *model) setViewportDimensions(width, height int) {
+	if m.isRunTab {
+		// Accomodate run tabs and shit
+		width = max(0, width-2)
+		height = max(0, height-2)
+	} else {
+		// subtract 2 to account for margins (1: left, 1: right)
+		width = width - 2
+		// subtract 2 to account for task metadata rendered beneath viewport,
+		height = height - 2
+	}
+	m.viewport.Width = width
+	m.viewport.Height = height
 }
 
 // View renders the viewport
-func (m taskModel) View() string {
+func (m model) View() string {
 	// The viewport has a fixed width of 80 columns. If there is sufficient
 	// additional width in the terminal, then metadata is shown alongside the
 	// viewport.
-	body := Regular.Copy().
+	body := tui.Regular.Copy().
 		Margin(0, 1).
 		Width(79).
 		Render(m.viewport.View())
 	if m.width > 104 {
-		metadata := Regular.Copy().
+		metadata := tui.Regular.Copy().
 			Margin(0, 1).
 			Height(m.viewport.Height).
 			Width(22).
-			Foreground(lightGrey).
+			Foreground(tui.LightGrey).
 			BorderStyle(lipgloss.NormalBorder()).
 			BorderLeft(true).
 			Render(m.task.ID().String())
@@ -165,7 +160,7 @@ func (m taskModel) View() string {
 	}
 
 	// render task footer only if task is not a child of a run model
-	if !m.isChild {
+	if !m.isRunTab {
 		command := strings.Join(append(m.task.Command, m.task.Args...), " ")
 		footer := lipgloss.JoinHorizontal(
 			lipgloss.Left,
@@ -176,7 +171,7 @@ func (m taskModel) View() string {
 				Render(command),
 			lipgloss.NewStyle().
 				Foreground(lipgloss.Color("36")).
-				Width(m.width-Width(command)-2).
+				Width(m.width-tui.Width(command)-2).
 				Align(lipgloss.Right).
 				Padding(0, 1).
 				Render(string(m.task.State)),
@@ -192,7 +187,7 @@ func (m taskModel) View() string {
 	return body
 }
 
-func (m taskModel) Pagination() string {
+func (m model) Pagination() string {
 	return lipgloss.NewStyle().
 		Background(lipgloss.Color("#a8a7a5")).
 		// off white
@@ -202,26 +197,33 @@ func (m taskModel) Pagination() string {
 		Render(fmt.Sprintf("%3.f%%", m.viewport.ScrollPercent()*100))
 }
 
-func (m taskModel) HelpBindings() (bindings []key.Binding) {
-	bindings = append(bindings, Keys.CloseHelp)
+func (m model) HelpBindings() (bindings []key.Binding) {
+	bindings = append(bindings, tui.Keys.CloseHelp)
 	return
 }
 
-func (m taskModel) getOutput() tea.Msg {
-	msg := taskOutputMsg{taskID: m.task.ID(), isChild: m.isChild}
+func (m model) getOutput() tea.Msg {
+	msg := outputMsg{taskID: m.task.ID(), isRunTab: m.isRunTab}
 
 	n, err := m.output.Read(m.buf)
 	if err == io.EOF {
 		msg.eof = true
 	} else if err != nil {
-		return newErrorMsg(err, "reading task output")
+		return tui.NewErrorMsg(err, "reading task output")
 	}
 	msg.output = string(m.buf[:n])
 	return msg
 }
 
-// taskCmd returns a command that creates one or more tasks using the given IDs.
-func taskCmd(fn task.Func, ids ...resource.ID) tea.Cmd {
+type outputMsg struct {
+	isRunTab bool
+	taskID   resource.ID
+	output   string
+	eof      bool
+}
+
+// TaskCmd returns a command that creates one or more tasks using the given IDs.
+func TaskCmd(fn task.Func, ids ...resource.ID) tea.Cmd {
 	// Handle the case where a user has pressed a key on an empty table with
 	// zero rows
 	if len(ids) == 0 {
@@ -231,7 +233,7 @@ func taskCmd(fn task.Func, ids ...resource.ID) tea.Cmd {
 	// If items have been selected then clear the selection
 	var deselectCmd tea.Cmd
 	if len(ids) > 1 {
-		deselectCmd = cmdHandler(table.DeselectMsg{})
+		deselectCmd = tui.CmdHandler(table.DeselectMsg{})
 	}
 
 	cmd := func() tea.Msg {
@@ -239,7 +241,7 @@ func taskCmd(fn task.Func, ids ...resource.ID) tea.Cmd {
 		for _, id := range ids {
 			var err error
 			if _, err = fn(id); err != nil {
-				return newErrorMsg(err, "creating task")
+				return tui.NewErrorMsg(err, "creating task")
 			}
 		}
 		//if len(ids) > 1 {

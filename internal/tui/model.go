@@ -1,17 +1,14 @@
 package tui
 
 import (
-	"fmt"
-
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/leg100/pug/internal/resource"
-	"golang.org/x/exp/maps"
 )
 
-// maker makes new models
-type maker interface {
-	makeModel(target resource.Resource) (Model, error)
+// Maker makes new models
+type Maker interface {
+	Make(target resource.Resource, width, height int) (Model, error)
 }
 
 // Model essentially wraps the upstream tea.Model with additional methods.
@@ -27,31 +24,8 @@ type Model interface {
 	HelpBindings() []key.Binding
 }
 
-type modelKind int
-
-const (
-	ModuleListKind modelKind = iota
-	WorkspaceListKind
-	RunListKind
-	TaskListKind
-	RunKind
-	TaskKind
-	LogsKind
-)
-
-var firstPages = map[string]modelKind{
-	"modules":    ModuleListKind,
-	"workspaces": WorkspaceListKind,
-	"runs":       RunListKind,
-	"tasks":      TaskListKind,
-}
-
-// firstPageKind retrieves the model corresponding to the user requested first
-// page.
-func firstPageKind(s string) (modelKind, error) {
-	kind, ok := firstPages[s]
-	if !ok {
-		return 0, fmt.Errorf("invalid first page, must be one of: %v", maps.Keys(firstPages))
-	}
-	return kind, nil
+// Page identifies an instance of a model
+type Page struct {
+	Kind     Kind
+	Resource resource.Resource
 }

@@ -9,7 +9,7 @@ import (
 )
 
 func Test_keyMapToSlice(t *testing.T) {
-	got := keyMapToSlice(viewport.DefaultKeyMap())
+	got := KeyMapToSlice(viewport.DefaultKeyMap())
 	want := []key.Binding(
 		[]key.Binding{
 			key.NewBinding(
