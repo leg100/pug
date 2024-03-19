@@ -26,12 +26,14 @@ test:
 lint:
 	go list ./... | xargs staticcheck
 
-# Run go fmt against code
 .PHONY: fmt
 fmt:
 	go fmt ./...
 
-# Run go vet against code
 .PHONY: vet
 vet:
 	go vet ./...
+
+.PHONY: install-linter
+install-linter:
+	go install honnef.co/go/tools/cmd/staticcheck@latest
