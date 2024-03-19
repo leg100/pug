@@ -70,7 +70,7 @@ func (m list) Update(msg tea.Msg) (tui.Model, tea.Cmd) {
 		switch {
 		case key.Matches(msg, tui.Keys.Enter):
 			if ws, ok := m.table.Highlighted(); ok {
-				return m, tui.Navigate(tui.Page{Kind: tui.RunListKind, Resource: ws.Resource})
+				return m, tui.NavigateTo(tui.RunListKind, &ws.Resource)
 			}
 		case key.Matches(msg, tui.Keys.Init):
 			return m, tasktui.TaskCmd(m.modules.Init, m.highlightedOrSelectedModuleIDs()...)
@@ -137,9 +137,9 @@ func (m list) createRun(opts run.CreateOptions) tea.Cmd {
 				return tui.NewErrorMsg(err, "creating run")
 			}
 		}
-		return tui.NavigationMsg{
-			Target: tui.Page{Kind: tui.RunListKind, Resource: m.parent},
-		}
+		return tui.NavigationMsg(
+			tui.Page{Kind: tui.RunListKind, Parent: m.parent},
+		)
 	}
 	return tea.Batch(cmd, deselectCmd)
 }

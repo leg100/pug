@@ -52,7 +52,7 @@ func (n *navigator) setCurrent(page tui.Page) (created bool, err error) {
 	n.history = append(n.history, page)
 	// Check target page model is cached; if not then create and cache it
 	if !n.cache.exists(page) {
-		model, err := n.makers[n.currentPage().Kind].Make(n.currentPage().Resource, n.width, n.height)
+		model, err := n.makers[n.currentPage().Kind].Make(n.currentPage().Parent, n.width, n.height)
 		if err != nil {
 			return false, err
 		}

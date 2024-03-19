@@ -26,6 +26,8 @@ type Model interface {
 
 // Page identifies an instance of a model
 type Page struct {
-	Kind     Kind
-	Resource resource.Resource
+	// The model kind
+	Kind Kind
+	// The model's parent resource
+	Parent resource.Resource
 }

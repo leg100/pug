@@ -47,5 +47,5 @@ func (c *cache) update(key cacheKey, msg tea.Msg) tea.Cmd {
 }
 
 func pageKey(page tui.Page) cacheKey {
-	return cacheKey{kind: page.Kind, id: page.Resource.ID()}
+	return cacheKey{kind: page.Kind, id: page.Parent.ID()}
 }

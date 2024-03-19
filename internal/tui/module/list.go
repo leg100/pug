@@ -114,7 +114,7 @@ func (m list) Update(msg tea.Msg) (tui.Model, tea.Cmd) {
 		switch msg.Type {
 		case resource.UpdatedEvent:
 			if msg.Payload.Status == run.Planned {
-				return m, tui.Navigate(tui.Page{Kind: tui.RunKind, Resource: msg.Payload.Resource})
+				return m, tui.NavigateTo(tui.RunKind, &msg.Payload.Resource)
 			}
 		}
 	}
@@ -141,7 +141,7 @@ func (m list) Update(msg tea.Msg) (tui.Model, tea.Cmd) {
 			}
 		case key.Matches(msg, tui.Keys.Enter):
 			if mod, ok := m.table.Highlighted(); ok {
-				return m, tui.Navigate(tui.Page{Kind: tui.WorkspaceListKind, Resource: mod.Resource})
+				return m, tui.NavigateTo(tui.WorkspaceListKind, &mod.Resource)
 			}
 		case key.Matches(msg, tui.Keys.Init):
 			return m, tasktui.TaskCmd(m.ModuleService.Init, maps.Keys(m.table.HighlightedOrSelected())...)
@@ -221,9 +221,9 @@ func (m list) createRun(opts run.CreateOptions) tea.Cmd {
 		if len(modules) > 1 {
 			target = tui.Page{Kind: tui.RunListKind}
 		} else {
-			target = tui.Page{Kind: tui.RunKind, Resource: run.Resource}
+			target = tui.Page{Kind: tui.RunKind, Parent: run.Resource}
 		}
-		return tui.NavigationMsg{Target: target}
+		return tui.NavigationMsg(target)
 	}
 	return tea.Batch(cmd, deselectCmd)
 }

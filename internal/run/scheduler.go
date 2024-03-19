@@ -17,10 +17,10 @@ type runLister interface {
 }
 
 // StartScheduler starts the run scheduler, which is responsible for ensuring
-// there is at most one active non-speculative run on each workspace at a time.
-// More than one active speculative run is allowed on a workspace.
+// there is at most one active run on each workspace at a time. (Note: plan-only
+// runs are not subject this rule).
 //
-// The scheduler attempts to schedule runs upon every run event.
+// The scheduler attempts to schedule runs upon every run event it receives.
 func StartScheduler(ctx context.Context, runs *Service) {
 	sub, _ := runs.Broker.Subscribe(ctx)
 	s := &scheduler{runs: runs}

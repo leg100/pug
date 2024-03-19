@@ -1,15 +1,22 @@
 package tui
 
-import tea "github.com/charmbracelet/bubbletea"
+import (
+	tea "github.com/charmbracelet/bubbletea"
+	"github.com/leg100/pug/internal/resource"
+)
 
-// navigationMsg is an instruction to navigate to a page.
-type NavigationMsg struct {
-	Target Page
-}
+// NavigationMsg is an instruction to navigate to a page.
+type NavigationMsg Page
 
-func Navigate(target Page) tea.Cmd {
+// NavigateTo sends an instruction to navigate to a page with the given model
+// kind, and optionally parent resource.
+func NavigateTo(kind Kind, parent *resource.Resource) tea.Cmd {
 	return func() tea.Msg {
-		return NavigationMsg{Target: target}
+		page := Page{Kind: kind}
+		if parent != nil {
+			page.Parent = *parent
+		}
+		return NavigationMsg(page)
 	}
 }
 

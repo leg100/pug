@@ -79,7 +79,7 @@ func (m list) Update(msg tea.Msg) (tui.Model, tea.Cmd) {
 		switch {
 		case key.Matches(msg, tui.Keys.Enter):
 			if run, ok := m.table.Highlighted(); ok {
-				return m, tui.Navigate(tui.Page{Kind: tui.RunKind, Resource: run.Resource})
+				return m, tui.NavigateTo(tui.RunKind, &run.Resource)
 			}
 		case key.Matches(msg, tui.Keys.Cancel):
 			// get all highlighted or selected runs, and get the current task
@@ -97,9 +97,9 @@ func (m list) Update(msg tea.Msg) (tui.Model, tea.Cmd) {
 				if err != nil {
 					return tui.NewErrorMsg(err, "creating apply task")
 				}
-				return tui.NavigationMsg{
-					Target: tui.Page{Kind: tui.TaskKind, Resource: task.Resource},
-				}
+				return tui.NavigationMsg(
+					tui.Page{Kind: tui.TaskKind, Parent: task.Resource},
+				)
 			})
 		}
 	}
@@ -152,6 +152,6 @@ func (m list) navigateLatestTask(runID resource.ID) tea.Cmd {
 		if latest == nil {
 			return tui.NewErrorMsg(errors.New("no plan or apply task found for run"), "")
 		}
-		return tui.NavigationMsg{Target: tui.Page{Kind: tui.TaskKind, Resource: latest.Resource}}
+		return tui.NavigationMsg(tui.Page{Kind: tui.TaskKind, Parent: latest.Resource})
 	}
 }

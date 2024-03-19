@@ -168,26 +168,26 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.showHelp = !m.showHelp
 		case key.Matches(msg, tui.Keys.Logs):
 			// 'l' shows logs
-			return m, tui.Navigate(tui.Page{Kind: tui.LogsKind})
+			return m, tui.NavigateTo(tui.LogsKind, nil)
 		case key.Matches(msg, tui.Keys.Modules):
 			// 'm' lists all modules
-			return m, tui.Navigate(tui.Page{Kind: tui.ModuleListKind})
+			return m, tui.NavigateTo(tui.ModuleListKind, nil)
 		case key.Matches(msg, tui.Keys.Workspaces):
 			// 'W' lists all workspaces
-			return m, tui.Navigate(tui.Page{Kind: tui.WorkspaceListKind})
+			return m, tui.NavigateTo(tui.WorkspaceListKind, nil)
 		case key.Matches(msg, tui.Keys.Runs):
 			// 'R' lists all runs
-			return m, tui.Navigate(tui.Page{Kind: tui.RunListKind})
+			return m, tui.NavigateTo(tui.RunListKind, nil)
 		case key.Matches(msg, tui.Keys.Tasks):
 			// 'T' lists all tasks
-			return m, tui.Navigate(tui.Page{Kind: tui.TaskListKind})
+			return m, tui.NavigateTo(tui.TaskListKind, nil)
 		default:
 			// Send other keys to current model.
 			cmd := m.updateCurrent(msg)
 			return m, cmd
 		}
 	case tui.NavigationMsg:
-		created, err := m.setCurrent(msg.Target)
+		created, err := m.setCurrent(tui.Page(msg))
 		if err != nil {
 			return m, tui.NewErrorCmd(err, "setting current page")
 		}
