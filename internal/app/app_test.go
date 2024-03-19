@@ -3,10 +3,16 @@ package app
 import (
 	"testing"
 
-	"github.com/stretchr/testify/require"
+	"github.com/peterbourgon/ff/v4"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestStart_help(t *testing.T) {
+	// Short form
 	err := Start([]string{"-h"})
-	require.NoError(t, err)
+	assert.ErrorIs(t, err, ff.ErrHelp)
+
+	// Long form
+	err = Start([]string{"--help"})
+	assert.ErrorIs(t, err, ff.ErrHelp)
 }

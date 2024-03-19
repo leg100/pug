@@ -15,6 +15,10 @@ type (
 		Type    EventType
 		Payload T
 	}
+
+	Publisher[T any] interface {
+		Publish(EventType, T)
+	}
 )
 
 func NewEvent[T any](t EventType, payload T) Event[T] {

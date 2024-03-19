@@ -82,7 +82,12 @@ func (m runModel) Update(msg tea.Msg) (Model, tea.Cmd) {
 				return nil
 			}
 		case key.Matches(msg, Keys.Tab):
-			m.activeTab = min(m.activeTab+1, len(m.tabs)-1)
+			// Cycle tabs, going back to tab #0 after the last tab
+			if m.activeTab == len(m.tabs)-1 {
+				m.activeTab = 0
+			} else {
+				m.activeTab = m.activeTab + 1
+			}
 			return m, nil
 		case key.Matches(msg, Keys.TabLeft):
 			m.activeTab = max(m.activeTab-1, 0)

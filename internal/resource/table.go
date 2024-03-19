@@ -15,10 +15,6 @@ type Table[T any] struct {
 	pub Publisher[T]
 }
 
-type Publisher[T any] interface {
-	Publish(EventType, T)
-}
-
 func NewTable[T any](pub Publisher[T]) *Table[T] {
 	return &Table[T]{
 		rows: make(map[ID]T),

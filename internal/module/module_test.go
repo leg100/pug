@@ -11,7 +11,7 @@ func TestFindModules(t *testing.T) {
 	got, err := findModules("../testdata/configs")
 	require.NoError(t, err)
 
-	assert.Equal(t, 5, len(got))
+	assert.Equal(t, 6, len(got))
 	assert.Contains(t, got, "envs/dev")
 	assert.Contains(t, got, "envs/prod")
 	assert.Contains(t, got, "envs/staging")

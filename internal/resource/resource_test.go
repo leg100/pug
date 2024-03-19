@@ -1,6 +1,7 @@
 package resource
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -13,7 +14,9 @@ func TestResource(t *testing.T) {
 	task := New(Task, "", &run)
 
 	t.Run("string", func(t *testing.T) {
-		assert.Equal(t, task.id.String(), task.String())
+		// no ident, so format will be task-<id>
+		assert.True(t, strings.HasPrefix(task.String(), "task-"))
+		// ident takes precendence over id
 		assert.Equal(t, "dev", ws.String())
 	})
 

@@ -64,7 +64,3 @@ func TestService_List(t *testing.T) {
 		})
 	}
 }
-
-type fakePublisher[T any] struct{}
-
-func (f *fakePublisher[T]) Publish(resource.EventType, T) {}

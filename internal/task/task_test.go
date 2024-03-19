@@ -5,13 +5,18 @@ import (
 	"io"
 	"testing"
 
+	"github.com/leg100/pug/internal"
 	"github.com/mitchellh/iochan"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestTask_stdout(t *testing.T) {
-	f := factory{program: "../testdata/task"}
+	f := factory{
+		counter:   internal.Int(0),
+		program:   "../testdata/task",
+		publisher: &fakePublisher[*Task]{},
+	}
 	task, err := f.newTask(CreateOptions{})
 	require.NoError(t, err)
 	task.updateState(Queued)
@@ -36,7 +41,11 @@ func TestTask_stdout(t *testing.T) {
 }
 
 func TestTask_cancel(t *testing.T) {
-	f := factory{program: "../testdata/killme"}
+	f := factory{
+		counter:   internal.Int(0),
+		program:   "../testdata/killme",
+		publisher: &fakePublisher[*Task]{},
+	}
 	task, err := f.newTask(CreateOptions{})
 	require.NoError(t, err)
 	task.updateState(Queued)

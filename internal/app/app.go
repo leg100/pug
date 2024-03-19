@@ -25,7 +25,7 @@ func Start(args []string) error {
 	// Parse configuration from env vars and flags
 	cfg, err := parse(args)
 	if err != nil {
-		return fmt.Errorf("parsing config: %w", err)
+		return err
 	}
 
 	workdir, err := os.Getwd()

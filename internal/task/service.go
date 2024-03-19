@@ -29,9 +29,9 @@ func NewService(ctx context.Context, opts ServiceOptions) *Service {
 
 	broker := pubsub.NewBroker[*Task]()
 	factory := &factory{
-		broker:  broker,
-		counter: &counter,
-		program: opts.Program,
+		publisher: broker,
+		counter:   &counter,
+		program:   opts.Program,
 	}
 
 	svc := &Service{

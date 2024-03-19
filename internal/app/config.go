@@ -1,7 +1,6 @@
 package app
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"runtime"
@@ -44,9 +43,10 @@ func parse(args []string) (config, error) {
 		ff.WithConfigFileParser(ffyaml.Parse),
 		ff.WithConfigAllowMissingFile(),
 	)
-	if errors.Is(err, ff.ErrHelp) {
+	if err != nil {
+		// ff.Parse returns an error if there is an error or if -h/--help is
+		// passed; in either case print flag usage in addition to error message.
 		fmt.Fprintln(os.Stderr, ffhelp.Flags(fs))
-		return config{}, nil
 	}
 	return cfg, err
 }

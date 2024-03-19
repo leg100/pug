@@ -10,7 +10,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/leg100/pug/internal/pubsub"
 	"github.com/leg100/pug/internal/resource"
 )
 
@@ -48,6 +47,10 @@ type Task struct {
 	// this channel is closed once the task is finished
 	finished chan struct{}
 
+	// timestamps records the time at which the task transitioned into a status
+	// and out of a status.
+	timestamps map[Status]statusTimestamps
+
 	// Call this function after the task has successfully finished
 	AfterExited func(*Task)
 	// Call this function after the task is enqueued.
@@ -67,9 +70,9 @@ type Task struct {
 }
 
 type factory struct {
-	counter *int
-	program string
-	broker  *pubsub.Broker[*Task]
+	counter   *int
+	program   string
+	publisher resource.Publisher[*Task]
 }
 
 type CreateOptions struct {
@@ -123,11 +126,16 @@ func (f *factory) newTask(opts CreateOptions) (*Task, error) {
 		AfterQueued:   opts.AfterQueued,
 		// Publish an event whenever task state is updated
 		afterUpdate: func(t *Task) {
-			f.broker.Publish(resource.UpdatedEvent, t)
+			f.publisher.Publish(resource.UpdatedEvent, t)
 		},
 		// Decrement live task counter whenever task terminates
 		afterFinish: func(t *Task) {
 			*f.counter--
+		},
+		timestamps: map[Status]statusTimestamps{
+			Pending: {
+				started: time.Now(),
+			},
 		},
 	}, nil
 }
@@ -147,6 +155,15 @@ func (t *Task) IsActive() bool {
 	default:
 		return false
 	}
+}
+
+// Elapsed returns the length of time the task has been in the given status.
+func (t *Task) Elapsed(s Status) time.Duration {
+	st, ok := t.timestamps[s]
+	if !ok {
+		return 0
+	}
+	return st.Elapsed()
 }
 
 func (t *Task) IsFinished() bool {
@@ -228,8 +245,23 @@ func (t *Task) start() (func(), error) {
 	return wait, nil
 }
 
+// record time at which current status finished
+func (t *Task) recordStatusEndTime(now time.Time) {
+	currentStateTimestamps := t.timestamps[t.State]
+	currentStateTimestamps.ended = now
+	t.timestamps[t.State] = currentStateTimestamps
+}
+
 func (t *Task) updateState(state Status) {
-	t.Updated = time.Now()
+	now := time.Now()
+	t.Updated = now
+
+	// record times at which old status ended, and new status started
+	t.recordStatusEndTime(now)
+	t.timestamps[state] = statusTimestamps{
+		started: now,
+	}
+
 	t.State = state
 	t.afterUpdate(t)
 
@@ -243,27 +275,25 @@ func (t *Task) updateState(state Status) {
 			t.AfterRunning(t)
 		}
 	case Canceled:
-		t.cleanup()
 		if t.AfterCanceled != nil {
 			t.AfterCanceled(t)
 		}
 	case Errored:
-		t.cleanup()
 		if t.AfterError != nil {
 			t.AfterError(t)
 		}
 	case Exited:
-		t.cleanup()
 		if t.AfterExited != nil {
 			t.AfterExited(t)
 		}
 	}
 
-	slog.Info("updated task state", "task_id", t.ID(), "command", t.Command, "state", t.State)
-}
+	if t.IsFinished() {
+		t.recordStatusEndTime(now)
+		t.buf.Close()
+		close(t.finished)
+		t.afterFinish(t)
+	}
 
-func (t *Task) cleanup() {
-	t.buf.Close()
-	close(t.finished)
-	t.afterFinish(t)
+	slog.Info("updated task state", "task_id", t.ID(), "command", t.Command, "state", t.State)
 }

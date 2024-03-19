@@ -1,6 +1,8 @@
 package task
 
-// Status is the current state of a task.
+import "time"
+
+// Status is a stage in the lifecycle of a task.
 type Status string
 
 const (
@@ -12,6 +14,17 @@ const (
 	Canceled Status = "canceled"
 )
 
-func StatusPtr(s Status) *Status {
-	return &s
+type statusTimestamps struct {
+	started time.Time
+	ended   time.Time
+}
+
+func (sd statusTimestamps) Elapsed() time.Duration {
+	if sd.started.IsZero() {
+		return 0
+	}
+	if sd.ended.IsZero() {
+		return time.Since(sd.started)
+	}
+	return sd.ended.Sub(sd.started)
 }
