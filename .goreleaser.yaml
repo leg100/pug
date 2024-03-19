@@ -13,6 +13,8 @@ before:
 builds:
   - env:
       - CGO_ENABLED=0
+    ldflags:
+      - -s -w -X github.com/leg100/pug/internal/app.Version={{.Major}}.{{.Minor}}.{{.Patch}}
     goos:
       - linux
       - windows

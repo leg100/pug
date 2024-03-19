@@ -28,6 +28,11 @@ func Start(args []string) error {
 		return err
 	}
 
+	if cfg.version {
+		fmt.Println("pug", Version)
+		return nil
+	}
+
 	workdir, err := os.Getwd()
 	if err != nil {
 		return fmt.Errorf("getting working directory: %w", err)
