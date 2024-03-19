@@ -1,6 +1,6 @@
 module github.com/leg100/pug
 
-go 1.21.4
+go 1.22
 
 require (
 	github.com/btcsuite/btcutil v1.0.2
@@ -70,6 +70,6 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
-replace github.com/mattn/go-runewidth => ../go-runewidth
+replace github.com/mattn/go-runewidth => github.com/leg100/go-runewidth v0.0.16-0.20240317085039-79cdd3ecf674
 
-replace github.com/charmbracelet/bubbletea => ../bubbletea
+replace github.com/charmbracelet/bubbletea => github.com/leg100/bubbletea v0.25.1-0.20240319155826-3bbfacbc5292
