@@ -20,11 +20,10 @@ type Service struct {
 }
 
 type ServiceOptions struct {
-	MaxTasks int
-	Program  string
+	Program string
 }
 
-func NewService(ctx context.Context, opts ServiceOptions) *Service {
+func NewService(opts ServiceOptions) *Service {
 	var counter int
 
 	broker := pubsub.NewBroker[*Task]()

@@ -9,7 +9,8 @@ import (
 
 var (
 	shortHelpKeyStyle = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{
-		Light: "#909090",
+		//Light: "#909090",
+		Light: "248",
 		Dark:  "#626262",
 	}).Bold(true).Margin(0, 1, 0, 0)
 

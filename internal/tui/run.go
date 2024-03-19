@@ -67,7 +67,6 @@ func (m runModel) Init() tea.Cmd {
 
 func (m runModel) Update(msg tea.Msg) (Model, tea.Cmd) {
 	var (
-		cmd  tea.Cmd
 		cmds []tea.Cmd
 	)
 
@@ -123,8 +122,9 @@ func (m runModel) Update(msg tea.Msg) (Model, tea.Cmd) {
 
 	// Relay messages onto child task models
 	for i, tm := range m.tabs {
-		m.tabs[i].model, cmd = tm.model.Update(msg)
+		updated, cmd := tm.model.Update(msg)
 		cmds = append(cmds, cmd)
+		m.tabs[i].model = updated
 	}
 
 	return m, tea.Batch(cmds...)
@@ -141,7 +141,7 @@ func (m *runModel) createTab(task *task.Task) tea.Cmd {
 			return nil
 		}
 	}
-	opts := makeTaskModelOptions{heightAdjustment: 0, isChild: true}
+	opts := makeTaskModelOptions{height: m.height, width: m.width, isChild: true}
 	model, err := makeTaskModel(m.tasks, task.Resource, opts)
 	if err != nil {
 		return newErrorCmd(err, "creating run task tab")
@@ -151,6 +151,8 @@ func (m *runModel) createTab(task *task.Task) tea.Cmd {
 		task:  task,
 	}
 	m.tabs = append(m.tabs, tab)
+	// switch view to the newly created tab
+	m.activeTab = len(m.tabs) - 1
 	return tab.model.Init()
 }
 

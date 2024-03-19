@@ -25,6 +25,8 @@ func (m *taskModelMaker) makeModel(tr resource.Resource) (Model, error) {
 }
 
 type makeTaskModelOptions struct {
+	height int
+	width  int
 	// heightAdjustment adjusts the height of the rendered view by the given
 	// number of rows.
 	heightAdjustment int
@@ -45,7 +47,7 @@ func makeTaskModel(svc *task.Service, tr resource.Resource, opts makeTaskModelOp
 		output: task.NewReader(),
 		// read upto 1kb at a time
 		buf:              make([]byte, 1024),
-		viewport:         viewport.New(0, 0),
+		viewport:         viewport.New(max(0, opts.width-2), max(0, opts.height-2)),
 		isChild:          opts.isChild,
 		heightAdjustment: opts.heightAdjustment,
 	}, nil
@@ -141,15 +143,31 @@ func (m taskModel) Title() string {
 
 // View renders the viewport
 func (m taskModel) View() string {
-	components := []string{
-		Regular.Copy().
+	// The viewport has a fixed width of 80 columns. If there is sufficient
+	// additional width in the terminal, then metadata is shown alongside the
+	// viewport.
+	body := Regular.Copy().
+		Margin(0, 1).
+		Width(79).
+		Render(m.viewport.View())
+	if m.width > 104 {
+		metadata := Regular.Copy().
 			Margin(0, 1).
-			Render(m.viewport.View()),
+			Height(m.viewport.Height).
+			Width(22).
+			Foreground(lightGrey).
+			BorderStyle(lipgloss.NormalBorder()).
+			BorderLeft(true).
+			Render(m.task.ID().String())
+		// Combine viewport and optional metadata into main body, separated by a
+		// vertical rule.
+		body = lipgloss.JoinHorizontal(lipgloss.Top, body, metadata)
 	}
-	// render task metadata only if task is not a child of a run model
+
+	// render task footer only if task is not a child of a run model
 	if !m.isChild {
 		command := strings.Join(append(m.task.Command, m.task.Args...), " ")
-		metadata := lipgloss.JoinHorizontal(
+		footer := lipgloss.JoinHorizontal(
 			lipgloss.Left,
 			lipgloss.NewStyle().
 				Foreground(lipgloss.Color("237")).
@@ -163,19 +181,15 @@ func (m taskModel) View() string {
 				Padding(0, 1).
 				Render(string(m.task.State)),
 		)
-		components = append(components,
+		// Combine body and footer.
+		body = lipgloss.JoinVertical(lipgloss.Top,
+			body,
 			strings.Repeat("─", m.width),
-			metadata,
+			footer,
 		)
 	}
 
-	return lipgloss.NewStyle().
-		Render(
-			lipgloss.JoinVertical(
-				lipgloss.Top,
-				components...,
-			),
-		)
+	return body
 }
 
 func (m taskModel) Pagination() string {

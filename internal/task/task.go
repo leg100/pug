@@ -265,6 +265,13 @@ func (t *Task) updateState(state Status) {
 	t.State = state
 	t.afterUpdate(t)
 
+	if t.IsFinished() {
+		t.recordStatusEndTime(now)
+		t.buf.Close()
+		close(t.finished)
+		t.afterFinish(t)
+	}
+
 	switch state {
 	case Queued:
 		if t.AfterQueued != nil {
@@ -286,13 +293,6 @@ func (t *Task) updateState(state Status) {
 		if t.AfterExited != nil {
 			t.AfterExited(t)
 		}
-	}
-
-	if t.IsFinished() {
-		t.recordStatusEndTime(now)
-		t.buf.Close()
-		close(t.finished)
-		t.afterFinish(t)
 	}
 
 	slog.Info("updated task state", "task_id", t.ID(), "command", t.Command, "state", t.State)

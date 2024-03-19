@@ -41,9 +41,8 @@ func Start(args []string) error {
 	slog.Info(fmt.Sprintf("set max tasks: %d", cfg.MaxTasks))
 
 	// Instantiate services
-	tasks := task.NewService(ctx, task.ServiceOptions{
-		MaxTasks: cfg.MaxTasks,
-		Program:  cfg.Program,
+	tasks := task.NewService(task.ServiceOptions{
+		Program: cfg.Program,
 	})
 	modules := module.NewService(module.ServiceOptions{
 		TaskService: tasks,

@@ -32,3 +32,5 @@ pug.log
 
 # Go workspace file
 go.work
+
+dist/
