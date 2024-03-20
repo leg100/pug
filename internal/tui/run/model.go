@@ -36,6 +36,8 @@ func (mm *Maker) Make(rr resource.Resource, width, height int) (tui.Model, error
 			TaskService: mm.TaskService,
 			IsRunTab:    true,
 		},
+		width:  width,
+		height: height,
 	}
 	return m, nil
 }

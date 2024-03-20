@@ -58,21 +58,21 @@ func (m *ListMaker) Make(_ resource.Resource, width, height int) (tui.Model, err
 		}
 	}
 
-	table := table.New[*module.Module](columns).
-		WithCellsFunc(func(mod *module.Module) []table.Cell {
-			cells := []table.Cell{
-				{Str: mod.Path()},
-				{},
-				{Str: boolToUnicode(mod.FormatInProgress, mod.Formatted)},
-				{Str: boolToUnicode(mod.ValidationInProgress, mod.Valid)},
-				{Str: mod.ID().String()},
-			}
-			if current := mod.CurrentWorkspace; current != nil {
-				cells[1].Str = current.String()
-			}
-			return cells
-		}).
-		WithSortFunc(module.ByPath)
+	cellsFunc := func(mod *module.Module) []table.Cell {
+		cells := []table.Cell{
+			{Str: mod.Path()},
+			{},
+			{Str: boolToUnicode(mod.FormatInProgress, mod.Formatted)},
+			{Str: boolToUnicode(mod.ValidationInProgress, mod.Valid)},
+			{Str: mod.ID().String()},
+		}
+		if current := mod.CurrentWorkspace; current != nil {
+			cells[1].Str = current.String()
+		}
+		return cells
+	}
+	table := table.New[*module.Module](columns, cellsFunc, width, height)
+	table = table.WithSortFunc(module.ByPath)
 
 	return list{
 		table:         table,
@@ -108,7 +108,7 @@ func (m list) Update(msg tea.Msg) (tui.Model, tea.Cmd) {
 	case resource.Event[*workspace.Workspace]:
 		switch msg.Type {
 		case resource.CreatedEvent:
-			cmds = append(cmds, m.createRun(run.CreateOptions{}))
+			//cmds = append(cmds, m.createRun(run.CreateOptions{}))
 		}
 	case resource.Event[*run.Run]:
 		switch msg.Type {

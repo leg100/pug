@@ -38,8 +38,7 @@ func (m *ListMaker) Make(parent resource.Resource, width, height int) (tui.Model
 
 		return cells
 	}
-	table := table.New[*run.Run](columns).
-		WithCellsFunc(cellsFunc).
+	table := table.New(columns, cellsFunc, width, height).
 		WithSortFunc(run.ByUpdatedDesc).
 		WithParent(parent)
 

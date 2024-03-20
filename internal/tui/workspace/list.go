@@ -27,8 +27,7 @@ func (m *ListMaker) Make(parent resource.Resource, width, height int) (tui.Model
 		cells := tui.ParentCells(tui.WorkspaceListKind, parent.Kind, ws.Resource)
 		return append(cells, table.Cell{Str: string(ws.ID().String())})
 	}
-	table := table.New[*workspace.Workspace](columns).
-		WithCellsFunc(cellsFunc).
+	table := table.New[*workspace.Workspace](columns, cellsFunc, width, height).
 		WithSortFunc(workspace.Sort).
 		WithParent(parent)
 

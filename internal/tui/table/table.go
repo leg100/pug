@@ -101,10 +101,11 @@ func (m *Model[T]) SetStyles(s Styles) {
 }
 
 // New creates a new model for the table widget.
-func New[T Item](columns []Column) Model[T] {
+func New[T Item](columns []Column, fn func(T) []Cell, width, height int) Model[T] {
 	m := Model[T]{
-		cursor:   0,
-		viewport: viewport.New(0, 0),
+		cursor:    0,
+		viewport:  viewport.New(0, 0),
+		cellsFunc: fn,
 
 		KeyMap:     DefaultKeyMap(),
 		styles:     DefaultStyles(),
@@ -124,17 +125,11 @@ func New[T Item](columns []Column) Model[T] {
 		m.cols = append(m.cols, col)
 	}
 
-	//TODO: should this be called before rows are defined?
-	m.UpdateViewport()
+	// Recalculates width of columns
+	//
+	// TODO: this also unnecessarily renders 0 rows
+	m.setDimensions(width, height)
 
-	return m
-}
-
-// WithCellsFunc specifies a function that creates row cells for an entity.
-//
-// TODO: move from option to table constructor and rename to RowFunc
-func (m Model[T]) WithCellsFunc(fn func(T) []Cell) Model[T] {
-	m.cellsFunc = fn
 	return m
 }
 
@@ -151,16 +146,20 @@ func (m Model[T]) WithParent(parent resource.Resource) Model[T] {
 	return m
 }
 
-// WithHeight sets the height of the table.
-func (m Model[T]) WithHeight(h int) Model[T] {
-	m.viewport.Height = h
-	return m
-}
+func (m *Model[T]) setDimensions(width, height int) {
+	// TODO: does this need to be set?
+	// m.viewport.Width = w
 
-// WithWidth sets the width of the table.
-func (m Model[T]) WithWidth(w int) Model[T] {
-	m.viewport.Width = w
-	return m
+	// Accomodate height of table header
+	m.viewport.Height = height - headerHeight
+	// Set available width for table to expand into, whilst respecting a
+	// minimum width of 80.
+	m.width = max(80, width)
+
+	m.recalculateWidth()
+
+	// TODO: should this be called?
+	m.UpdateViewport()
 }
 
 // WithFocused sets the focus state of the table.
@@ -240,15 +239,7 @@ func (m Model[T]) Update(msg tea.Msg) (Model[T], tea.Cmd) {
 			m.SetItems(maps.Values(existing))
 		}
 	case common.ViewSizeMsg:
-		// Set available width for table to expand into, whilst respecting a
-		// minimum width of 80.
-		//
-		// Does this need to be set on the viewport?
-		// m.viewport.Width = max(80, msg.Width)
-		m.viewport.Height = msg.Height - headerHeight
-		m.width = max(80, msg.Width)
-		m.recalculateWidth()
-		m.UpdateViewport()
+		m.setDimensions(msg.Width, msg.Height)
 	}
 
 	return m, nil
@@ -424,12 +415,16 @@ func (m *Model[T]) SetColumns(c []Column) {
 }
 
 // SetWidth sets the width of the viewport of the table.
+//
+// TODO: redundant, remove?
 func (m *Model[T]) SetWidth(w int) {
 	m.viewport.Width = w
 	m.UpdateViewport()
 }
 
 // SetHeight sets the height of the viewport of the table.
+//
+// TODO: redundant, remove?
 func (m *Model[T]) SetHeight(h int) {
 	m.viewport.Height = h
 	m.UpdateViewport()

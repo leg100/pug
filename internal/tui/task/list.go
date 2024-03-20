@@ -44,11 +44,9 @@ func (m *ListMaker) Make(parent resource.Resource, width, height int) (tui.Model
 		)
 		return cells
 	}
-	table := table.New[*task.Task](columns).
-		WithCellsFunc(cellsFunc).
+	table := table.New(columns, cellsFunc, width, height).
 		WithSortFunc(task.ByState).
 		WithParent(parent)
-		// WithWidth(60)
 
 	return list{
 		table:  table,

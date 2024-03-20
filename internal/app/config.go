@@ -30,7 +30,7 @@ func parse(args []string) (config, error) {
 	fs := ff.NewFlagSet("pug")
 	fs.StringVar(&cfg.Program, 'p', "program", "terraform", "The default program to use with pug.")
 	fs.IntVar(&cfg.MaxTasks, 't', "max-tasks", 2*runtime.NumCPU(), "The maximum number of parallel tasks.")
-	fs.StringEnumVar(&cfg.FirstPage, 'f', "first-page", "The first page to open on startup.", "modules", "workspaces", "runs", "tasks")
+	fs.StringEnumVar(&cfg.FirstPage, 'f', "first-page", "The first page to open on startup.", "modules", "workspaces", "runs", "tasks", "logs")
 	fs.BoolVar(&cfg.Debug, 'd', "debug", "Log bubbletea messages to messages.log")
 	fs.BoolVar(&cfg.version, 'v', "version", "Print version.")
 	fs.StringEnumVar(&cfg.LogLevel, 'l', "log-level", "Logging level.", "info", "debug", "error", "warn")

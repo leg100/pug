@@ -38,7 +38,9 @@ func (mm *Maker) Make(tr resource.Resource, width, height int) (tui.Model, error
 		viewport: viewport.New(0, 0),
 		isRunTab: mm.IsRunTab,
 		// read upto 1kb at a time
-		buf: make([]byte, 1024),
+		buf:    make([]byte, 1024),
+		width:  width,
+		height: height,
 	}
 
 	m.setViewportDimensions(width, height)

@@ -79,6 +79,7 @@ func New(opts Options) (model, error) {
 	makers := map[tui.Kind]tui.Maker{
 		tui.ModuleListKind: &moduletui.ListMaker{
 			ModuleService: opts.ModuleService,
+			RunService:    opts.RunService,
 			Spinner:       &spinner,
 			Workdir:       opts.Workdir,
 		},
@@ -147,10 +148,15 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
-		m.navigator.width = msg.Width
-		m.navigator.height = msg.Height
 
-		return m, m.resizeCmd
+		// Inform navigator of new dimenisions for when it builds new models
+		m.navigator.width = m.viewWidth()
+		m.navigator.height = m.viewHeight()
+
+		// Send out new message with adjusted dimensions
+		return m, func() tea.Msg {
+			return common.ViewSizeMsg{Width: m.viewWidth(), Height: m.viewHeight()}
+		}
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, tui.Keys.Quit):
@@ -320,8 +326,4 @@ func (m model) viewHeight() int {
 // viewWidth retrieves the width available within the main view
 func (m model) viewWidth() int {
 	return m.width
-}
-
-func (m model) resizeCmd() tea.Msg {
-	return common.ViewSizeMsg{Width: m.viewWidth(), Height: m.viewHeight()}
 }

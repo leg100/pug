@@ -23,7 +23,7 @@ var (
 func setupTest() Model[*testEntity] {
 	// setup table
 	cellFunc := func(e *testEntity) []Cell { return nil }
-	tbl := New[*testEntity](nil).WithCellsFunc(cellFunc)
+	tbl := New[*testEntity](nil, cellFunc, 0, 0)
 	tbl.SetItems([]*testEntity{ent1, ent2, ent3})
 	return tbl
 }

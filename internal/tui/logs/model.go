@@ -38,8 +38,7 @@ func (mm *Maker) Make(_ resource.Resource, width, height int) (tui.Model, error)
 		}
 		return append(cells, table.Cell{Str: strings.Join(parts, " ")})
 	}
-	table := table.New[logging.Message](columns).
-		WithCellsFunc(cellsFunc).
+	table := table.New(columns, cellsFunc, width, height).
 		WithSortFunc(logging.ByTimeDesc).
 		WithSelectable(false)
 
