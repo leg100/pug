@@ -72,4 +72,5 @@ require (
 
 replace github.com/mattn/go-runewidth => github.com/leg100/go-runewidth v0.0.16-0.20240317085039-79cdd3ecf674
 
-replace github.com/charmbracelet/bubbletea => github.com/leg100/bubbletea v0.25.1-0.20240319155826-3bbfacbc5292
+//replace github.com/charmbracelet/bubbletea => github.com/leg100/bubbletea v0.25.1-0.20240319155826-3bbfacbc5292
+replace github.com/charmbracelet/bubbletea => ../bubbletea

@@ -1,4 +1,4 @@
-package tui
+package task
 
 import (
 	"fmt"
@@ -12,7 +12,7 @@ import (
 	"github.com/leg100/pug/internal/resource"
 	"github.com/leg100/pug/internal/task"
 	"github.com/leg100/pug/internal/tui"
-	"github.com/leg100/pug/internal/tui/common"
+	"github.com/leg100/pug/internal/tui/keys"
 	"github.com/leg100/pug/internal/tui/table"
 	"github.com/muesli/reflow/wordwrap"
 )
@@ -75,10 +75,10 @@ func (m model) Update(msg tea.Msg) (tui.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch {
-		case key.Matches(msg, tui.Keys.Cancel):
+		case key.Matches(msg, keys.Common.Cancel):
 			return m, TaskCmd(m.svc.Cancel, m.task.ID())
 			// TODO: retry
-		case key.Matches(msg, tui.Keys.Apply):
+		case key.Matches(msg, keys.Common.Apply):
 
 			return m, TaskCmd(m.svc.Cancel, m.task.ID())
 			// TODO: retry
@@ -106,7 +106,7 @@ func (m model) Update(msg tea.Msg) (tui.Model, tea.Cmd) {
 			return m, nil
 		}
 		m.task = msg.Payload
-	case common.ViewSizeMsg:
+	case tui.BodyResizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
 		m.setViewportDimensions(msg.Width, msg.Height)
@@ -124,18 +124,8 @@ func (m model) Title() string {
 }
 
 func (m *model) setViewportDimensions(width, height int) {
-	if m.isRunTab {
-		// Accomodate run tabs and shit
-		width = max(0, width-2)
-		height = max(0, height-2)
-	} else {
-		// subtract 2 to account for margins (1: left, 1: right)
-		width = width - 2
-		// subtract 2 to account for task metadata rendered beneath viewport,
-		height = height - 2
-	}
-	m.viewport.Width = width
-	m.viewport.Height = height
+	m.viewport.Width = max(0, width-2)
+	m.viewport.Height = max(0, height-2)
 }
 
 // View renders the viewport
@@ -145,7 +135,7 @@ func (m model) View() string {
 	// viewport.
 	body := tui.Regular.Copy().
 		Margin(0, 1).
-		Width(79).
+		Width(80).
 		Render(m.viewport.View())
 	if m.width > 104 {
 		metadata := tui.Regular.Copy().
@@ -162,7 +152,7 @@ func (m model) View() string {
 	}
 
 	// render task footer only if task is not a child of a run model
-	if !m.isRunTab {
+	if false {
 		command := strings.Join(append(m.task.Command, m.task.Args...), " ")
 		footer := lipgloss.JoinHorizontal(
 			lipgloss.Left,
@@ -200,8 +190,12 @@ func (m model) Pagination() string {
 }
 
 func (m model) HelpBindings() (bindings []key.Binding) {
-	bindings = append(bindings, tui.Keys.CloseHelp)
-	return
+	// TODO: filter keys depending upon current task.
+	return []key.Binding{
+		keys.Common.Plan,
+		keys.Common.Apply,
+		keys.Common.Cancel,
+	}
 }
 
 func (m model) getOutput() tea.Msg {

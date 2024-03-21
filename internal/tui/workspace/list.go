@@ -1,12 +1,14 @@
-package tui
+package workspace
 
 import (
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/leg100/pug/internal/module"
 	"github.com/leg100/pug/internal/resource"
 	"github.com/leg100/pug/internal/run"
 	"github.com/leg100/pug/internal/tui"
+	"github.com/leg100/pug/internal/tui/keys"
 	"github.com/leg100/pug/internal/tui/table"
 	tasktui "github.com/leg100/pug/internal/tui/task"
 	"github.com/leg100/pug/internal/workspace"
@@ -20,14 +22,23 @@ type ListMaker struct {
 }
 
 func (m *ListMaker) Make(parent resource.Resource, width, height int) (tui.Model, error) {
-	columns := tui.ParentColumns(tui.WorkspaceListKind, parent.Kind)
-	columns = append(columns, table.IDColumn)
-
-	cellsFunc := func(ws *workspace.Workspace) []table.Cell {
-		cells := tui.ParentCells(tui.WorkspaceListKind, parent.Kind, ws.Resource)
-		return append(cells, table.Cell{Str: string(ws.ID().String())})
+	var columns []table.Column
+	if parent.Kind == resource.Global {
+		columns = append(columns, table.ModuleColumn)
 	}
-	table := table.New[*workspace.Workspace](columns, cellsFunc, width, height).
+	columns = append(columns,
+		table.WorkspaceColumn,
+		table.IDColumn,
+	)
+
+	renderer := func(ws *workspace.Workspace, inherit lipgloss.Style) table.RenderedRow {
+		return table.RenderedRow{
+			table.ModuleColumn.Key:    ws.ModulePath(),
+			table.WorkspaceColumn.Key: ws.Name(),
+			table.IDColumn.Key:        ws.ID().String(),
+		}
+	}
+	table := table.New(columns, renderer, width, height).
 		WithSortFunc(workspace.Sort).
 		WithParent(parent)
 
@@ -67,17 +78,17 @@ func (m list) Update(msg tea.Msg) (tui.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch {
-		case key.Matches(msg, tui.Keys.Enter):
+		case key.Matches(msg, keys.Global.Enter):
 			if ws, ok := m.table.Highlighted(); ok {
 				return m, tui.NavigateTo(tui.RunListKind, &ws.Resource)
 			}
-		case key.Matches(msg, tui.Keys.Init):
+		case key.Matches(msg, localKeys.Init):
 			return m, tasktui.TaskCmd(m.modules.Init, m.highlightedOrSelectedModuleIDs()...)
-		case key.Matches(msg, tui.Keys.Format):
+		case key.Matches(msg, localKeys.Format):
 			return m, tasktui.TaskCmd(m.modules.Format, m.highlightedOrSelectedModuleIDs()...)
-		case key.Matches(msg, tui.Keys.Validate):
+		case key.Matches(msg, localKeys.Validate):
 			return m, tasktui.TaskCmd(m.modules.Validate, m.highlightedOrSelectedModuleIDs()...)
-		case key.Matches(msg, tui.Keys.Plan):
+		case key.Matches(msg, localKeys.Plan):
 			return m, m.createRun(run.CreateOptions{})
 		}
 	}
@@ -102,8 +113,7 @@ func (m list) Pagination() string {
 }
 
 func (m list) HelpBindings() (bindings []key.Binding) {
-	bindings = append(bindings, tui.Keys.CloseHelp)
-	return
+	return keys.KeyMapToSlice(localKeys)
 }
 
 func (m list) highlightedOrSelectedModuleIDs() []resource.ID {

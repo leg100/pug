@@ -12,7 +12,7 @@ import (
 	"github.com/leg100/pug/internal/run"
 	"github.com/leg100/pug/internal/task"
 	"github.com/leg100/pug/internal/tui"
-	"github.com/leg100/pug/internal/tui/common"
+	"github.com/leg100/pug/internal/tui/keys"
 	tasktui "github.com/leg100/pug/internal/tui/task"
 )
 
@@ -82,14 +82,14 @@ func (m model) Update(msg tea.Msg) (tui.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch {
-		case key.Matches(msg, tui.Keys.Apply):
+		case key.Matches(msg, keys.Common.Apply):
 			return m, func() tea.Msg {
 				if _, err := m.svc.Apply(m.run.ID()); err != nil {
 					return tui.NewErrorMsg(err, "applying run")
 				}
 				return nil
 			}
-		case key.Matches(msg, tui.Keys.Tab):
+		case key.Matches(msg, keys.Navigation.TabNext):
 			// Cycle tabs, going back to tab #0 after the last tab
 			if m.activeTab == len(m.tabs)-1 {
 				m.activeTab = 0
@@ -97,7 +97,7 @@ func (m model) Update(msg tea.Msg) (tui.Model, tea.Cmd) {
 				m.activeTab = m.activeTab + 1
 			}
 			return m, nil
-		case key.Matches(msg, tui.Keys.TabLeft):
+		case key.Matches(msg, keys.Navigation.TabLast):
 			m.activeTab = max(m.activeTab-1, 0)
 			return m, nil
 		}
@@ -124,7 +124,7 @@ func (m model) Update(msg tea.Msg) (tui.Model, tea.Cmd) {
 			cmds = append(cmds, m.createTab(t))
 		}
 		return m, tea.Batch(cmds...)
-	case common.ViewSizeMsg:
+	case tui.BodyResizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
 	}
@@ -227,6 +227,6 @@ func (m model) Pagination() string {
 
 func (m model) HelpBindings() (bindings []key.Binding) {
 	return []key.Binding{
-		tui.Keys.Apply,
+		keys.Common.Apply,
 	}
 }

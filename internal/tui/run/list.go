@@ -7,10 +7,12 @@ import (
 
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/leg100/pug/internal/resource"
 	"github.com/leg100/pug/internal/run"
 	"github.com/leg100/pug/internal/task"
 	"github.com/leg100/pug/internal/tui"
+	"github.com/leg100/pug/internal/tui/keys"
 	"github.com/leg100/pug/internal/tui/table"
 )
 
@@ -20,25 +22,55 @@ type ListMaker struct {
 }
 
 func (m *ListMaker) Make(parent resource.Resource, width, height int) (tui.Model, error) {
-	columns := append(tui.ParentColumns(tui.RunListKind, parent.Kind),
-		table.Column{Title: "STATUS", Width: run.MaxStatusLen},
-		table.Column{Title: "CHANGES", Width: 14},
-		table.Column{Title: "AGE", Width: 10},
+	statusColumn := table.Column{
+		Key:   "run_status",
+		Title: "STATUS",
+		Width: run.MaxStatusLen,
+	}
+	changesColumn := table.Column{
+		Key:   "run_changes",
+		Title: "CHANGES",
+		Width: 10,
+	}
+	ageColumn := table.Column{
+		Key:   "age",
+		Title: "AGE",
+		Width: 10,
+	}
+	var columns []table.Column
+	switch parent.Kind {
+	case resource.Global:
+		// Show all columns in global runs table
+		columns = append(columns, table.ModuleColumn)
+		fallthrough
+	case resource.Module:
+		// Show workspace column in module runs table
+		columns = append(columns, table.WorkspaceColumn)
+	}
+	columns = append(columns,
+		statusColumn,
+		changesColumn,
+		ageColumn,
 	)
-	cellsFunc := func(r *run.Run) []table.Cell {
-		cells := tui.ParentCells(tui.RunListKind, parent.Kind, r.Resource)
-		cells = append(cells, table.Cell{Str: string(r.Status)})
+
+	renderer := func(r *run.Run, style lipgloss.Style) table.RenderedRow {
+		row := table.RenderedRow{
+			table.ModuleColumn.Key:    r.ModulePath(),
+			table.WorkspaceColumn.Key: r.WorkspaceName(),
+			statusColumn.Key:          string(r.Status),
+			changesColumn.Key:         r.PlanReport.String(),
+			ageColumn.Key:             tui.Ago(time.Now(), r.Updated),
+			table.IDColumn.Key:        r.ID().String(),
+		}
 
 		// switch r.Status {
 		// case run.Planned, run.PlannedAndFinished, run.ApplyQueued, run.Applying:
 		// case run.Applied:
 		// }
-		cells = append(cells, table.Cell{Str: r.PlanReport.String()})
-		cells = append(cells, table.Cell{Str: tui.Ago(time.Now(), r.Created)})
 
-		return cells
+		return row
 	}
-	table := table.New(columns, cellsFunc, width, height).
+	table := table.New(columns, renderer, width, height).
 		WithSortFunc(run.ByUpdatedDesc).
 		WithParent(parent)
 
@@ -76,14 +108,14 @@ func (m list) Update(msg tea.Msg) (tui.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch {
-		case key.Matches(msg, tui.Keys.Enter):
+		case key.Matches(msg, keys.Global.Enter):
 			if run, ok := m.table.Highlighted(); ok {
 				return m, tui.NavigateTo(tui.RunKind, &run.Resource)
 			}
-		case key.Matches(msg, tui.Keys.Cancel):
+		case key.Matches(msg, keys.Common.Cancel):
 			// get all highlighted or selected runs, and get the current task
 			// for each run, and then cancel those tasks.
-		case key.Matches(msg, tui.Keys.Apply):
+		case key.Matches(msg, keys.Common.Apply):
 			hl, ok := m.table.Highlighted()
 			if !ok {
 				return m, nil
@@ -123,12 +155,11 @@ func (m list) Pagination() string {
 }
 
 func (m list) HelpBindings() (bindings []key.Binding) {
-	bindings = append(bindings,
-		tui.Keys.Plan,
-		tui.Keys.Apply,
-		tui.Keys.Cancel,
-	)
-	return
+	return []key.Binding{
+		keys.Common.Plan,
+		keys.Common.Apply,
+		keys.Common.Cancel,
+	}
 }
 
 //lint:ignore U1000 intend to use shortly

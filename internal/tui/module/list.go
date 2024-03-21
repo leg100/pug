@@ -1,4 +1,4 @@
-package tui
+package module
 
 import (
 	"fmt"
@@ -7,10 +7,12 @@ import (
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/leg100/pug/internal/module"
 	"github.com/leg100/pug/internal/resource"
 	"github.com/leg100/pug/internal/run"
 	"github.com/leg100/pug/internal/tui"
+	"github.com/leg100/pug/internal/tui/keys"
 	"github.com/leg100/pug/internal/tui/table"
 	tasktui "github.com/leg100/pug/internal/tui/task"
 	"github.com/leg100/pug/internal/workspace"
@@ -25,25 +27,28 @@ type ListMaker struct {
 }
 
 func (m *ListMaker) Make(_ resource.Resource, width, height int) (tui.Model, error) {
-	columns := tui.ParentColumns(tui.ModuleListKind, resource.Global)
-	columns = append(columns,
-		table.Column{
-			Title:      "CURRENT WORKSPACE",
-			FlexFactor: 2,
-		},
-		table.Column{
-			Title: "FMAT",
-			Width: 4,
-		},
-		table.Column{
-			Title: "VALID",
-			Width: 5,
-		},
-		table.Column{
-			Title: "ID",
-			Width: resource.IDEncodedMaxLen,
-		},
-	)
+	currentWorkspace := table.Column{
+		Key:        "currentWorkspace",
+		Title:      "CURRENT WORKSPACE",
+		FlexFactor: 2,
+	}
+	formatColumn := table.Column{
+		Key:   "format",
+		Title: "FMAT",
+		Width: 4,
+	}
+	validColumn := table.Column{
+		Key:   "valid",
+		Title: "VALID",
+		Width: 5,
+	}
+	columns := []table.Column{
+		table.ModuleColumn,
+		currentWorkspace,
+		formatColumn,
+		validColumn,
+		table.IDColumn,
+	}
 	boolToUnicode := func(inprog bool, b *bool) string {
 		if inprog {
 			return m.Spinner.View()
@@ -58,20 +63,19 @@ func (m *ListMaker) Make(_ resource.Resource, width, height int) (tui.Model, err
 		}
 	}
 
-	cellsFunc := func(mod *module.Module) []table.Cell {
-		cells := []table.Cell{
-			{Str: mod.Path()},
-			{},
-			{Str: boolToUnicode(mod.FormatInProgress, mod.Formatted)},
-			{Str: boolToUnicode(mod.ValidationInProgress, mod.Valid)},
-			{Str: mod.ID().String()},
+	renderer := func(mod *module.Module, style lipgloss.Style) table.RenderedRow {
+		cells := table.RenderedRow{
+			table.ModuleColumn.Key: mod.Path(),
+			formatColumn.Key:       boolToUnicode(mod.FormatInProgress, mod.Formatted),
+			validColumn.Key:        boolToUnicode(mod.ValidationInProgress, mod.Valid),
+			table.IDColumn.Key:     mod.ID().String(),
 		}
 		if current := mod.CurrentWorkspace; current != nil {
-			cells[1].Str = current.String()
+			cells[currentWorkspace.Key] = current.String()
 		}
 		return cells
 	}
-	table := table.New[*module.Module](columns, cellsFunc, width, height)
+	table := table.New[*module.Module](columns, renderer, width, height)
 	table = table.WithSortFunc(module.ByPath)
 
 	return list{
@@ -122,14 +126,14 @@ func (m list) Update(msg tea.Msg) (tui.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch {
-		case key.Matches(msg, tui.Keys.Reload):
+		case key.Matches(msg, localKeys.Reload):
 			return m, func() tea.Msg {
 				if err := m.ModuleService.Reload(); err != nil {
 					return tui.NewErrorMsg(err, "reloading modules")
 				}
 				return nil
 			}
-		case key.Matches(msg, tui.Keys.Edit):
+		case key.Matches(msg, localKeys.Edit):
 			if mod, ok := m.table.Highlighted(); ok {
 				// TODO: use env var EDITOR
 				// TODO: check for side effects of exec blocking the tui - do
@@ -139,17 +143,17 @@ func (m list) Update(msg tea.Msg) (tui.Model, tea.Cmd) {
 					return tui.NewErrorMsg(err, "opening vim")
 				})
 			}
-		case key.Matches(msg, tui.Keys.Enter):
+		case key.Matches(msg, keys.Global.Enter):
 			if mod, ok := m.table.Highlighted(); ok {
 				return m, tui.NavigateTo(tui.WorkspaceListKind, &mod.Resource)
 			}
-		case key.Matches(msg, tui.Keys.Init):
+		case key.Matches(msg, localKeys.Init):
 			return m, tasktui.TaskCmd(m.ModuleService.Init, maps.Keys(m.table.HighlightedOrSelected())...)
-		case key.Matches(msg, tui.Keys.Validate):
+		case key.Matches(msg, localKeys.Validate):
 			return m, tasktui.TaskCmd(m.ModuleService.Validate, maps.Keys(m.table.HighlightedOrSelected())...)
-		case key.Matches(msg, tui.Keys.Format):
+		case key.Matches(msg, localKeys.Format):
 			return m, tasktui.TaskCmd(m.ModuleService.Format, maps.Keys(m.table.HighlightedOrSelected())...)
-		case key.Matches(msg, tui.Keys.Plan):
+		case key.Matches(msg, localKeys.Plan):
 			return m, m.createRun(run.CreateOptions{})
 		}
 	}
@@ -175,11 +179,11 @@ func (m list) Pagination() string {
 
 func (m list) HelpBindings() (bindings []key.Binding) {
 	return []key.Binding{
-		tui.Keys.Init,
-		tui.Keys.Validate,
-		tui.Keys.Format,
-		tui.Keys.Plan,
-		tui.Keys.Edit,
+		localKeys.Init,
+		localKeys.Validate,
+		localKeys.Format,
+		localKeys.Plan,
+		localKeys.Edit,
 	}
 }
 

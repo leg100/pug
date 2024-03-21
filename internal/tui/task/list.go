@@ -1,4 +1,4 @@
-package tui
+package task
 
 import (
 	"strings"
@@ -8,8 +8,10 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/leg100/pug/internal/resource"
+	"github.com/leg100/pug/internal/run"
 	"github.com/leg100/pug/internal/task"
 	"github.com/leg100/pug/internal/tui"
+	"github.com/leg100/pug/internal/tui/keys"
 	"github.com/leg100/pug/internal/tui/table"
 	"golang.org/x/exp/maps"
 )
@@ -20,14 +22,47 @@ type ListMaker struct {
 }
 
 func (m *ListMaker) Make(parent resource.Resource, width, height int) (tui.Model, error) {
-	columns := append(tui.ParentColumns(tui.TaskListKind, parent.Kind),
-		table.Column{Title: "COMMAND", Width: 20},
-		table.Column{Title: "STATUS", Width: 10},
-		table.Column{Title: "AGE", Width: 10},
+	commandColumn := table.Column{
+		Key:   "command",
+		Title: "COMMAND",
+		Width: 20,
+	}
+	statusColumn := table.Column{
+		Key:   "run_status",
+		Title: "STATUS",
+		Width: run.MaxStatusLen,
+	}
+	ageColumn := table.Column{
+		Key:   "age",
+		Title: "AGE",
+		Width: 10,
+	}
+	var columns []table.Column
+	switch parent.Kind {
+	case resource.Global:
+		// Show all columns in global tasks table
+		columns = append(columns, table.ModuleColumn)
+		fallthrough
+	case resource.Module:
+		// Show workspace column in module tasks table
+		columns = append(columns, table.WorkspaceColumn)
+	}
+	columns = append(columns,
+		commandColumn,
+		statusColumn,
+		ageColumn,
 	)
-	cellsFunc := func(t *task.Task) []table.Cell {
-		cells := tui.ParentCells(tui.TaskListKind, parent.Kind, t.Resource)
-		cells = append(cells, table.Cell{Str: strings.Join(t.Command, " ")})
+
+	renderer := func(t *task.Task, inherit lipgloss.Style) table.RenderedRow {
+		row := table.RenderedRow{
+			table.ModuleColumn.Key: t.Module().String(),
+			commandColumn.Key:      strings.Join(t.Command, " "),
+			ageColumn.Key:          tui.Ago(time.Now(), t.Updated),
+			table.IDColumn.Key:     t.ID().String(),
+		}
+		if ws := t.Workspace(); ws != nil {
+			row[table.WorkspaceColumn.Key] = ws.String()
+		}
 
 		stateStyle := lipgloss.NewStyle()
 		switch t.State {
@@ -37,14 +72,10 @@ func (m *ListMaker) Make(parent resource.Resource, width, height int) (tui.Model
 			stateStyle = stateStyle.Foreground(lipgloss.Color("40"))
 		default:
 		}
-
-		cells = append(cells,
-			table.Cell{Str: string(t.State), Style: stateStyle},
-			table.Cell{Str: tui.Ago(time.Now(), t.Updated)},
-		)
-		return cells
+		row[statusColumn.Key] = stateStyle.Render(string(t.State))
+		return row
 	}
-	table := table.New(columns, cellsFunc, width, height).
+	table := table.New(columns, renderer, width, height).
 		WithSortFunc(task.ByState).
 		WithParent(parent)
 
@@ -82,11 +113,11 @@ func (m list) Update(msg tea.Msg) (tui.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch {
-		case key.Matches(msg, tui.Keys.Enter):
+		case key.Matches(msg, keys.Global.Enter):
 			if task, ok := m.table.Highlighted(); ok {
 				return m, tui.NavigateTo(tui.TaskKind, &task.Resource)
 			}
-		case key.Matches(msg, tui.Keys.Cancel):
+		case key.Matches(msg, keys.Common.Cancel):
 			return m, TaskCmd(m.svc.Cancel, maps.Keys(m.table.HighlightedOrSelected())...)
 		}
 	}
@@ -110,6 +141,7 @@ func (m list) Pagination() string {
 }
 
 func (m list) HelpBindings() (bindings []key.Binding) {
-	bindings = append(bindings, tui.Keys.CloseHelp)
-	return
+	return []key.Binding{
+		keys.Common.Cancel,
+	}
 }

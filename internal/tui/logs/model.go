@@ -1,12 +1,11 @@
 package logs
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/key"
-	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/leg100/pug/internal/logging"
 	"github.com/leg100/pug/internal/resource"
 	"github.com/leg100/pug/internal/tui"
@@ -18,27 +17,39 @@ type Maker struct {
 }
 
 func (mm *Maker) Make(_ resource.Resource, width, height int) (tui.Model, error) {
-	columns := []table.Column{
-		{Title: "TIME", Width: 24},
-		{Title: "LEVEL", Width: 5},
-		{Title: "MESSAGE", FlexFactor: 1},
+	timeColumn := table.Column{
+		Key:   "time",
+		Title: "TIME",
+		Width: 24,
 	}
-	cellsFunc := func(msg logging.Message) []table.Cell {
-		cells := []table.Cell{
-			{Str: msg.Time.Format("2006-01-02T15:04:05.000")},
-			{Str: msg.Level},
+	levelColumn := table.Column{
+		Key:   "level",
+		Title: "LEVEL",
+		Width: 5,
+	}
+	msgColumn := table.Column{
+		Key:        "message",
+		Title:      "MESSAGE",
+		FlexFactor: 1,
+	}
+	columns := []table.Column{
+		timeColumn,
+		levelColumn,
+		msgColumn,
+	}
+	renderer := func(msg logging.Message, style lipgloss.Style) table.RenderedRow {
+		row := table.RenderedRow{
+			timeColumn.Key:  msg.Time.Format("2006-01-02T15:04:05.000"),
+			levelColumn.Key: msg.Level,
 		}
 
 		// combine message and attributes, separated by spaces, with each
 		// attribute key/value joined with a '='
-		parts := make([]string, 1, len(msg.Attributes)+1)
-		parts[0] = msg.Message
-		for k, v := range msg.Attributes {
-			parts = append(parts, fmt.Sprintf("%s=%s", k, v))
-		}
-		return append(cells, table.Cell{Str: strings.Join(parts, " ")})
+		msgAndAttributes := append([]string{msg.Message}, msg.Attributes...)
+		row[msgColumn.Key] = strings.Join(msgAndAttributes, " ")
+		return row
 	}
-	table := table.New(columns, cellsFunc, width, height).
+	table := table.New(columns, renderer, width, height).
 		WithSortFunc(logging.ByTimeDesc).
 		WithSelectable(false)
 
@@ -82,5 +93,5 @@ func (m model) Pagination() string {
 }
 
 func (m model) HelpBindings() (bindings []key.Binding) {
-	return tui.KeyMapToSlice(viewport.DefaultKeyMap())
+	return nil
 }

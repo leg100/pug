@@ -28,7 +28,7 @@ type Message struct {
 	Time       time.Time
 	Level      string
 	Message    string `json:"msg"`
-	Attributes map[string]string
+	Attributes []string
 
 	// id uniquely identifies the log message.
 	id resource.ID
@@ -93,10 +93,8 @@ func (l *Logger) Write(p []byte) (int, error) {
 			case "msg":
 				msg.Message = string(d.Value())
 			default:
-				if msg.Attributes == nil {
-					msg.Attributes = make(map[string]string)
-				}
-				msg.Attributes[string(d.Key())] = string(d.Value())
+				s := fmt.Sprintf("%s=%s", d.Key(), d.Value())
+				msg.Attributes = append(msg.Attributes, s)
 			}
 		}
 		msgs = append(msgs, msg)

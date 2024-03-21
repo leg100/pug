@@ -37,3 +37,10 @@ func NewErrorMsg(err error, msg string, args ...any) ErrorMsg {
 func NewErrorCmd(err error, msg string, args ...any) tea.Cmd {
 	return CmdHandler(NewErrorMsg(err, msg, args...))
 }
+
+// BodyResizeMsg is sent whenever the user resizes the terminal window. The width
+// and height refer to area available in the main body between the header and
+// the footer.
+type BodyResizeMsg struct {
+	Width, Height int
+}

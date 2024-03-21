@@ -3,8 +3,8 @@ terraform {
 }
 
 resource "random_integer" "seconds" {
-  min = "20"
-  max = "60"
+  min = "1"
+  max = "2"
   keepers = {
     now = timestamp()
   }

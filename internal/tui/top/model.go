@@ -17,7 +17,7 @@ import (
 	"github.com/leg100/pug/internal/run"
 	"github.com/leg100/pug/internal/task"
 	"github.com/leg100/pug/internal/tui"
-	"github.com/leg100/pug/internal/tui/common"
+	"github.com/leg100/pug/internal/tui/keys"
 	"github.com/leg100/pug/internal/tui/logs"
 	moduletui "github.com/leg100/pug/internal/tui/module"
 	runtui "github.com/leg100/pug/internal/tui/run"
@@ -155,36 +155,36 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		// Send out new message with adjusted dimensions
 		return m, func() tea.Msg {
-			return common.ViewSizeMsg{Width: m.viewWidth(), Height: m.viewHeight()}
+			return tui.BodyResizeMsg{Width: m.viewWidth(), Height: m.viewHeight()}
 		}
 	case tea.KeyMsg:
 		switch {
-		case key.Matches(msg, tui.Keys.Quit):
+		case key.Matches(msg, keys.Global.Quit):
 			// ctrl-c quits the app
 			return m, tea.Quit
-		case key.Matches(msg, tui.Keys.Escape):
+		case key.Matches(msg, keys.Global.Escape):
 			// <esc> closes help or goes back to last page
 			if m.showHelp {
 				m.showHelp = false
 			} else {
 				m.goBack()
 			}
-		case key.Matches(msg, tui.Keys.Help):
+		case key.Matches(msg, keys.Global.Help):
 			// '?' toggles help
 			m.showHelp = !m.showHelp
-		case key.Matches(msg, tui.Keys.Logs):
+		case key.Matches(msg, keys.Global.Logs):
 			// 'l' shows logs
 			return m, tui.NavigateTo(tui.LogsKind, nil)
-		case key.Matches(msg, tui.Keys.Modules):
+		case key.Matches(msg, keys.Global.Modules):
 			// 'm' lists all modules
 			return m, tui.NavigateTo(tui.ModuleListKind, nil)
-		case key.Matches(msg, tui.Keys.Workspaces):
+		case key.Matches(msg, keys.Global.Workspaces):
 			// 'W' lists all workspaces
 			return m, tui.NavigateTo(tui.WorkspaceListKind, nil)
-		case key.Matches(msg, tui.Keys.Runs):
+		case key.Matches(msg, keys.Global.Runs):
 			// 'R' lists all runs
 			return m, tui.NavigateTo(tui.RunListKind, nil)
-		case key.Matches(msg, tui.Keys.Tasks):
+		case key.Matches(msg, keys.Global.Tasks):
 			// 'T' lists all tasks
 			return m, tui.NavigateTo(tui.TaskListKind, nil)
 		default:
@@ -200,7 +200,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if created {
 			return m, m.currentModel().Init()
 		}
-		return m, nil
 	case tui.ErrorMsg:
 		if msg.Error != nil {
 			m.err = fmt.Sprintf("%s: %s", fmt.Sprintf(msg.Message, msg.Args...), msg.Error.Error())
@@ -246,8 +245,8 @@ func (m model) View() string {
 			Render(
 				fullHelpView(
 					m.currentModel().HelpBindings(),
-					tui.KeyMapToSlice(tui.GeneralKeys),
-					tui.KeyMapToSlice(viewport.DefaultKeyMap()),
+					keys.KeyMapToSlice(keys.Global),
+					keys.KeyMapToSlice(viewport.DefaultKeyMap()),
 				),
 			)
 		shortHelpBindings = []key.Binding{
@@ -258,9 +257,12 @@ func (m model) View() string {
 		}
 	} else {
 		content = m.currentModel().View()
+		// Within the header, show the model bindings first, and then the
+		// general key bindings. The navigation bindings are only visible in the
+		// full help.
 		shortHelpBindings = append(
 			m.currentModel().HelpBindings(),
-			tui.KeyMapToSlice(tui.GeneralKeys)...,
+			keys.KeyMapToSlice(keys.Global)...,
 		)
 	}
 
@@ -276,22 +278,27 @@ func (m model) View() string {
 	return lipgloss.JoinVertical(
 		lipgloss.Top,
 		// header
-		lipgloss.JoinHorizontal(
-			lipgloss.Left,
-			// help
-			lipgloss.NewStyle().
-				Margin(0, 1).
-				// -2 for vertical margins
-				Width(m.width-logoWidth-2).
-				Render(shortHelpView(shortHelpBindings, m.width-logoWidth-2)),
-			// logo
-			lipgloss.NewStyle().
-				Render(renderedLogo),
-		),
+		lipgloss.NewStyle().
+			Height(headerHeight).
+			Render(
+				lipgloss.JoinHorizontal(
+					lipgloss.Left,
+					// help
+					lipgloss.NewStyle().
+						Margin(0, 1).
+						// -2 for vertical margins
+						Width(m.width-logoWidth-2).
+						Render(shortHelpView(shortHelpBindings, m.width-logoWidth-2)),
+					// logo
+					lipgloss.NewStyle().
+						Render(renderedLogo),
+				),
+			),
 		// title
 		lipgloss.NewStyle().
 			// Prohibit overflowing title wrapping to another line.
 			MaxHeight(1).
+			Inline(true).
 			Width(m.width).
 			Render(renderedTitle),
 		// content
