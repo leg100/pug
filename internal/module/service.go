@@ -111,7 +111,7 @@ func (s *Service) GetByPath(path string) (*Module, error) {
 	return nil, resource.ErrNotFound
 }
 
-func (s *Service) Subscribe(ctx context.Context) (<-chan resource.Event[*Module], func()) {
+func (s *Service) Subscribe(ctx context.Context) <-chan resource.Event[*Module] {
 	return s.broker.Subscribe(ctx)
 }
 

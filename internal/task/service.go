@@ -147,7 +147,7 @@ func (s *Service) Get(taskID resource.ID) (*Task, error) {
 	return s.table.Get(taskID)
 }
 
-func (s *Service) Subscribe(ctx context.Context) (<-chan resource.Event[*Task], func()) {
+func (s *Service) Subscribe(ctx context.Context) <-chan resource.Event[*Task] {
 	return s.Broker.Subscribe(ctx)
 }
 

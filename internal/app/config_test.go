@@ -13,6 +13,7 @@ import (
 func TestConfig(t *testing.T) {
 	// Unset environment variables set on host computer
 	t.Setenv("PUG_DEBUG", "")
+	t.Setenv("PUG_FIRST_PAGE", "")
 
 	tests := []struct {
 		name string

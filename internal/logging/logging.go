@@ -111,7 +111,7 @@ func (l *Logger) Write(p []byte) (int, error) {
 }
 
 // Subscribe to log messages.
-func (l *Logger) Subscribe(ctx context.Context) (<-chan resource.Event[Message], func()) {
+func (l *Logger) Subscribe(ctx context.Context) <-chan resource.Event[Message] {
 	return l.broker.Subscribe(ctx)
 }
 

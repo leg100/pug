@@ -34,7 +34,7 @@ func NewBroker[T any]() *Broker[T] {
 // Subscribe subscribes the caller to a stream of events. The caller can close
 // the subscription by either canceling the context or calling the returned
 // unsubscribe function.
-func (b *Broker[T]) Subscribe(ctx context.Context) (<-chan resource.Event[T], func()) {
+func (b *Broker[T]) Subscribe(ctx context.Context) <-chan resource.Event[T] {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 
@@ -47,7 +47,7 @@ func (b *Broker[T]) Subscribe(ctx context.Context) (<-chan resource.Event[T], fu
 		b.unsubscribe(sub)
 	}()
 
-	return sub, func() { b.unsubscribe(sub) }
+	return sub
 }
 
 // Publish an event to subscribers.

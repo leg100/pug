@@ -22,7 +22,7 @@ type runLister interface {
 //
 // The scheduler attempts to schedule runs upon every run event it receives.
 func StartScheduler(ctx context.Context, runs *Service) {
-	sub, _ := runs.Broker.Subscribe(ctx)
+	sub := runs.Broker.Subscribe(ctx)
 	s := &scheduler{runs: runs}
 	for range sub {
 		for _, run := range s.schedule() {

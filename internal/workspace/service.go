@@ -51,7 +51,7 @@ func NewService(ctx context.Context, opts ServiceOptions) *Service {
 		tasks:   opts.TaskService,
 	}
 	// Load workspaces whenever a module is created.
-	sub, _ := opts.ModuleService.Subscribe(ctx)
+	sub := opts.ModuleService.Subscribe(ctx)
 	go func() {
 		for event := range sub {
 			switch event.Type {
@@ -220,7 +220,7 @@ func (s *Service) List(opts ListOptions) []*Workspace {
 	return existing
 }
 
-func (s *Service) Subscribe(ctx context.Context) (<-chan resource.Event[*Workspace], func()) {
+func (s *Service) Subscribe(ctx context.Context) <-chan resource.Event[*Workspace] {
 	return s.broker.Subscribe(ctx)
 }
 

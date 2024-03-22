@@ -225,7 +225,7 @@ func (s *Service) List(opts ListOptions) []*Run {
 	return runs
 }
 
-func (s *Service) Subscribe(ctx context.Context) (<-chan resource.Event[*Run], func()) {
+func (s *Service) Subscribe(ctx context.Context) <-chan resource.Event[*Run] {
 	return s.Broker.Subscribe(ctx)
 }
 

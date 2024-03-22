@@ -16,7 +16,7 @@ type runner struct {
 }
 
 func StartRunner(ctx context.Context, tasks *Service, maxTasks int) {
-	sub, _ := tasks.Broker.Subscribe(ctx)
+	sub := tasks.Broker.Subscribe(ctx)
 	r := &runner{
 		max:       maxTasks,
 		exclusive: make(chan struct{}, 1),
