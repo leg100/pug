@@ -97,7 +97,7 @@ func (m model) Update(msg tea.Msg) (tui.Model, tea.Cmd) {
 			}
 			cmd, err := m.addTab(msg.Payload)
 			if err != nil {
-				return m, tui.NewErrorCmd(err, "")
+				return m, tui.ReportError(err, "")
 			}
 			cmds = append(cmds, cmd)
 		}

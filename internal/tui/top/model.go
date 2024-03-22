@@ -28,7 +28,10 @@ type model struct {
 	height int
 
 	showHelp bool
-	err      string
+
+	// Either an error or an informational message is rendered in the footer.
+	err  string
+	info string
 
 	tasks   *task.Service
 	spinner *spinner.Model
@@ -105,7 +108,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case resource.Event[*module.Module]:
 		switch msg.Type {
 		case resource.CreatedEvent:
-			//cmds = append(cmds, tui.NavigateTo(tui.ModuleKind, &msg.Payload.Resource))
+			//		cmds = append(cmds, tui.NavigateTo(tui.ModuleKind, &msg.Payload.Resource))
 		}
 	}
 
@@ -123,7 +126,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return tui.BodyResizeMsg{Width: m.viewWidth(), Height: m.viewHeight()}
 		}
 	case tea.KeyMsg:
-		// Pressing any key makes any error message disappear
+		// Pressing any key makes any info/error message in the footer disappear
+		m.info = ""
 		m.err = ""
 
 		switch {
@@ -163,7 +167,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tui.NavigationMsg:
 		created, err := m.setCurrent(tui.Page(msg))
 		if err != nil {
-			return m, tui.NewErrorCmd(err, "setting current page")
+			return m, tui.ReportError(err, "setting current page")
 		}
 		if created {
 			return m, m.currentModel().Init()
@@ -177,6 +181,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.err = fmt.Sprintf("Error: %s: %s", msg, err)
 			slog.Error(msg, "error", err)
 		}
+	case tui.InfoMsg:
+		m.info = string(msg)
 	default:
 		// Send remaining msg types to all cached models
 		cmds = append(cmds, m.cache.updateAll(msg)...)
@@ -207,9 +213,6 @@ func (m model) View() string {
 	var (
 		content           string
 		shortHelpBindings []key.Binding
-		pagination        = tui.Regular.Padding(0, 1).Render(
-			fmt.Sprintf("%d/%d tasks", m.tasks.Counter(), 32),
-		)
 	)
 
 	if m.showHelp {
@@ -248,6 +251,25 @@ func (m model) View() string {
 	titleRightRule := strings.Repeat("─", max(0, m.width-tui.Width(titleLeftRuleAndTitle)))
 	renderedTitle := fmt.Sprintf("%s%s", titleLeftRuleAndTitle, titleRightRule)
 
+	// Global-level info goes in the bottom right corner in the footer.
+	metadata := tui.Padded.Copy().Render(
+		fmt.Sprintf("%d/%d tasks", m.tasks.Counter(), 32),
+	)
+
+	// Render any info/error message to be shown in the bottom left corner in
+	// the footer, using whatever space is remaining to the left of the
+	// metadata.
+	var footerMsg string
+	if m.err != "" {
+		footerMsg = tui.Padded.Copy().
+			Foreground(tui.Red).
+			Render(m.err)
+	} else if m.info != "" {
+		footerMsg = tui.Padded.Copy().
+			Foreground(tui.Black).
+			Render(m.info)
+	}
+
 	return lipgloss.JoinVertical(
 		lipgloss.Top,
 		// header
@@ -284,15 +306,14 @@ func (m model) View() string {
 		// footer
 		lipgloss.JoinHorizontal(
 			lipgloss.Top,
-			// error messages
-			lipgloss.NewStyle().
-				Width(m.width-tui.Width(pagination)).
-				Padding(0, 1).
-				Foreground(tui.Red).
-				// TODO: prefix with Error:
-				Render(m.err),
+			// info/error message
+			tui.Regular.
+				Inline(true).
+				MaxWidth(m.width-tui.Width(metadata)).
+				Width(m.width-tui.Width(metadata)).
+				Render(footerMsg),
 			// pagination
-			pagination,
+			metadata,
 		),
 	)
 }

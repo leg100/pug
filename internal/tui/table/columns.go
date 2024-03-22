@@ -2,7 +2,7 @@ package table
 
 import (
 	"github.com/leg100/pug/internal/resource"
-	"github.com/mattn/go-runewidth"
+	"github.com/leg100/pug/internal/run"
 )
 
 var (
@@ -14,7 +14,7 @@ var (
 	ModuleColumn = Column{
 		Key:            "module",
 		Title:          "MODULE",
-		TruncationFunc: runewidth.TruncateLeft,
+		TruncationFunc: TruncateLeft,
 		FlexFactor:     3,
 	}
 	WorkspaceColumn = Column{
@@ -33,5 +33,15 @@ var (
 		Title:      "TASK",
 		Width:      resource.IDEncodedMaxLen,
 		FlexFactor: 1,
+	}
+	RunStatusColumn = Column{
+		Key:   "run_status",
+		Title: "STATUS",
+		Width: run.MaxStatusLen,
+	}
+	RunChangesColumn = Column{
+		Key:   "run_changes",
+		Title: "CHANGES",
+		Width: 10,
 	}
 )

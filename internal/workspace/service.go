@@ -224,6 +224,14 @@ func (s *Service) Subscribe(ctx context.Context) <-chan resource.Event[*Workspac
 	return s.broker.Subscribe(ctx)
 }
 
+func (s *Service) SetCurrent(workspaceID resource.ID, run resource.Resource) {
+	ws, err := s.table.Get(workspaceID)
+	if err != nil {
+		slog.Error("setting current workspace run", "run", run, "error", err)
+	}
+	ws.CurrentRun = &run
+}
+
 // Delete a workspace. Asynchronous.
 func (s *Service) Delete(id resource.ID) (*task.Task, error) {
 	ws, err := s.table.Get(id)

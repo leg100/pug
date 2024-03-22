@@ -119,7 +119,7 @@ func (m list) Update(msg tea.Msg) (tui.Model, tea.Cmd) {
 				return m, tui.NavigateTo(tui.TaskKind, &task.Resource)
 			}
 		case key.Matches(msg, keys.Common.Cancel):
-			return m, TaskCmd(m.svc.Cancel, maps.Keys(m.table.HighlightedOrSelected())...)
+			return m, tui.CreateTasks(m.svc.Cancel, maps.Keys(m.table.HighlightedOrSelected())...)
 		}
 	}
 	// Handle keyboard and mouse events in the table widget

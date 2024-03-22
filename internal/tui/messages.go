@@ -1,24 +1,9 @@
 package tui
 
-import (
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/leg100/pug/internal/resource"
-)
-
 // NavigationMsg is an instruction to navigate to a page.
 type NavigationMsg Page
 
-// NavigateTo sends an instruction to navigate to a page with the given model
-// kind, and optionally parent resource.
-func NavigateTo(kind Kind, parent *resource.Resource) tea.Cmd {
-	return func() tea.Msg {
-		page := Page{Kind: kind}
-		if parent != nil {
-			page.Parent = *parent
-		}
-		return NavigationMsg(page)
-	}
-}
+type InfoMsg string
 
 type ErrorMsg struct {
 	Error   error
@@ -32,10 +17,6 @@ func NewErrorMsg(err error, msg string, args ...any) ErrorMsg {
 		Message: msg,
 		Args:    args,
 	}
-}
-
-func NewErrorCmd(err error, msg string, args ...any) tea.Cmd {
-	return CmdHandler(NewErrorMsg(err, msg, args...))
 }
 
 // BodyResizeMsg is sent whenever the user resizes the terminal window. The width

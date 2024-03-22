@@ -14,7 +14,6 @@ import (
 	"github.com/leg100/pug/internal/task"
 	"github.com/leg100/pug/internal/tui"
 	"github.com/leg100/pug/internal/tui/keys"
-	"github.com/leg100/pug/internal/tui/table"
 	"github.com/muesli/reflow/wordwrap"
 )
 
@@ -81,11 +80,11 @@ func (m model) Update(msg tea.Msg) (tui.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, keys.Common.Cancel):
-			return m, TaskCmd(m.svc.Cancel, m.task.ID())
+			return m, tui.CreateTasks(m.svc.Cancel, m.task.ID())
 			// TODO: retry
 		case key.Matches(msg, keys.Common.Apply):
 
-			return m, TaskCmd(m.svc.Cancel, m.task.ID())
+			return m, tui.CreateTasks(m.svc.Cancel, m.task.ID())
 			// TODO: retry
 		}
 	case outputMsg:
@@ -231,47 +230,4 @@ type outputMsg struct {
 	taskID   resource.ID
 	output   string
 	eof      bool
-}
-
-// TaskCmd returns a command that creates one or more tasks using the given IDs.
-func TaskCmd(fn task.Func, ids ...resource.ID) tea.Cmd {
-	// Handle the case where a user has pressed a key on an empty table with
-	// zero rows
-	if len(ids) == 0 {
-		return nil
-	}
-
-	// If items have been selected then clear the selection
-	var deselectCmd tea.Cmd
-	if len(ids) > 1 {
-		deselectCmd = tui.CmdHandler(table.DeselectMsg{})
-	}
-
-	cmd := func() tea.Msg {
-		//var task *task.Task
-		for _, id := range ids {
-			var err error
-			if _, err = fn(id); err != nil {
-				return tui.NewErrorMsg(err, "creating task")
-			}
-		}
-		//if len(ids) > 1 {
-		//	// User has selected multiple rows, so send them to the task *list*
-		//	// page
-		//	//
-		//	// TODO: pass in parameter specifying the parent resource for the
-		//	// task listing, i.e. module, workspace, run, etc.
-		//	return navigationMsg{
-		//		target: page{kind: TaskListKind},
-		//	}
-		//} else {
-		//	// User has highlighted a single row, so send them to the task page.
-		//	return navigationMsg{
-		//		target: page{kind: TaskKind, resource: task.Resource},
-		//	}
-		//}
-		return nil
-	}
-
-	return tea.Batch(cmd, deselectCmd)
 }

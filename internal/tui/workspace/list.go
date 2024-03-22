@@ -12,7 +12,6 @@ import (
 	"github.com/leg100/pug/internal/tui"
 	"github.com/leg100/pug/internal/tui/keys"
 	"github.com/leg100/pug/internal/tui/table"
-	tasktui "github.com/leg100/pug/internal/tui/task"
 	"github.com/leg100/pug/internal/workspace"
 	"golang.org/x/exp/maps"
 )
@@ -30,17 +29,12 @@ func (m *ListMaker) Make(parent resource.Resource, width, height int) (tui.Model
 	}
 	columns = append(columns,
 		table.WorkspaceColumn,
+		table.RunStatusColumn,
+		table.RunChangesColumn,
 		table.IDColumn,
 	)
 
-	renderer := func(ws *workspace.Workspace, inherit lipgloss.Style) table.RenderedRow {
-		return table.RenderedRow{
-			table.ModuleColumn.Key:    ws.ModulePath(),
-			table.WorkspaceColumn.Key: ws.Name(),
-			table.IDColumn.Key:        ws.ID().String(),
-		}
-	}
-	table := table.New(columns, renderer, width, height).
+	table := table.New(columns, m.renderRow, width, height).
 		WithSortFunc(workspace.Sort).
 		WithParent(parent)
 
@@ -51,6 +45,20 @@ func (m *ListMaker) Make(parent resource.Resource, width, height int) (tui.Model
 		runs:    m.RunService,
 		parent:  parent,
 	}, nil
+}
+
+func (m *ListMaker) renderRow(ws *workspace.Workspace, inherit lipgloss.Style) table.RenderedRow {
+	row := table.RenderedRow{
+		table.ModuleColumn.Key:    ws.ModulePath(),
+		table.WorkspaceColumn.Key: ws.Name(),
+		table.IDColumn.Key:        ws.ID().String(),
+	}
+	if cr := ws.CurrentRun; cr != nil {
+		run, _ := m.RunService.Get(cr.ID())
+		row[table.RunStatusColumn.Key] = string(run.Status)
+		row[table.RunChangesColumn.Key] = run.PlanReport.String()
+	}
+	return row
 }
 
 type list struct {
@@ -85,11 +93,11 @@ func (m list) Update(msg tea.Msg) (tui.Model, tea.Cmd) {
 				return m, tui.NavigateTo(tui.WorkspaceKind, &ws.Resource)
 			}
 		case key.Matches(msg, Keys.Init):
-			return m, tasktui.TaskCmd(m.modules.Init, m.highlightedOrSelectedModuleIDs()...)
+			return m, tui.CreateTasks(m.modules.Init, m.highlightedOrSelectedModuleIDs()...)
 		case key.Matches(msg, Keys.Format):
-			return m, tasktui.TaskCmd(m.modules.Format, m.highlightedOrSelectedModuleIDs()...)
+			return m, tui.CreateTasks(m.modules.Format, m.highlightedOrSelectedModuleIDs()...)
 		case key.Matches(msg, Keys.Validate):
-			return m, tasktui.TaskCmd(m.modules.Validate, m.highlightedOrSelectedModuleIDs()...)
+			return m, tui.CreateTasks(m.modules.Validate, m.highlightedOrSelectedModuleIDs()...)
 		case key.Matches(msg, Keys.Plan):
 			return m, m.createRun(run.CreateOptions{})
 		}

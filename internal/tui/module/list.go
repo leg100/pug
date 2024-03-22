@@ -14,7 +14,6 @@ import (
 	"github.com/leg100/pug/internal/tui"
 	"github.com/leg100/pug/internal/tui/keys"
 	"github.com/leg100/pug/internal/tui/table"
-	tasktui "github.com/leg100/pug/internal/tui/task"
 	"github.com/leg100/pug/internal/workspace"
 	"golang.org/x/exp/maps"
 )
@@ -116,12 +115,12 @@ func (m list) Update(msg tea.Msg) (tui.Model, tea.Cmd) {
 			//cmds = append(cmds, m.createRun(run.CreateOptions{}))
 		}
 	case resource.Event[*run.Run]:
-		switch msg.Type {
-		case resource.UpdatedEvent:
-			if msg.Payload.Status == run.Planned {
-				return m, tui.NavigateTo(tui.RunKind, &msg.Payload.Resource)
-			}
-		}
+		//switch msg.Type {
+		//case resource.UpdatedEvent:
+		//	if msg.Payload.Status == run.Planned {
+		//		//				return m, tui.NavigateTo(tui.RunKind, &msg.Payload.Resource)
+		//	}
+		//}
 	}
 
 	switch msg := msg.(type) {
@@ -149,11 +148,11 @@ func (m list) Update(msg tea.Msg) (tui.Model, tea.Cmd) {
 				})
 			}
 		case key.Matches(msg, localKeys.Init):
-			return m, tasktui.TaskCmd(m.ModuleService.Init, maps.Keys(m.table.HighlightedOrSelected())...)
+			return m, tui.CreateTasks(m.ModuleService.Init, maps.Keys(m.table.HighlightedOrSelected())...)
 		case key.Matches(msg, localKeys.Validate):
-			return m, tasktui.TaskCmd(m.ModuleService.Validate, maps.Keys(m.table.HighlightedOrSelected())...)
+			return m, tui.CreateTasks(m.ModuleService.Validate, maps.Keys(m.table.HighlightedOrSelected())...)
 		case key.Matches(msg, localKeys.Format):
-			return m, tasktui.TaskCmd(m.ModuleService.Format, maps.Keys(m.table.HighlightedOrSelected())...)
+			return m, tui.CreateTasks(m.ModuleService.Format, maps.Keys(m.table.HighlightedOrSelected())...)
 		case key.Matches(msg, localKeys.Plan):
 			return m, m.createRun(run.CreateOptions{})
 		}

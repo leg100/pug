@@ -11,7 +11,6 @@ import (
 	"github.com/leg100/pug/internal/tui"
 	"github.com/leg100/pug/internal/tui/keys"
 	"github.com/mattn/go-runewidth"
-	"github.com/muesli/reflow/truncate"
 	"golang.org/x/exp/maps"
 )
 
@@ -115,7 +114,7 @@ func New[T Item](columns []Column, fn RowRenderer[T], width, height int) Model[T
 	for _, col := range columns {
 		// Set default truncation function if unset
 		if col.TruncationFunc == nil {
-			col.TruncationFunc = runewidth.Truncate
+			col.TruncationFunc = defaultTruncationFunc
 		}
 		m.cols = append(m.cols, col)
 	}
@@ -509,7 +508,7 @@ func (m *Model[T]) renderRow(rowID int) string {
 	for i, col := range m.cols {
 		content := cells[col.Key]
 		// Truncate content if it is wider than column
-		truncated := truncate.StringWithTail(content, uint(col.Width), "…")
+		truncated := col.TruncationFunc(content, col.Width, "…")
 		// Ensure content is all on one line.
 		inlined := lipgloss.NewStyle().
 			Width(col.Width).

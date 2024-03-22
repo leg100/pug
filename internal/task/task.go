@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"os"
 	"os/exec"
+	"strings"
 	"sync"
 	"time"
 
@@ -141,6 +142,10 @@ func (f *factory) newTask(opts CreateOptions) (*Task, error) {
 }
 
 func (t *Task) String() string { return t.Resource.String() }
+
+func (t *Task) CommandString() string {
+	return strings.Join(t.Command, " ")
+}
 
 // NewReader provides a reader from which to read the task output from start to
 // end.

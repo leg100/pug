@@ -100,6 +100,17 @@ func (m *TabSet) SetActiveTab(tabIndex int) {
 	}
 }
 
+// SetActiveTabWithTitle looks up a tab with a title and makes it the active
+// tab. If no such tab exists no action is taken.
+func (m *TabSet) SetActiveTabWithTitle(title string) {
+	for i, tab := range m.Tabs {
+		if tab.title == title {
+			m.active = i
+			return
+		}
+	}
+}
+
 func (m TabSet) Update(msg tea.Msg) (TabSet, tea.Cmd) {
 	var cmds []tea.Cmd
 

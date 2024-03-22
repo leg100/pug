@@ -5,6 +5,7 @@ import (
 
 	"github.com/leg100/pug/internal"
 	"github.com/leg100/pug/internal/resource"
+	"github.com/leg100/pug/internal/workspace"
 	"golang.org/x/exp/maps"
 )
 
@@ -21,13 +22,17 @@ type runLister interface {
 // runs are not subject this rule).
 //
 // The scheduler attempts to schedule runs upon every run event it receives.
-func StartScheduler(ctx context.Context, runs *Service) {
+func StartScheduler(ctx context.Context, runs *Service, workspaces *workspace.Service) {
 	sub := runs.Broker.Subscribe(ctx)
 	s := &scheduler{runs: runs}
 	for range sub {
 		for _, run := range s.schedule() {
 			// Update status from pending to scheduled
 			run.updateStatus(Scheduled)
+			// Set run as workspace's current run if not a plan-only run.
+			if !run.PlanOnly {
+				workspaces.SetCurrent(run.Workspace().ID(), run.Resource)
+			}
 			// Trigger a plan task
 			_, _ = runs.plan(run)
 		}

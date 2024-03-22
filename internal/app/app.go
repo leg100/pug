@@ -127,7 +127,7 @@ func Start(args []string) error {
 	// Start daemons
 	go task.StartEnqueuer(ctx, tasks)
 	go task.StartRunner(ctx, tasks, cfg.MaxTasks)
-	go run.StartScheduler(ctx, runs)
+	go run.StartScheduler(ctx, runs, workspaces)
 
 	// Search directory for modules
 	if err := modules.Reload(); err != nil {

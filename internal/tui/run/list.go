@@ -23,16 +23,6 @@ type ListMaker struct {
 }
 
 func (m *ListMaker) Make(parent resource.Resource, width, height int) (tui.Model, error) {
-	statusColumn := table.Column{
-		Key:   "run_status",
-		Title: "STATUS",
-		Width: run.MaxStatusLen,
-	}
-	changesColumn := table.Column{
-		Key:   "run_changes",
-		Title: "CHANGES",
-		Width: 10,
-	}
 	ageColumn := table.Column{
 		Key:   "age",
 		Title: "AGE",
@@ -49,20 +39,20 @@ func (m *ListMaker) Make(parent resource.Resource, width, height int) (tui.Model
 		columns = append(columns, table.WorkspaceColumn)
 	}
 	columns = append(columns,
-		statusColumn,
-		changesColumn,
+		table.RunStatusColumn,
+		table.RunChangesColumn,
 		ageColumn,
 		table.IDColumn,
 	)
 
 	renderer := func(r *run.Run, style lipgloss.Style) table.RenderedRow {
 		row := table.RenderedRow{
-			table.ModuleColumn.Key:    r.ModulePath(),
-			table.WorkspaceColumn.Key: r.WorkspaceName(),
-			statusColumn.Key:          string(r.Status),
-			changesColumn.Key:         r.PlanReport.String(),
-			ageColumn.Key:             tui.Ago(time.Now(), r.Updated),
-			table.IDColumn.Key:        r.ID().String(),
+			table.ModuleColumn.Key:     r.ModulePath(),
+			table.WorkspaceColumn.Key:  r.WorkspaceName(),
+			table.RunStatusColumn.Key:  string(r.Status),
+			table.RunChangesColumn.Key: r.PlanReport.String(),
+			ageColumn.Key:              tui.Ago(time.Now(), r.Updated),
+			table.IDColumn.Key:         r.ID().String(),
 		}
 
 		// switch r.Status {
