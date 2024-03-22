@@ -1,6 +1,7 @@
 package task
 
 import (
+	"fmt"
 	"strings"
 	"time"
 
@@ -138,6 +139,10 @@ func (m list) View() string {
 
 func (m list) Pagination() string {
 	return ""
+}
+
+func (m list) TabStatus() string {
+	return fmt.Sprintf("(%d)", len(m.table.Items()))
 }
 
 func (m list) HelpBindings() (bindings []key.Binding) {

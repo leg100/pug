@@ -2,12 +2,12 @@ package top
 
 import (
 	"fmt"
+	"log/slog"
 	"os"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/spinner"
-	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/davecgh/go-spew/spew"
@@ -18,11 +18,6 @@ import (
 	"github.com/leg100/pug/internal/task"
 	"github.com/leg100/pug/internal/tui"
 	"github.com/leg100/pug/internal/tui/keys"
-	"github.com/leg100/pug/internal/tui/logs"
-	moduletui "github.com/leg100/pug/internal/tui/module"
-	runtui "github.com/leg100/pug/internal/tui/run"
-	tasktui "github.com/leg100/pug/internal/tui/task"
-	workspacetui "github.com/leg100/pug/internal/tui/workspace"
 	"github.com/leg100/pug/internal/workspace"
 )
 
@@ -56,11 +51,6 @@ type Options struct {
 
 // New constructs the top-level TUI model.
 func New(opts Options) (model, error) {
-	firstKind, err := tui.FirstPageKind(opts.FirstPage)
-	if err != nil {
-		return model{}, err
-	}
-
 	var dump *os.File
 	if opts.Debug {
 		var err error
@@ -72,44 +62,11 @@ func New(opts Options) (model, error) {
 
 	spinner := spinner.New(spinner.WithSpinner(spinner.Globe))
 
-	taskMaker := &tasktui.Maker{
-		TaskService: opts.TaskService,
-	}
-
-	makers := map[tui.Kind]tui.Maker{
-		tui.ModuleListKind: &moduletui.ListMaker{
-			ModuleService: opts.ModuleService,
-			RunService:    opts.RunService,
-			Spinner:       &spinner,
-			Workdir:       opts.Workdir,
-		},
-		tui.WorkspaceListKind: &workspacetui.ListMaker{
-			WorkspaceService: opts.WorkspaceService,
-			ModuleService:    opts.ModuleService,
-			RunService:       opts.RunService,
-		},
-		tui.RunListKind: &runtui.ListMaker{
-			RunService:  opts.RunService,
-			TaskService: opts.TaskService,
-		},
-		tui.TaskListKind: &tasktui.ListMaker{
-			TaskService: opts.TaskService,
-			MaxTasks:    opts.MaxTasks,
-		},
-		tui.RunKind: &runtui.Maker{
-			RunService:  opts.RunService,
-			TaskService: opts.TaskService,
-			Spinner:     &spinner,
-		},
-		tui.TaskKind: taskMaker,
-		tui.LogsKind: &logs.Maker{
-			Logger: opts.Logger,
-		},
-	}
-	navigator, err := newNavigator(firstKind, makers)
+	navigator, err := newNavigator(opts, &spinner)
 	if err != nil {
 		return model{}, err
 	}
+
 	m := model{
 		navigator: navigator,
 		spinner:   &spinner,
@@ -145,6 +102,14 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	switch msg := msg.(type) {
+	case resource.Event[*module.Module]:
+		switch msg.Type {
+		case resource.CreatedEvent:
+			//cmds = append(cmds, tui.NavigateTo(tui.ModuleKind, &msg.Payload.Resource))
+		}
+	}
+
+	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
@@ -158,6 +123,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return tui.BodyResizeMsg{Width: m.viewWidth(), Height: m.viewHeight()}
 		}
 	case tea.KeyMsg:
+		// Pressing any key makes any error message disappear
+		m.err = ""
+
 		switch {
 		case key.Matches(msg, keys.Global.Quit):
 			// ctrl-c quits the app
@@ -202,7 +170,12 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	case tui.ErrorMsg:
 		if msg.Error != nil {
-			m.err = fmt.Sprintf("%s: %s", fmt.Sprintf(msg.Message, msg.Args...), msg.Error.Error())
+			err := msg.Error
+			msg := fmt.Sprintf(msg.Message, msg.Args...)
+
+			// Both print error in footer as well as log it.
+			m.err = fmt.Sprintf("Error: %s: %s", msg, err)
+			slog.Error(msg, "error", err)
 		}
 	default:
 		// Send remaining msg types to all cached models
@@ -246,7 +219,7 @@ func (m model) View() string {
 				fullHelpView(
 					m.currentModel().HelpBindings(),
 					keys.KeyMapToSlice(keys.Global),
-					keys.KeyMapToSlice(viewport.DefaultKeyMap()),
+					keys.KeyMapToSlice(keys.Navigation),
 				),
 			)
 		shortHelpBindings = []key.Binding{
@@ -315,8 +288,8 @@ func (m model) View() string {
 			lipgloss.NewStyle().
 				Width(m.width-tui.Width(pagination)).
 				Padding(0, 1).
-				Padding(0, 1).
 				Foreground(tui.Red).
+				// TODO: prefix with Error:
 				Render(m.err),
 			// pagination
 			pagination,

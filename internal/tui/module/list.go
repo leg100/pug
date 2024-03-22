@@ -19,6 +19,7 @@ import (
 	"golang.org/x/exp/maps"
 )
 
+// ListMaker makes module list models
 type ListMaker struct {
 	ModuleService *module.Service
 	RunService    *run.Service
@@ -75,7 +76,7 @@ func (m *ListMaker) Make(_ resource.Resource, width, height int) (tui.Model, err
 		}
 		return cells
 	}
-	table := table.New[*module.Module](columns, renderer, width, height)
+	table := table.New(columns, renderer, width, height)
 	table = table.WithSortFunc(module.ByPath)
 
 	return list{
@@ -126,6 +127,10 @@ func (m list) Update(msg tea.Msg) (tui.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch {
+		case key.Matches(msg, keys.Global.Enter):
+			if mod, ok := m.table.Highlighted(); ok {
+				return m, tui.NavigateTo(tui.ModuleKind, &mod.Resource)
+			}
 		case key.Matches(msg, localKeys.Reload):
 			return m, func() tea.Msg {
 				if err := m.ModuleService.Reload(); err != nil {
@@ -142,10 +147,6 @@ func (m list) Update(msg tea.Msg) (tui.Model, tea.Cmd) {
 				return m, tea.ExecProcess(c, func(err error) tea.Msg {
 					return tui.NewErrorMsg(err, "opening vim")
 				})
-			}
-		case key.Matches(msg, keys.Global.Enter):
-			if mod, ok := m.table.Highlighted(); ok {
-				return m, tui.NavigateTo(tui.WorkspaceListKind, &mod.Resource)
 			}
 		case key.Matches(msg, localKeys.Init):
 			return m, tasktui.TaskCmd(m.ModuleService.Init, maps.Keys(m.table.HighlightedOrSelected())...)

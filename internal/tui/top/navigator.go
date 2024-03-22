@@ -1,6 +1,9 @@
 package top
 
 import (
+	"fmt"
+
+	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/leg100/pug/internal/tui"
 )
@@ -19,16 +22,21 @@ type navigator struct {
 	height int
 }
 
-func newNavigator(start tui.Kind, makers map[tui.Kind]tui.Maker) (*navigator, error) {
+func newNavigator(opts Options, spinner *spinner.Model) (*navigator, error) {
 	n := &navigator{
-		makers: makers,
+		makers: makeMakers(opts, spinner),
 		cache: &cache{
 			cache: make(map[cacheKey]tui.Model),
 		},
 	}
-	// ignore returned init cmd; instead the main model should invoke it
-	_, err := n.setCurrent(tui.Page{Kind: start})
+
+	firstKind, err := tui.FirstPageKind(opts.FirstPage)
 	if err != nil {
+		return nil, err
+	}
+
+	// ignore returned init cmd; instead the main model should invoke it
+	if _, err = n.setCurrent(tui.Page{Kind: firstKind}); err != nil {
 		return nil, err
 	}
 	return n, nil
@@ -48,17 +56,21 @@ func (n *navigator) setCurrent(page tui.Page) (created bool, err error) {
 		return false, nil
 	}
 
-	// Push target page to history
-	n.history = append(n.history, page)
 	// Check target page model is cached; if not then create and cache it
 	if !n.cache.exists(page) {
-		model, err := n.makers[n.currentPage().Kind].Make(n.currentPage().Parent, n.width, n.height)
+		maker, ok := n.makers[page.Kind]
+		if !ok {
+			return false, fmt.Errorf("no maker could be found for %s", page.Kind)
+		}
+		model, err := maker.Make(page.Parent, n.width, n.height)
 		if err != nil {
 			return false, err
 		}
-		n.cache.put(n.currentPage(), model)
+		n.cache.put(page, model)
 		created = true
 	}
+	// Push new current page to history
+	n.history = append(n.history, page)
 	return
 }
 

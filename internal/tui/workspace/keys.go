@@ -14,7 +14,7 @@ type keyMap struct {
 	Reload   key.Binding
 }
 
-var localKeys = keyMap{
+var Keys = keyMap{
 	Edit: key.NewBinding(
 		key.WithKeys("e"),
 		key.WithHelp("e", "edit"),

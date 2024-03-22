@@ -37,3 +37,13 @@ vet:
 .PHONY: install-linter
 install-linter:
 	go install honnef.co/go/tools/cmd/staticcheck@latest
+
+.PHONY: debug
+debug:
+	dlv debug --headless --api-version=2 --listen=127.0.0.1:4300 .
+	# Exiting delve neglects to restore the terminal, so we do so here.
+	reset
+
+.PHONY: connect
+connect:
+	dlv connect 127.0.0.1:4300 .

@@ -2,6 +2,7 @@ package tui
 
 import (
 	"errors"
+	"fmt"
 	"slices"
 	"time"
 
@@ -51,6 +52,7 @@ func (m *ListMaker) Make(parent resource.Resource, width, height int) (tui.Model
 		statusColumn,
 		changesColumn,
 		ageColumn,
+		table.IDColumn,
 	)
 
 	renderer := func(r *run.Run, style lipgloss.Style) table.RenderedRow {
@@ -152,6 +154,10 @@ func (m list) View() string {
 
 func (m list) Pagination() string {
 	return ""
+}
+
+func (m list) TabStatus() string {
+	return fmt.Sprintf("(%d)", len(m.table.Items()))
 }
 
 func (m list) HelpBindings() (bindings []key.Binding) {

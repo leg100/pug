@@ -1,6 +1,8 @@
 package workspace
 
 import (
+	"fmt"
+
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -80,15 +82,15 @@ func (m list) Update(msg tea.Msg) (tui.Model, tea.Cmd) {
 		switch {
 		case key.Matches(msg, keys.Global.Enter):
 			if ws, ok := m.table.Highlighted(); ok {
-				return m, tui.NavigateTo(tui.RunListKind, &ws.Resource)
+				return m, tui.NavigateTo(tui.WorkspaceKind, &ws.Resource)
 			}
-		case key.Matches(msg, localKeys.Init):
+		case key.Matches(msg, Keys.Init):
 			return m, tasktui.TaskCmd(m.modules.Init, m.highlightedOrSelectedModuleIDs()...)
-		case key.Matches(msg, localKeys.Format):
+		case key.Matches(msg, Keys.Format):
 			return m, tasktui.TaskCmd(m.modules.Format, m.highlightedOrSelectedModuleIDs()...)
-		case key.Matches(msg, localKeys.Validate):
+		case key.Matches(msg, Keys.Validate):
 			return m, tasktui.TaskCmd(m.modules.Validate, m.highlightedOrSelectedModuleIDs()...)
-		case key.Matches(msg, localKeys.Plan):
+		case key.Matches(msg, Keys.Plan):
 			return m, m.createRun(run.CreateOptions{})
 		}
 	}
@@ -112,8 +114,12 @@ func (m list) Pagination() string {
 	return ""
 }
 
+func (m list) TabStatus() string {
+	return fmt.Sprintf("(%d)", len(m.table.Items()))
+}
+
 func (m list) HelpBindings() (bindings []key.Binding) {
-	return keys.KeyMapToSlice(localKeys)
+	return keys.KeyMapToSlice(Keys)
 }
 
 func (m list) highlightedOrSelectedModuleIDs() []resource.ID {

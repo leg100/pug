@@ -1,0 +1,91 @@
+package workspace
+
+import (
+	"fmt"
+
+	"github.com/charmbracelet/bubbles/key"
+	tea "github.com/charmbracelet/bubbletea"
+	"github.com/leg100/pug/internal/resource"
+	"github.com/leg100/pug/internal/run"
+	"github.com/leg100/pug/internal/task"
+	"github.com/leg100/pug/internal/tui"
+	"github.com/leg100/pug/internal/tui/keys"
+	runtui "github.com/leg100/pug/internal/tui/run"
+	tasktui "github.com/leg100/pug/internal/tui/task"
+	"github.com/leg100/pug/internal/workspace"
+)
+
+// Maker makes workspace models.
+type Maker struct {
+	WorkspaceService *workspace.Service
+	RunService       *run.Service
+	TaskService      *task.Service
+
+	RunListMaker  *runtui.ListMaker
+	TaskListMaker *tasktui.ListMaker
+}
+
+func (mm *Maker) Make(mr resource.Resource, width, height int) (tui.Model, error) {
+	ws, err := mm.WorkspaceService.Get(mr.ID())
+	if err != nil {
+		return model{}, err
+	}
+
+	tabs := tui.NewTabSet(width, height)
+	if _, err := tabs.AddTab(mm.RunListMaker, mr, "runs"); err != nil {
+		return nil, fmt.Errorf("adding runs tab: %w", err)
+	}
+	if _, err := tabs.AddTab(mm.TaskListMaker, mr, "tasks"); err != nil {
+		return nil, fmt.Errorf("adding tasks tab: %w", err)
+	}
+
+	m := model{
+		workspace: ws,
+		tabs:      tabs,
+	}
+	return m, nil
+}
+
+type model struct {
+	workspace *workspace.Workspace
+	tabs      tui.TabSet
+}
+
+func (m model) Init() tea.Cmd {
+	return m.tabs.Init()
+}
+
+func (m model) Update(msg tea.Msg) (tui.Model, tea.Cmd) {
+	var cmds []tea.Cmd
+
+	switch msg := msg.(type) {
+	case resource.Event[*workspace.Workspace]:
+		if msg.Payload.ID() == m.workspace.ID() {
+			m.workspace = msg.Payload
+		}
+	}
+	// Update tabs
+	updated, cmd := m.tabs.Update(msg)
+	cmds = append(cmds, cmd)
+	m.tabs = updated
+
+	return m, tea.Batch(cmds...)
+}
+
+func (m model) Title() string {
+	return tui.Breadcrumbs("Workspace", m.workspace.Resource)
+}
+
+func (m model) View() string {
+	return m.tabs.View()
+}
+
+func (m model) Pagination() string {
+	return ""
+}
+
+func (m model) HelpBindings() (bindings []key.Binding) {
+	return []key.Binding{
+		keys.Common.Apply,
+	}
+}

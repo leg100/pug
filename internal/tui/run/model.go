@@ -1,13 +1,13 @@
 package tui
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 	"github.com/leg100/pug/internal/resource"
 	"github.com/leg100/pug/internal/run"
 	"github.com/leg100/pug/internal/task"
@@ -27,57 +27,51 @@ func (mm *Maker) Make(rr resource.Resource, width, height int) (tui.Model, error
 	if err != nil {
 		return model{}, err
 	}
-	m := model{
-		svc:     mm.RunService,
-		tasks:   mm.TaskService,
-		run:     run,
-		spinner: mm.Spinner,
-		tabMaker: &tasktui.Maker{
-			TaskService: mm.TaskService,
-			IsRunTab:    true,
-		},
-		width:  width,
-		height: height,
+
+	taskMaker := &tasktui.Maker{
+		TaskService: mm.TaskService,
+		Spinner:     mm.Spinner,
+		IsRunTab:    true,
 	}
+
+	m := model{
+		svc:       mm.RunService,
+		tasks:     mm.TaskService,
+		run:       run,
+		taskMaker: taskMaker,
+	}
+	m.tabs = tui.NewTabSet(width, height).WithTabSetInfo(m)
+
+	// Add tabs for existing tasks
+	tasks := mm.TaskService.List(task.ListOptions{
+		Ancestor: rr.ID(),
+		// Ensures the plan tab is rendered first
+		Oldest: true,
+	})
+	for _, t := range tasks {
+		if _, err := m.addTab(t); err != nil {
+			return nil, err
+		}
+	}
+
 	return m, nil
 }
 
 type model struct {
-	svc   *run.Service
-	tasks *task.Service
-	run   *run.Run
-
-	tabs      []tab
-	activeTab int
-	tabMaker  *tasktui.Maker
-
-	width  int
-	height int
-
-	spinner *spinner.Model
+	svc       *run.Service
+	tasks     *task.Service
+	run       *run.Run
+	tabs      tui.TabSet
+	taskMaker tui.Maker
 }
-
-type tab struct {
-	model tui.Model
-	task  *task.Task
-}
-
-type initTasksMsg []*task.Task
 
 // Init retrieves the run's existing tasks.
 func (m model) Init() tea.Cmd {
-	return func() tea.Msg {
-		tasks := m.tasks.List(task.ListOptions{
-			Ancestor: m.run.ID(),
-		})
-		return initTasksMsg(tasks)
-	}
+	return m.tabs.Init()
 }
 
 func (m model) Update(msg tea.Msg) (tui.Model, tea.Cmd) {
-	var (
-		cmds []tea.Cmd
-	)
+	var cmds []tea.Cmd
 
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
@@ -89,19 +83,7 @@ func (m model) Update(msg tea.Msg) (tui.Model, tea.Cmd) {
 				}
 				return nil
 			}
-		case key.Matches(msg, keys.Navigation.TabNext):
-			// Cycle tabs, going back to tab #0 after the last tab
-			if m.activeTab == len(m.tabs)-1 {
-				m.activeTab = 0
-			} else {
-				m.activeTab = m.activeTab + 1
-			}
-			return m, nil
-		case key.Matches(msg, keys.Navigation.TabLast):
-			m.activeTab = max(m.activeTab-1, 0)
-			return m, nil
 		}
-
 	case resource.Event[*run.Run]:
 		if msg.Payload.ID() == m.run.ID() {
 			m.run = msg.Payload
@@ -113,28 +95,17 @@ func (m model) Update(msg tea.Msg) (tui.Model, tea.Cmd) {
 			if !msg.Payload.HasAncestor(m.run.ID()) {
 				break
 			}
-			cmds = append(cmds, m.createTab(msg.Payload))
-		}
-	case initTasksMsg:
-		// Create tabs for existing run tasks
-		for _, t := range msg {
-			if !t.HasAncestor(m.run.ID()) {
-				continue
+			cmd, err := m.addTab(msg.Payload)
+			if err != nil {
+				return m, tui.NewErrorCmd(err, "")
 			}
-			cmds = append(cmds, m.createTab(t))
+			cmds = append(cmds, cmd)
 		}
-		return m, tea.Batch(cmds...)
-	case tui.BodyResizeMsg:
-		m.width = msg.Width
-		m.height = msg.Height
 	}
-
-	// Relay messages onto child task models
-	for i, tm := range m.tabs {
-		updated, cmd := tm.model.Update(msg)
-		cmds = append(cmds, cmd)
-		m.tabs[i].model = updated
-	}
+	// Update tabs
+	updated, cmd := m.tabs.Update(msg)
+	cmds = append(cmds, cmd)
+	m.tabs = updated
 
 	return m, tea.Batch(cmds...)
 }
@@ -143,86 +114,33 @@ func (m model) Title() string {
 	return tui.Breadcrumbs("Run", m.run.Resource)
 }
 
-func (m *model) createTab(task *task.Task) tea.Cmd {
-	// dont create a tab if there is already a tab for the given task.
-	for _, existing := range m.tabs {
-		if existing.task.ID() == task.ID() {
-			return nil
-		}
-	}
-	model, err := m.tabMaker.Make(task.Resource, m.width, m.height)
+func (m *model) addTab(t *task.Task) (tea.Cmd, error) {
+	title := strings.Join(t.Command, " ")
+	cmd, err := m.tabs.AddTab(m.taskMaker, t.Resource, title)
 	if err != nil {
-		return tui.NewErrorCmd(err, "creating run task tab")
+		// Silently ignore attempts to add duplicate tabs: this can happen when
+		// a task is received in both a created event as well as in the initial
+		// listing of existing tasks, which is not unlikely.
+		if errors.Is(err, tui.ErrDuplicateTab) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("adding %s tab: %w", title, err)
 	}
-	tab := tab{
-		model: model,
-		task:  task,
-	}
-	m.tabs = append(m.tabs, tab)
-	// switch view to the newly created tab
-	m.activeTab = len(m.tabs) - 1
-	return tab.model.Init()
+	// Make the newly added tab the active tab.
+	m.tabs.SetActiveTab(-1)
+	return cmd, nil
 }
 
 func (m model) View() string {
-	var (
-		tabComponents          []string
-		activeTabStyle         = tui.Bold.Copy().Foreground(lipgloss.Color("13"))
-		activeStatusStyle      = tui.Regular.Copy().Foreground(lipgloss.Color("13"))
-		inactiveTabStyle       = tui.Regular.Copy().Foreground(lipgloss.Color("250"))
-		inactiveStatusStyle    = tui.Regular.Copy().Foreground(lipgloss.Color("250"))
-		renderedTabsTotalWidth int
-	)
-	for i, t := range m.tabs {
-		var (
-			headingStyle  lipgloss.Style
-			statusStyle   lipgloss.Style
-			underlineChar string
-		)
-		if i == m.activeTab {
-			headingStyle = activeTabStyle.Copy()
-			statusStyle = activeStatusStyle.Copy()
-			underlineChar = "━"
-		} else {
-			headingStyle = inactiveTabStyle.Copy()
-			statusStyle = inactiveStatusStyle.Copy()
-			underlineChar = "─"
-		}
-		heading := headingStyle.Copy().Padding(0, 1).Render(strings.Join(t.task.Command, " "))
-		var statusSymbol string
-		switch t.task.State {
-		case task.Running:
-			statusSymbol = m.spinner.View()
-		case task.Exited:
-			statusSymbol = "✓"
-		case task.Errored:
-			statusSymbol = "✗"
-		}
-		heading += statusStyle.Padding(0, 1, 0, 0).Render(statusSymbol)
-		underline := headingStyle.Render(strings.Repeat(underlineChar, tui.Width(heading)))
-		rendered := lipgloss.JoinVertical(lipgloss.Top, heading, underline)
-		tabComponents = append(tabComponents, rendered)
-		renderedTabsTotalWidth += tui.Width(heading)
-	}
-	remainingWidth := max(0, m.width-renderedTabsTotalWidth)
-	runStatusSection := lipgloss.JoinVertical(lipgloss.Top,
-		// run status
-		tui.Regular.Copy().Width(remainingWidth).Align(lipgloss.Right).Padding(0, 1).Render(string(m.run.Status)),
-		// faint grey underline
-		inactiveTabStyle.Copy().Render(strings.Repeat("─", remainingWidth)),
-	)
-	tabComponents = append(tabComponents, runStatusSection)
+	return m.tabs.View()
+}
 
-	tabSection := lipgloss.JoinHorizontal(lipgloss.Bottom, tabComponents...)
-	var tabContent string
-	if len(m.tabs) > 0 {
-		tabContent = m.tabs[m.activeTab].model.View()
-	}
-	return lipgloss.JoinVertical(lipgloss.Top, tabSection, tabContent)
+func (m model) TabSetInfo() string {
+	return string(m.run.Status)
 }
 
 func (m model) Pagination() string {
-	return fmt.Sprintf("tabs: %d; active: %d", len(m.tabs), m.activeTab)
+	return ""
 }
 
 func (m model) HelpBindings() (bindings []key.Binding) {

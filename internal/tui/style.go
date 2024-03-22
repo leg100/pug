@@ -3,9 +3,9 @@ package tui
 import "github.com/charmbracelet/lipgloss"
 
 var (
-	Regular        = lipgloss.NewStyle()
-	RoundedBorders = Regular.Copy().Border(lipgloss.RoundedBorder())
-	Bold           = Regular.Copy().Bold(true)
+	Regular = lipgloss.NewStyle()
+	Bold    = Regular.Copy().Bold(true)
+	Padded  = Regular.Copy().Padding(0, 1)
 
 	Width  = lipgloss.Width
 	Height = lipgloss.Height

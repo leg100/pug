@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/bubbles/key"
+	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -19,6 +20,7 @@ import (
 
 type Maker struct {
 	TaskService *task.Service
+	Spinner     *spinner.Model
 
 	// If IsRunTab is true then Maker makes task models that are a tab within
 	// the run model.
@@ -36,6 +38,7 @@ func (mm *Maker) Make(tr resource.Resource, width, height int) (tui.Model, error
 		task:     task,
 		output:   task.NewReader(),
 		viewport: viewport.New(0, 0),
+		spinner:  mm.Spinner,
 		isRunTab: mm.IsRunTab,
 		// read upto 1kb at a time
 		buf:    make([]byte, 1024),
@@ -55,8 +58,10 @@ type model struct {
 	output   io.Reader
 	buf      []byte
 	content  string
-	viewport viewport.Model
 	isRunTab bool
+
+	viewport viewport.Model
+	spinner  *spinner.Model
 
 	width  int
 	height int
@@ -125,17 +130,15 @@ func (m model) Title() string {
 
 func (m *model) setViewportDimensions(width, height int) {
 	m.viewport.Width = max(0, width-2)
-	m.viewport.Height = max(0, height-2)
+	m.viewport.Height = max(0, height)
 }
 
 // View renders the viewport
 func (m model) View() string {
-	// The viewport has a fixed width of 80 columns. If there is sufficient
-	// additional width in the terminal, then metadata is shown alongside the
-	// viewport.
+	// If there is sufficient additional width in the terminal, then metadata is
+	// shown alongside the viewport.
 	body := tui.Regular.Copy().
 		Margin(0, 1).
-		Width(80).
 		Render(m.viewport.View())
 	if m.width > 104 {
 		metadata := tui.Regular.Copy().
@@ -187,6 +190,18 @@ func (m model) Pagination() string {
 		Padding(0, 1).
 		Margin(0, 1).
 		Render(fmt.Sprintf("%3.f%%", m.viewport.ScrollPercent()*100))
+}
+
+func (m model) TabStatus() string {
+	switch m.task.State {
+	case task.Running:
+		return m.spinner.View()
+	case task.Exited:
+		return "✓"
+	case task.Errored:
+		return "✗"
+	}
+	return "+"
 }
 
 func (m model) HelpBindings() (bindings []key.Binding) {
