@@ -34,7 +34,7 @@ func NewService(opts ServiceOptions) *Service {
 	}
 
 	svc := &Service{
-		table:   resource.NewTable[*Task](broker),
+		table:   resource.NewTable(broker),
 		Broker:  broker,
 		factory: factory,
 		counter: &counter,
@@ -66,7 +66,7 @@ func (s *Service) Create(opts CreateOptions) (*Task, error) {
 		}
 	}()
 
-	slog.Info("created task", "task_id", task.ID(), "command", task.Command)
+	slog.Debug("created task", "task", task)
 	return task, nil
 }
 
@@ -79,7 +79,7 @@ func (s *Service) Enqueue(taskID resource.ID) (*Task, error) {
 	}
 
 	task.updateState(Queued)
-	slog.Info("enqueued task", "task_id", task.ID(), "command", task.Command)
+	slog.Debug("enqueued task", "task_id", task.ID(), "command", task.Command)
 	return task, nil
 }
 
@@ -154,10 +154,13 @@ func (s *Service) Subscribe(ctx context.Context) <-chan resource.Event[*Task] {
 func (s *Service) Cancel(taskID resource.ID) (*Task, error) {
 	task, err := s.table.Get(taskID)
 	if err != nil {
-		return nil, fmt.Errorf("canceling task: %w", err)
+		slog.Error("canceling task", "id", taskID)
+		return nil, err
 	}
 
 	task.cancel()
+
+	slog.Info("canceled task", "task", task)
 	return task, nil
 }
 

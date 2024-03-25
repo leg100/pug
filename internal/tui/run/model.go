@@ -1,4 +1,4 @@
-package tui
+package run
 
 import (
 	"errors"
@@ -8,6 +8,7 @@ import (
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/leg100/pug/internal/resource"
 	"github.com/leg100/pug/internal/run"
 	"github.com/leg100/pug/internal/task"
@@ -40,7 +41,7 @@ func (mm *Maker) Make(rr resource.Resource, width, height int) (tui.Model, error
 		run:       run,
 		taskMaker: taskMaker,
 	}
-	m.tabs = tui.NewTabSet(width, height).WithTabSetInfo(m)
+	m.tabs = tui.NewTabSet(width, height).WithTabSetInfo(&m)
 
 	// Add tabs for existing tasks
 	tasks := mm.TaskService.List(task.ListOptions{
@@ -114,6 +115,14 @@ func (m model) Title() string {
 	return tui.Breadcrumbs("Run", m.run.Resource)
 }
 
+func (m model) Status() string {
+	return tui.RenderRunStatus(m.run.Status)
+}
+
+func (m model) ID() string {
+	return m.run.String()
+}
+
 func (m *model) addTab(t *task.Task) (tea.Cmd, error) {
 	title := strings.Join(t.Command, " ")
 	cmd, err := m.tabs.AddTab(m.taskMaker, t.Resource, title)
@@ -136,7 +145,18 @@ func (m model) View() string {
 }
 
 func (m model) TabSetInfo() string {
-	return string(m.run.Status)
+	hasTabs, activeTab := m.tabs.Active()
+	if !hasTabs {
+		return ""
+	}
+	switch activeTab.Title {
+	case "plan":
+		return tui.RenderRunReport(m.run.PlanReport, lipgloss.Style{})
+	case "apply":
+		return tui.RenderRunReport(m.run.ApplyReport, lipgloss.Style{})
+	default:
+		return ""
+	}
 }
 
 func (m model) Pagination() string {

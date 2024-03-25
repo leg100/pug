@@ -11,7 +11,6 @@ import (
 	"log/slog"
 
 	"github.com/go-logfmt/logfmt"
-	"github.com/google/uuid"
 	"github.com/leg100/pug/internal/pubsub"
 	"github.com/leg100/pug/internal/resource"
 )
@@ -28,20 +27,20 @@ type Message struct {
 	Time       time.Time
 	Level      string
 	Message    string `json:"msg"`
-	Attributes []string
+	Attributes []Attr
 
-	// id uniquely identifies the log message.
-	id resource.ID
+	// A log message is a resource, only in order to satisfy the interface on
+	// tui/table.Table
+	resource.Resource
+
+	// Serial uniquely identifies the message (within the scope of the logger it
+	// was emitted from). The higher the serial number the newer the message.
+	serial uint
 }
 
-func (r Message) ID() resource.ID {
-	return r.id
-}
-
-// HasAncestor is only implemented in order to satisfy the tableItem interface
-// used in the tui table
-func (r Message) HasAncestor(id resource.ID) bool {
-	return true
+type Attr struct {
+	Key   string
+	Value string
 }
 
 type Logger struct {
@@ -50,6 +49,8 @@ type Logger struct {
 
 	broker *pubsub.Broker[Message]
 	file   io.Writer
+
+	serial uint
 }
 
 // NewLogger constructs a slog logger with the appropriate log level. The logger
@@ -78,7 +79,8 @@ func (l *Logger) Write(p []byte) (int, error) {
 	d := logfmt.NewDecoder(bytes.NewReader(p))
 	for d.ScanRecord() {
 		msg := Message{
-			id: resource.ID(uuid.New()),
+			serial:   l.serial,
+			Resource: resource.New(resource.Log, "", nil),
 		}
 		for d.ScanKeyval() {
 			switch string(d.Key()) {
@@ -93,12 +95,29 @@ func (l *Logger) Write(p []byte) (int, error) {
 			case "msg":
 				msg.Message = string(d.Value())
 			default:
-				s := fmt.Sprintf("%s=%s", d.Key(), d.Value())
-				msg.Attributes = append(msg.Attributes, s)
+				msg.Attributes = append(msg.Attributes, Attr{
+					Key:   string(d.Key()),
+					Value: string(d.Value()),
+				})
 			}
 		}
+		// Sort attributes by key, lexicographically. This ensures that in the
+		// TUI the attributes are rendered consistently (and we do this here
+		// rather than in the TUI because we only want to do this once rather
+		// than on every render).
+		//slices.SortFunc(msg.Attributes, func(a, b Attr) int {
+		//	switch {
+		//	case a.Key < b.Key:
+		//		return -1
+		//	case a.Key > b.Key:
+		//		return 1
+		//	default:
+		//		return 0
+		//	}
+		//})
 		msgs = append(msgs, msg)
 		l.broker.Publish(resource.CreatedEvent, msg)
+		l.serial++
 	}
 	if d.Err() != nil {
 		return 0, d.Err()
@@ -115,8 +134,8 @@ func (l *Logger) Subscribe(ctx context.Context) <-chan resource.Event[Message] {
 	return l.broker.Subscribe(ctx)
 }
 
-func ByTimeDesc(i, j Message) int {
-	if i.Time.Before(j.Time) {
+func BySerialDesc(i, j Message) int {
+	if i.serial < j.serial {
 		return 1
 	}
 	return -1

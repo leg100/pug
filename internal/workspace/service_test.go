@@ -41,7 +41,7 @@ func TestWorkspace_resetWorkspaces(t *testing.T) {
 		modules: &fakeModuleService{current: &gotCurrent},
 		table:   table,
 	}
-	err := svc.resetWorkspaces(mod.Resource, []string{"dev", "prod"}, "dev")
+	_, _, err := svc.resetWorkspaces(mod.Resource, []string{"dev", "prod"}, "dev")
 	require.NoError(t, err)
 
 	// expect staging to be dropped

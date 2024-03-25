@@ -18,10 +18,13 @@ import (
 	"github.com/leg100/pug/internal/task"
 	"github.com/leg100/pug/internal/tui"
 	"github.com/leg100/pug/internal/tui/keys"
+	"github.com/leg100/pug/internal/version"
 	"github.com/leg100/pug/internal/workspace"
 )
 
 type model struct {
+	WorkspaceService *workspace.Service
+
 	*navigator
 
 	width  int
@@ -30,13 +33,15 @@ type model struct {
 	showHelp bool
 
 	// Either an error or an informational message is rendered in the footer.
-	err  string
+	err  error
 	info string
 
 	tasks   *task.Service
 	spinner *spinner.Model
 
 	dump *os.File
+
+	workdir string
 }
 
 type Options struct {
@@ -63,6 +68,11 @@ func New(opts Options) (model, error) {
 		}
 	}
 
+	workdir, err := contractUserPath(opts.Workdir)
+	if err != nil {
+		return model{}, err
+	}
+
 	spinner := spinner.New(spinner.WithSpinner(spinner.Globe))
 
 	navigator, err := newNavigator(opts, &spinner)
@@ -71,20 +81,28 @@ func New(opts Options) (model, error) {
 	}
 
 	m := model{
-		navigator: navigator,
-		spinner:   &spinner,
-		tasks:     opts.TaskService,
-		dump:      dump,
+		WorkspaceService: opts.WorkspaceService,
+		navigator:        navigator,
+		spinner:          &spinner,
+		tasks:            opts.TaskService,
+		dump:             dump,
+		workdir:          workdir,
 	}
 	return m, nil
 }
 
 func (m model) Init() tea.Cmd {
-	return m.currentModel().Init()
+	return tea.Batch(
+		m.currentModel().Init(),
+		tui.ReloadModules(m.WorkspaceService),
+	)
 }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	var cmds []tea.Cmd
+	var (
+		cmd  tea.Cmd
+		cmds []tea.Cmd
+	)
 
 	if m.dump != nil {
 		spew.Fdump(m.dump, msg)
@@ -128,7 +146,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		// Pressing any key makes any info/error message in the footer disappear
 		m.info = ""
-		m.err = ""
+		m.err = nil
 
 		switch {
 		case key.Matches(msg, keys.Global.Quit):
@@ -172,13 +190,23 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if created {
 			return m, m.currentModel().Init()
 		}
+	case tui.CreatedRunsMsg:
+		cmd, m.info, m.err = handleCreatedRunsMsg(msg)
+		cmds = append(cmds, cmd)
+	case tui.CreatedTasksMsg:
+		m.info, m.err = handleCreatedTasksMsg(msg)
+		if len(msg.Tasks) > 0 {
+			return m, tui.WaitTasks(msg)
+		}
+	case tui.CompletedTasksMsg:
+		m.info, m.err = handleCompletedTasksMsg(msg)
 	case tui.ErrorMsg:
 		if msg.Error != nil {
 			err := msg.Error
 			msg := fmt.Sprintf(msg.Message, msg.Args...)
 
 			// Both print error in footer as well as log it.
-			m.err = fmt.Sprintf("Error: %s: %s", msg, err)
+			m.err = fmt.Errorf("%s: %w", msg, err)
 			slog.Error(msg, "error", err)
 		}
 	case tui.InfoMsg:
@@ -186,9 +214,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	default:
 		// Send remaining msg types to all cached models
 		cmds = append(cmds, m.cache.updateAll(msg)...)
-		return m, tea.Batch(cmds...)
 	}
-	return m, nil
+	return m, tea.Batch(cmds...)
 }
 
 var (
@@ -207,6 +234,17 @@ var (
 	breadcrumbsHeight    = 1
 	horizontalRuleHeight = 1
 	messageFooterHeight  = 1
+
+	workdirIcon = tui.Bold.Copy().
+			Foreground(tui.Pink).
+			Margin(0, 2, 0, 1).
+			Render("🗀")
+	versionIcon = tui.Regular.Copy().
+			Foreground(tui.Pink).
+			Margin(0, 2, 0, 1).
+			Render("ⓥ")
+	workdirStyle = tui.Regular.Foreground(tui.LightGrey)
+	versionStyle = tui.Regular.Foreground(tui.LightGrey)
 )
 
 func (m model) View() string {
@@ -242,14 +280,45 @@ func (m model) View() string {
 		)
 	}
 
-	// Center title within a horizontal rule
-	title := m.currentModel().Title()
-	titleRemainingWidth := m.width - tui.Width(title)
-	titleRemainingWidthHalved := titleRemainingWidth / 2
-	titleLeftRule := strings.Repeat("─", max(0, titleRemainingWidthHalved))
-	titleLeftRuleAndTitle := fmt.Sprintf("%s %s ", titleLeftRule, title)
-	titleRightRule := strings.Repeat("─", max(0, m.width-tui.Width(titleLeftRuleAndTitle)))
-	renderedTitle := fmt.Sprintf("%s%s", titleLeftRuleAndTitle, titleRightRule)
+	// Render global static info in top left corner
+	globalStatic := lipgloss.JoinVertical(lipgloss.Top,
+		lipgloss.JoinHorizontal(lipgloss.Left, workdirIcon, workdirStyle.Render(m.workdir)),
+		lipgloss.JoinHorizontal(lipgloss.Left, versionIcon, versionStyle.Render(version.Version)),
+	)
+
+	// Render help bindings in between version and logo. Set its available width
+	// to the width of the terminal minus the width of the global static info,
+	// the width of the logo, and the width of its margins.
+	shortHelpWidth := m.width - tui.Width(globalStatic) - logoWidth - 6
+	shortHelp := lipgloss.NewStyle().
+		Margin(0, 2, 0, 4).
+		Width(shortHelpWidth).
+		Render(shortHelpView(shortHelpBindings, shortHelpWidth))
+
+	// Render title.
+	title := lipgloss.NewStyle().
+		Margin(0, 1).
+		Render(m.currentModel().Title())
+
+	// Optionally render page id and/or status to the right side of title
+	pageIDAndStatusStyle := tui.Regular.
+		Margin(0, 1).
+		Width(m.width - tui.Width(title) - 2).
+		Align(lipgloss.Right)
+	var (
+		pageID     string
+		pageStatus string
+	)
+	if identifiable, ok := m.currentModel().(tui.ModelID); ok {
+		pageID = tui.Regular.Copy().Padding(0, 0, 0, 0).Render(identifiable.ID())
+	}
+	if statusable, ok := m.currentModel().(tui.ModelStatus); ok {
+		pageStatus = tui.Padded.Copy().Render(statusable.Status())
+	}
+	pageIDAndStatus := pageIDAndStatusStyle.Render(
+		lipgloss.JoinHorizontal(lipgloss.Left, pageStatus, pageID),
+	)
+	title = lipgloss.JoinHorizontal(lipgloss.Left, title, pageIDAndStatus)
 
 	// Global-level info goes in the bottom right corner in the footer.
 	metadata := tui.Padded.Copy().Render(
@@ -260,10 +329,10 @@ func (m model) View() string {
 	// the footer, using whatever space is remaining to the left of the
 	// metadata.
 	var footerMsg string
-	if m.err != "" {
+	if m.err != nil {
 		footerMsg = tui.Padded.Copy().
 			Foreground(tui.Red).
-			Render(m.err)
+			Render("Error: " + m.err.Error())
 	} else if m.info != "" {
 		footerMsg = tui.Padded.Copy().
 			Foreground(tui.Black).
@@ -278,15 +347,12 @@ func (m model) View() string {
 			Render(
 				lipgloss.JoinHorizontal(
 					lipgloss.Left,
+					// global static info
+					globalStatic,
 					// help
-					lipgloss.NewStyle().
-						Margin(0, 1).
-						// -2 for vertical margins
-						Width(m.width-logoWidth-2).
-						Render(shortHelpView(shortHelpBindings, m.width-logoWidth-2)),
+					shortHelp,
 					// logo
-					lipgloss.NewStyle().
-						Render(renderedLogo),
+					renderedLogo,
 				),
 			),
 		// title
@@ -295,14 +361,17 @@ func (m model) View() string {
 			MaxHeight(1).
 			Inline(true).
 			Width(m.width).
-			Render(renderedTitle),
+			// Prefix title with a space to add margin (Inline() doesn't permit
+			// using Margin()).
+			Render(title),
+		// horizontal rule
+		strings.Repeat("─", m.width),
 		// content
 		lipgloss.NewStyle().
 			Height(m.viewHeight()).
 			Render(content),
 		// horizontal rule
-		lipgloss.NewStyle().
-			Render(strings.Repeat("─", m.width)),
+		strings.Repeat("─", m.width),
 		// footer
 		lipgloss.JoinHorizontal(
 			lipgloss.Top,
@@ -321,7 +390,10 @@ func (m model) View() string {
 // viewHeight retrieves the height available beneath the header and breadcrumbs,
 // and the message footer.
 func (m model) viewHeight() int {
-	return m.height - headerHeight - breadcrumbsHeight - horizontalRuleHeight - messageFooterHeight
+	// Take total terminal height and subtract the height of the header, the
+	// title, the horizontal rule under the title, and then in the footer, the
+	// horizontal rule and the message underneath.
+	return m.height - headerHeight - breadcrumbsHeight - 2*horizontalRuleHeight - messageFooterHeight
 }
 
 // viewWidth retrieves the width available within the main view

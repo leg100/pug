@@ -14,7 +14,6 @@ import (
 	"github.com/leg100/pug/internal/tui"
 	"github.com/leg100/pug/internal/tui/keys"
 	"github.com/leg100/pug/internal/tui/table"
-	"golang.org/x/exp/maps"
 )
 
 type ListMaker struct {
@@ -24,9 +23,9 @@ type ListMaker struct {
 
 func (m *ListMaker) Make(parent resource.Resource, width, height int) (tui.Model, error) {
 	commandColumn := table.Column{
-		Key:   "command",
-		Title: "COMMAND",
-		Width: 20,
+		Key:        "command",
+		Title:      "COMMAND",
+		FlexFactor: 1,
 	}
 	statusColumn := table.Column{
 		Key:   "run_status",
@@ -39,7 +38,7 @@ func (m *ListMaker) Make(parent resource.Resource, width, height int) (tui.Model
 		Width: 10,
 	}
 	var columns []table.Column
-	switch parent.Kind {
+	switch parent.Kind() {
 	case resource.Global:
 		// Show all columns in global tasks table
 		columns = append(columns, table.ModuleColumn)
@@ -119,7 +118,7 @@ func (m list) Update(msg tea.Msg) (tui.Model, tea.Cmd) {
 				return m, tui.NavigateTo(tui.TaskKind, &task.Resource)
 			}
 		case key.Matches(msg, keys.Common.Cancel):
-			return m, tui.CreateTasks(m.svc.Cancel, maps.Keys(m.table.HighlightedOrSelected())...)
+			return m, tui.CreateTasks("cancel", m.svc.Cancel, m.table.HighlightedOrSelectedIDs()...)
 		}
 	}
 	// Handle keyboard and mouse events in the table widget

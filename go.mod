@@ -23,7 +23,7 @@ require (
 	github.com/mitchellh/iochan v1.0.0
 	github.com/muesli/reflow v0.3.0
 	github.com/peterbourgon/ff/v4 v4.0.0-alpha.4
-	github.com/stretchr/testify v1.8.4
+	github.com/stretchr/testify v1.9.0
 	golang.org/x/exp v0.0.0-20240119083558-1b970713d09a
 )
 
@@ -71,3 +71,5 @@ require (
 )
 
 replace github.com/mattn/go-runewidth => github.com/leg100/go-runewidth v0.0.16-0.20240317085039-79cdd3ecf674
+
+replace github.com/muesli/reflow => ../reflow

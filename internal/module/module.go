@@ -18,6 +18,11 @@ type Module struct {
 	// The module's current workspace.
 	CurrentWorkspace *resource.Resource
 
+	// Whether module is initialized correctly. Nil means it is unknown.
+	Initialized *bool
+	// Whether a terraform init is in progress.
+	InitInProgress bool
+
 	// Whether module is formatted correctly. Nil means it is unknown.
 	Formatted *bool
 	// Whether formatting is in progress.
@@ -78,7 +83,7 @@ func findModules(parent string) (modules []string, err error) {
 		// so this is what is used even though no writing is performed.
 		file, diags := hclwrite.ParseConfig(cfg, path, hcl.Pos{Line: 1, Column: 1})
 		if diags.HasErrors() {
-			slog.Error("finding modules: parsing hcl", "path", path, "error", diags)
+			slog.Error("reloading modules: parsing hcl", "path", path, "error", diags)
 			return nil
 		}
 		for _, block := range file.Body().Blocks() {

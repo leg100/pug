@@ -28,10 +28,11 @@ func makeMakers(opts Options, spinner *spinner.Model) map[tui.Kind]tui.Maker {
 
 	makers := map[tui.Kind]tui.Maker{
 		tui.ModuleListKind: &moduletui.ListMaker{
-			ModuleService: opts.ModuleService,
-			RunService:    opts.RunService,
-			Spinner:       spinner,
-			Workdir:       opts.Workdir,
+			ModuleService:    opts.ModuleService,
+			WorkspaceService: opts.WorkspaceService,
+			RunService:       opts.RunService,
+			Spinner:          spinner,
+			Workdir:          opts.Workdir,
 		},
 		tui.ModuleKind: &moduletui.Maker{
 			ModuleService:      opts.ModuleService,

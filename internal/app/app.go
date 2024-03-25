@@ -15,6 +15,7 @@ import (
 	"github.com/leg100/pug/internal/run"
 	"github.com/leg100/pug/internal/task"
 	toptui "github.com/leg100/pug/internal/tui/top"
+	"github.com/leg100/pug/internal/version"
 	"github.com/leg100/pug/internal/workspace"
 )
 
@@ -29,7 +30,7 @@ func Start(args []string) error {
 	}
 
 	if cfg.version {
-		fmt.Println("pug", Version)
+		fmt.Println("pug", version.Version)
 		return nil
 	}
 
@@ -128,11 +129,6 @@ func Start(args []string) error {
 	go task.StartEnqueuer(ctx, tasks)
 	go task.StartRunner(ctx, tasks, cfg.MaxTasks)
 	go run.StartScheduler(ctx, runs, workspaces)
-
-	// Search directory for modules
-	if err := modules.Reload(); err != nil {
-		return fmt.Errorf("searching for modules: %w", err)
-	}
 
 	// Blocks until user quits
 	if _, err := p.Run(); err != nil {

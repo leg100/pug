@@ -190,6 +190,15 @@ func (t *Task) Wait() error {
 	return nil
 }
 
+func (t *Task) LogValue() slog.Value {
+	return slog.GroupValue(
+		slog.Any("status", t.State),
+		slog.String("id", t.ID().String()),
+		slog.Any("command", t.Command),
+		slog.Any("args", t.Args),
+	)
+}
+
 // cancel the task - if it is queued it'll skip the running state and enter the
 // exited state
 func (t *Task) cancel() {
@@ -275,6 +284,7 @@ func (t *Task) updateState(state Status) {
 		t.buf.Close()
 		close(t.finished)
 		t.afterFinish(t)
+		slog.Debug("completed task", "task", t)
 	}
 
 	switch state {
@@ -299,6 +309,4 @@ func (t *Task) updateState(state Status) {
 			t.AfterExited(t)
 		}
 	}
-
-	slog.Info("updated task state", "task_id", t.ID(), "command", t.Command, "state", t.State)
 }

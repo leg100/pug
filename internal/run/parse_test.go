@@ -16,7 +16,7 @@ func Test_ParsePlanReport(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.True(t, changed)
-	want := report{
+	want := Report{
 		Additions:    1,
 		Changes:      0,
 		Destructions: 1,
@@ -33,7 +33,7 @@ func Test_ParsePlanReport_OutputChanges(t *testing.T) {
 
 	// no resource changes, but the outputs did change, so should be true.
 	assert.True(t, changed)
-	want := report{
+	want := Report{
 		Additions:    0,
 		Changes:      0,
 		Destructions: 0,
@@ -49,7 +49,7 @@ func Test_ParsePlanReport_NoChanges(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.False(t, changed)
-	want := report{
+	want := Report{
 		Additions:    0,
 		Changes:      0,
 		Destructions: 0,
@@ -65,7 +65,7 @@ func Test_ParseApplyReport(t *testing.T) {
 	got, err := parseApplyReport(string(logs))
 
 	require.NoError(t, err)
-	want := report{
+	want := Report{
 		Additions:    1,
 		Changes:      0,
 		Destructions: 0,
@@ -80,7 +80,7 @@ func Test_ParseApplyReport_NoChanges(t *testing.T) {
 	got, err := parseApplyReport(string(logs))
 	require.NoError(t, err)
 
-	want := report{
+	want := Report{
 		Additions:    0,
 		Changes:      0,
 		Destructions: 0,

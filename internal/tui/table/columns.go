@@ -2,13 +2,13 @@ package table
 
 import (
 	"github.com/leg100/pug/internal/resource"
-	"github.com/leg100/pug/internal/run"
 )
 
 var (
 	IDColumn = Column{
 		Key:   "id",
 		Title: "ID", Width: resource.IDEncodedMaxLen,
+		FlexFactor: 1,
 	}
 
 	ModuleColumn = Column{
@@ -35,13 +35,13 @@ var (
 		FlexFactor: 1,
 	}
 	RunStatusColumn = Column{
-		Key:   "run_status",
-		Title: "STATUS",
-		Width: run.MaxStatusLen,
+		Key:        "run_status",
+		Title:      "STATUS",
+		FlexFactor: 1,
 	}
 	RunChangesColumn = Column{
-		Key:   "run_changes",
-		Title: "CHANGES",
-		Width: 10,
+		Key:        "run_changes",
+		Title:      "CHANGES",
+		FlexFactor: 1,
 	}
 )

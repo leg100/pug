@@ -12,6 +12,8 @@ import (
 	"github.com/leg100/pug/internal/tui/table"
 )
 
+const timeFormat = "2006-01-02T15:04:05.000"
+
 type Maker struct {
 	Logger *logging.Logger
 }
@@ -20,12 +22,12 @@ func (mm *Maker) Make(_ resource.Resource, width, height int) (tui.Model, error)
 	timeColumn := table.Column{
 		Key:   "time",
 		Title: "TIME",
-		Width: 24,
+		Width: len(timeFormat),
 	}
 	levelColumn := table.Column{
 		Key:   "level",
 		Title: "LEVEL",
-		Width: 5,
+		Width: 5, // Width of widest level, ERROR
 	}
 	msgColumn := table.Column{
 		Key:        "message",
@@ -37,20 +39,38 @@ func (mm *Maker) Make(_ resource.Resource, width, height int) (tui.Model, error)
 		levelColumn,
 		msgColumn,
 	}
-	renderer := func(msg logging.Message, style lipgloss.Style) table.RenderedRow {
+	renderer := func(msg logging.Message, inherit lipgloss.Style) table.RenderedRow {
+		var levelStyle lipgloss.Style
+		switch msg.Level {
+		case "ERROR":
+			levelStyle = tui.Regular.Foreground(tui.Red)
+		case "WARN":
+			levelStyle = tui.Regular.Foreground(tui.Orange)
+		case "DEBUG":
+			levelStyle = tui.Regular.Foreground(tui.Grey)
+		default:
+			levelStyle = tui.Regular.Foreground(tui.Black)
+		}
 		row := table.RenderedRow{
-			timeColumn.Key:  msg.Time.Format("2006-01-02T15:04:05.000"),
-			levelColumn.Key: msg.Level,
+			timeColumn.Key:  msg.Time.Format(timeFormat),
+			levelColumn.Key: levelStyle.Copy().Render(msg.Level),
 		}
 
 		// combine message and attributes, separated by spaces, with each
 		// attribute key/value joined with a '='
-		msgAndAttributes := append([]string{msg.Message}, msg.Attributes...)
-		row[msgColumn.Key] = strings.Join(msgAndAttributes, " ")
+		var b strings.Builder
+		b.WriteString(msg.Message)
+		b.WriteRune(' ')
+		for _, attr := range msg.Attributes {
+			b.WriteString(tui.Regular.Copy().Inherit(inherit).Foreground(tui.Black).Render(attr.Key + "="))
+			b.WriteString(tui.Regular.Copy().Inherit(inherit).Render(attr.Value + " "))
+		}
+
+		row[msgColumn.Key] = lipgloss.NewStyle().Inherit(inherit).Render(b.String())
 		return row
 	}
 	table := table.New(columns, renderer, width, height).
-		WithSortFunc(logging.ByTimeDesc).
+		WithSortFunc(logging.BySerialDesc).
 		WithSelectable(false)
 
 	return model{logger: mm.Logger, table: table}, nil

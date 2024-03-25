@@ -56,7 +56,7 @@ func (m TabSet) WithTabSetInfo(i tabSetInfo) TabSet {
 type Tab struct {
 	Model
 
-	title string
+	Title string
 }
 
 // Init initializes the existing tabs in the collection.
@@ -76,7 +76,7 @@ var ErrDuplicateTab = errors.New("not allowed to create tabs with duplicate titl
 // initialise the model.
 func (m *TabSet) AddTab(maker Maker, parent resource.Resource, title string) (tea.Cmd, error) {
 	for _, tab := range m.Tabs {
-		if tab.title == title {
+		if tab.Title == title {
 			return nil, ErrDuplicateTab
 		}
 	}
@@ -85,8 +85,17 @@ func (m *TabSet) AddTab(maker Maker, parent resource.Resource, title string) (te
 	if err != nil {
 		return nil, err
 	}
-	m.Tabs = append(m.Tabs, Tab{Model: model, title: title})
+	m.Tabs = append(m.Tabs, Tab{Model: model, Title: title})
 	return model.Init(), nil
+}
+
+// Active returns the currently active tab. If there are no tabs, then false is
+// returned.
+func (m TabSet) Active() (bool, Tab) {
+	if len(m.Tabs) > 0 {
+		return true, m.Tabs[m.active]
+	}
+	return false, Tab{}
 }
 
 // SetActiveTab sets the currently active tab. If the tab index is outside the
@@ -104,7 +113,7 @@ func (m *TabSet) SetActiveTab(tabIndex int) {
 // tab. If no such tab exists no action is taken.
 func (m *TabSet) SetActiveTabWithTitle(title string) {
 	for i, tab := range m.Tabs {
-		if tab.title == title {
+		if tab.Title == title {
 			m.active = i
 			return
 		}
@@ -188,7 +197,7 @@ func (m TabSet) View() string {
 			headingStyle = inactiveTabStyle.Copy()
 			underlineChar = "─"
 		}
-		heading := headingStyle.Copy().Padding(0, 1).Render(t.title)
+		heading := headingStyle.Copy().Padding(0, 1).Render(t.Title)
 		if status, ok := t.Model.(tabStatus); ok {
 			heading += headingStyle.Copy().Bold(false).Padding(0, 1, 0, 0).Render(status.TabStatus())
 		}

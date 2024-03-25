@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log/slog"
 	"slices"
 
 	"github.com/leg100/pug/internal/module"
@@ -31,7 +32,7 @@ type ServiceOptions struct {
 func NewService(opts ServiceOptions) *Service {
 	broker := pubsub.NewBroker[*Run]()
 	return &Service{
-		table:      resource.NewTable[*Run](broker),
+		table:      resource.NewTable(broker),
 		Broker:     broker,
 		tasks:      opts.TaskService,
 		modules:    opts.ModuleService,
@@ -41,13 +42,23 @@ func NewService(opts ServiceOptions) *Service {
 
 // Create a run.
 func (s *Service) Create(workspaceID resource.ID, opts CreateOptions) (*Run, error) {
+	run, err := s.create(workspaceID, opts)
+	if err != nil {
+		slog.Error("creating run", "error", err)
+		return nil, err
+	}
+	slog.Info("created run", "run", run)
+	return run, nil
+}
+
+func (s *Service) create(workspaceID resource.ID, opts CreateOptions) (*Run, error) {
 	ws, err := s.workspaces.Get(workspaceID)
 	if err != nil {
-		return nil, fmt.Errorf("creating run: %w", err)
+		return nil, fmt.Errorf("retrieving workspace: %w", err)
 	}
 	mod, err := s.modules.Get(ws.Module().ID())
 	if err != nil {
-		return nil, fmt.Errorf("creating run: %w", err)
+		return nil, fmt.Errorf("workspace module: %w", err)
 	}
 	// Publish an event upon every run status update
 	opts.afterUpdate = func(run *Run) {
@@ -55,7 +66,7 @@ func (s *Service) Create(workspaceID resource.ID, opts CreateOptions) (*Run, err
 	}
 	run, err := newRun(mod, ws, opts)
 	if err != nil {
-		return nil, fmt.Errorf("creating run: %w", err)
+		return nil, fmt.Errorf("constructing run: %w", err)
 	}
 	s.table.Add(run.ID(), run)
 	return run, nil
@@ -230,6 +241,14 @@ func (s *Service) Subscribe(ctx context.Context) <-chan resource.Event[*Run] {
 }
 
 func (s *Service) Delete(id resource.ID) error {
+	if err := s.delete(id); err != nil {
+		return err
+	}
+	slog.Info("deleted run", "id", id)
+	return nil
+}
+
+func (s *Service) delete(id resource.ID) error {
 	run, err := s.table.Get(id)
 	if err != nil {
 		return fmt.Errorf("deleting run: %w", err)
@@ -238,7 +257,6 @@ func (s *Service) Delete(id resource.ID) error {
 	if !run.IsFinished() {
 		return fmt.Errorf("cannot delete incomplete run")
 	}
-
 	s.table.Delete(id)
 	return nil
 }

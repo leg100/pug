@@ -80,11 +80,11 @@ func (m model) Update(msg tea.Msg) (tui.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, keys.Common.Cancel):
-			return m, tui.CreateTasks(m.svc.Cancel, m.task.ID())
+			return m, tui.CreateTasks("cancel", m.svc.Cancel, m.task.ID())
 			// TODO: retry
 		case key.Matches(msg, keys.Common.Apply):
 
-			return m, tui.CreateTasks(m.svc.Cancel, m.task.ID())
+			return m, tui.CreateTasks("cancel", m.svc.Cancel, m.task.ID())
 			// TODO: retry
 		}
 	case outputMsg:
@@ -125,6 +125,10 @@ func (m model) Update(msg tea.Msg) (tui.Model, tea.Cmd) {
 
 func (m model) Title() string {
 	return tui.Breadcrumbs("Task", *m.task.Parent)
+}
+
+func (m model) ID() string {
+	return m.task.String()
 }
 
 func (m *model) setViewportDimensions(width, height int) {
@@ -201,6 +205,24 @@ func (m model) TabStatus() string {
 		return "✗"
 	}
 	return "+"
+}
+
+func (m model) Status() string {
+	var color lipgloss.Color
+
+	switch m.task.State {
+	case task.Pending:
+		color = tui.Grey
+	case task.Queued:
+		color = tui.Orange
+	case task.Running:
+		color = tui.Blue
+	case task.Exited:
+		color = tui.GreenBlue
+	case task.Errored:
+		color = tui.Red
+	}
+	return tui.Regular.Copy().Foreground(color).Render(string(m.task.State))
 }
 
 func (m model) HelpBindings() (bindings []key.Binding) {

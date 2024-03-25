@@ -3,6 +3,7 @@ package module
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"slices"
 
 	"github.com/leg100/pug/internal"
@@ -43,6 +44,13 @@ func NewService(opts ServiceOptions) *Service {
 // to the store before pruning those that are currently stored but can no longer
 // be found.
 func (s *Service) Reload() error {
+	slog.Info("reloading modules")
+
+	var (
+		added   []string
+		removed []string
+	)
+
 	found, err := findModules(s.workdir)
 	if err != nil {
 		return err
@@ -52,6 +60,7 @@ func (s *Service) Reload() error {
 		if _, err := s.GetByPath(path); err == resource.ErrNotFound {
 			mod := New(path)
 			s.table.Add(mod.ID(), mod)
+			added = append(added, path)
 		}
 	}
 
@@ -59,8 +68,10 @@ func (s *Service) Reload() error {
 	for _, existing := range s.table.List() {
 		if !slices.Contains(found, existing.Path()) {
 			s.table.Delete(existing.ID())
+			removed = append(removed, existing.Path())
 		}
 	}
+	slog.Info("reloaded modules", "added", added, "removed", removed)
 	return nil
 }
 
@@ -79,13 +90,21 @@ func (s *Service) Init(moduleID resource.ID) (*task.Task, error) {
 		// init task to run at any given time.
 		Exclusive: s.pluginCache,
 		AfterCreate: func(*task.Task) {
-			// log
+			s.table.Update(moduleID, func(mod *Module) {
+				mod.InitInProgress = true
+			})
 		},
 		AfterExited: func(*task.Task) {
-			// log
+			s.table.Update(moduleID, func(mod *Module) {
+				mod.Initialized = internal.Bool(true)
+				mod.InitInProgress = false
+			})
 		},
 		AfterError: func(*task.Task) {
-			// log error
+			s.table.Update(moduleID, func(mod *Module) {
+				mod.Initialized = internal.Bool(false)
+				mod.InitInProgress = false
+			})
 		},
 	})
 	if err != nil {

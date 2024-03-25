@@ -1,12 +1,7 @@
 package resource
 
 import (
-	"fmt"
 	"log/slog"
-	"strings"
-
-	"github.com/btcsuite/btcutil/base58"
-	"github.com/google/uuid"
 )
 
 // GlobalResource is the zero value of resource, representing the top-level
@@ -18,14 +13,9 @@ var GlobalResource = Resource{}
 type Resource struct {
 	// Resource optionally belongs to a parent.
 	Parent *Resource
-	// Kind of resource, e.g. module, workspace, etc.
-	Kind Kind
 
 	// id uniquely identifies the resource.
 	id ID
-	// ident uniquely identifies the resource and is human meaningful; it takes
-	// precedence over the id if non-empty.
-	ident string
 }
 
 // Entity is a unique identifiable thing.
@@ -33,12 +23,10 @@ type Entity interface {
 	ID() ID
 }
 
-func New(kind Kind, ident string, parent *Resource) Resource {
+func New(kind Kind, human string, parent *Resource) Resource {
 	return Resource{
-		id:     ID(uuid.New()),
+		id:     newID(kind, human),
 		Parent: parent,
-		Kind:   kind,
-		ident:  ident,
 	}
 }
 
@@ -46,15 +34,14 @@ func (r Resource) ID() ID {
 	return r.id
 }
 
+func (r Resource) Kind() Kind {
+	return r.id.kind
+}
+
 // String is a human meaningful, or at least readable, identification of the
 // resource.
 func (r Resource) String() string {
-	if r.ident != "" {
-		return r.ident
-	}
-	encodedID := base58.Encode(r.id[:])
-	kind := strings.ToLower(r.Kind.String())
-	return fmt.Sprintf("%s-%s", kind, encodedID)
+	return r.id.String()
 }
 
 // Ancestors provides a list of successive parents, starting with the direct parents.
@@ -84,7 +71,7 @@ func (r Resource) HasAncestor(id ID) bool {
 
 func (r Resource) GetKind(k Kind) *Resource {
 	for _, r := range append([]Resource{r}, r.Ancestors()...) {
-		if r.Kind == k {
+		if r.Kind() == k {
 			return &r
 		}
 	}

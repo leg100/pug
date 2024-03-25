@@ -24,14 +24,13 @@ type ListMaker struct {
 
 func (m *ListMaker) Make(parent resource.Resource, width, height int) (tui.Model, error) {
 	var columns []table.Column
-	if parent.Kind == resource.Global {
+	if parent.Kind() == resource.Global {
 		columns = append(columns, table.ModuleColumn)
 	}
 	columns = append(columns,
 		table.WorkspaceColumn,
 		table.RunStatusColumn,
 		table.RunChangesColumn,
-		table.IDColumn,
 	)
 
 	table := table.New(columns, m.renderRow, width, height).
@@ -51,7 +50,6 @@ func (m *ListMaker) renderRow(ws *workspace.Workspace, inherit lipgloss.Style) t
 	row := table.RenderedRow{
 		table.ModuleColumn.Key:    ws.ModulePath(),
 		table.WorkspaceColumn.Key: ws.Name(),
-		table.IDColumn.Key:        ws.ID().String(),
 	}
 	if cr := ws.CurrentRun; cr != nil {
 		run, _ := m.RunService.Get(cr.ID())
@@ -93,11 +91,11 @@ func (m list) Update(msg tea.Msg) (tui.Model, tea.Cmd) {
 				return m, tui.NavigateTo(tui.WorkspaceKind, &ws.Resource)
 			}
 		case key.Matches(msg, Keys.Init):
-			return m, tui.CreateTasks(m.modules.Init, m.highlightedOrSelectedModuleIDs()...)
+			return m, tui.CreateTasks("init", m.modules.Init, m.highlightedOrSelectedModuleIDs()...)
 		case key.Matches(msg, Keys.Format):
-			return m, tui.CreateTasks(m.modules.Format, m.highlightedOrSelectedModuleIDs()...)
+			return m, tui.CreateTasks("format", m.modules.Format, m.highlightedOrSelectedModuleIDs()...)
 		case key.Matches(msg, Keys.Validate):
-			return m, tui.CreateTasks(m.modules.Validate, m.highlightedOrSelectedModuleIDs()...)
+			return m, tui.CreateTasks("validate", m.modules.Validate, m.highlightedOrSelectedModuleIDs()...)
 		case key.Matches(msg, Keys.Plan):
 			return m, m.createRun(run.CreateOptions{})
 		}

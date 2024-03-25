@@ -1,4 +1,4 @@
-package tui
+package run
 
 import (
 	"errors"
@@ -29,7 +29,7 @@ func (m *ListMaker) Make(parent resource.Resource, width, height int) (tui.Model
 		Width: 10,
 	}
 	var columns []table.Column
-	switch parent.Kind {
+	switch parent.Kind() {
 	case resource.Global:
 		// Show all columns in global runs table
 		columns = append(columns, table.ModuleColumn)
@@ -45,25 +45,19 @@ func (m *ListMaker) Make(parent resource.Resource, width, height int) (tui.Model
 		table.IDColumn,
 	)
 
-	renderer := func(r *run.Run, style lipgloss.Style) table.RenderedRow {
+	renderer := func(r *run.Run, inherit lipgloss.Style) table.RenderedRow {
 		row := table.RenderedRow{
 			table.ModuleColumn.Key:     r.ModulePath(),
 			table.WorkspaceColumn.Key:  r.WorkspaceName(),
-			table.RunStatusColumn.Key:  string(r.Status),
-			table.RunChangesColumn.Key: r.PlanReport.String(),
+			table.RunStatusColumn.Key:  tui.RenderRunStatus(r.Status),
+			table.RunChangesColumn.Key: tui.RenderLatestRunReport(r, inherit),
 			ageColumn.Key:              tui.Ago(time.Now(), r.Updated),
 			table.IDColumn.Key:         r.ID().String(),
 		}
-
-		// switch r.Status {
-		// case run.Planned, run.PlannedAndFinished, run.ApplyQueued, run.Applying:
-		// case run.Applied:
-		// }
-
 		return row
 	}
 	table := table.New(columns, renderer, width, height).
-		WithSortFunc(run.ByUpdatedDesc).
+		WithSortFunc(run.ByStatus).
 		WithParent(parent)
 
 	return list{

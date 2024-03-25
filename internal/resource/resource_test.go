@@ -15,7 +15,7 @@ func TestResource(t *testing.T) {
 
 	t.Run("string", func(t *testing.T) {
 		// no ident, so format will be task-<id>
-		assert.True(t, strings.HasPrefix(task.String(), "task-"))
+		assert.True(t, strings.HasPrefix(task.String(), "task-"), task.String())
 		// ident takes precendence over id
 		assert.Equal(t, "dev", ws.String())
 	})
@@ -24,9 +24,9 @@ func TestResource(t *testing.T) {
 		got := task.Ancestors()
 
 		assert.Equal(t, 3, len(got))
-		assert.Equal(t, Run, got[0].Kind)
-		assert.Equal(t, Workspace, got[1].Kind)
-		assert.Equal(t, Module, got[2].Kind)
+		assert.Equal(t, Run, got[0].Kind())
+		assert.Equal(t, Workspace, got[1].Kind())
+		assert.Equal(t, Module, got[2].Kind())
 	})
 
 	t.Run("has ancestor", func(t *testing.T) {

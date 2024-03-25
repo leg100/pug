@@ -52,6 +52,7 @@ func (mm *Maker) Make(mr resource.Resource, width, height int) (tui.Model, error
 
 	m := model{
 		ModuleService: mm.ModuleService,
+		RunService:    mm.RunService,
 		module:        mod,
 		tabs:          tabs,
 	}
@@ -60,6 +61,7 @@ func (mm *Maker) Make(mr resource.Resource, width, height int) (tui.Model, error
 
 type model struct {
 	ModuleService *module.Service
+	RunService    *run.Service
 
 	module *module.Module
 	tabs   tui.TabSet
@@ -77,7 +79,15 @@ func (m model) Update(msg tea.Msg) (tui.Model, tea.Cmd) {
 		switch {
 		case key.Matches(msg, localKeys.Init):
 			m.tabs.SetActiveTabWithTitle(tasksTabTitle)
-			return m, tui.CreateTasks(m.ModuleService.Init, m.module.ID())
+			return m, tui.CreateTasks("init", m.ModuleService.Init, m.module.ID())
+		case key.Matches(msg, localKeys.Edit):
+			return m, tui.OpenVim(m.module.Path())
+		case key.Matches(msg, localKeys.Plan):
+			current := m.module.CurrentWorkspace
+			if current == nil {
+				return m, nil
+			}
+			return m, tui.CreateRuns(m.RunService, current.ID())
 		}
 	case resource.Event[*module.Module]:
 		if msg.Payload.ID() == m.module.ID() {
@@ -105,5 +115,5 @@ func (m model) Pagination() string {
 }
 
 func (m model) HelpBindings() (bindings []key.Binding) {
-	return keys.KeyMapToSlice(workspacetui.Keys)
+	return keys.KeyMapToSlice(localKeys)
 }

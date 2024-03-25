@@ -31,3 +31,15 @@ type Page struct {
 	// The model's parent resource
 	Parent resource.Resource
 }
+
+// ModelID is implemented by models that are able to provide a unique
+// identification string.
+type ModelID interface {
+	ID() string
+}
+
+// ModelID is implemented by models that are able to provide a unique
+// identification string.
+type ModelStatus interface {
+	Status() string
+}

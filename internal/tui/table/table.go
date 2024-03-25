@@ -302,6 +302,10 @@ func (m Model[T]) HighlightedOrSelected() map[resource.ID]T {
 	return nil
 }
 
+func (m Model[T]) HighlightedOrSelectedIDs() []resource.ID {
+	return maps.Keys(m.HighlightedOrSelected())
+}
+
 // ToggleSelection toggles the selection of the currently highlighted row.
 func (m *Model[T]) ToggleSelection() {
 	if !m.selectable {

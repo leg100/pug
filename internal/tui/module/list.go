@@ -2,7 +2,6 @@ package module
 
 import (
 	"fmt"
-	"os/exec"
 
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/spinner"
@@ -15,15 +14,15 @@ import (
 	"github.com/leg100/pug/internal/tui/keys"
 	"github.com/leg100/pug/internal/tui/table"
 	"github.com/leg100/pug/internal/workspace"
-	"golang.org/x/exp/maps"
 )
 
 // ListMaker makes module list models
 type ListMaker struct {
-	ModuleService *module.Service
-	RunService    *run.Service
-	Spinner       *spinner.Model
-	Workdir       string
+	ModuleService    *module.Service
+	WorkspaceService *workspace.Service
+	RunService       *run.Service
+	Spinner          *spinner.Model
+	Workdir          string
 }
 
 func (m *ListMaker) Make(_ resource.Resource, width, height int) (tui.Model, error) {
@@ -32,10 +31,15 @@ func (m *ListMaker) Make(_ resource.Resource, width, height int) (tui.Model, err
 		Title:      "CURRENT WORKSPACE",
 		FlexFactor: 2,
 	}
+	initColumn := table.Column{
+		Key:   "init",
+		Title: "INIT",
+		Width: 4,
+	}
 	formatColumn := table.Column{
 		Key:   "format",
-		Title: "FMAT",
-		Width: 4,
+		Title: "FORMAT",
+		Width: 6,
 	}
 	validColumn := table.Column{
 		Key:   "valid",
@@ -45,9 +49,11 @@ func (m *ListMaker) Make(_ resource.Resource, width, height int) (tui.Model, err
 	columns := []table.Column{
 		table.ModuleColumn,
 		currentWorkspace,
+		table.RunStatusColumn,
+		table.RunChangesColumn,
+		initColumn,
 		formatColumn,
 		validColumn,
-		table.IDColumn,
 	}
 	boolToUnicode := func(inprog bool, b *bool) string {
 		if inprog {
@@ -63,33 +69,44 @@ func (m *ListMaker) Make(_ resource.Resource, width, height int) (tui.Model, err
 		}
 	}
 
-	renderer := func(mod *module.Module, style lipgloss.Style) table.RenderedRow {
-		cells := table.RenderedRow{
+	renderer := func(mod *module.Module, inherit lipgloss.Style) table.RenderedRow {
+		row := table.RenderedRow{
 			table.ModuleColumn.Key: mod.Path(),
+			initColumn.Key:         boolToUnicode(mod.InitInProgress, mod.Initialized),
 			formatColumn.Key:       boolToUnicode(mod.FormatInProgress, mod.Formatted),
 			validColumn.Key:        boolToUnicode(mod.ValidationInProgress, mod.Valid),
-			table.IDColumn.Key:     mod.ID().String(),
 		}
+		// Retrieve name of current workspace if module has one
 		if current := mod.CurrentWorkspace; current != nil {
-			cells[currentWorkspace.Key] = current.String()
+			row[currentWorkspace.Key] = current.String()
+
+			// Retrieve current run if current workspace has one
+			ws, _ := m.WorkspaceService.Get(current.ID())
+			if cr := ws.CurrentRun; cr != nil {
+				run, _ := m.RunService.Get(cr.ID())
+				row[table.RunStatusColumn.Key] = tui.RenderRunStatus(run.Status)
+				row[table.RunChangesColumn.Key] = tui.RenderLatestRunReport(run, inherit)
+			}
 		}
-		return cells
+		return row
 	}
 	table := table.New(columns, renderer, width, height)
 	table = table.WithSortFunc(module.ByPath)
 
 	return list{
-		table:         table,
-		spinner:       m.Spinner,
-		ModuleService: m.ModuleService,
-		RunService:    m.RunService,
-		workdir:       m.Workdir,
+		table:            table,
+		spinner:          m.Spinner,
+		ModuleService:    m.ModuleService,
+		WorkspaceService: m.WorkspaceService,
+		RunService:       m.RunService,
+		workdir:          m.Workdir,
 	}, nil
 }
 
 type list struct {
-	ModuleService *module.Service
-	RunService    *run.Service
+	ModuleService    *module.Service
+	WorkspaceService *workspace.Service
+	RunService       *run.Service
 
 	table   table.Model[*module.Module]
 	spinner *spinner.Model
@@ -115,15 +132,21 @@ func (m list) Update(msg tea.Msg) (tui.Model, tea.Cmd) {
 			//cmds = append(cmds, m.createRun(run.CreateOptions{}))
 		}
 	case resource.Event[*run.Run]:
-		//switch msg.Type {
-		//case resource.UpdatedEvent:
-		//	if msg.Payload.Status == run.Planned {
-		//		//				return m, tui.NavigateTo(tui.RunKind, &msg.Payload.Resource)
-		//	}
-		//}
+		switch msg.Type {
+		case resource.UpdatedEvent:
+			if msg.Payload.Status == run.Planned {
+				//return m, tui.NavigateTo(tui.RunKind, &msg.Payload.Resource)
+			}
+		}
 	}
 
 	switch msg := msg.(type) {
+	case resource.Event[*workspace.Workspace]:
+		// Update current workspace and current run
+		m.table.UpdateViewport()
+	case resource.Event[*run.Run]:
+		// Update current run status and changes
+		m.table.UpdateViewport()
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, keys.Global.Enter):
@@ -131,30 +154,28 @@ func (m list) Update(msg tea.Msg) (tui.Model, tea.Cmd) {
 				return m, tui.NavigateTo(tui.ModuleKind, &mod.Resource)
 			}
 		case key.Matches(msg, localKeys.Reload):
-			return m, func() tea.Msg {
-				if err := m.ModuleService.Reload(); err != nil {
-					return tui.NewErrorMsg(err, "reloading modules")
-				}
-				return nil
-			}
+			return m, tui.ReloadModules(m.WorkspaceService)
 		case key.Matches(msg, localKeys.Edit):
 			if mod, ok := m.table.Highlighted(); ok {
-				// TODO: use env var EDITOR
-				// TODO: check for side effects of exec blocking the tui - do
-				// messages get queued up?
-				c := exec.Command("vim", mod.Path())
-				return m, tea.ExecProcess(c, func(err error) tea.Msg {
-					return tui.NewErrorMsg(err, "opening vim")
-				})
+				return m, tui.OpenVim(mod.Path())
 			}
 		case key.Matches(msg, localKeys.Init):
-			return m, tui.CreateTasks(m.ModuleService.Init, maps.Keys(m.table.HighlightedOrSelected())...)
+			cmd := tui.CreateTasks("init", m.ModuleService.Init, m.table.HighlightedOrSelectedIDs()...)
+			m.table.DeselectAll()
+			return m, cmd
 		case key.Matches(msg, localKeys.Validate):
-			return m, tui.CreateTasks(m.ModuleService.Validate, maps.Keys(m.table.HighlightedOrSelected())...)
+			cmd := tui.CreateTasks("validate", m.ModuleService.Validate, m.table.HighlightedOrSelectedIDs()...)
+			m.table.DeselectAll()
+			return m, cmd
 		case key.Matches(msg, localKeys.Format):
-			return m, tui.CreateTasks(m.ModuleService.Format, maps.Keys(m.table.HighlightedOrSelected())...)
+			cmd := tui.CreateTasks("format", m.ModuleService.Format, m.table.HighlightedOrSelectedIDs()...)
+			m.table.DeselectAll()
+			return m, cmd
 		case key.Matches(msg, localKeys.Plan):
-			return m, m.createRun(run.CreateOptions{})
+			workspaceIDs := m.HighlightedOrSelectedCurrentWorkspaceIDs()
+			cmd := tui.CreateRuns(m.RunService, workspaceIDs...)
+			m.table.DeselectAll()
+			return m, cmd
 		}
 	}
 
@@ -164,7 +185,7 @@ func (m list) Update(msg tea.Msg) (tui.Model, tea.Cmd) {
 }
 
 func (m list) Title() string {
-	workdir := tui.Regular.Copy().Foreground(tui.Blue).Render(m.workdir)
+	workdir := tui.Regular.Copy().Foreground(tui.Blue).Render("all")
 	modules := tui.Bold.Copy().Render("Modules")
 	return fmt.Sprintf("%s(%s)", modules, workdir)
 }
@@ -182,52 +203,19 @@ func (m list) HelpBindings() (bindings []key.Binding) {
 		localKeys.Init,
 		localKeys.Validate,
 		localKeys.Format,
+		localKeys.Reload,
 		localKeys.Plan,
 		localKeys.Edit,
 	}
 }
 
-func (m list) createRun(opts run.CreateOptions) tea.Cmd {
-	// Handle the case where a user has pressed a key on an empty table with
-	// zero rows
-	if len(m.table.Items()) == 0 {
-		return nil
-	}
-
-	// If items have been selected then clear the selection
-	var deselectCmd tea.Cmd
-	if len(m.table.Selected) > 0 {
-		deselectCmd = tui.CmdHandler(table.DeselectMsg{})
-	}
-
-	cmd := func() tea.Msg {
-		modules := m.table.HighlightedOrSelected()
-		var run *run.Run
-		for _, mod := range modules {
-			if mod.CurrentWorkspace == nil {
-				continue
-			}
-			var err error
-			run, err = m.RunService.Create(mod.CurrentWorkspace.ID(), opts)
-			if err != nil {
-				return tui.NewErrorMsg(err, "creating run")
-			}
+// HighlightedOrSelectedCurrentWorkspaceIDs returns the IDs of the current
+// workspaces of any modules that are currently selected or highlighted.
+func (m list) HighlightedOrSelectedCurrentWorkspaceIDs() (workspaceIDs []resource.ID) {
+	for _, mod := range m.table.HighlightedOrSelected() {
+		if current := mod.CurrentWorkspace; current != nil {
+			workspaceIDs = append(workspaceIDs, current.ID())
 		}
-		if run == nil {
-			// No runs were triggered.
-			//
-			// TODO: show error message in footer
-			return nil
-		}
-		// If user triggered more than one run go to the run listing, otherwise
-		// go to the run itself.
-		var target tui.Page
-		if len(modules) > 1 {
-			target = tui.Page{Kind: tui.RunListKind}
-		} else {
-			target = tui.Page{Kind: tui.RunKind, Parent: run.Resource}
-		}
-		return tui.NavigationMsg(target)
 	}
-	return tea.Batch(cmd, deselectCmd)
+	return
 }

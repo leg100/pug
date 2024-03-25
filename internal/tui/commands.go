@@ -1,60 +1,56 @@
 package tui
 
 import (
-	"fmt"
+	"os/exec"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/leg100/pug/internal/resource"
+	"github.com/leg100/pug/internal/run"
 	"github.com/leg100/pug/internal/task"
+	"github.com/leg100/pug/internal/workspace"
 )
 
 // CreateTasks returns a command that creates one or more tasks using the given
 // IDs. If a task fails to be created then no further tasks will be created, and
 // an error notification is sent. If all tasks are successfully created then a status
 // notification is sent accordingly.
-func CreateTasks(fn task.Func, ids ...resource.ID) tea.Cmd {
-	// Handle the case where a user has pressed a key on an empty table with
-	// zero rows
-	//if len(ids) == 0 {
-	//	return nil
-	//}
-
-	//// If items have been selected then clear the selection
-	//var deselectCmd tea.Cmd
-	//if len(ids) > 1 {
-	//	deselectCmd = tui.CmdHandler(table.DeselectMsg{})
-	//}
-
-	return func() tea.Msg {
-		var (
-			task *task.Task
-			err  error
-		)
-		for _, id := range ids {
-			if task, err = fn(id); err != nil {
-				return NewErrorMsg(err, "creating task")
-			}
-		}
-		return InfoMsg(fmt.Sprintf("Created %d %s tasks", len(ids), task.CommandString()))
-
-		//if len(ids) > 1 {
-		//	// User has selected multiple rows, so send them to the task *list*
-		//	// page
-		//	//
-		//	// TODO: pass in parameter specifying the parent resource for the
-		//	// task listing, i.e. module, workspace, run, etc.
-		//	return navigationMsg{
-		//		target: page{kind: TaskListKind},
-		//	}
-		//} else {
-		//	// User has highlighted a single row, so send them to the task page.
-		//	return navigationMsg{
-		//		target: page{kind: TaskKind, resource: task.Resource},
-		//	}
-		//}
+func CreateTasks(cmd string, fn task.Func, ids ...resource.ID) tea.Cmd {
+	if len(ids) == 0 {
+		return nil
 	}
 
-	//return tea.Batch(cmd, deselectCmd)
+	return func() tea.Msg {
+		multi, errs := task.CreateMulti(fn, ids...)
+		return CreatedTasksMsg{
+			Command:    cmd,
+			Tasks:      multi,
+			CreateErrs: errs,
+		}
+	}
+}
+
+func WaitTasks(created CreatedTasksMsg) tea.Cmd {
+	return func() tea.Msg {
+		created.Tasks.Wait()
+		return CompletedTasksMsg(created)
+	}
+}
+
+func CreateRuns(runs *run.Service, workspaceIDs ...resource.ID) tea.Cmd {
+	if len(workspaceIDs) == 0 {
+		return nil
+	}
+	return func() tea.Msg {
+		var msg CreatedRunsMsg
+		for _, wid := range workspaceIDs {
+			run, err := runs.Create(wid, run.CreateOptions{})
+			if err != nil {
+				msg.CreateErrs = append(msg.CreateErrs, err)
+			}
+			msg.Runs = append(msg.Runs, run)
+		}
+		return msg
+	}
 }
 
 // NavigateTo sends an instruction to navigate to a page with the given model
@@ -71,4 +67,25 @@ func NavigateTo(kind Kind, parent *resource.Resource) tea.Cmd {
 
 func ReportError(err error, msg string, args ...any) tea.Cmd {
 	return CmdHandler(NewErrorMsg(err, msg, args...))
+}
+
+func OpenVim(path string) tea.Cmd {
+	// TODO: use env var EDITOR
+	// TODO: check for side effects of exec blocking the tui - do
+	// messages get queued up?
+	c := exec.Command("vim", path)
+	return tea.ExecProcess(c, func(err error) tea.Msg {
+		return NewErrorMsg(err, "opening vim")
+	})
+}
+
+func ReloadModules(workspaces *workspace.Service) tea.Cmd {
+	return func() tea.Msg {
+		multi, errs := workspaces.ReloadAll()
+		return CreatedTasksMsg{
+			Command:    "reload",
+			Tasks:      multi,
+			CreateErrs: errs,
+		}
+	}
 }

@@ -4,19 +4,19 @@ import (
 	"fmt"
 )
 
-// report reports a summary of additions, changes, and deletions of
+// Report reports a summary of additions, changes, and deletions of
 // resources in a plan or an apply.
-type report struct {
+type Report struct {
 	Additions    int `json:"additions"`
 	Changes      int `json:"changes"`
 	Destructions int `json:"destructions"`
 }
 
-func (r report) HasChanges() bool {
-	return r != report{}
+func (r Report) HasChanges() bool {
+	return r != Report{}
 }
 
-func (r report) String() string {
+func (r Report) String() string {
 	// \u2212 is a proper minus sign; an ascii hyphen is too narrow (in the
 	// default github font at least) and looks incongruous alongside
 	// the wider '+' and '~' characters.

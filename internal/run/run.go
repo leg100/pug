@@ -1,6 +1,7 @@
 package run
 
 import (
+	"log/slog"
 	"os"
 	"path/filepath"
 	"time"
@@ -18,7 +19,7 @@ const (
 	PlanQueued         Status = "plan queued"
 	Planning           Status = "planning"
 	Planned            Status = "planned"
-	PlannedAndFinished Status = "planned & finished"
+	PlannedAndFinished Status = "planned&finished"
 	ApplyQueued        Status = "apply queued"
 	Applying           Status = "applying"
 	Applied            Status = "applied"
@@ -39,8 +40,8 @@ type Run struct {
 	AutoApply bool
 	PlanOnly  bool
 
-	PlanReport  report
-	ApplyReport report
+	PlanReport  Report
+	ApplyReport Report
 
 	// TODO: are these needed?
 	PlanTask  *resource.Resource
@@ -115,6 +116,14 @@ func (r *Run) IsFinished() bool {
 	}
 }
 
+func (r *Run) LogValue() slog.Value {
+	return slog.GroupValue(
+		slog.String("id", r.ID().String()),
+		slog.String("workspace", r.WorkspaceName()),
+		slog.String("module", r.ModulePath()),
+	)
+}
+
 func (r *Run) setErrored(err error) {
 	r.Error = err
 	r.updateStatus(Errored)
@@ -125,5 +134,8 @@ func (r *Run) updateStatus(status Status) {
 	r.Updated = time.Now()
 	if r.afterUpdate != nil {
 		r.afterUpdate(r)
+	}
+	if r.IsFinished() {
+		slog.Info("completed run", "status", r.Status, "run", r)
 	}
 }

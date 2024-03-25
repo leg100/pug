@@ -40,67 +40,87 @@ type moduleService interface {
 	Get(id resource.ID) (*module.Module, error)
 	GetByPath(path string) (*module.Module, error)
 	SetCurrent(moduleID resource.ID, workspace resource.Resource) error
+	Reload() error
+	List() []*module.Module
 }
 
 func NewService(ctx context.Context, opts ServiceOptions) *Service {
 	broker := pubsub.NewBroker[*Workspace]()
 	svc := &Service{
 		broker:  broker,
-		table:   resource.NewTable[*Workspace](broker),
+		table:   resource.NewTable(broker),
 		modules: opts.ModuleService,
 		tasks:   opts.TaskService,
 	}
 	// Load workspaces whenever a module is created.
-	sub := opts.ModuleService.Subscribe(ctx)
-	go func() {
-		for event := range sub {
-			switch event.Type {
-			case resource.CreatedEvent:
-				_, _ = svc.Reload(event.Payload.Resource)
-			}
-		}
-	}()
+	// sub := opts.ModuleService.Subscribe(ctx)
+	// go func() {
+	// 	for event := range sub {
+	// 		switch event.Type {
+	// 		case resource.CreatedEvent:
+	// 			_, _ = svc.Reload(event.Payload.Resource)
+	// 		}
+	// 	}
+	// }()
 	return svc
 }
 
 // Reload invokes `terraform workspace list` on a module and updates pug with
 // the results, adding any newly discovered workspaces and pruning any
 // workspaces no longer found to exist.
-func (s *Service) Reload(module resource.Resource) (*task.Task, error) {
-	// TODO: only permit one reload at a time.
-
+//
+// TODO: only permit one reload at a time.
+func (s *Service) Reload(moduleID resource.ID) (*task.Task, error) {
+	mod, err := s.modules.Get(moduleID)
+	if err != nil {
+		return nil, err
+	}
 	task, err := s.tasks.Create(task.CreateOptions{
-		Parent:  module,
-		Path:    module.String(),
+		Parent:  mod.Resource,
+		Path:    moduleID.String(),
 		Command: []string{"workspace", "list"},
 		AfterError: func(t *task.Task) {
-			// TODO: log error and prune workspaces
-			slog.Error("workspace list task failed", "status", t.State)
+			slog.Error("reloading workspaces", "error", t.Err, "module", moduleID, "task", t)
 		},
 		AfterExited: func(t *task.Task) {
 			found, current, err := parseList(t.NewReader())
 			if err != nil {
-				slog.Error("reloading workspaces", "error", err, "module", module)
+				slog.Error("reloading workspaces", "error", err, "module", moduleID)
 				return
 			}
-			if err := s.resetWorkspaces(module, found, current); err != nil {
-				slog.Error("reloading workspaces", "error", err, "module", module)
+			added, removed, err := s.resetWorkspaces(mod.Resource, found, current)
+			if err != nil {
+				slog.Error("reloading workspaces", "error", err, "module", moduleID)
 				return
 			}
-			slog.Info("found workspaces", "found", found, "current", current)
+			slog.Info("reloaded workspaces", "added", added, "removed", removed, "module", moduleID)
 		},
 	})
 	if err != nil {
-		slog.Error("reloading workspaces", "error", err, "module", module)
+		slog.Error("reloading workspaces", "error", err, "module", moduleID)
 		return nil, err
 	}
+	slog.Info("reloading workspaces", "module", moduleID, "task", task)
 	return task, nil
+}
+
+func (s *Service) ReloadAll() (task.Multi, []error) {
+	if err := s.modules.Reload(); err != nil {
+		return nil, []error{err}
+	}
+	mods := s.modules.List()
+
+	modIDs := make([]resource.ID, len(mods))
+	for i, mod := range s.modules.List() {
+		modIDs[i] = mod.ID()
+	}
+	return task.CreateMulti(s.Reload, modIDs...)
 }
 
 // resetWorkspaces resets the workspaces for a module, adding newly discovered
 // workspaces, removing workspaces that no longer exist, and setting the current
 // workspace for the module.
-func (s *Service) resetWorkspaces(module resource.Resource, discovered []string, current string) error {
+func (s *Service) resetWorkspaces(module resource.Resource, discovered []string, current string) (added []string, removed []string, err error) {
 	// Gather existing workspaces for the module.
 	var existing []*Workspace
 	for _, ws := range s.table.List() {
@@ -116,22 +136,25 @@ func (s *Service) resetWorkspaces(module resource.Resource, discovered []string,
 		}) {
 			add := New(module, name)
 			s.table.Add(add.ID(), add)
-			slog.Info("added workspace", "name", name, "module", module)
+			added = append(added, name)
 		}
 	}
 	// Remove workspaces from pug that no longer exist
 	for _, ws := range existing {
 		if !slices.Contains(discovered, ws.String()) {
 			s.table.Delete(ws.ID())
-			slog.Info("removed workspace", "name", ws.String(), "module", module)
+			removed = append(removed, ws.String())
 		}
 	}
 	// Reset current workspace
 	currentWorkspace, err := s.GetByName(module.ID(), current)
 	if err != nil {
-		return fmt.Errorf("cannot find current workspace: %s: %w", current, err)
+		return nil, nil, fmt.Errorf("cannot find current workspace: %s: %w", current, err)
 	}
-	return s.modules.SetCurrent(module.ID(), currentWorkspace.Resource)
+	if err := s.modules.SetCurrent(module.ID(), currentWorkspace.Resource); err != nil {
+		return nil, nil, err
+	}
+	return
 }
 
 // Parse workspaces from the output of `terraform workspace list`.
