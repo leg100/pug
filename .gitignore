@@ -1,3 +1,5 @@
+# infracost artifacts
+**/.infracost/
 # direnv
 .envrc
 # debug
