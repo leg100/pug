@@ -13,16 +13,9 @@ func Breadcrumbs(title string, parent resource.Resource) string {
 	// format: <title>(<path>:<workspace>:<run>)
 	var crumbs []string
 	switch parent.Kind() {
-	case resource.Run:
-		// if parented by a run, then include its ID
-		//runID := Regular.Copy().Foreground(LightGrey).Render(parent.Run().String())
-		//crumbs = append([]string{fmt.Sprintf("{%s}", runID)}, crumbs...)
-		//crumbs = append(crumbs, fmt.Sprintf("{%s}", runID))
-		fallthrough
-	case resource.Workspace:
+	case resource.Run, resource.Workspace:
 		// if parented by a workspace, then include its name
 		name := Regular.Copy().Foreground(Red).Render(parent.Workspace().String())
-		//crumbs = append([]string{fmt.Sprintf("[%s]", name)}, crumbs...)
 		crumbs = append(crumbs, fmt.Sprintf("[%s]", name))
 		fallthrough
 	case resource.Module:

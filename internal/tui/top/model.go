@@ -15,6 +15,7 @@ import (
 	"github.com/leg100/pug/internal/module"
 	"github.com/leg100/pug/internal/resource"
 	"github.com/leg100/pug/internal/run"
+	"github.com/leg100/pug/internal/state"
 	"github.com/leg100/pug/internal/task"
 	"github.com/leg100/pug/internal/tui"
 	"github.com/leg100/pug/internal/tui/keys"
@@ -47,6 +48,7 @@ type model struct {
 type Options struct {
 	ModuleService    *module.Service
 	WorkspaceService *workspace.Service
+	StateService     *state.Service
 	RunService       *run.Service
 	TaskService      *task.Service
 
@@ -164,40 +166,38 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.showHelp = !m.showHelp
 		case key.Matches(msg, keys.Global.Logs):
 			// 'l' shows logs
-			return m, tui.NavigateTo(tui.LogsKind, nil)
+			return m, tui.NavigateTo(tui.LogsKind)
 		case key.Matches(msg, keys.Global.Modules):
 			// 'm' lists all modules
-			return m, tui.NavigateTo(tui.ModuleListKind, nil)
+			return m, tui.NavigateTo(tui.ModuleListKind)
 		case key.Matches(msg, keys.Global.Workspaces):
 			// 'W' lists all workspaces
-			return m, tui.NavigateTo(tui.WorkspaceListKind, nil)
+			return m, tui.NavigateTo(tui.WorkspaceListKind)
 		case key.Matches(msg, keys.Global.Runs):
 			// 'R' lists all runs
-			return m, tui.NavigateTo(tui.RunListKind, nil)
+			return m, tui.NavigateTo(tui.RunListKind)
 		case key.Matches(msg, keys.Global.Tasks):
 			// 'T' lists all tasks
-			return m, tui.NavigateTo(tui.TaskListKind, nil)
+			return m, tui.NavigateTo(tui.TaskListKind)
 		default:
 			// Send other keys to current model.
 			cmd := m.updateCurrent(msg)
 			return m, cmd
 		}
 	case tui.NavigationMsg:
-		created, err := m.setCurrent(tui.Page(msg))
+		created, err := m.setCurrent(msg.Page)
 		if err != nil {
 			return m, tui.ReportError(err, "setting current page")
 		}
 		if created {
-			return m, m.currentModel().Init()
+			cmds = append(cmds, m.currentModel().Init())
 		}
 	case tui.CreatedRunsMsg:
 		cmd, m.info, m.err = handleCreatedRunsMsg(msg)
 		cmds = append(cmds, cmd)
 	case tui.CreatedTasksMsg:
-		m.info, m.err = handleCreatedTasksMsg(msg)
-		if len(msg.Tasks) > 0 {
-			return m, tui.WaitTasks(msg)
-		}
+		cmd, m.info, m.err = handleCreatedTasksMsg(msg)
+		cmds = append(cmds, cmd)
 	case tui.CompletedTasksMsg:
 		m.info, m.err = handleCompletedTasksMsg(msg)
 	case tui.ErrorMsg:

@@ -64,6 +64,8 @@ type model struct {
 
 	width  int
 	height int
+
+	showInfo bool
 }
 
 func (m model) Init() tea.Cmd {
@@ -79,6 +81,9 @@ func (m model) Update(msg tea.Msg) (tui.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch {
+		case key.Matches(msg, localKeys.Info):
+			// 'i' toggles showing task info
+			m.showInfo = !m.showInfo
 		case key.Matches(msg, keys.Common.Cancel):
 			return m, tui.CreateTasks("cancel", m.svc.Cancel, m.task.ID())
 			// TODO: retry
@@ -124,7 +129,9 @@ func (m model) Update(msg tea.Msg) (tui.Model, tea.Cmd) {
 }
 
 func (m model) Title() string {
-	return tui.Breadcrumbs("Task", *m.task.Parent)
+	crumbs := tui.Breadcrumbs("", *m.task.Parent)
+	cmd := tui.Regular.Copy().Foreground(tui.Green).Render(m.task.CommandString())
+	return fmt.Sprintf("%s{%s}%s", tui.Bold.Render("Task"), cmd, crumbs)
 }
 
 func (m model) ID() string {
@@ -138,8 +145,9 @@ func (m *model) setViewportDimensions(width, height int) {
 
 // View renders the viewport
 func (m model) View() string {
-	// If there is sufficient additional width in the terminal, then metadata is
-	// shown alongside the viewport.
+	if m.showInfo {
+		return strings.Join(m.task.Env, " ")
+	}
 	body := tui.Regular.Copy().
 		Margin(0, 1).
 		Render(m.viewport.View())

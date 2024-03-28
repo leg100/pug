@@ -3,7 +3,6 @@ package run
 import (
 	"errors"
 	"fmt"
-	"strings"
 
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/spinner"
@@ -50,7 +49,8 @@ func (mm *Maker) Make(rr resource.Resource, width, height int) (tui.Model, error
 		Oldest: true,
 	})
 	for _, t := range tasks {
-		if _, err := m.addTab(t); err != nil {
+		_, err := m.tabs.AddTab(taskMaker, t.Resource, t.CommandString())
+		if err != nil {
 			return nil, err
 		}
 	}
@@ -66,7 +66,6 @@ type model struct {
 	taskMaker tui.Maker
 }
 
-// Init retrieves the run's existing tasks.
 func (m model) Init() tea.Cmd {
 	return m.tabs.Init()
 }
@@ -100,6 +99,7 @@ func (m model) Update(msg tea.Msg) (tui.Model, tea.Cmd) {
 			if err != nil {
 				return m, tui.ReportError(err, "")
 			}
+			// Initialize the new tab
 			cmds = append(cmds, cmd)
 		}
 	}
@@ -124,7 +124,7 @@ func (m model) ID() string {
 }
 
 func (m *model) addTab(t *task.Task) (tea.Cmd, error) {
-	title := strings.Join(t.Command, " ")
+	title := t.CommandString()
 	cmd, err := m.tabs.AddTab(m.taskMaker, t.Resource, title)
 	if err != nil {
 		// Silently ignore attempts to add duplicate tabs: this can happen when
@@ -136,10 +136,9 @@ func (m *model) addTab(t *task.Task) (tea.Cmd, error) {
 		return nil, fmt.Errorf("adding %s tab: %w", title, err)
 	}
 	// Make the newly added tab the active tab.
-	m.tabs.SetActiveTab(-1)
+	m.tabs.SetActiveTab(title)
 	return cmd, nil
 }
-
 func (m model) View() string {
 	return m.tabs.View()
 }

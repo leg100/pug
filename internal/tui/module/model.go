@@ -40,13 +40,16 @@ func (mm *Maker) Make(mr resource.Resource, width, height int) (tui.Model, error
 	}
 
 	tabs := tui.NewTabSet(width, height)
-	if _, err := tabs.AddTab(mm.WorkspaceListMaker, mr, workspacesTabTitle); err != nil {
+	_, err = tabs.AddTab(mm.WorkspaceListMaker, mr, workspacesTabTitle)
+	if err != nil {
 		return nil, fmt.Errorf("adding workspaces tab: %w", err)
 	}
-	if _, err := tabs.AddTab(mm.RunListMaker, mr, runsTabTitle); err != nil {
+	_, err = tabs.AddTab(mm.RunListMaker, mr, runsTabTitle)
+	if err != nil {
 		return nil, fmt.Errorf("adding runs tab: %w", err)
 	}
-	if _, err := tabs.AddTab(mm.TaskListMaker, mr, tasksTabTitle); err != nil {
+	_, err = tabs.AddTab(mm.TaskListMaker, mr, tasksTabTitle)
+	if err != nil {
 		return nil, fmt.Errorf("adding tasks tab: %w", err)
 	}
 
@@ -74,20 +77,17 @@ func (m model) Init() tea.Cmd {
 func (m model) Update(msg tea.Msg) (tui.Model, tea.Cmd) {
 	var cmds []tea.Cmd
 
+	// General actions
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, localKeys.Init):
-			m.tabs.SetActiveTabWithTitle(tasksTabTitle)
+			// 'i' creates a terraform init task and sends the user to the tasks
+			// tab.
+			m.tabs.SetActiveTab(tasksTabTitle)
 			return m, tui.CreateTasks("init", m.ModuleService.Init, m.module.ID())
 		case key.Matches(msg, localKeys.Edit):
 			return m, tui.OpenVim(m.module.Path())
-		case key.Matches(msg, localKeys.Plan):
-			current := m.module.CurrentWorkspace
-			if current == nil {
-				return m, nil
-			}
-			return m, tui.CreateRuns(m.RunService, current.ID())
 		}
 	case resource.Event[*module.Module]:
 		if msg.Payload.ID() == m.module.ID() {
@@ -98,6 +98,21 @@ func (m model) Update(msg tea.Msg) (tui.Model, tea.Cmd) {
 	updated, cmd := m.tabs.Update(msg)
 	cmds = append(cmds, cmd)
 	m.tabs = updated
+
+	// Tab-specific actions to be taken after action has been sent to tab.
+	switch m.tabs.ActiveTitle() {
+	case workspacesTabTitle:
+		switch msg := msg.(type) {
+		case tea.KeyMsg:
+			switch {
+			case key.Matches(msg, localKeys.Plan):
+				// The workspaces tab model takes care of listening to this key
+				// press and creating the actual run, and only once that's done
+				// do we then send the user to the runs tab.
+				m.tabs.SetActiveTab(runsTabTitle)
+			}
+		}
+	}
 
 	return m, tea.Batch(cmds...)
 }

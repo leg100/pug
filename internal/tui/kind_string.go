@@ -16,12 +16,13 @@ func _() {
 	_ = x[RunKind-5]
 	_ = x[TaskListKind-6]
 	_ = x[TaskKind-7]
-	_ = x[LogsKind-8]
+	_ = x[TaskDetailsKind-8]
+	_ = x[LogsKind-9]
 }
 
-const _Kind_name = "ModuleListKindModuleKindWorkspaceListKindWorkspaceKindRunListKindRunKindTaskListKindTaskKindLogsKind"
+const _Kind_name = "ModuleListKindModuleKindWorkspaceListKindWorkspaceKindRunListKindRunKindTaskListKindTaskKindTaskDetailsKindLogsKind"
 
-var _Kind_index = [...]uint8{0, 14, 24, 41, 54, 65, 72, 84, 92, 100}
+var _Kind_index = [...]uint8{0, 14, 24, 41, 54, 65, 72, 84, 92, 107, 115}
 
 func (i Kind) String() string {
 	if i < 0 || i >= Kind(len(_Kind_index)-1) {

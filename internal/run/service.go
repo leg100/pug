@@ -128,21 +128,13 @@ func (s *Service) Apply(runID resource.ID) (*task.Task, error) {
 	if err != nil {
 		return nil, fmt.Errorf("applying run: %w", err)
 	}
-	ws, err := s.workspaces.Get(run.Workspace().ID())
-	if err != nil {
-		return nil, fmt.Errorf("applying run: %w", err)
-	}
-
 	if run.Status != Planned {
 		return nil, fmt.Errorf("run is not in the planned state: %s", run.Status)
 	}
-	task, err := s.tasks.Create(task.CreateOptions{
-		Parent:   run.Resource,
-		Path:     run.ModulePath(),
+	task, err := s.createTask(run, task.CreateOptions{
 		Blocking: true,
 		Command:  []string{"apply"},
 		Args:     []string{"-input=false", run.PlanPath()},
-		Env:      []string{ws.TerraformEnv()},
 		AfterQueued: func(*task.Task) {
 			run.updateStatus(ApplyQueued)
 		},

@@ -130,6 +130,14 @@ func (m list) Update(msg tea.Msg) (tui.Model, tea.Cmd) {
 		switch msg.Type {
 		case resource.CreatedEvent:
 			//cmds = append(cmds, m.createRun(run.CreateOptions{}))
+			// navigate to the resources tab on the newly created workspace
+			if msg.Payload.ModulePath() == "internal/testdata/configs/envs/prod" &&
+				msg.Payload.Name() == "staging" {
+
+				return m, tui.NavigateTo(tui.WorkspaceKind,
+					tui.WithParent(msg.Payload.Resource),
+				)
+			}
 		}
 	case resource.Event[*run.Run]:
 		switch msg.Type {
@@ -148,17 +156,26 @@ func (m list) Update(msg tea.Msg) (tui.Model, tea.Cmd) {
 		// Update current run status and changes
 		m.table.UpdateViewport()
 	case tea.KeyMsg:
+		// Handle keys that don't rely on any modules being present
+		switch {
+		case key.Matches(msg, localKeys.Reload):
+			return m, tui.ReloadModules(m.WorkspaceService)
+		}
+
+		// Only handle following keys if there are modules present
+		if len(m.table.Items()) == 0 {
+			break
+		}
+
 		switch {
 		case key.Matches(msg, keys.Global.Enter):
-			if mod, ok := m.table.Highlighted(); ok {
-				return m, tui.NavigateTo(tui.ModuleKind, &mod.Resource)
-			}
+			mod, _ := m.table.Highlighted()
+			return m, tui.NavigateTo(tui.ModuleKind, tui.WithParent(mod.Resource))
 		case key.Matches(msg, localKeys.Reload):
 			return m, tui.ReloadModules(m.WorkspaceService)
 		case key.Matches(msg, localKeys.Edit):
-			if mod, ok := m.table.Highlighted(); ok {
-				return m, tui.OpenVim(mod.Path())
-			}
+			mod, _ := m.table.Highlighted()
+			return m, tui.OpenVim(mod.Path())
 		case key.Matches(msg, localKeys.Init):
 			cmd := tui.CreateTasks("init", m.ModuleService.Init, m.table.HighlightedOrSelectedIDs()...)
 			m.table.DeselectAll()
@@ -173,9 +190,8 @@ func (m list) Update(msg tea.Msg) (tui.Model, tea.Cmd) {
 			return m, cmd
 		case key.Matches(msg, localKeys.Plan):
 			workspaceIDs := m.HighlightedOrSelectedCurrentWorkspaceIDs()
-			cmd := tui.CreateRuns(m.RunService, workspaceIDs...)
 			m.table.DeselectAll()
-			return m, cmd
+			return m, tui.CreateRuns(m.RunService, workspaceIDs...)
 		}
 	}
 

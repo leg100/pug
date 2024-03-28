@@ -13,5 +13,6 @@ const (
 	RunKind
 	TaskListKind
 	TaskKind
+	TaskDetailsKind
 	LogsKind
 )

@@ -1,7 +1,8 @@
 package state
 
 import (
-	"fmt"
+	"context"
+	"encoding/json"
 
 	"github.com/leg100/pug/internal/resource"
 	"github.com/leg100/pug/internal/task"
@@ -9,15 +10,28 @@ import (
 )
 
 type Service struct {
-	tasks      *task.Service
 	workspaces *workspace.Service
+	tasks      *task.Service
 }
 
-// Get creates a task to retreive the state.
-func (s *Service) Get(workspaceID resource.ID) (*task.Task, error) {
+type ServiceOptions struct {
+	WorkspaceService *workspace.Service
+	TaskService      *task.Service
+}
+
+func NewService(ctx context.Context, opts ServiceOptions) *Service {
+	svc := &Service{
+		workspaces: opts.WorkspaceService,
+		tasks:      opts.TaskService,
+	}
+	return svc
+}
+
+// Pull creates a task to pull the state for a workspace.
+func (s *Service) Pull(workspaceID resource.ID) (*task.Task, error) {
 	ws, err := s.workspaces.Get(workspaceID)
 	if err != nil {
-		return nil, fmt.Errorf("getting state: %w", err)
+		return nil, err
 	}
 	return s.tasks.Create(task.CreateOptions{
 		Parent:  ws.Resource,
@@ -27,30 +41,25 @@ func (s *Service) Get(workspaceID resource.ID) (*task.Task, error) {
 	})
 }
 
-// ListResources retrieves the resources for a workspace.
-// func (s *Service) ListResources(workspaceID uuid.UUID) ([]Resource, error) {
-// 	get, err := s.Get(workspaceID)
-// 	if err != nil {
-// 		return nil, fmt.Errorf("listing resources: %w", err)
-// 	}
-// 	if err := get.Wait(); err != nil {
-// 		return nil, err
-// 	}
-// 	ws, err := s.workspaces.Get(workspaceID)
-// 	if err != nil {
-// 		return nil, fmt.Errorf("getting state: %w", err)
-// 	}
-// 	mod, err := s.modules.Get(ws.Module().ID)
-// 	if err != nil {
-// 		return nil, nil, fmt.Errorf("creating run: %w", err)
-// 	}
-// 	// TODO: make the above a synchronous op
-// 	var file File
-// 	if err := json.NewDecoder(ws.NewReader()).Decode(&file); err != nil {
-// 		return nil, err
-// 	}
-// 	return file.Resources, nil
-// }
+// ListResources retrieves the state resources for a workspace. Synchronous op.
+func (s *Service) ListResources(workspaceID resource.ID) ([]*Resource, error) {
+	ws, err := s.workspaces.Get(workspaceID)
+	if err != nil {
+		return nil, err
+	}
+	task, err := s.Pull(workspaceID)
+	if err != nil {
+		return nil, err
+	}
+	if err := task.Wait(); err != nil {
+		return nil, err
+	}
+	var file StateFile
+	if err := json.NewDecoder(task.NewReader()).Decode(&file); err != nil {
+		return nil, err
+	}
+	return file.Resources(ws.Resource), nil
+}
 
 // RemoveItems removes items from the state. Aynchronous.
 func (s *Service) RemoveItems(workspaceID resource.ID, addrs ...string) (*task.Task, error) {
@@ -58,7 +67,7 @@ func (s *Service) RemoveItems(workspaceID resource.ID, addrs ...string) (*task.T
 	//
 	ws, err := s.workspaces.Get(workspaceID)
 	if err != nil {
-		return nil, fmt.Errorf("retrieving workspace: %s: %w", workspaceID, err)
+		return nil, err
 	}
 	return s.tasks.Create(task.CreateOptions{
 		Parent:   ws.Resource,
@@ -73,7 +82,7 @@ func (s *Service) RemoveItems(workspaceID resource.ID, addrs ...string) (*task.T
 func (s *Service) Taint(workspaceID resource.ID, addr string) (*task.Task, error) {
 	ws, err := s.workspaces.Get(workspaceID)
 	if err != nil {
-		return nil, fmt.Errorf("retrieving workspace: %s: %w", workspaceID, err)
+		return nil, err
 	}
 	return s.tasks.Create(task.CreateOptions{
 		Parent:   ws.Resource,

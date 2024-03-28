@@ -3,7 +3,6 @@ package resource
 import (
 	"fmt"
 	"log/slog"
-	"strings"
 
 	"github.com/btcsuite/btcutil/base58"
 	"github.com/google/uuid"
@@ -19,8 +18,7 @@ const IDEncodedMaxLen = 27
 
 type ID struct {
 	id uuid.UUID
-	// human uniquely identifies the resource and is human meaningful; it takes
-	// precedence over the id if non-empty.
+	// human uniquely identifies the resource and is human meaningful
 	human string
 	// Kind of resource, e.g. module, workspace, etc.
 	kind Kind
@@ -43,26 +41,4 @@ func (id ID) String() string {
 
 func (id ID) LogValue() slog.Value {
 	return slog.StringValue(id.String())
-}
-
-func IDFromString(s string) (ID, error) {
-	encKind, encID, found := strings.Cut(s, "-")
-	if !found {
-		return ID{}, fmt.Errorf("invalid identifier: %s", s)
-	}
-
-	// decode kind
-	kind, err := kindString(encKind)
-	if err != nil {
-		return ID{}, fmt.Errorf("decoding identifier: %w", err)
-	}
-
-	// decode id
-	decoded := base58.Decode(encID)
-	id, err := uuid.ParseBytes(decoded)
-	if err != nil {
-		return ID{}, fmt.Errorf("decoding identifier: %w", err)
-	}
-
-	return ID{id: id, kind: kind}, nil
 }

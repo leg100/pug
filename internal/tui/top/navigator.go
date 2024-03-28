@@ -64,7 +64,7 @@ func (n *navigator) setCurrent(page tui.Page) (created bool, err error) {
 		}
 		model, err := maker.Make(page.Parent, n.width, n.height)
 		if err != nil {
-			return false, err
+			return false, fmt.Errorf("making page: %w", err)
 		}
 		n.cache.put(page, model)
 		created = true

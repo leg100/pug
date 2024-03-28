@@ -13,6 +13,7 @@ import (
 	"github.com/leg100/pug/internal/logging"
 	"github.com/leg100/pug/internal/module"
 	"github.com/leg100/pug/internal/run"
+	"github.com/leg100/pug/internal/state"
 	"github.com/leg100/pug/internal/task"
 	toptui "github.com/leg100/pug/internal/tui/top"
 	"github.com/leg100/pug/internal/version"
@@ -59,6 +60,10 @@ func Start(args []string) error {
 		TaskService:   tasks,
 		ModuleService: modules,
 	})
+	states := state.NewService(ctx, state.ServiceOptions{
+		WorkspaceService: workspaces,
+		TaskService:      tasks,
+	})
 	runs := run.NewService(run.ServiceOptions{
 		TaskService:      tasks,
 		ModuleService:    modules,
@@ -70,6 +75,7 @@ func Start(args []string) error {
 		TaskService:      tasks,
 		ModuleService:    modules,
 		WorkspaceService: workspaces,
+		StateService:     states,
 		RunService:       runs,
 		Logger:           logger,
 		FirstPage:        cfg.FirstPage,

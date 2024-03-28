@@ -52,16 +52,6 @@ func NewService(ctx context.Context, opts ServiceOptions) *Service {
 		modules: opts.ModuleService,
 		tasks:   opts.TaskService,
 	}
-	// Load workspaces whenever a module is created.
-	// sub := opts.ModuleService.Subscribe(ctx)
-	// go func() {
-	// 	for event := range sub {
-	// 		switch event.Type {
-	// 		case resource.CreatedEvent:
-	// 			_, _ = svc.Reload(event.Payload.Resource)
-	// 		}
-	// 	}
-	// }()
 	return svc
 }
 

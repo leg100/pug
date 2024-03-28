@@ -1,12 +1,34 @@
 package tui
 
 import (
+	"github.com/leg100/pug/internal/resource"
 	"github.com/leg100/pug/internal/run"
 	"github.com/leg100/pug/internal/task"
 )
 
 // NavigationMsg is an instruction to navigate to a page.
-type NavigationMsg Page
+type NavigationMsg struct {
+	Page     Page
+	TabTitle string
+}
+
+func NewNavigationMsg(kind Kind, opts ...NavigateOption) NavigationMsg {
+	msg := NavigationMsg{Page: Page{Kind: kind}}
+	for _, fn := range opts {
+		fn(&msg)
+	}
+	return msg
+}
+
+type NavigateOption func(msg *NavigationMsg)
+
+func WithParent(parent resource.Resource) NavigateOption {
+	return func(msg *NavigationMsg) {
+		msg.Page.Parent = parent
+	}
+}
+
+type SetActiveTabMsg string
 
 type InfoMsg string
 
@@ -25,7 +47,7 @@ func NewErrorMsg(err error, msg string, args ...any) ErrorMsg {
 }
 
 type CreatedTasksMsg struct {
-	// The command of the completed tasks (all tasks are assumed to be runnig
+	// The command of the completed tasks (all tasks are assumed to be running
 	// the same command).
 	Command string
 	Tasks   task.Multi
@@ -34,7 +56,7 @@ type CreatedTasksMsg struct {
 }
 
 type CompletedTasksMsg struct {
-	// The command of the completed tasks (all tasks are assumed to be runnig
+	// The command of the completed tasks (all tasks are assumed to be running
 	// the same command).
 	Command string
 	Tasks   task.Multi

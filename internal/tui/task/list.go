@@ -115,7 +115,7 @@ func (m list) Update(msg tea.Msg) (tui.Model, tea.Cmd) {
 		switch {
 		case key.Matches(msg, keys.Global.Enter):
 			if task, ok := m.table.Highlighted(); ok {
-				return m, tui.NavigateTo(tui.TaskKind, &task.Resource)
+				return m, tui.NavigateTo(tui.TaskKind, tui.WithParent(task.Resource))
 			}
 		case key.Matches(msg, keys.Common.Cancel):
 			return m, tui.CreateTasks("cancel", m.svc.Cancel, m.table.HighlightedOrSelectedIDs()...)

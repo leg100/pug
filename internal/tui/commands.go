@@ -55,14 +55,8 @@ func CreateRuns(runs *run.Service, workspaceIDs ...resource.ID) tea.Cmd {
 
 // NavigateTo sends an instruction to navigate to a page with the given model
 // kind, and optionally parent resource.
-func NavigateTo(kind Kind, parent *resource.Resource) tea.Cmd {
-	return func() tea.Msg {
-		page := Page{Kind: kind}
-		if parent != nil {
-			page.Parent = *parent
-		}
-		return NavigationMsg(page)
-	}
+func NavigateTo(kind Kind, opts ...NavigateOption) tea.Cmd {
+	return CmdHandler(NewNavigationMsg(kind, opts...))
 }
 
 func ReportError(err error, msg string, args ...any) tea.Cmd {

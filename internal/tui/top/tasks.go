@@ -4,11 +4,17 @@ import (
 	"errors"
 	"fmt"
 
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/leg100/pug/internal/task"
 	"github.com/leg100/pug/internal/tui"
 )
 
-func handleCreatedTasksMsg(msg tui.CreatedTasksMsg) (info string, err error) {
+func handleCreatedTasksMsg(msg tui.CreatedTasksMsg) (wait tea.Cmd, info string, err error) {
+	// If any tasks were created, then wait for them to complete.
+	if len(msg.Tasks) > 0 {
+		wait = tui.WaitTasks(msg)
+	}
+
 	if len(msg.Tasks) == 1 {
 		// User created one task successfully
 		info = fmt.Sprintf("created %s task successfully", msg.Command)

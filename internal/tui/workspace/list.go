@@ -16,9 +16,17 @@ import (
 	"golang.org/x/exp/maps"
 )
 
+var currentColumn = table.Column{
+	Key:   "current",
+	Title: "CURRENT",
+	// width of "CURRENT"; the actual content is a '✓' or nothing
+	Width:      7,
+	FlexFactor: 1,
+}
+
 type ListMaker struct {
-	WorkspaceService *workspace.Service
 	ModuleService    *module.Service
+	WorkspaceService *workspace.Service
 	RunService       *run.Service
 }
 
@@ -29,6 +37,7 @@ func (m *ListMaker) Make(parent resource.Resource, width, height int) (tui.Model
 	}
 	columns = append(columns,
 		table.WorkspaceColumn,
+		currentColumn,
 		table.RunStatusColumn,
 		table.RunChangesColumn,
 	)
@@ -51,10 +60,16 @@ func (m *ListMaker) renderRow(ws *workspace.Workspace, inherit lipgloss.Style) t
 		table.ModuleColumn.Key:    ws.ModulePath(),
 		table.WorkspaceColumn.Key: ws.Name(),
 	}
+
+	mod, _ := m.ModuleService.Get(ws.Module().ID())
+	if mod.CurrentWorkspace != nil && *mod.CurrentWorkspace == ws.Resource {
+		row[currentColumn.Key] = "✓"
+	}
+
 	if cr := ws.CurrentRun; cr != nil {
 		run, _ := m.RunService.Get(cr.ID())
-		row[table.RunStatusColumn.Key] = string(run.Status)
-		row[table.RunChangesColumn.Key] = run.PlanReport.String()
+		row[table.RunStatusColumn.Key] = tui.RenderRunStatus(run.Status)
+		row[table.RunChangesColumn.Key] = tui.RenderLatestRunReport(run, inherit)
 	}
 	return row
 }
@@ -84,20 +99,34 @@ func (m list) Update(msg tea.Msg) (tui.Model, tea.Cmd) {
 	)
 
 	switch msg := msg.(type) {
+	case resource.Event[*workspace.Workspace]:
+		// Update current workspace and current run
+		m.table.UpdateViewport()
+	case resource.Event[*run.Run]:
+		// Update current run status and changes
+		m.table.UpdateViewport()
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, keys.Global.Enter):
 			if ws, ok := m.table.Highlighted(); ok {
-				return m, tui.NavigateTo(tui.WorkspaceKind, &ws.Resource)
+				return m, tui.NavigateTo(tui.WorkspaceKind, tui.WithParent(ws.Resource))
 			}
-		case key.Matches(msg, Keys.Init):
-			return m, tui.CreateTasks("init", m.modules.Init, m.highlightedOrSelectedModuleIDs()...)
-		case key.Matches(msg, Keys.Format):
-			return m, tui.CreateTasks("format", m.modules.Format, m.highlightedOrSelectedModuleIDs()...)
-		case key.Matches(msg, Keys.Validate):
-			return m, tui.CreateTasks("validate", m.modules.Validate, m.highlightedOrSelectedModuleIDs()...)
-		case key.Matches(msg, Keys.Plan):
-			return m, m.createRun(run.CreateOptions{})
+		case key.Matches(msg, localKeys.Init):
+			cmd := tui.CreateTasks("init", m.modules.Init, m.highlightedOrSelectedModuleIDs()...)
+			m.table.DeselectAll()
+			return m, cmd
+		case key.Matches(msg, localKeys.Format):
+			cmd := tui.CreateTasks("format", m.modules.Format, m.highlightedOrSelectedModuleIDs()...)
+			m.table.DeselectAll()
+			return m, cmd
+		case key.Matches(msg, localKeys.Validate):
+			cmd := tui.CreateTasks("validate", m.modules.Validate, m.highlightedOrSelectedModuleIDs()...)
+			m.table.DeselectAll()
+			return m, cmd
+		case key.Matches(msg, localKeys.Plan):
+			workspaceIDs := m.table.HighlightedOrSelectedIDs()
+			m.table.DeselectAll()
+			return m, tui.CreateRuns(m.runs, workspaceIDs...)
 		}
 	}
 
@@ -125,7 +154,7 @@ func (m list) TabStatus() string {
 }
 
 func (m list) HelpBindings() (bindings []key.Binding) {
-	return keys.KeyMapToSlice(Keys)
+	return keys.KeyMapToSlice(localKeys)
 }
 
 func (m list) highlightedOrSelectedModuleIDs() []resource.ID {
@@ -135,32 +164,4 @@ func (m list) highlightedOrSelectedModuleIDs() []resource.ID {
 		moduleIDs[i] = s.Module().ID()
 	}
 	return moduleIDs
-}
-
-func (m list) createRun(opts run.CreateOptions) tea.Cmd {
-	// Handle the case where a user has pressed a key on an empty table with
-	// zero rows
-	if len(m.table.Items()) == 0 {
-		return nil
-	}
-
-	// If items have been selected then clear the selection
-	var deselectCmd tea.Cmd
-	if len(m.table.Selected) > 0 {
-		deselectCmd = tui.CmdHandler(table.DeselectMsg{})
-	}
-
-	cmd := func() tea.Msg {
-		workspaces := m.table.HighlightedOrSelected()
-		for workspaceID := range workspaces {
-			_, err := m.runs.Create(workspaceID, opts)
-			if err != nil {
-				return tui.NewErrorMsg(err, "creating run")
-			}
-		}
-		return tui.NavigationMsg(
-			tui.Page{Kind: tui.RunListKind, Parent: m.parent},
-		)
-	}
-	return tea.Batch(cmd, deselectCmd)
 }

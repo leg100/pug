@@ -3,26 +3,28 @@ package state
 import (
 	"encoding/json"
 	"strings"
+
+	"github.com/leg100/pug/internal/resource"
 )
 
 type (
-	// File is the terraform state file contents
-	File struct {
+	// StateFile is the terraform state file contents
+	StateFile struct {
 		Version          int
 		TerraformVersion string `json:"terraform_version"`
 		Serial           int64
 		Lineage          string
-		Outputs          map[string]FileOutput
-		Resources        []Resource
+		Outputs          map[string]StateFileOutput
+		FileResources    []StateFileResource `json:"resources"`
 	}
 
-	// FileOutput is an output in the terraform state file
-	FileOutput struct {
+	// StateFileOutput is an output in the terraform state file
+	StateFileOutput struct {
 		Value     json.RawMessage
 		Sensitive bool
 	}
 
-	Resource struct {
+	StateFileResource struct {
 		Name        string
 		ProviderURI string `json:"provider"`
 		Type        string
@@ -30,7 +32,15 @@ type (
 	}
 )
 
-func (r Resource) ModuleName() string {
+func (f StateFile) Resources(ws resource.Resource) []*Resource {
+	resources := make([]*Resource, len(f.FileResources))
+	for i, r := range f.FileResources {
+		resources[i] = newResource(ws, r)
+	}
+	return resources
+}
+
+func (r StateFileResource) ModuleName() string {
 	if r.Module == "" {
 		return "root"
 	}
@@ -38,7 +48,7 @@ func (r Resource) ModuleName() string {
 }
 
 // Type determines the HCL type of the output value
-func (r FileOutput) Type() (string, error) {
+func (r StateFileOutput) Type() (string, error) {
 	var dst any
 	if err := json.Unmarshal(r.Value, &dst); err != nil {
 		return "", err
@@ -64,6 +74,6 @@ func (r FileOutput) Type() (string, error) {
 	return typ, nil
 }
 
-func (r FileOutput) StringValue() string {
+func (r StateFileOutput) StringValue() string {
 	return string(r.Value)
 }

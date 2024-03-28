@@ -13,8 +13,8 @@ func handleCreatedRunsMsg(msg tui.CreatedRunsMsg) (navigate tea.Cmd, info string
 		// the user to the run page (in the scenario that *multiple* runs are
 		// created then it is up to the original model to decide where to send
 		// the user, whether to another page, to a tab, etc).
-		info = "created run successfully"
-		navigate = tui.NavigateTo(tui.RunKind, &msg.Runs[0].Resource)
+		info = fmt.Sprintf("created %s successfully", msg.Runs[0])
+		navigate = tui.NavigateTo(tui.RunKind, tui.WithParent(msg.Runs[0].Resource))
 	} else if len(msg.Runs) == 0 && len(msg.CreateErrs) == 1 {
 		// User attempted to create one run but it failed to be created
 		err = fmt.Errorf("creating run failed: %w", msg.CreateErrs[0])

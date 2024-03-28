@@ -12,9 +12,10 @@ type keyMap struct {
 	Validate key.Binding
 	Format   key.Binding
 	Reload   key.Binding
+	Delete   key.Binding
 }
 
-var Keys = keyMap{
+var localKeys = keyMap{
 	Edit: key.NewBinding(
 		key.WithKeys("e"),
 		key.WithHelp("e", "edit"),
@@ -42,5 +43,9 @@ var Keys = keyMap{
 	Reload: key.NewBinding(
 		key.WithKeys("ctrl+r"),
 		key.WithHelp("ctrl+r", "reload"),
+	),
+	Delete: key.NewBinding(
+		key.WithKeys("d"),
+		key.WithHelp("d", "delete"),
 	),
 }

@@ -119,6 +119,7 @@ func (f *factory) newTask(opts CreateOptions) (*Task, error) {
 		Command:       opts.Command,
 		Path:          opts.Path,
 		Args:          opts.Args,
+		Env:           opts.Env,
 		exclusive:     opts.Exclusive,
 		AfterExited:   opts.AfterExited,
 		AfterError:    opts.AfterError,

@@ -25,7 +25,8 @@ type tabSetInfo interface {
 	TabSetInfo() string
 }
 
-// TabSet is a related set of tabs.
+// TabSet is a related set of zero or more tabs, one of which is active, i.e.
+// its contents are rendered.
 type TabSet struct {
 	Tabs []Tab
 
@@ -51,14 +52,6 @@ func (m TabSet) WithTabSetInfo(i tabSetInfo) TabSet {
 	return m
 }
 
-// A tab is one of a set of tabs. A tab has a title, and an embedded model,
-// which is responsible for the visible content under the tab.
-type Tab struct {
-	Model
-
-	Title string
-}
-
 // Init initializes the existing tabs in the collection.
 func (m TabSet) Init() tea.Cmd {
 	cmds := make([]tea.Cmd, len(m.Tabs))
@@ -70,7 +63,7 @@ func (m TabSet) Init() tea.Cmd {
 
 var ErrDuplicateTab = errors.New("not allowed to create tabs with duplicate titles")
 
-// AddTab adds a tab to the tab set, using the make and parent to construct the
+// AddTab adds a tab to the tab set, using the maker and parent to construct the
 // model associated with the tab. The title must be unique in the set. Upon
 // success the associated model's Init() is returned for the caller to
 // initialise the model.
@@ -98,26 +91,41 @@ func (m TabSet) Active() (bool, Tab) {
 	return false, Tab{}
 }
 
-// SetActiveTab sets the currently active tab. If the tab index is outside the
-// bounds of the current tab set then the active tab is automatically set to the
-// last tab.
-func (m *TabSet) SetActiveTab(tabIndex int) {
-	if tabIndex < 0 || tabIndex > len(m.Tabs)-1 {
-		m.active = len(m.Tabs) - 1
-	} else {
-		m.active = tabIndex
+// Active returns the title of the currently active tab. If there are no tabs,
+// then an empty string is returned.
+func (m TabSet) ActiveTitle() string {
+	if len(m.Tabs) > 0 {
+		return m.Tabs[m.active].Title
+	}
+	return ""
+}
+
+// SetActiveTab looks up a tab with a title and makes it the active tab. If the
+// tab's model is not yet initialized then its Init() command is returned. If no
+// such tab exists no action is taken.
+func (m *TabSet) SetActiveTab(title string) {
+	for i, tab := range m.Tabs {
+		if tab.Title == title {
+			m.setActive(i)
+		}
 	}
 }
 
-// SetActiveTabWithTitle looks up a tab with a title and makes it the active
-// tab. If no such tab exists no action is taken.
-func (m *TabSet) SetActiveTabWithTitle(title string) {
-	for i, tab := range m.Tabs {
-		if tab.Title == title {
-			m.active = i
-			return
-		}
+func (m *TabSet) setActive(tabIndex int) {
+	if len(m.Tabs) == 0 {
+		// No tabs, no action
+		return
 	}
+
+	if tabIndex < 0 {
+		// If negative index then automatically set active tab to last tab.
+		tabIndex = len(m.Tabs) - 1
+	} else if tabIndex > len(m.Tabs)-1 {
+		// If beyond bounds then automatically set active tab to the first tab.
+		tabIndex = 0
+	}
+
+	m.active = tabIndex
 }
 
 func (m TabSet) Update(msg tea.Msg) (TabSet, tea.Cmd) {
@@ -128,21 +136,18 @@ func (m TabSet) Update(msg tea.Msg) (TabSet, tea.Cmd) {
 		switch {
 		case key.Matches(msg, keys.Navigation.TabNext):
 			// Cycle tabs, going back to the first tab after the last tab
-			if m.active == len(m.Tabs)-1 {
-				m.active = 0
-			} else {
-				m.active = m.active + 1
-			}
-			return m, nil
+			m.setActive(m.active + 1)
 		case key.Matches(msg, keys.Navigation.TabLast):
-			m.active = max(m.active-1, 0)
-			return m, nil
+			// Cycle back thru tabs, going to the last tab after the first tab.
+			m.setActive(m.active - 1)
 		}
 		// Send other keys to active tab if there is one
 		if len(m.Tabs) > 0 {
 			cmd := m.updateTab(m.active, msg)
 			return m, cmd
 		}
+	case SetActiveTabMsg:
+		m.SetActiveTab(string(msg))
 	case BodyResizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
@@ -242,4 +247,12 @@ func (m TabSet) contentWidth() int {
 // Height of the tab content area
 func (m TabSet) contentHeight() int {
 	return m.height - tabHeaderHeight
+}
+
+// A tab is one of a set of tabs. A tab has a title, and an embedded model,
+// which is responsible for the visible content under the tab.
+type Tab struct {
+	Model
+
+	Title string
 }

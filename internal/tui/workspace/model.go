@@ -4,9 +4,11 @@ import (
 	"fmt"
 
 	"github.com/charmbracelet/bubbles/key"
+	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/leg100/pug/internal/resource"
 	"github.com/leg100/pug/internal/run"
+	"github.com/leg100/pug/internal/state"
 	"github.com/leg100/pug/internal/task"
 	"github.com/leg100/pug/internal/tui"
 	"github.com/leg100/pug/internal/tui/keys"
@@ -15,31 +17,51 @@ import (
 	"github.com/leg100/pug/internal/workspace"
 )
 
+const (
+	runsTabTitle      = "runs"
+	tasksTabTitle     = "tasks"
+	resourcesTabTitle = "resources"
+)
+
 // Maker makes workspace models.
 type Maker struct {
 	WorkspaceService *workspace.Service
+	StateService     *state.Service
 	RunService       *run.Service
 	TaskService      *task.Service
 
 	RunListMaker  *runtui.ListMaker
 	TaskListMaker *tasktui.ListMaker
+
+	Spinner *spinner.Model
 }
 
-func (mm *Maker) Make(mr resource.Resource, width, height int) (tui.Model, error) {
-	ws, err := mm.WorkspaceService.Get(mr.ID())
+func (mm *Maker) Make(workspace resource.Resource, width, height int) (tui.Model, error) {
+	ws, err := mm.WorkspaceService.Get(workspace.ID())
 	if err != nil {
 		return model{}, err
 	}
+	rlm := &resourceListMaker{
+		StateService: mm.StateService,
+		Spinner:      mm.Spinner,
+	}
 
 	tabs := tui.NewTabSet(width, height)
-	if _, err := tabs.AddTab(mm.RunListMaker, mr, "runs"); err != nil {
+	_, err = tabs.AddTab(mm.RunListMaker, workspace, runsTabTitle)
+	if err != nil {
 		return nil, fmt.Errorf("adding runs tab: %w", err)
 	}
-	if _, err := tabs.AddTab(mm.TaskListMaker, mr, "tasks"); err != nil {
+	_, err = tabs.AddTab(mm.TaskListMaker, workspace, tasksTabTitle)
+	if err != nil {
 		return nil, fmt.Errorf("adding tasks tab: %w", err)
+	}
+	_, err = tabs.AddTab(rlm, workspace, resourcesTabTitle)
+	if err != nil {
+		return nil, fmt.Errorf("adding resources tab: %w", err)
 	}
 
 	m := model{
+		runs:      mm.RunService,
 		workspace: ws,
 		tabs:      tabs,
 	}
@@ -47,6 +69,7 @@ func (mm *Maker) Make(mr resource.Resource, width, height int) (tui.Model, error
 }
 
 type model struct {
+	runs      *run.Service
 	workspace *workspace.Workspace
 	tabs      tui.TabSet
 }
@@ -59,6 +82,11 @@ func (m model) Update(msg tea.Msg) (tui.Model, tea.Cmd) {
 	var cmds []tea.Cmd
 
 	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		switch {
+		case key.Matches(msg, localKeys.Plan):
+			return m, tui.CreateRuns(m.runs, m.workspace.ID())
+		}
 	case resource.Event[*workspace.Workspace]:
 		if msg.Payload.ID() == m.workspace.ID() {
 			m.workspace = msg.Payload
