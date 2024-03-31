@@ -59,16 +59,16 @@ func (s *Service) Reload() error {
 		// Add module if it isn't in pug already
 		if _, err := s.GetByPath(path); err == resource.ErrNotFound {
 			mod := New(path)
-			s.table.Add(mod.ID(), mod)
+			s.table.Add(mod.ID, mod)
 			added = append(added, path)
 		}
 	}
 
 	// Cleanup existing modules, removing those that are no longer to be found
 	for _, existing := range s.table.List() {
-		if !slices.Contains(found, existing.Path()) {
-			s.table.Delete(existing.ID())
-			removed = append(removed, existing.Path())
+		if !slices.Contains(found, existing.Path) {
+			s.table.Delete(existing.ID)
+			removed = append(removed, existing.Path)
 		}
 	}
 	slog.Info("reloaded modules", "added", added, "removed", removed)
@@ -82,7 +82,7 @@ func (s *Service) Init(moduleID resource.ID) (*task.Task, error) {
 		return nil, fmt.Errorf("initializing module: %w", err)
 	}
 	// create asynchronous task that runs terraform init
-	tsk, err := s.createTask(mod, task.CreateOptions{
+	tsk, err := s.CreateTask(mod, task.CreateOptions{
 		Command:  []string{"init"},
 		Args:     []string{"-input=false"},
 		Blocking: true,
@@ -123,7 +123,7 @@ func (s *Service) Get(id resource.ID) (*Module, error) {
 
 func (s *Service) GetByPath(path string) (*Module, error) {
 	for _, mod := range s.table.List() {
-		if path == mod.Path() {
+		if path == mod.Path {
 			return mod, nil
 		}
 	}
@@ -134,9 +134,9 @@ func (s *Service) Subscribe(ctx context.Context) <-chan resource.Event[*Module] 
 	return s.broker.Subscribe(ctx)
 }
 
-func (s *Service) SetCurrent(moduleID resource.ID, workspace resource.Resource) error {
+func (s *Service) SetCurrent(moduleID resource.ID, workspace resource.ID) error {
 	err := s.table.Update(moduleID, func(existing *Module) {
-		existing.CurrentWorkspace = &workspace
+		existing.CurrentWorkspaceID = &workspace
 	})
 	if err != nil {
 		return fmt.Errorf("setting current workspace for module: %w", err)
@@ -150,7 +150,7 @@ func (s *Service) Format(moduleID resource.ID) (*task.Task, error) {
 		return nil, fmt.Errorf("formatting module: %w", err)
 	}
 
-	return s.createTask(mod, task.CreateOptions{
+	return s.CreateTask(mod, task.CreateOptions{
 		Command: []string{"fmt"},
 		AfterCreate: func(*task.Task) {
 			s.table.Update(moduleID, func(mod *Module) {
@@ -178,7 +178,7 @@ func (s *Service) Validate(moduleID resource.ID) (*task.Task, error) {
 		return nil, fmt.Errorf("validating module: %w", err)
 	}
 
-	return s.createTask(mod, task.CreateOptions{
+	return s.CreateTask(mod, task.CreateOptions{
 		Command: []string{"validate"},
 		AfterCreate: func(*task.Task) {
 			s.table.Update(moduleID, func(mod *Module) {
@@ -200,8 +200,8 @@ func (s *Service) Validate(moduleID resource.ID) (*task.Task, error) {
 	})
 }
 
-func (s *Service) createTask(mod *Module, opts task.CreateOptions) (*task.Task, error) {
+func (s *Service) CreateTask(mod *Module, opts task.CreateOptions) (*task.Task, error) {
 	opts.Parent = mod.Resource
-	opts.Path = mod.Path()
+	opts.Path = mod.Path
 	return s.tasks.Create(opts)
 }

@@ -51,7 +51,7 @@ func (s *Service) Create(opts CreateOptions) (*Task, error) {
 	}
 
 	// Add to db
-	s.table.Add(task.ID(), task)
+	s.table.Add(task.ID, task)
 	// Increment counter of number of live tasks
 	*s.counter++
 
@@ -74,12 +74,12 @@ func (s *Service) Create(opts CreateOptions) (*Task, error) {
 func (s *Service) Enqueue(taskID resource.ID) (*Task, error) {
 	task, err := s.table.Get(taskID)
 	if err != nil {
-		slog.Error("enqueuing task", "error", "task not found", "task_id", taskID.String())
+		slog.Error("enqueuing task", "error", err)
 		return nil, fmt.Errorf("enqueuing task: %w", err)
 	}
 
 	task.updateState(Queued)
-	slog.Debug("enqueued task", "task_id", task.ID(), "command", task.Command)
+	slog.Debug("enqueued task", "task", task)
 	return task, nil
 }
 
@@ -91,9 +91,11 @@ type ListOptions struct {
 	Status []Status
 	// Order tasks by oldest first (true), or newest first (false)
 	Oldest bool
-	// Filter tasks by only those that are block. If false, both blocking and
+	// Filter tasks by only those that are blocking. If false, both blocking and
 	// non-blocking tasks are returned.
 	Blocking bool
+	// Filter tasks by those with one of the following commands
+	Command [][]string
 	// Filter tasks by only those that have an ancestor with the given ID.
 	// Defaults the zero value, which is the ID of the abstract global entity to
 	// which all resources belong.
@@ -121,6 +123,13 @@ func (s *Service) List(opts ListOptions) []*Task {
 		if opts.Blocking {
 			if !t.Blocking {
 				continue
+			}
+		}
+		if opts.Command != nil {
+			for _, cmd := range opts.Command {
+				if slices.Equal(cmd, t.Command) {
+					break
+				}
 			}
 		}
 		if !t.HasAncestor(opts.Ancestor) {

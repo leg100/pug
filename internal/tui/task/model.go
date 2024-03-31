@@ -24,10 +24,12 @@ type Maker struct {
 	// If IsRunTab is true then Maker makes task models that are a tab within
 	// the run model.
 	IsRunTab bool
+
+	Breadcrumbs *tui.Breadcrumbs
 }
 
 func (mm *Maker) Make(tr resource.Resource, width, height int) (tui.Model, error) {
-	task, err := mm.TaskService.Get(tr.ID())
+	task, err := mm.TaskService.Get(tr.ID)
 	if err != nil {
 		return model{}, err
 	}
@@ -40,9 +42,10 @@ func (mm *Maker) Make(tr resource.Resource, width, height int) (tui.Model, error
 		spinner:  mm.Spinner,
 		isRunTab: mm.IsRunTab,
 		// read upto 1kb at a time
-		buf:    make([]byte, 1024),
-		width:  width,
-		height: height,
+		buf:         make([]byte, 1024),
+		width:       width,
+		height:      height,
+		breadcrumbs: mm.Breadcrumbs,
 	}
 
 	m.setViewportDimensions(width, height)
@@ -66,6 +69,8 @@ type model struct {
 	height int
 
 	showInfo bool
+
+	breadcrumbs *tui.Breadcrumbs
 }
 
 func (m model) Init() tea.Cmd {
@@ -85,15 +90,15 @@ func (m model) Update(msg tea.Msg) (tui.Model, tea.Cmd) {
 			// 'i' toggles showing task info
 			m.showInfo = !m.showInfo
 		case key.Matches(msg, keys.Common.Cancel):
-			return m, tui.CreateTasks("cancel", m.svc.Cancel, m.task.ID())
+			return m, tui.CreateTasks("cancel", m.svc.Cancel, m.task.ID)
 			// TODO: retry
 		case key.Matches(msg, keys.Common.Apply):
 
-			return m, tui.CreateTasks("cancel", m.svc.Cancel, m.task.ID())
+			return m, tui.CreateTasks("cancel", m.svc.Cancel, m.task.ID)
 			// TODO: retry
 		}
 	case outputMsg:
-		if msg.taskID != m.task.ID() {
+		if msg.taskID != m.task.ID {
 			return m, nil
 		}
 		// isChild is true when this msg is for a task model that is a child of a
@@ -110,7 +115,7 @@ func (m model) Update(msg tea.Msg) (tui.Model, tea.Cmd) {
 			cmds = append(cmds, m.getOutput)
 		}
 	case resource.Event[*task.Task]:
-		if msg.Payload.ID() != m.task.ID() {
+		if msg.Payload.ID != m.task.ID {
 			// Ignore event for different task.
 			return m, nil
 		}
@@ -129,9 +134,10 @@ func (m model) Update(msg tea.Msg) (tui.Model, tea.Cmd) {
 }
 
 func (m model) Title() string {
-	crumbs := tui.Breadcrumbs("", *m.task.Parent)
+	heading := tui.Bold.Render("Task")
 	cmd := tui.Regular.Copy().Foreground(tui.Green).Render(m.task.CommandString())
-	return fmt.Sprintf("%s{%s}%s", tui.Bold.Render("Task"), cmd, crumbs)
+	crumbs := m.breadcrumbs.Render("", *m.task.Parent)
+	return fmt.Sprintf("%s{%s}%s", heading, cmd, crumbs)
 }
 
 func (m model) ID() string {
@@ -151,19 +157,6 @@ func (m model) View() string {
 	body := tui.Regular.Copy().
 		Margin(0, 1).
 		Render(m.viewport.View())
-	if m.width > 104 {
-		metadata := tui.Regular.Copy().
-			Margin(0, 1).
-			Height(m.viewport.Height).
-			Width(22).
-			Foreground(tui.LightGrey).
-			BorderStyle(lipgloss.NormalBorder()).
-			BorderLeft(true).
-			Render(m.task.ID().String())
-		// Combine viewport and optional metadata into main body, separated by a
-		// vertical rule.
-		body = lipgloss.JoinHorizontal(lipgloss.Top, body, metadata)
-	}
 
 	// render task footer only if task is not a child of a run model
 	if false {
@@ -243,7 +236,7 @@ func (m model) HelpBindings() (bindings []key.Binding) {
 }
 
 func (m model) getOutput() tea.Msg {
-	msg := outputMsg{taskID: m.task.ID(), isRunTab: m.isRunTab}
+	msg := outputMsg{taskID: m.task.ID, isRunTab: m.isRunTab}
 
 	n, err := m.output.Read(m.buf)
 	if err == io.EOF {

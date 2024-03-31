@@ -29,13 +29,9 @@ type Message struct {
 	Message    string `json:"msg"`
 	Attributes []Attr
 
-	// A log message is a resource, only in order to satisfy the interface on
-	// tui/table.Table
-	resource.Resource
-
 	// Serial uniquely identifies the message (within the scope of the logger it
-	// was emitted from). The higher the serial number the newer the message.
-	serial uint
+	// was emitted from). The higher the Serial number the newer the message.
+	Serial uint
 }
 
 type Attr struct {
@@ -78,10 +74,7 @@ func (l *Logger) Write(p []byte) (int, error) {
 	msgs := make([]Message, 0, 1)
 	d := logfmt.NewDecoder(bytes.NewReader(p))
 	for d.ScanRecord() {
-		msg := Message{
-			serial:   l.serial,
-			Resource: resource.New(resource.Log, "", nil),
-		}
+		msg := Message{Serial: l.serial}
 		for d.ScanKeyval() {
 			switch string(d.Key()) {
 			case "time":
@@ -101,20 +94,6 @@ func (l *Logger) Write(p []byte) (int, error) {
 				})
 			}
 		}
-		// Sort attributes by key, lexicographically. This ensures that in the
-		// TUI the attributes are rendered consistently (and we do this here
-		// rather than in the TUI because we only want to do this once rather
-		// than on every render).
-		//slices.SortFunc(msg.Attributes, func(a, b Attr) int {
-		//	switch {
-		//	case a.Key < b.Key:
-		//		return -1
-		//	case a.Key > b.Key:
-		//		return 1
-		//	default:
-		//		return 0
-		//	}
-		//})
 		msgs = append(msgs, msg)
 		l.broker.Publish(resource.CreatedEvent, msg)
 		l.serial++
@@ -135,7 +114,7 @@ func (l *Logger) Subscribe(ctx context.Context) <-chan resource.Event[Message] {
 }
 
 func BySerialDesc(i, j Message) int {
-	if i.serial < j.serial {
+	if i.Serial < j.Serial {
 		return 1
 	}
 	return -1

@@ -8,11 +8,13 @@ import (
 )
 
 func TestService_List(t *testing.T) {
-	pending := &Task{Resource: resource.New(resource.Task, "", nil), State: Pending}
-	queued := &Task{Resource: resource.New(resource.Task, "", nil), State: Queued}
-	running := &Task{Resource: resource.New(resource.Task, "", nil), State: Running}
-	exited := &Task{Resource: resource.New(resource.Task, "", nil), State: Exited}
-	errored := &Task{Resource: resource.New(resource.Task, "", nil), State: Errored}
+	mod1 := resource.New(resource.Module, resource.GlobalResource)
+
+	pending := &Task{Resource: resource.New(resource.Task, mod1), State: Pending}
+	queued := &Task{Resource: resource.New(resource.Task, mod1), State: Queued}
+	running := &Task{Resource: resource.New(resource.Task, mod1), State: Running}
+	exited := &Task{Resource: resource.New(resource.Task, mod1), State: Exited}
+	errored := &Task{Resource: resource.New(resource.Task, mod1), State: Errored}
 
 	tests := []struct {
 		name string
@@ -54,11 +56,11 @@ func TestService_List(t *testing.T) {
 			svc := &Service{
 				table: resource.NewTable(&fakePublisher[*Task]{}),
 			}
-			svc.table.Add(pending.ID(), pending)
-			svc.table.Add(queued.ID(), queued)
-			svc.table.Add(running.ID(), running)
-			svc.table.Add(exited.ID(), exited)
-			svc.table.Add(errored.ID(), errored)
+			svc.table.Add(pending.ID, pending)
+			svc.table.Add(queued.ID, queued)
+			svc.table.Add(running.ID, running)
+			svc.table.Add(exited.ID, exited)
+			svc.table.Add(errored.ID, errored)
 
 			tt.want(t, svc.List(tt.opts))
 		})

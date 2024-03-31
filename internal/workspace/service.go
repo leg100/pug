@@ -39,9 +39,10 @@ type workspaceTable interface {
 type moduleService interface {
 	Get(id resource.ID) (*module.Module, error)
 	GetByPath(path string) (*module.Module, error)
-	SetCurrent(moduleID resource.ID, workspace resource.Resource) error
+	SetCurrent(moduleID resource.ID, workspace resource.ID) error
 	Reload() error
 	List() []*module.Module
+	CreateTask(mod *module.Module, opts task.CreateOptions) (*task.Task, error)
 }
 
 func NewService(ctx context.Context, opts ServiceOptions) *Service {
@@ -65,9 +66,7 @@ func (s *Service) Reload(moduleID resource.ID) (*task.Task, error) {
 	if err != nil {
 		return nil, err
 	}
-	task, err := s.tasks.Create(task.CreateOptions{
-		Parent:  mod.Resource,
-		Path:    moduleID.String(),
+	task, err := s.modules.CreateTask(mod, task.CreateOptions{
 		Command: []string{"workspace", "list"},
 		AfterError: func(t *task.Task) {
 			slog.Error("reloading workspaces", "error", t.Err, "module", moduleID, "task", t)
@@ -78,7 +77,7 @@ func (s *Service) Reload(moduleID resource.ID) (*task.Task, error) {
 				slog.Error("reloading workspaces", "error", err, "module", moduleID)
 				return
 			}
-			added, removed, err := s.resetWorkspaces(mod.Resource, found, current)
+			added, removed, err := s.resetWorkspaces(mod, found, current)
 			if err != nil {
 				slog.Error("reloading workspaces", "error", err, "module", moduleID)
 				return
@@ -102,7 +101,7 @@ func (s *Service) ReloadAll() (task.Multi, []error) {
 
 	modIDs := make([]resource.ID, len(mods))
 	for i, mod := range s.modules.List() {
-		modIDs[i] = mod.ID()
+		modIDs[i] = mod.ID
 	}
 	return task.CreateMulti(s.Reload, modIDs...)
 }
@@ -110,11 +109,11 @@ func (s *Service) ReloadAll() (task.Multi, []error) {
 // resetWorkspaces resets the workspaces for a module, adding newly discovered
 // workspaces, removing workspaces that no longer exist, and setting the current
 // workspace for the module.
-func (s *Service) resetWorkspaces(module resource.Resource, discovered []string, current string) (added []string, removed []string, err error) {
+func (s *Service) resetWorkspaces(mod *module.Module, discovered []string, current string) (added []string, removed []string, err error) {
 	// Gather existing workspaces for the module.
 	var existing []*Workspace
 	for _, ws := range s.table.List() {
-		if ws.Module().ID() == module.ID() {
+		if ws.ModuleID() == mod.ID {
 			existing = append(existing, ws)
 		}
 	}
@@ -122,26 +121,26 @@ func (s *Service) resetWorkspaces(module resource.Resource, discovered []string,
 	// Add discovered workspaces that don't exist in pug
 	for _, name := range discovered {
 		if !slices.ContainsFunc(existing, func(ws *Workspace) bool {
-			return ws.String() == name
+			return ws.Name == name
 		}) {
-			add := New(module, name)
-			s.table.Add(add.ID(), add)
+			add := New(mod, name)
+			s.table.Add(add.ID, add)
 			added = append(added, name)
 		}
 	}
 	// Remove workspaces from pug that no longer exist
 	for _, ws := range existing {
-		if !slices.Contains(discovered, ws.String()) {
-			s.table.Delete(ws.ID())
-			removed = append(removed, ws.String())
+		if !slices.Contains(discovered, ws.Name) {
+			s.table.Delete(ws.ID)
+			removed = append(removed, ws.Name)
 		}
 	}
 	// Reset current workspace
-	currentWorkspace, err := s.GetByName(module.ID(), current)
+	currentWorkspace, err := s.GetByName(mod.ID, current)
 	if err != nil {
 		return nil, nil, fmt.Errorf("cannot find current workspace: %s: %w", current, err)
 	}
-	if err := s.modules.SetCurrent(module.ID(), currentWorkspace.Resource); err != nil {
+	if err := s.modules.SetCurrent(mod.ID, currentWorkspace.ID); err != nil {
 		return nil, nil, err
 	}
 	return
@@ -183,16 +182,16 @@ func (s *Service) Create(path, name string) (*Workspace, *task.Task, error) {
 	if err != nil {
 		return nil, nil, fmt.Errorf("checking for module: %s: %w", path, err)
 	}
-	ws := New(mod.Resource, name)
+	ws := New(mod, name)
 
 	task, err := s.createTask(ws, task.CreateOptions{
 		Command: []string{"workspace", "new"},
 		Args:    []string{name},
 		AfterExited: func(*task.Task) {
-			s.table.Add(ws.ID(), ws)
+			s.table.Add(ws.ID, ws)
 			// `workspace new` implicitly makes the created workspace the
 			// *current* workspace, so better tell pug that too.
-			if err := s.modules.SetCurrent(mod.ID(), ws.Resource); err != nil {
+			if err := s.modules.SetCurrent(mod.ID, ws.ID); err != nil {
 				slog.Error("creating workspace: %w", err)
 			}
 		},
@@ -209,7 +208,7 @@ func (s *Service) Get(workspaceID resource.ID) (*Workspace, error) {
 
 func (s *Service) GetByName(moduleID resource.ID, name string) (*Workspace, error) {
 	for _, ws := range s.table.List() {
-		if ws.Module().ID() == moduleID && ws.Name() == name {
+		if ws.ModuleID() == moduleID && ws.Name == name {
 			return ws, nil
 		}
 	}
@@ -217,16 +216,17 @@ func (s *Service) GetByName(moduleID resource.ID, name string) (*Workspace, erro
 }
 
 type ListOptions struct {
+	// Filter by ID of workspace's module. If zero value then no filtering is
+	// performed.
 	ModuleID resource.ID
 }
 
 func (s *Service) List(opts ListOptions) []*Workspace {
 	var existing []*Workspace
 	for _, ws := range s.table.List() {
-		if opts.ModuleID != resource.GlobalID {
-			if ws.Module().ID() != opts.ModuleID {
-				continue
-			}
+		// If opts.ModuleID is zero value then HasAncestor returns true.
+		if !ws.HasAncestor(opts.ModuleID) {
+			continue
 		}
 		existing = append(existing, ws)
 	}
@@ -237,12 +237,12 @@ func (s *Service) Subscribe(ctx context.Context) <-chan resource.Event[*Workspac
 	return s.broker.Subscribe(ctx)
 }
 
-func (s *Service) SetCurrent(workspaceID resource.ID, run resource.Resource) {
+func (s *Service) SetCurrent(workspaceID resource.ID, run resource.ID) {
 	ws, err := s.table.Get(workspaceID)
 	if err != nil {
-		slog.Error("setting current workspace run", "run", run, "error", err)
+		slog.Error("setting current workspace run", "run_id", run, "error", err)
 	}
-	ws.CurrentRun = &run
+	ws.CurrentRunID = &run
 }
 
 // Delete a workspace. Asynchronous.
@@ -251,19 +251,24 @@ func (s *Service) Delete(id resource.ID) (*task.Task, error) {
 	if err != nil {
 		return nil, fmt.Errorf("deleting workspace: %w", err)
 	}
-
 	return s.createTask(ws, task.CreateOptions{
 		Command:  []string{"workspace", "delete"},
-		Args:     []string{ws.String()},
+		Args:     []string{ws.Name},
 		Blocking: true,
 		AfterExited: func(*task.Task) {
-			s.table.Delete(ws.ID())
+			s.table.Delete(ws.ID)
 		},
 	})
 }
 
 func (s *Service) createTask(ws *Workspace, opts task.CreateOptions) (*task.Task, error) {
 	opts.Parent = ws.Resource
-	opts.Path = ws.ModulePath()
+
+	mod, err := s.modules.Get(ws.ModuleID())
+	if err != nil {
+		return nil, err
+	}
+	opts.Path = mod.Path
+
 	return s.tasks.Create(opts)
 }

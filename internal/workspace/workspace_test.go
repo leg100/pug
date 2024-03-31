@@ -28,7 +28,7 @@ import (
 
 func TestWorkspace_TerraformEnv(t *testing.T) {
 	mod := module.New("a/b/c")
-	ws := New(mod.Resource, "dev")
+	ws := New(mod, "dev")
 
 	assert.Equal(t, "TF_WORKSPACE=dev", ws.TerraformEnv())
 }

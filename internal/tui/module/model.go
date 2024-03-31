@@ -31,10 +31,12 @@ type Maker struct {
 	WorkspaceListMaker *workspacetui.ListMaker
 	RunListMaker       *runtui.ListMaker
 	TaskListMaker      *tasktui.ListMaker
+
+	Breadcrumbs *tui.Breadcrumbs
 }
 
 func (mm *Maker) Make(mr resource.Resource, width, height int) (tui.Model, error) {
-	mod, err := mm.ModuleService.Get(mr.ID())
+	mod, err := mm.ModuleService.Get(mr.ID)
 	if err != nil {
 		return model{}, err
 	}
@@ -58,6 +60,7 @@ func (mm *Maker) Make(mr resource.Resource, width, height int) (tui.Model, error
 		RunService:    mm.RunService,
 		module:        mod,
 		tabs:          tabs,
+		breadcrumbs:   mm.Breadcrumbs,
 	}
 	return m, nil
 }
@@ -66,8 +69,9 @@ type model struct {
 	ModuleService *module.Service
 	RunService    *run.Service
 
-	module *module.Module
-	tabs   tui.TabSet
+	module      *module.Module
+	tabs        tui.TabSet
+	breadcrumbs *tui.Breadcrumbs
 }
 
 func (m model) Init() tea.Cmd {
@@ -85,12 +89,12 @@ func (m model) Update(msg tea.Msg) (tui.Model, tea.Cmd) {
 			// 'i' creates a terraform init task and sends the user to the tasks
 			// tab.
 			m.tabs.SetActiveTab(tasksTabTitle)
-			return m, tui.CreateTasks("init", m.ModuleService.Init, m.module.ID())
+			return m, tui.CreateTasks("init", m.ModuleService.Init, m.module.ID)
 		case key.Matches(msg, localKeys.Edit):
-			return m, tui.OpenVim(m.module.Path())
+			return m, tui.OpenVim(m.module.Path)
 		}
 	case resource.Event[*module.Module]:
-		if msg.Payload.ID() == m.module.ID() {
+		if msg.Payload.ID == m.module.ID {
 			m.module = msg.Payload
 		}
 	}
@@ -118,7 +122,7 @@ func (m model) Update(msg tea.Msg) (tui.Model, tea.Cmd) {
 }
 
 func (m model) Title() string {
-	return tui.Breadcrumbs("Module", m.module.Resource)
+	return m.breadcrumbs.Render("Module", m.module.Resource)
 }
 
 func (m model) View() string {

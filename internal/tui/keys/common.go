@@ -9,6 +9,8 @@ type common struct {
 	ShowState key.Binding
 	Retry     key.Binding
 	Reload    key.Binding
+	Module    key.Binding
+	Workspace key.Binding
 }
 
 // Keys shared by several models.
@@ -36,5 +38,13 @@ var Common = common{
 	Reload: key.NewBinding(
 		key.WithKeys("ctrl+r"),
 		key.WithHelp("ctrl+r", "reload"),
+	),
+	Module: key.NewBinding(
+		key.WithKeys("m"),
+		key.WithHelp("m", "module"),
+	),
+	Workspace: key.NewBinding(
+		key.WithKeys("w"),
+		key.WithHelp("w", "workspace"),
 	),
 }

@@ -3,8 +3,6 @@ package state
 import (
 	"encoding/json"
 	"strings"
-
-	"github.com/leg100/pug/internal/resource"
 )
 
 type (
@@ -32,10 +30,11 @@ type (
 	}
 )
 
-func (f StateFile) Resources(ws resource.Resource) []*Resource {
-	resources := make([]*Resource, len(f.FileResources))
-	for i, r := range f.FileResources {
-		resources[i] = newResource(ws, r)
+func (f StateFile) Resources() map[ResourceAddress]*Resource {
+	resources := make(map[ResourceAddress]*Resource, len(f.FileResources))
+	for _, fr := range f.FileResources {
+		r := newResource(fr)
+		resources[r.Address] = r
 	}
 	return resources
 }

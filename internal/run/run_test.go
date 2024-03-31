@@ -13,35 +13,35 @@ import (
 
 func TestRun_MakePugDirectory(t *testing.T) {
 	mod := module.New("a/b/c")
-	ws := workspace.New(mod.Resource, "dev")
+	ws := workspace.New(mod, "dev")
 
 	testutils.ChTempDir(t)
 
 	run, err := newRun(mod, ws, CreateOptions{})
 	require.NoError(t, err)
 
-	want := fmt.Sprintf("a/b/c/.pug/dev/%s", run.ID())
+	want := fmt.Sprintf("a/b/c/.pug/dev/%s", run.ID)
 	assert.DirExists(t, want)
 }
 
 func TestRun_PugDirectory(t *testing.T) {
 	mod := module.New("a/b/c")
-	ws := workspace.New(mod.Resource, "dev")
+	ws := workspace.New(mod, "dev")
 
 	run, err := newRun(mod, ws, CreateOptions{})
 	require.NoError(t, err)
 
-	want := fmt.Sprintf(".pug/dev/%s", run.ID())
-	assert.Equal(t, want, run.PugDirectory())
+	want := fmt.Sprintf(".pug/dev/%s", run.ID)
+	assert.Equal(t, want, run.artefactsPath)
 }
 
 func TestRun_PlanPath(t *testing.T) {
 	mod := module.New("a/b/c")
-	ws := workspace.New(mod.Resource, "dev")
+	ws := workspace.New(mod, "dev")
 
 	run, err := newRun(mod, ws, CreateOptions{})
 	require.NoError(t, err)
 
-	want := fmt.Sprintf(".pug/dev/%s/plan.out", run.ID())
+	want := fmt.Sprintf(".pug/dev/%s/plan.out", run.ID)
 	assert.Equal(t, want, run.PlanPath())
 }

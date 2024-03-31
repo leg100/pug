@@ -14,8 +14,8 @@ func Test_Scheduler(t *testing.T) {
 	testutils.ChTempDir(t)
 
 	mod1 := module.New("a/b/c")
-	ws1 := workspace.New(mod1.Resource, "dev")
-	ws2 := workspace.New(mod1.Resource, "prod")
+	ws1 := workspace.New(mod1, "dev")
+	ws2 := workspace.New(mod1, "prod")
 
 	ws1Run1, _ := newRun(mod1, ws1, CreateOptions{})
 	ws1Run2, _ := newRun(mod1, ws1, CreateOptions{})

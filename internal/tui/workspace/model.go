@@ -33,11 +33,12 @@ type Maker struct {
 	RunListMaker  *runtui.ListMaker
 	TaskListMaker *tasktui.ListMaker
 
-	Spinner *spinner.Model
+	Spinner     *spinner.Model
+	Breadcrumbs *tui.Breadcrumbs
 }
 
 func (mm *Maker) Make(workspace resource.Resource, width, height int) (tui.Model, error) {
-	ws, err := mm.WorkspaceService.Get(workspace.ID())
+	ws, err := mm.WorkspaceService.Get(workspace.ID)
 	if err != nil {
 		return model{}, err
 	}
@@ -61,17 +62,19 @@ func (mm *Maker) Make(workspace resource.Resource, width, height int) (tui.Model
 	}
 
 	m := model{
-		runs:      mm.RunService,
-		workspace: ws,
-		tabs:      tabs,
+		runs:        mm.RunService,
+		workspace:   ws,
+		tabs:        tabs,
+		breadcrumbs: mm.Breadcrumbs,
 	}
 	return m, nil
 }
 
 type model struct {
-	runs      *run.Service
-	workspace *workspace.Workspace
-	tabs      tui.TabSet
+	runs        *run.Service
+	workspace   *workspace.Workspace
+	tabs        tui.TabSet
+	breadcrumbs *tui.Breadcrumbs
 }
 
 func (m model) Init() tea.Cmd {
@@ -85,10 +88,12 @@ func (m model) Update(msg tea.Msg) (tui.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, localKeys.Plan):
-			return m, tui.CreateRuns(m.runs, m.workspace.ID())
+			return m, tui.CreateRuns(m.runs, m.workspace.ID)
+		case key.Matches(msg, keys.Common.Module):
+			return m, tui.NavigateTo(tui.ModuleKind, tui.WithParent(*m.workspace.Module()))
 		}
 	case resource.Event[*workspace.Workspace]:
-		if msg.Payload.ID() == m.workspace.ID() {
+		if msg.Payload.ID == m.workspace.ID {
 			m.workspace = msg.Payload
 		}
 	}
@@ -101,7 +106,7 @@ func (m model) Update(msg tea.Msg) (tui.Model, tea.Cmd) {
 }
 
 func (m model) Title() string {
-	return tui.Breadcrumbs("Workspace", m.workspace.Resource)
+	return m.breadcrumbs.Render("Workspace", m.workspace.Resource)
 }
 
 func (m model) View() string {

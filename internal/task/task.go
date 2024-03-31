@@ -62,6 +62,8 @@ type Task struct {
 	AfterError func(*Task)
 	// Call this function after the task is successfully canceled
 	AfterCanceled func(*Task)
+	// Call this function after the task terminates for whatever reason.
+	AfterFinish func(*Task)
 
 	// call this whenever state is updated
 	afterUpdate func(*Task)
@@ -104,13 +106,14 @@ type CreateOptions struct {
 	AfterCanceled func(*Task)
 	// Call this function after the task is successfully created
 	AfterCreate func(*Task)
+	// Call this function after the task terminates for whatever reason.
+	AfterFinish func(*Task)
 }
 
 func (f *factory) newTask(opts CreateOptions) (*Task, error) {
-	res := resource.New(resource.Task, "", &opts.Parent)
 	return &Task{
+		Resource:      resource.New(resource.Task, opts.Parent),
 		State:         Pending,
-		Resource:      res,
 		Created:       time.Now(),
 		Updated:       time.Now(),
 		finished:      make(chan struct{}),
@@ -126,6 +129,7 @@ func (f *factory) newTask(opts CreateOptions) (*Task, error) {
 		AfterCanceled: opts.AfterCanceled,
 		AfterRunning:  opts.AfterRunning,
 		AfterQueued:   opts.AfterQueued,
+		AfterFinish:   opts.AfterFinish,
 		// Publish an event whenever task state is updated
 		afterUpdate: func(t *Task) {
 			f.publisher.Publish(resource.UpdatedEvent, t)
@@ -141,8 +145,6 @@ func (f *factory) newTask(opts CreateOptions) (*Task, error) {
 		},
 	}, nil
 }
-
-func (t *Task) String() string { return t.Resource.String() }
 
 func (t *Task) CommandString() string {
 	return strings.Join(t.Command, " ")
@@ -194,7 +196,7 @@ func (t *Task) Wait() error {
 func (t *Task) LogValue() slog.Value {
 	return slog.GroupValue(
 		slog.Any("status", t.State),
-		slog.String("id", t.ID().String()),
+		slog.String("id", t.ID.String()),
 		slog.Any("command", t.Command),
 		slog.Any("args", t.Args),
 	)
@@ -285,6 +287,9 @@ func (t *Task) updateState(state Status) {
 		t.buf.Close()
 		close(t.finished)
 		t.afterFinish(t)
+		if t.AfterFinish != nil {
+			t.AfterFinish(t)
+		}
 		slog.Debug("completed task", "task", t)
 	}
 

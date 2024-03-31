@@ -9,15 +9,15 @@ import (
 )
 
 func TestEnqueuer(t *testing.T) {
-	mod1 := resource.New(resource.Module, "a/b/c", nil)
-	ws1 := resource.New(resource.Workspace, "dev", &mod1)
+	mod1 := resource.New(resource.Module, resource.GlobalResource)
+	ws1 := resource.New(resource.Workspace, mod1)
 
-	mod1Task1 := &Task{Resource: resource.New(resource.Task, "", &mod1)}
-	mod1TaskBlocking1 := &Task{Resource: resource.New(resource.Task, "", &mod1), Blocking: true}
+	mod1Task1 := &Task{Resource: resource.New(resource.Task, mod1)}
+	mod1TaskBlocking1 := &Task{Resource: resource.New(resource.Task, mod1), Blocking: true}
 
-	ws1Task1 := &Task{Resource: resource.New(resource.Task, "", &ws1)}
-	ws1Task2 := &Task{Resource: resource.New(resource.Task, "", &ws1)}
-	ws1TaskBlocking1 := &Task{Resource: resource.New(resource.Task, "", &ws1), Blocking: true}
+	ws1Task1 := &Task{Resource: resource.New(resource.Task, ws1)}
+	ws1Task2 := &Task{Resource: resource.New(resource.Task, ws1)}
+	ws1TaskBlocking1 := &Task{Resource: resource.New(resource.Task, ws1), Blocking: true}
 
 	tests := []struct {
 		name string

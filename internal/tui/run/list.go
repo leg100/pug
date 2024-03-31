@@ -3,35 +3,42 @@ package run
 import (
 	"errors"
 	"fmt"
+	"log/slog"
 	"slices"
 	"time"
 
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/leg100/pug/internal/module"
 	"github.com/leg100/pug/internal/resource"
 	"github.com/leg100/pug/internal/run"
 	"github.com/leg100/pug/internal/task"
 	"github.com/leg100/pug/internal/tui"
 	"github.com/leg100/pug/internal/tui/keys"
 	"github.com/leg100/pug/internal/tui/table"
+	"github.com/leg100/pug/internal/workspace"
 )
 
+var ageColumn = table.Column{
+	Key:   "age",
+	Title: "AGE",
+	Width: 10,
+}
+
 type ListMaker struct {
-	RunService  *run.Service
-	TaskService *task.Service
+	ModuleService    *module.Service
+	WorkspaceService *workspace.Service
+	RunService       *run.Service
+	TaskService      *task.Service
 }
 
 func (m *ListMaker) Make(parent resource.Resource, width, height int) (tui.Model, error) {
-	ageColumn := table.Column{
-		Key:   "age",
-		Title: "AGE",
-		Width: 10,
-	}
 	var columns []table.Column
-	switch parent.Kind() {
+	// Add further columns depending upon the kind of parent
+	switch parent.Kind {
 	case resource.Global:
-		// Show all columns in global runs table
+		// Show module and workspace columns in global runs table
 		columns = append(columns, table.ModuleColumn)
 		fallthrough
 	case resource.Module:
@@ -47,18 +54,42 @@ func (m *ListMaker) Make(parent resource.Resource, width, height int) (tui.Model
 
 	renderer := func(r *run.Run, inherit lipgloss.Style) table.RenderedRow {
 		row := table.RenderedRow{
-			table.ModuleColumn.Key:     r.ModulePath(),
-			table.WorkspaceColumn.Key:  r.WorkspaceName(),
 			table.RunStatusColumn.Key:  tui.RenderRunStatus(r.Status),
 			table.RunChangesColumn.Key: tui.RenderLatestRunReport(r, inherit),
 			ageColumn.Key:              tui.Ago(time.Now(), r.Updated),
-			table.IDColumn.Key:         r.ID().String(),
+			table.IDColumn.Key:         r.String(),
+		}
+		switch parent.Kind {
+		case resource.Global:
+			// Show module path and workspace name in global runs table
+			mod, err := m.ModuleService.Get(r.Module().ID)
+			if err != nil {
+				slog.Error("rendering module path", "error", err)
+				break
+			}
+			row[table.ModuleColumn.Key] = mod.Path
+			fallthrough
+		case resource.Module:
+			// Show workspace name in module runs table.
+			ws, err := m.WorkspaceService.Get(r.WorkspaceID())
+			if err != nil {
+				slog.Error("rendering workspace name", "error", err)
+				break
+			}
+			row[table.WorkspaceColumn.Key] = ws.Name
 		}
 		return row
 	}
-	table := table.New(columns, renderer, width, height).
-		WithSortFunc(run.ByStatus).
-		WithParent(parent)
+	table := table.NewResource(table.ResourceOptions[*run.Run]{
+		ModuleService:    m.ModuleService,
+		WorkspaceService: m.WorkspaceService,
+		Columns:          columns,
+		Renderer:         renderer,
+		Width:            width,
+		Height:           height,
+		Parent:           parent,
+		SortFunc:         run.ByStatus,
+	})
 
 	return list{
 		table:  table,
@@ -69,7 +100,7 @@ func (m *ListMaker) Make(parent resource.Resource, width, height int) (tui.Model
 }
 
 type list struct {
-	table  table.Model[*run.Run]
+	table  table.Resource[resource.ID, *run.Run]
 	svc    *run.Service
 	tasks  *task.Service
 	parent resource.Resource
@@ -77,11 +108,10 @@ type list struct {
 
 func (m list) Init() tea.Cmd {
 	return func() tea.Msg {
-		var opts run.ListOptions
-		if m.parent != resource.GlobalResource {
-			opts.AncestorID = m.parent.ID()
-		}
-		return table.BulkInsertMsg[*run.Run](m.svc.List(opts))
+		runs := m.svc.List(run.ListOptions{
+			AncestorID: m.parent.ID,
+		})
+		return table.BulkInsertMsg[*run.Run](runs)
 	}
 }
 
@@ -93,20 +123,16 @@ func (m list) Update(msg tea.Msg) (tui.Model, tea.Cmd) {
 
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
-		// Only handle following keys if there are runs present
-		if len(m.table.Items()) == 0 {
-			break
-		}
-
 		switch {
 		case key.Matches(msg, keys.Global.Enter):
-			run, _ := m.table.Highlighted()
-			return m, tui.NavigateTo(tui.RunKind, tui.WithParent(run.Resource))
+			if row, ok := m.table.Highlighted(); ok {
+				return m, tui.NavigateTo(tui.RunKind, tui.WithParent(row.Value.Resource))
+			}
 		case key.Matches(msg, keys.Common.Cancel):
 			// get all highlighted or selected runs, and get the current task
 			// for each run, and then cancel those tasks.
 		case key.Matches(msg, keys.Common.Apply):
-			cmd := tui.CreateTasks("apply", m.svc.Apply, m.table.HighlightedOrSelectedIDs()...)
+			cmd := tui.CreateTasks("apply", m.svc.Apply, m.table.HighlightedOrSelectedKeys()...)
 			m.table.DeselectAll()
 			return m, cmd
 		}
@@ -120,7 +146,7 @@ func (m list) Update(msg tea.Msg) (tui.Model, tea.Cmd) {
 }
 
 func (m list) Title() string {
-	return tui.Breadcrumbs("Runs", m.parent)
+	return tui.GlobalBreadcrumb("Runs")
 }
 
 func (m list) View() string {

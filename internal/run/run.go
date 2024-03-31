@@ -43,12 +43,12 @@ type Run struct {
 	PlanReport  Report
 	ApplyReport Report
 
-	// TODO: are these needed?
-	PlanTask  *resource.Resource
-	ApplyTask *resource.Resource
-
 	// Error is non-nil when the run status is Errored
 	Error error
+
+	// Run's dedicated directory for artefacts created during its lifetime. The
+	// path is relative to its module directory.
+	artefactsPath string
 
 	// Call this function after every status update
 	afterUpdate func(run *Run)
@@ -62,7 +62,7 @@ type CreateOptions struct {
 
 func newRun(mod *module.Module, ws *workspace.Workspace, opts CreateOptions) (*Run, error) {
 	run := &Run{
-		Resource:    resource.New(resource.Run, "", &ws.Resource),
+		Resource:    resource.New(resource.Run, ws.Resource),
 		Status:      Pending,
 		AutoApply:   ws.AutoApply,
 		Created:     time.Now(),
@@ -70,41 +70,23 @@ func newRun(mod *module.Module, ws *workspace.Workspace, opts CreateOptions) (*R
 		afterUpdate: opts.afterUpdate,
 	}
 
-	// create a dedicated pug directory for the run, in which the plan file
-	// goes, etc.
-	pugdir := filepath.Join(run.ModulePath(), run.PugDirectory())
-	if err := os.MkdirAll(pugdir, 0o755); err != nil {
+	// Create directory for artefacts including plan file etc.
+	run.artefactsPath = filepath.Join(ws.PugDirectory(), run.ID.String())
+	if err := os.MkdirAll(filepath.Join(mod.Path, run.artefactsPath), 0o755); err != nil {
 		return nil, err
 	}
 
 	return run, nil
 }
 
-func (r *Run) Workspace() resource.Resource {
-	return *r.Parent
-}
-
-func (r *Run) WorkspaceName() string {
-	return r.Parent.String()
-}
-
-func (r *Run) Module() resource.Resource {
-	return *r.Workspace().Parent
-}
-
-func (r *Run) ModulePath() string {
-	return r.Module().String()
-}
-
-// PugDirectory is the run's pug directory, relative to the module's directory.
-func (r *Run) PugDirectory() string {
-	return filepath.Join(workspace.PugDirectory(r.Workspace().String()), r.ID().String())
+func (r *Run) WorkspaceID() resource.ID {
+	return r.Parent.ID
 }
 
 // PlanPath is the path to the run's plan file, relative to the module's
 // directory.
 func (r *Run) PlanPath() string {
-	return filepath.Join(r.PugDirectory(), "plan.out")
+	return filepath.Join(r.artefactsPath, "plan.out")
 }
 
 func (r *Run) IsFinished() bool {
@@ -118,9 +100,9 @@ func (r *Run) IsFinished() bool {
 
 func (r *Run) LogValue() slog.Value {
 	return slog.GroupValue(
-		slog.String("id", r.ID().String()),
-		slog.String("workspace", r.WorkspaceName()),
-		slog.String("module", r.ModulePath()),
+		slog.String("id", r.ID.String()),
+		slog.String("workspace", r.ID.String()),
+		slog.String("module", r.ID.String()),
 	)
 }
 

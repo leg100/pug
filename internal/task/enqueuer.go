@@ -19,7 +19,7 @@ func StartEnqueuer(ctx context.Context, tasks *Service) {
 	for range sub {
 		for _, t := range e.enqueue() {
 			// TODO: log error
-			_, _ = tasks.Enqueue(t.ID())
+			_, _ = tasks.Enqueue(t.ID)
 		}
 	}
 }
@@ -32,10 +32,10 @@ func (e *enqueuer) enqueue() []*Task {
 		Status: []Status{Queued, Running},
 	})
 	// Construct set of task owners that are currently blocked.
-	blocked := make(map[resource.Resource]struct{}, len(active))
+	blocked := make(map[resource.ID]struct{}, len(active))
 	for _, ab := range active {
 		if ab.Blocking {
-			blocked[*ab.Parent] = struct{}{}
+			blocked[ab.Parent.ID] = struct{}{}
 		}
 	}
 
@@ -48,25 +48,25 @@ func (e *enqueuer) enqueue() []*Task {
 	for i, t := range pending {
 		// Recursively walk task's ancestors and check if they are currently
 		// blocked; if so then task cannot be enqueued.
-		if hasBlockedParent(blocked, *t.Parent) {
+		if hasBlockedAncestor(blocked, *t.Parent) {
 			// Remove from pending
 			pending = append(pending[:i], pending[i+1:]...)
 		} else if t.Blocking {
 			// Found blocking task in pending queue; no further tasks shall be
 			// enqueued for resources belonging to the task's parent resource
-			blocked[*t.Parent] = struct{}{}
+			blocked[t.Parent.ID] = struct{}{}
 		}
 	}
 	// Enqueue filtered pending tasks
 	return pending
 }
 
-func hasBlockedParent(blocked map[resource.Resource]struct{}, r resource.Resource) bool {
-	if _, ok := blocked[r]; ok {
+func hasBlockedAncestor(blocked map[resource.ID]struct{}, parent resource.Resource) bool {
+	if _, ok := blocked[parent.ID]; ok {
 		return true
 	}
-	if r.Parent != nil {
-		return hasBlockedParent(blocked, *r.Parent)
+	if parent.Parent != nil {
+		return hasBlockedAncestor(blocked, *parent.Parent)
 	}
 	return false
 }

@@ -15,8 +15,11 @@ import (
 type Module struct {
 	resource.Resource
 
+	// Path relative to pug working directory
+	Path string
+
 	// The module's current workspace.
-	CurrentWorkspace *resource.Resource
+	CurrentWorkspaceID *resource.ID
 
 	// Whether module is initialized correctly. Nil means it is unknown.
 	Initialized *bool
@@ -38,11 +41,10 @@ type Module struct {
 // path also uniquely identifies a module.
 func New(path string) *Module {
 	return &Module{
-		Resource: resource.New(resource.Module, path, nil),
+		Resource: resource.New(resource.Module, resource.GlobalResource),
+		Path:     path,
 	}
 }
-
-func (m *Module) Path() string { return m.String() }
 
 // findModules finds root modules that are descendents of the given path and
 // returns their paths. Determining what is a root module is difficult and

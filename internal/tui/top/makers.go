@@ -18,12 +18,21 @@ func makeMakers(opts Options, spinner *spinner.Model) map[tui.Kind]tui.Maker {
 		RunService:       opts.RunService,
 	}
 	runListMaker := &runtui.ListMaker{
-		RunService:  opts.RunService,
-		TaskService: opts.TaskService,
+		ModuleService:    opts.ModuleService,
+		WorkspaceService: opts.WorkspaceService,
+		RunService:       opts.RunService,
+		TaskService:      opts.TaskService,
 	}
 	taskListMaker := &tasktui.ListMaker{
-		TaskService: opts.TaskService,
-		MaxTasks:    opts.MaxTasks,
+		ModuleService:    opts.ModuleService,
+		WorkspaceService: opts.WorkspaceService,
+		TaskService:      opts.TaskService,
+		MaxTasks:         opts.MaxTasks,
+	}
+
+	breadcrumbs := &tui.Breadcrumbs{
+		ModuleService:    opts.ModuleService,
+		WorkspaceService: opts.WorkspaceService,
 	}
 
 	makers := map[tui.Kind]tui.Maker{
@@ -41,12 +50,9 @@ func makeMakers(opts Options, spinner *spinner.Model) map[tui.Kind]tui.Maker {
 			WorkspaceListMaker: workspaceListMaker,
 			RunListMaker:       runListMaker,
 			TaskListMaker:      taskListMaker,
+			Breadcrumbs:        breadcrumbs,
 		},
-		tui.WorkspaceListKind: &workspacetui.ListMaker{
-			WorkspaceService: opts.WorkspaceService,
-			ModuleService:    opts.ModuleService,
-			RunService:       opts.RunService,
-		},
+		tui.WorkspaceListKind: workspaceListMaker,
 		tui.WorkspaceKind: &workspacetui.Maker{
 			WorkspaceService: opts.WorkspaceService,
 			StateService:     opts.StateService,
@@ -55,22 +61,19 @@ func makeMakers(opts Options, spinner *spinner.Model) map[tui.Kind]tui.Maker {
 			RunListMaker:     runListMaker,
 			TaskListMaker:    taskListMaker,
 			Spinner:          spinner,
+			Breadcrumbs:      breadcrumbs,
 		},
-		tui.RunListKind: &runtui.ListMaker{
-			RunService:  opts.RunService,
-			TaskService: opts.TaskService,
-		},
+		tui.RunListKind: runListMaker,
 		tui.RunKind: &runtui.Maker{
 			RunService:  opts.RunService,
 			TaskService: opts.TaskService,
 			Spinner:     spinner,
+			Breadcrumbs: breadcrumbs,
 		},
-		tui.TaskListKind: &tasktui.ListMaker{
-			TaskService: opts.TaskService,
-			MaxTasks:    opts.MaxTasks,
-		},
+		tui.TaskListKind: taskListMaker,
 		tui.TaskKind: &tasktui.Maker{
 			TaskService: opts.TaskService,
+			Breadcrumbs: breadcrumbs,
 		},
 		tui.LogsKind: &logs.Maker{
 			Logger: opts.Logger,

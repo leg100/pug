@@ -4,28 +4,26 @@ import (
 	"testing"
 
 	"github.com/charmbracelet/lipgloss"
-	"github.com/leg100/pug/internal/resource"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-type testEntity struct {
-	resource.Resource
-}
-
-const testEntityKind resource.Kind = 10
+type testVar struct{}
 
 var (
-	ent1 = &testEntity{Resource: resource.New(testEntityKind, "", nil)}
-	ent2 = &testEntity{Resource: resource.New(testEntityKind, "", nil)}
-	ent3 = &testEntity{Resource: resource.New(testEntityKind, "", nil)}
+	ent1 = testVar{}
+	ent2 = testVar{}
+	ent3 = testVar{}
 )
 
-func setupTest() Model[*testEntity] {
-	// setup table
-	cellFunc := func(e *testEntity, s lipgloss.Style) RenderedRow { return nil }
-	tbl := New[*testEntity](nil, cellFunc, 0, 0)
-	tbl.SetItems([]*testEntity{ent1, ent2, ent3})
+func setupTest() Model[int, testVar] {
+	renderer := func(v testVar, s lipgloss.Style) RenderedRow { return nil }
+	tbl := New[int, testVar](nil, renderer, 0, 0)
+	tbl.SetItems(map[int]testVar{
+		0: ent1,
+		1: ent2,
+		2: ent3,
+	})
 	return tbl
 }
 
@@ -35,7 +33,7 @@ func TestTable_Highlighted(t *testing.T) {
 	got, ok := tbl.Highlighted()
 	require.True(t, ok)
 
-	assert.Equal(t, ent1, got)
+	assert.Equal(t, ent1, got.Value)
 }
 
 func TestTable_ToggleSelection(t *testing.T) {
@@ -44,6 +42,5 @@ func TestTable_ToggleSelection(t *testing.T) {
 	tbl.ToggleSelection()
 
 	assert.Len(t, tbl.Selected, 1)
-	assert.Contains(t, tbl.Selected, ent1.ID())
-	assert.Equal(t, tbl.Selected[ent1.ID()], ent1)
+	assert.Equal(t, tbl.Selected[0], ent1)
 }

@@ -14,26 +14,29 @@ import (
 
 const timeFormat = "2006-01-02T15:04:05.000"
 
+var (
+	timeColumn = table.Column{
+		Key:   "time",
+		Title: "TIME",
+		Width: len(timeFormat),
+	}
+	levelColumn = table.Column{
+		Key:   "level",
+		Title: "LEVEL",
+		Width: 5, // Width of widest level, ERROR
+	}
+	msgColumn = table.Column{
+		Key:        "message",
+		Title:      "MESSAGE",
+		FlexFactor: 1,
+	}
+)
+
 type Maker struct {
 	Logger *logging.Logger
 }
 
 func (mm *Maker) Make(_ resource.Resource, width, height int) (tui.Model, error) {
-	timeColumn := table.Column{
-		Key:   "time",
-		Title: "TIME",
-		Width: len(timeFormat),
-	}
-	levelColumn := table.Column{
-		Key:   "level",
-		Title: "LEVEL",
-		Width: 5, // Width of widest level, ERROR
-	}
-	msgColumn := table.Column{
-		Key:        "message",
-		Title:      "MESSAGE",
-		FlexFactor: 1,
-	}
 	columns := []table.Column{
 		timeColumn,
 		levelColumn,
@@ -69,7 +72,7 @@ func (mm *Maker) Make(_ resource.Resource, width, height int) (tui.Model, error)
 		row[msgColumn.Key] = lipgloss.NewStyle().Inherit(inherit).Render(b.String())
 		return row
 	}
-	table := table.New(columns, renderer, width, height).
+	table := table.New[uint](columns, renderer, width, height).
 		WithSortFunc(logging.BySerialDesc).
 		WithSelectable(false)
 
@@ -78,7 +81,7 @@ func (mm *Maker) Make(_ resource.Resource, width, height int) (tui.Model, error)
 
 type model struct {
 	logger *logging.Logger
-	table  table.Model[logging.Message]
+	table  table.Model[uint, logging.Message]
 }
 
 func (m model) Init() tea.Cmd {
@@ -92,6 +95,22 @@ func (m model) Update(msg tea.Msg) (tui.Model, tea.Cmd) {
 		cmd  tea.Cmd
 		cmds []tea.Cmd
 	)
+
+	switch msg := msg.(type) {
+	case table.BulkInsertMsg[logging.Message]:
+		existing := m.table.Items()
+		for _, m := range msg {
+			existing[m.Serial] = m
+		}
+		m.table.SetItems(existing)
+	case resource.Event[logging.Message]:
+		switch msg.Type {
+		case resource.CreatedEvent:
+			existing := m.table.Items()
+			existing[msg.Payload.Serial] = msg.Payload
+			m.table.SetItems(existing)
+		}
+	}
 
 	// Handle keyboard and mouse events in the table widget
 	m.table, cmd = m.table.Update(msg)

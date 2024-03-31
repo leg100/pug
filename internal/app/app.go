@@ -61,6 +61,7 @@ func Start(args []string) error {
 		ModuleService: modules,
 	})
 	states := state.NewService(ctx, state.ServiceOptions{
+		ModuleService:    modules,
 		WorkspaceService: workspaces,
 		TaskService:      tasks,
 	})
@@ -115,6 +116,12 @@ func Start(args []string) error {
 	wsEvents := workspaces.Subscribe(ctx)
 	go func() {
 		for ev := range wsEvents {
+			p.Send(ev)
+		}
+	}()
+	stateEvents := states.Subscribe(ctx)
+	go func() {
+		for ev := range stateEvents {
 			p.Send(ev)
 		}
 	}()

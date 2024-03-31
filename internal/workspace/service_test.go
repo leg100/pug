@@ -30,10 +30,10 @@ func TestWorkspace_parseList(t *testing.T) {
 
 func TestWorkspace_resetWorkspaces(t *testing.T) {
 	mod := module.New("a/b/c")
-	dev := New(mod.Resource, "dev")
-	staging := New(mod.Resource, "staging")
+	dev := New(mod, "dev")
+	staging := New(mod, "staging")
 
-	var gotCurrent resource.Resource
+	var gotCurrent resource.ID
 	table := &fakeWorkspaceTable{
 		existing: []*Workspace{dev, staging},
 	}
@@ -41,27 +41,27 @@ func TestWorkspace_resetWorkspaces(t *testing.T) {
 		modules: &fakeModuleService{current: &gotCurrent},
 		table:   table,
 	}
-	_, _, err := svc.resetWorkspaces(mod.Resource, []string{"dev", "prod"}, "dev")
+	_, _, err := svc.resetWorkspaces(mod, []string{"dev", "prod"}, "dev")
 	require.NoError(t, err)
 
 	// expect staging to be dropped
-	assert.Equal(t, []resource.ID{staging.ID()}, table.deleted)
+	assert.Equal(t, []resource.ID{staging.ID}, table.deleted)
 
 	// expect prod to be added
 	assert.Len(t, table.added, 1)
-	assert.Equal(t, "prod", table.added[0].Name())
+	assert.Equal(t, "prod", table.added[0].Name)
 
 	// expect dev to have been made the current workspace
-	assert.Equal(t, dev.Resource, gotCurrent)
+	assert.Equal(t, dev.ID, gotCurrent)
 }
 
 type fakeModuleService struct {
-	current *resource.Resource
+	current *resource.ID
 
 	moduleService
 }
 
-func (f *fakeModuleService) SetCurrent(moduleID resource.ID, workspace resource.Resource) error {
+func (f *fakeModuleService) SetCurrent(moduleID resource.ID, workspace resource.ID) error {
 	*f.current = workspace
 	return nil
 }

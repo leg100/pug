@@ -4,43 +4,38 @@ import (
 	"fmt"
 	"path/filepath"
 
+	"github.com/leg100/pug/internal/module"
 	"github.com/leg100/pug/internal/resource"
 )
 
 type Workspace struct {
-	// Uniquely identifies workspace and the module it belongs to.
 	resource.Resource
 
+	Name string
+
 	// The workspace's current or last active run.
-	CurrentRun *resource.Resource
+	CurrentRunID *resource.ID
 
 	AutoApply bool
 }
 
-func New(module resource.Resource, name string) *Workspace {
+func New(mod *module.Module, name string) *Workspace {
 	return &Workspace{
-		Resource: resource.New(resource.Workspace, name, &module),
+		Resource: resource.New(resource.Workspace, mod.Resource),
+		Name:     name,
 	}
 }
 
+func (ws *Workspace) ModuleID() resource.ID {
+	return ws.Parent.ID
+}
+
 func (ws *Workspace) TerraformEnv() string {
-	return TerraformEnv(ws.String())
-}
-
-func (ws *Workspace) Name() string {
-	return ws.String()
-}
-
-func (ws *Workspace) Module() resource.Resource {
-	return *ws.Parent
-}
-
-func (ws *Workspace) ModulePath() string {
-	return ws.Parent.String()
+	return TerraformEnv(ws.Name)
 }
 
 func (ws *Workspace) PugDirectory() string {
-	return PugDirectory(ws.String())
+	return PugDirectory(ws.Name)
 }
 
 func PugDirectory(name string) string {

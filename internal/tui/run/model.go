@@ -20,10 +20,11 @@ type Maker struct {
 	RunService  *run.Service
 	TaskService *task.Service
 	Spinner     *spinner.Model
+	Breadcrumbs *tui.Breadcrumbs
 }
 
 func (mm *Maker) Make(rr resource.Resource, width, height int) (tui.Model, error) {
-	run, err := mm.RunService.Get(rr.ID())
+	run, err := mm.RunService.Get(rr.ID)
 	if err != nil {
 		return model{}, err
 	}
@@ -35,16 +36,17 @@ func (mm *Maker) Make(rr resource.Resource, width, height int) (tui.Model, error
 	}
 
 	m := model{
-		svc:       mm.RunService,
-		tasks:     mm.TaskService,
-		run:       run,
-		taskMaker: taskMaker,
+		svc:         mm.RunService,
+		tasks:       mm.TaskService,
+		run:         run,
+		taskMaker:   taskMaker,
+		breadcrumbs: mm.Breadcrumbs,
 	}
 	m.tabs = tui.NewTabSet(width, height).WithTabSetInfo(&m)
 
 	// Add tabs for existing tasks
 	tasks := mm.TaskService.List(task.ListOptions{
-		Ancestor: rr.ID(),
+		Ancestor: rr.ID,
 		// Ensures the plan tab is rendered first
 		Oldest: true,
 	})
@@ -59,11 +61,12 @@ func (mm *Maker) Make(rr resource.Resource, width, height int) (tui.Model, error
 }
 
 type model struct {
-	svc       *run.Service
-	tasks     *task.Service
-	run       *run.Run
-	tabs      tui.TabSet
-	taskMaker tui.Maker
+	svc         *run.Service
+	tasks       *task.Service
+	run         *run.Run
+	tabs        tui.TabSet
+	taskMaker   tui.Maker
+	breadcrumbs *tui.Breadcrumbs
 }
 
 func (m model) Init() tea.Cmd {
@@ -78,21 +81,25 @@ func (m model) Update(msg tea.Msg) (tui.Model, tea.Cmd) {
 		switch {
 		case key.Matches(msg, keys.Common.Apply):
 			return m, func() tea.Msg {
-				if _, err := m.svc.Apply(m.run.ID()); err != nil {
+				if _, err := m.svc.Apply(m.run.ID); err != nil {
 					return tui.NewErrorMsg(err, "applying run")
 				}
 				return nil
 			}
+		case key.Matches(msg, keys.Common.Module):
+			return m, tui.NavigateTo(tui.ModuleKind, tui.WithParent(*m.run.Module()))
+		case key.Matches(msg, keys.Common.Workspace):
+			return m, tui.NavigateTo(tui.WorkspaceKind, tui.WithParent(*m.run.Workspace()))
 		}
 	case resource.Event[*run.Run]:
-		if msg.Payload.ID() == m.run.ID() {
+		if msg.Payload.ID == m.run.ID {
 			m.run = msg.Payload
 		}
 	case resource.Event[*task.Task]:
 		// Create tab for new run task
 		switch msg.Type {
 		case resource.CreatedEvent:
-			if !msg.Payload.HasAncestor(m.run.ID()) {
+			if !msg.Payload.HasAncestor(m.run.ID) {
 				break
 			}
 			cmd, err := m.addTab(msg.Payload)
@@ -112,7 +119,7 @@ func (m model) Update(msg tea.Msg) (tui.Model, tea.Cmd) {
 }
 
 func (m model) Title() string {
-	return tui.Breadcrumbs("Run", m.run.Resource)
+	return m.breadcrumbs.Render("Run", *m.run.Parent)
 }
 
 func (m model) Status() string {

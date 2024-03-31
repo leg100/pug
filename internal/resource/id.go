@@ -2,7 +2,6 @@ package resource
 
 import (
 	"fmt"
-	"log/slog"
 
 	"github.com/btcsuite/btcutil/base58"
 	"github.com/google/uuid"
@@ -16,29 +15,24 @@ var GlobalID = ID{}
 // to something shorter).
 const IDEncodedMaxLen = 27
 
+// ID is a unique identifier for a pug entity.
 type ID struct {
-	id uuid.UUID
-	// human uniquely identifies the resource and is human meaningful
-	human string
-	// Kind of resource, e.g. module, workspace, etc.
-	kind Kind
+	id   uuid.UUID
+	Kind Kind
 }
 
-func newID(k Kind, human string) ID {
+func NewID(kind Kind) ID {
 	return ID{
-		id:    uuid.New(),
-		human: human,
-		kind:  k,
+		id:   uuid.New(),
+		Kind: kind,
 	}
 }
 
 func (id ID) String() string {
-	if id.human != "" {
-		return id.human
-	}
-	return fmt.Sprintf("%s-%s", id.kind.String(), base58.Encode(id.id[:]))
+	return fmt.Sprintf("%s-%s", id.Kind.String(), base58.Encode(id.id[:]))
 }
 
-func (id ID) LogValue() slog.Value {
-	return slog.StringValue(id.String())
+// RowKey implements tui/table.ResourceValue
+func (id ID) RowKey() ID {
+	return id
 }

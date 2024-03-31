@@ -21,19 +21,30 @@ var resourceColumn = table.Column{
 	FlexFactor: 2,
 }
 
+var resourceStatusColumn = table.Column{
+	Key:        "resource_status",
+	Title:      "STATUS",
+	FlexFactor: 1,
+}
+
 type resourceListMaker struct {
 	StateService *state.Service
 	Spinner      *spinner.Model
 }
 
 func (m *resourceListMaker) Make(ws resource.Resource, width, height int) (tui.Model, error) {
+	columns := []table.Column{
+		resourceColumn,
+		resourceStatusColumn,
+	}
 	renderer := func(resource *state.Resource, inherit lipgloss.Style) table.RenderedRow {
 		return table.RenderedRow{
-			resourceColumn.Key: resource.String(),
+			resourceColumn.Key:       resource.Address.String(),
+			resourceStatusColumn.Key: string(resource.Status),
 		}
 	}
-	table := table.New([]table.Column{resourceColumn}, renderer, width, height)
-	table = table.WithParent(ws)
+	table := table.New[state.ResourceAddress](columns, renderer, width, height)
+	table = table.WithSortFunc(state.Sort)
 
 	return resources{
 		table:     table,
@@ -44,17 +55,16 @@ func (m *resourceListMaker) Make(ws resource.Resource, width, height int) (tui.M
 }
 
 type resources struct {
-	table     table.Model[*state.Resource]
+	table     table.Model[state.ResourceAddress, *state.Resource]
 	svc       *state.Service
 	workspace resource.Resource
+	state     *state.State
 
 	spinner *spinner.Model
-
-	reloading bool
 }
 
 func (m resources) Init() tea.Cmd {
-	return m.reload()
+	return tui.CreateTasks("reload state", m.svc.Reload, m.workspace.ID)
 }
 
 func (m resources) Update(msg tea.Msg) (tui.Model, tea.Cmd) {
@@ -67,28 +77,24 @@ func (m resources) Update(msg tea.Msg) (tui.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, localKeys.Reload):
-			// Unload existing items from table (otherwise we'll get duplicates).
-			m.table.SetItems(nil)
-			// Enable spinner
-			m.reloading = true
-			return m, m.reload()
+			return m, tui.CreateTasks("reload state", m.svc.Reload, m.workspace.ID)
 		case key.Matches(msg, localKeys.Delete):
 			fn := func(workspaceID resource.ID) (*task.Task, error) {
-				addrs := m.HighlightedOrSelectedAddresses()
-				return m.svc.RemoveItems(workspaceID, addrs...)
+				return m.svc.Delete(workspaceID, m.table.HighlightedOrSelectedKeys()...)
 			}
-			return m, tui.CreateTasks("state-rm", fn, m.workspace.ID())
+			return m, tui.CreateTasks("state-rm", fn, m.workspace.ID)
 		}
-	case reloadedResourcesMsg:
-		if msg.workspaceID != m.workspace.ID() {
+	case resource.Event[*state.State]:
+		if msg.Payload.WorkspaceID != m.workspace.ID {
 			return m, nil
 		}
-		// Disable reloading spinner
-		m.reloading = false
-		// Forward items onto the table (it is expecting a table.BulkInsertMsg
-		// message).
-		m.table, cmd = m.table.Update(msg.items)
-		cmds = append(cmds, cmd)
+		switch msg.Type {
+		case resource.CreatedEvent, resource.UpdatedEvent:
+			// Whenever state is created or updated, re-populate table with
+			// resources.
+			m.table.SetItems(msg.Payload.Resources)
+		}
+		m.state = msg.Payload
 	}
 
 	// Handle keyboard and mouse events in the table widget
@@ -98,25 +104,13 @@ func (m resources) Update(msg tea.Msg) (tui.Model, tea.Cmd) {
 	return m, tea.Batch(cmds...)
 }
 
-func (m resources) reload() tea.Cmd {
-	return func() tea.Msg {
-		resources, err := m.svc.ListResources(m.workspace.ID())
-		if err != nil {
-			return tui.NewErrorMsg(err, "initialising resources tab")
-		}
-		return reloadedResourcesMsg{
-			workspaceID: m.workspace.ID(),
-			items:       table.BulkInsertMsg[*state.Resource](resources),
-		}
-	}
-}
-
+// Not used
 func (m resources) Title() string {
 	return ""
 }
 
 func (m resources) View() string {
-	if m.reloading {
+	if m.state != nil && m.state.State == state.ReloadingState {
 		return lipgloss.NewStyle().
 			Margin(0, 1).
 			Render(m.spinner.View() + " refreshing state...")
@@ -134,20 +128,4 @@ func (m resources) TabStatus() string {
 
 func (m resources) HelpBindings() (bindings []key.Binding) {
 	return keys.KeyMapToSlice(localKeys)
-}
-
-// HighlightedOrSelectedAddresses returns the resource addresses of any modules
-// that are currently selected or highlighted.
-func (m resources) HighlightedOrSelectedAddresses() (addrs []string) {
-	for _, res := range m.table.HighlightedOrSelected() {
-		addrs = append(addrs, res.String())
-	}
-	return
-}
-
-// reloadedResourcesMsg is sent once state resources have been reloaded for a
-// workspace.
-type reloadedResourcesMsg struct {
-	workspaceID resource.ID
-	items       table.BulkInsertMsg[*state.Resource]
 }

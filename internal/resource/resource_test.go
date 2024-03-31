@@ -8,37 +8,26 @@ import (
 )
 
 func TestResource(t *testing.T) {
-	mod := New(Module, "a/b/c", nil)
-	ws := New(Workspace, "dev", &mod)
-	run := New(Run, "", &ws)
-	task := New(Task, "", &run)
+	mod := New(Module, GlobalResource)
+	ws := New(Workspace, mod)
+	run := New(Run, ws)
+	task := New(Task, run)
 
 	t.Run("string", func(t *testing.T) {
-		// no ident, so format will be task-<id>
-		assert.True(t, strings.HasPrefix(task.String(), "task-"), task.String())
-		// ident takes precendence over id
-		assert.Equal(t, "dev", ws.String())
-	})
-
-	t.Run("ancestors", func(t *testing.T) {
-		got := task.Ancestors()
-
-		assert.Equal(t, 3, len(got))
-		assert.Equal(t, Run, got[0].Kind())
-		assert.Equal(t, Workspace, got[1].Kind())
-		assert.Equal(t, Module, got[2].Kind())
+		assert.True(t, strings.HasPrefix(mod.String(), "mod-"))
+		assert.True(t, strings.HasPrefix(ws.String(), "ws-"))
+		assert.True(t, strings.HasPrefix(run.String(), "run-"))
+		assert.True(t, strings.HasPrefix(task.String(), "task-"))
 	})
 
 	t.Run("has ancestor", func(t *testing.T) {
-		assert.True(t, task.HasAncestor(mod.ID()))
-		assert.False(t, mod.HasAncestor(task.ID()))
+		assert.True(t, task.HasAncestor(mod.ID))
+		assert.False(t, mod.HasAncestor(task.ID))
 	})
 
-	t.Run("module", func(t *testing.T) {
+	t.Run("get ancestor of specific kind", func(t *testing.T) {
 		assert.Equal(t, &mod, task.Module())
-	})
-
-	t.Run("workspace", func(t *testing.T) {
 		assert.Equal(t, &ws, task.Workspace())
+		assert.Equal(t, &run, task.Run())
 	})
 }

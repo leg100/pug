@@ -1,7 +1,7 @@
 package module
 
 import (
-	"fmt"
+	"log/slog"
 
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/spinner"
@@ -16,6 +16,29 @@ import (
 	"github.com/leg100/pug/internal/workspace"
 )
 
+var (
+	currentWorkspace = table.Column{
+		Key:        "currentWorkspace",
+		Title:      "CURRENT WORKSPACE",
+		FlexFactor: 2,
+	}
+	initColumn = table.Column{
+		Key:   "init",
+		Title: "INIT",
+		Width: 4,
+	}
+	formatColumn = table.Column{
+		Key:   "format",
+		Title: "FORMAT",
+		Width: 6,
+	}
+	validColumn = table.Column{
+		Key:   "valid",
+		Title: "VALID",
+		Width: 5,
+	}
+)
+
 // ListMaker makes module list models
 type ListMaker struct {
 	ModuleService    *module.Service
@@ -26,26 +49,6 @@ type ListMaker struct {
 }
 
 func (m *ListMaker) Make(_ resource.Resource, width, height int) (tui.Model, error) {
-	currentWorkspace := table.Column{
-		Key:        "currentWorkspace",
-		Title:      "CURRENT WORKSPACE",
-		FlexFactor: 2,
-	}
-	initColumn := table.Column{
-		Key:   "init",
-		Title: "INIT",
-		Width: 4,
-	}
-	formatColumn := table.Column{
-		Key:   "format",
-		Title: "FORMAT",
-		Width: 6,
-	}
-	validColumn := table.Column{
-		Key:   "valid",
-		Title: "VALID",
-		Width: 5,
-	}
 	columns := []table.Column{
 		table.ModuleColumn,
 		currentWorkspace,
@@ -71,27 +74,38 @@ func (m *ListMaker) Make(_ resource.Resource, width, height int) (tui.Model, err
 
 	renderer := func(mod *module.Module, inherit lipgloss.Style) table.RenderedRow {
 		row := table.RenderedRow{
-			table.ModuleColumn.Key: mod.Path(),
+			table.ModuleColumn.Key: mod.Path,
 			initColumn.Key:         boolToUnicode(mod.InitInProgress, mod.Initialized),
 			formatColumn.Key:       boolToUnicode(mod.FormatInProgress, mod.Formatted),
 			validColumn.Key:        boolToUnicode(mod.ValidationInProgress, mod.Valid),
 		}
 		// Retrieve name of current workspace if module has one
-		if current := mod.CurrentWorkspace; current != nil {
-			row[currentWorkspace.Key] = current.String()
+		if current := mod.CurrentWorkspaceID; current != nil {
+			ws, err := m.WorkspaceService.Get(*current)
+			if err != nil {
+				slog.Error("rendering current workspace in modules list", "error", err)
+				return row
+			}
+			row[currentWorkspace.Key] = ws.Name
 
 			// Retrieve current run if current workspace has one
-			ws, _ := m.WorkspaceService.Get(current.ID())
-			if cr := ws.CurrentRun; cr != nil {
-				run, _ := m.RunService.Get(cr.ID())
+			if cr := ws.CurrentRunID; cr != nil {
+				run, _ := m.RunService.Get(*cr)
 				row[table.RunStatusColumn.Key] = tui.RenderRunStatus(run.Status)
 				row[table.RunChangesColumn.Key] = tui.RenderLatestRunReport(run, inherit)
 			}
 		}
 		return row
 	}
-	table := table.New(columns, renderer, width, height)
-	table = table.WithSortFunc(module.ByPath)
+	table := table.NewResource(table.ResourceOptions[*module.Module]{
+		ModuleService:    m.ModuleService,
+		WorkspaceService: m.WorkspaceService,
+		Columns:          columns,
+		Renderer:         renderer,
+		Height:           height,
+		Width:            width,
+		SortFunc:         module.ByPath,
+	})
 
 	return list{
 		table:            table,
@@ -108,7 +122,7 @@ type list struct {
 	WorkspaceService *workspace.Service
 	RunService       *run.Service
 
-	table   table.Model[*module.Module]
+	table   table.Resource[resource.ID, *module.Module]
 	spinner *spinner.Model
 	workdir string
 }
@@ -131,9 +145,7 @@ func (m list) Update(msg tea.Msg) (tui.Model, tea.Cmd) {
 		case resource.CreatedEvent:
 			//cmds = append(cmds, m.createRun(run.CreateOptions{}))
 			// navigate to the resources tab on the newly created workspace
-			if msg.Payload.ModulePath() == "internal/testdata/configs/envs/prod" &&
-				msg.Payload.Name() == "staging" {
-
+			if msg.Payload.Name == "staging" {
 				return m, tui.NavigateTo(tui.WorkspaceKind,
 					tui.WithParent(msg.Payload.Resource),
 				)
@@ -169,23 +181,23 @@ func (m list) Update(msg tea.Msg) (tui.Model, tea.Cmd) {
 
 		switch {
 		case key.Matches(msg, keys.Global.Enter):
-			mod, _ := m.table.Highlighted()
-			return m, tui.NavigateTo(tui.ModuleKind, tui.WithParent(mod.Resource))
+			row, _ := m.table.Highlighted()
+			return m, tui.NavigateTo(tui.ModuleKind, tui.WithParent(row.Value.Resource))
 		case key.Matches(msg, localKeys.Reload):
 			return m, tui.ReloadModules(m.WorkspaceService)
 		case key.Matches(msg, localKeys.Edit):
-			mod, _ := m.table.Highlighted()
-			return m, tui.OpenVim(mod.Path())
+			row, _ := m.table.Highlighted()
+			return m, tui.OpenVim(row.Value.Path)
 		case key.Matches(msg, localKeys.Init):
-			cmd := tui.CreateTasks("init", m.ModuleService.Init, m.table.HighlightedOrSelectedIDs()...)
+			cmd := tui.CreateTasks("init", m.ModuleService.Init, m.table.HighlightedOrSelectedKeys()...)
 			m.table.DeselectAll()
 			return m, cmd
 		case key.Matches(msg, localKeys.Validate):
-			cmd := tui.CreateTasks("validate", m.ModuleService.Validate, m.table.HighlightedOrSelectedIDs()...)
+			cmd := tui.CreateTasks("validate", m.ModuleService.Validate, m.table.HighlightedOrSelectedKeys()...)
 			m.table.DeselectAll()
 			return m, cmd
 		case key.Matches(msg, localKeys.Format):
-			cmd := tui.CreateTasks("format", m.ModuleService.Format, m.table.HighlightedOrSelectedIDs()...)
+			cmd := tui.CreateTasks("format", m.ModuleService.Format, m.table.HighlightedOrSelectedKeys()...)
 			m.table.DeselectAll()
 			return m, cmd
 		case key.Matches(msg, localKeys.Plan):
@@ -201,9 +213,7 @@ func (m list) Update(msg tea.Msg) (tui.Model, tea.Cmd) {
 }
 
 func (m list) Title() string {
-	workdir := tui.Regular.Copy().Foreground(tui.Blue).Render("all")
-	modules := tui.Bold.Copy().Render("Modules")
-	return fmt.Sprintf("%s(%s)", modules, workdir)
+	return tui.GlobalBreadcrumb("Modules")
 }
 
 func (m list) View() string {
@@ -228,9 +238,9 @@ func (m list) HelpBindings() (bindings []key.Binding) {
 // HighlightedOrSelectedCurrentWorkspaceIDs returns the IDs of the current
 // workspaces of any modules that are currently selected or highlighted.
 func (m list) HighlightedOrSelectedCurrentWorkspaceIDs() (workspaceIDs []resource.ID) {
-	for _, mod := range m.table.HighlightedOrSelected() {
-		if current := mod.CurrentWorkspace; current != nil {
-			workspaceIDs = append(workspaceIDs, current.ID())
+	for _, row := range m.table.HighlightedOrSelected() {
+		if current := row.Value.CurrentWorkspaceID; current != nil {
+			workspaceIDs = append(workspaceIDs, *current)
 		}
 	}
 	return

@@ -31,7 +31,7 @@ func StartScheduler(ctx context.Context, runs *Service, workspaces *workspace.Se
 			run.updateStatus(Scheduled)
 			// Set run as workspace's current run if not a plan-only run.
 			if !run.PlanOnly {
-				workspaces.SetCurrent(run.Workspace().ID(), run.Resource)
+				workspaces.SetCurrent(run.WorkspaceID(), run.ID)
 			}
 			// Trigger a plan task
 			_, _ = runs.plan(run)
@@ -63,7 +63,7 @@ func (s *scheduler) schedule() []*Run {
 	// Populate a map of the oldest pending run for each workspace.
 	workspacePending := make(map[resource.ID]*Run)
 	for _, p := range pending {
-		workspaceID := p.Workspace().ID()
+		workspaceID := p.WorkspaceID()
 		if _, ok := workspacePending[workspaceID]; !ok {
 			workspacePending[workspaceID] = p
 		}
@@ -91,7 +91,7 @@ func (s *scheduler) schedule() []*Run {
 	// set of blocked workspaces
 	blocked := make(map[resource.ID]struct{})
 	for _, a := range active {
-		workspaceID := a.Workspace().ID()
+		workspaceID := a.WorkspaceID()
 		blocked[workspaceID] = struct{}{}
 	}
 	// Schedule pending runs that are not on a blocked workspace

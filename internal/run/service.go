@@ -56,7 +56,7 @@ func (s *Service) create(workspaceID resource.ID, opts CreateOptions) (*Run, err
 	if err != nil {
 		return nil, fmt.Errorf("retrieving workspace: %w", err)
 	}
-	mod, err := s.modules.Get(ws.Module().ID())
+	mod, err := s.modules.Get(ws.ModuleID())
 	if err != nil {
 		return nil, fmt.Errorf("workspace module: %w", err)
 	}
@@ -68,7 +68,7 @@ func (s *Service) create(workspaceID resource.ID, opts CreateOptions) (*Run, err
 	if err != nil {
 		return nil, fmt.Errorf("constructing run: %w", err)
 	}
-	s.table.Add(run.ID(), run)
+	s.table.Add(run.ID, run)
 	return run, nil
 }
 
@@ -109,7 +109,7 @@ func (s *Service) plan(run *Run) (*task.Task, error) {
 			}
 			run.updateStatus(Planned)
 			if run.AutoApply {
-				if _, err := s.Apply(run.ID()); err != nil {
+				if _, err := s.Apply(run.ID); err != nil {
 					run.setErrored(err)
 					return
 				}
@@ -165,7 +165,6 @@ func (s *Service) Apply(runID resource.ID) (*task.Task, error) {
 	if err != nil {
 		return nil, fmt.Errorf("applying run: %w", err)
 	}
-	run.ApplyTask = &task.Resource
 	return task, nil
 }
 
@@ -255,7 +254,18 @@ func (s *Service) delete(id resource.ID) error {
 
 func (s *Service) createTask(run *Run, opts task.CreateOptions) (*task.Task, error) {
 	opts.Parent = run.Resource
-	opts.Path = run.ModulePath()
-	opts.Env = []string{workspace.TerraformEnv(run.WorkspaceName())}
+
+	ws, err := s.workspaces.Get(run.WorkspaceID())
+	if err != nil {
+		return nil, err
+	}
+	opts.Env = []string{workspace.TerraformEnv(ws.Name)}
+
+	mod, err := s.modules.Get(ws.ModuleID())
+	if err != nil {
+		return nil, err
+	}
+	opts.Path = mod.Path
+
 	return s.tasks.Create(opts)
 }
