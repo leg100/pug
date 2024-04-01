@@ -144,9 +144,24 @@ func (m model) ID() string {
 	return m.task.String()
 }
 
+const (
+	// paginationWidth is the width of the pagination section to the right of
+	// the viewport
+	paginationWidth = 10
+	// viewportMarginsWidth is the total width of the margins to the left and
+	// right of the viewport
+	viewportMarginsWidth = 2
+)
+
 func (m *model) setViewportDimensions(width, height int) {
-	m.viewport.Width = max(0, width-2)
-	m.viewport.Height = max(0, height)
+	// minusWidth is the width to subtract from that available to the viewport
+	minusWidth := paginationWidth - viewportMarginsWidth
+
+	// width is the available to the viewport
+	width = max(0, width-minusWidth)
+
+	m.viewport.Width = width
+	m.viewport.Height = height
 }
 
 // View renders the viewport
@@ -154,36 +169,29 @@ func (m model) View() string {
 	if m.showInfo {
 		return strings.Join(m.task.Env, " ")
 	}
-	body := tui.Regular.Copy().
+
+	viewport := tui.Regular.Copy().
 		Margin(0, 1).
+		MaxWidth(m.viewport.Width).
 		Render(m.viewport.View())
 
-	// render task footer only if task is not a child of a run model
-	if false {
-		command := strings.Join(append(m.task.Command, m.task.Args...), " ")
-		footer := lipgloss.JoinHorizontal(
-			lipgloss.Left,
-			lipgloss.NewStyle().
-				Foreground(lipgloss.Color("237")).
-				Bold(true).
-				Padding(0, 1).
-				Render(command),
-			lipgloss.NewStyle().
-				Foreground(lipgloss.Color("36")).
-				Width(m.width-tui.Width(command)-2).
-				Align(lipgloss.Right).
-				Padding(0, 1).
-				Render(string(m.task.State)),
-		)
-		// Combine body and footer.
-		body = lipgloss.JoinVertical(lipgloss.Top,
-			body,
-			strings.Repeat("─", m.width),
-			footer,
-		)
-	}
+	// pagination info container occupies a fixed width section to the right of
+	// the viewport.
+	scrollPercent := tui.Regular.Copy().
+		Background(lipgloss.Color("253")).
+		Padding(0, 1).
+		Render(fmt.Sprintf("%3.f%%", m.viewport.ScrollPercent()*100))
+	pagination := tui.Regular.Copy().
+		Margin(0, 1).
+		Height(m.height).
+		Width(paginationWidth - 2).
+		AlignVertical(lipgloss.Bottom).
+		Render(scrollPercent)
 
-	return body
+	return lipgloss.JoinHorizontal(lipgloss.Left,
+		viewport,
+		pagination,
+	)
 }
 
 func (m model) Pagination() string {
