@@ -1,8 +1,6 @@
 package module
 
 import (
-	"log/slog"
-
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
@@ -46,6 +44,7 @@ type ListMaker struct {
 	RunService       *run.Service
 	Spinner          *spinner.Model
 	Workdir          string
+	Helpers          *tui.Helpers
 }
 
 func (m *ListMaker) Make(_ resource.Resource, width, height int) (tui.Model, error) {
@@ -73,29 +72,15 @@ func (m *ListMaker) Make(_ resource.Resource, width, height int) (tui.Model, err
 	}
 
 	renderer := func(mod *module.Module, inherit lipgloss.Style) table.RenderedRow {
-		row := table.RenderedRow{
-			table.ModuleColumn.Key: mod.Path,
-			initColumn.Key:         boolToUnicode(mod.InitInProgress, mod.Initialized),
-			formatColumn.Key:       boolToUnicode(mod.FormatInProgress, mod.Formatted),
-			validColumn.Key:        boolToUnicode(mod.ValidationInProgress, mod.Valid),
+		return table.RenderedRow{
+			table.ModuleColumn.Key:     mod.Path,
+			initColumn.Key:             boolToUnicode(mod.InitInProgress, mod.Initialized),
+			formatColumn.Key:           boolToUnicode(mod.FormatInProgress, mod.Formatted),
+			validColumn.Key:            boolToUnicode(mod.ValidationInProgress, mod.Valid),
+			currentWorkspace.Key:       m.Helpers.CurrentWorkspaceName(mod.CurrentWorkspaceID),
+			table.RunStatusColumn.Key:  m.Helpers.ModuleCurrentRunStatus(mod),
+			table.RunChangesColumn.Key: m.Helpers.ModuleCurrentRunChanges(mod, inherit),
 		}
-		// Retrieve name of current workspace if module has one
-		if current := mod.CurrentWorkspaceID; current != nil {
-			ws, err := m.WorkspaceService.Get(*current)
-			if err != nil {
-				slog.Error("rendering current workspace in modules list", "error", err)
-				return row
-			}
-			row[currentWorkspace.Key] = ws.Name
-
-			// Retrieve current run if current workspace has one
-			if cr := ws.CurrentRunID; cr != nil {
-				run, _ := m.RunService.Get(*cr)
-				row[table.RunStatusColumn.Key] = tui.RenderRunStatus(run.Status)
-				row[table.RunChangesColumn.Key] = tui.RenderLatestRunReport(run, inherit)
-			}
-		}
-		return row
 	}
 	table := table.NewResource(table.ResourceOptions[*module.Module]{
 		ModuleService:    m.ModuleService,

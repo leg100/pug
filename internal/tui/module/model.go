@@ -32,7 +32,7 @@ type Maker struct {
 	RunListMaker       *runtui.ListMaker
 	TaskListMaker      *tasktui.ListMaker
 
-	Breadcrumbs *tui.Breadcrumbs
+	Helpers *tui.Helpers
 }
 
 func (mm *Maker) Make(mr resource.Resource, width, height int) (tui.Model, error) {
@@ -60,7 +60,7 @@ func (mm *Maker) Make(mr resource.Resource, width, height int) (tui.Model, error
 		RunService:    mm.RunService,
 		module:        mod,
 		tabs:          tabs,
-		breadcrumbs:   mm.Breadcrumbs,
+		helpers:       mm.Helpers,
 	}
 	return m, nil
 }
@@ -69,9 +69,9 @@ type model struct {
 	ModuleService *module.Service
 	RunService    *run.Service
 
-	module      *module.Module
-	tabs        tui.TabSet
-	breadcrumbs *tui.Breadcrumbs
+	module  *module.Module
+	tabs    tui.TabSet
+	helpers *tui.Helpers
 }
 
 func (m model) Init() tea.Cmd {
@@ -122,7 +122,7 @@ func (m model) Update(msg tea.Msg) (tui.Model, tea.Cmd) {
 }
 
 func (m model) Title() string {
-	return m.breadcrumbs.Render("Module", m.module.Resource)
+	return m.helpers.Breadcrumbs("Module", m.module.Resource)
 }
 
 func (m model) View() string {

@@ -3,6 +3,7 @@ package state
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"log/slog"
 	"slices"
 
@@ -39,11 +40,30 @@ func NewService(ctx context.Context, opts ServiceOptions) *Service {
 		cache:      resource.NewTable(broker),
 		broker:     broker,
 	}
+
+	// Whenever a workspace is added, pull its state
+	go func() {
+		for event := range opts.WorkspaceService.Subscribe(ctx) {
+			if event.Type == resource.CreatedEvent {
+				_, _ = svc.Reload(event.Payload.ID)
+			}
+		}
+	}()
+
 	return svc
 }
 
-// Reload re-populates the local cache of resources for the state of the given
-// workspace, and returns those resources. Synchronous operation.
+// Get retrieves the state for a workspace.
+func (s *Service) Get(workspaceID resource.ID) (*State, error) {
+	state, err := s.cache.Get(workspaceID)
+	if errors.Is(err, resource.ErrNotFound) {
+		return EmptyState(workspaceID), nil
+	}
+	return state, err
+}
+
+// Reload creates a task to repopulate the local cache of the state of the given
+// workspace.
 func (s *Service) Reload(workspaceID resource.ID) (*task.Task, error) {
 	err := s.updateStateStatus(workspaceID, func(existing *State) error {
 		return existing.startReload()
@@ -110,6 +130,7 @@ func (s *Service) Delete(workspaceID resource.ID, addrs ...ResourceAddress) (*ta
 		},
 		AfterError: func(t *task.Task) {
 			s.updateResourceStatus(workspaceID, Idle, addrs...)
+			slog.Error("deleting resources", "error", t.Err, "resources", addrs)
 		},
 		AfterCanceled: func(t *task.Task) {
 			s.updateResourceStatus(workspaceID, Idle, addrs...)

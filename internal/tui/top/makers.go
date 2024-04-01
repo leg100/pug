@@ -12,27 +12,32 @@ import (
 
 // makeMakers makes model makers for making models
 func makeMakers(opts Options, spinner *spinner.Model) map[tui.Kind]tui.Maker {
+	helpers := &tui.Helpers{
+		ModuleService:    opts.ModuleService,
+		WorkspaceService: opts.WorkspaceService,
+		RunService:       opts.RunService,
+		StateService:     opts.StateService,
+	}
+
 	workspaceListMaker := &workspacetui.ListMaker{
 		WorkspaceService: opts.WorkspaceService,
 		ModuleService:    opts.ModuleService,
 		RunService:       opts.RunService,
+		Helpers:          helpers,
 	}
 	runListMaker := &runtui.ListMaker{
 		ModuleService:    opts.ModuleService,
 		WorkspaceService: opts.WorkspaceService,
 		RunService:       opts.RunService,
 		TaskService:      opts.TaskService,
+		Helpers:          helpers,
 	}
 	taskListMaker := &tasktui.ListMaker{
 		ModuleService:    opts.ModuleService,
 		WorkspaceService: opts.WorkspaceService,
 		TaskService:      opts.TaskService,
 		MaxTasks:         opts.MaxTasks,
-	}
-
-	breadcrumbs := &tui.Breadcrumbs{
-		ModuleService:    opts.ModuleService,
-		WorkspaceService: opts.WorkspaceService,
+		Helpers:          helpers,
 	}
 
 	makers := map[tui.Kind]tui.Maker{
@@ -42,6 +47,7 @@ func makeMakers(opts Options, spinner *spinner.Model) map[tui.Kind]tui.Maker {
 			RunService:       opts.RunService,
 			Spinner:          spinner,
 			Workdir:          opts.Workdir,
+			Helpers:          helpers,
 		},
 		tui.ModuleKind: &moduletui.Maker{
 			ModuleService:      opts.ModuleService,
@@ -50,7 +56,7 @@ func makeMakers(opts Options, spinner *spinner.Model) map[tui.Kind]tui.Maker {
 			WorkspaceListMaker: workspaceListMaker,
 			RunListMaker:       runListMaker,
 			TaskListMaker:      taskListMaker,
-			Breadcrumbs:        breadcrumbs,
+			Helpers:            helpers,
 		},
 		tui.WorkspaceListKind: workspaceListMaker,
 		tui.WorkspaceKind: &workspacetui.Maker{
@@ -61,19 +67,19 @@ func makeMakers(opts Options, spinner *spinner.Model) map[tui.Kind]tui.Maker {
 			RunListMaker:     runListMaker,
 			TaskListMaker:    taskListMaker,
 			Spinner:          spinner,
-			Breadcrumbs:      breadcrumbs,
+			Helpers:          helpers,
 		},
 		tui.RunListKind: runListMaker,
 		tui.RunKind: &runtui.Maker{
 			RunService:  opts.RunService,
 			TaskService: opts.TaskService,
 			Spinner:     spinner,
-			Breadcrumbs: breadcrumbs,
+			Helpers:     helpers,
 		},
 		tui.TaskListKind: taskListMaker,
 		tui.TaskKind: &tasktui.Maker{
 			TaskService: opts.TaskService,
-			Breadcrumbs: breadcrumbs,
+			Helpers:     helpers,
 		},
 		tui.LogsKind: &logs.Maker{
 			Logger: opts.Logger,

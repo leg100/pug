@@ -12,12 +12,13 @@ import (
 )
 
 type config struct {
-	Program     string
-	MaxTasks    int
-	PluginCache bool
-	LogLevel    string
-	FirstPage   string
-	Debug       bool
+	Program                 string
+	MaxTasks                int
+	PluginCache             bool
+	LogLevel                string
+	FirstPage               string
+	Debug                   bool
+	DisableReloadAfterApply bool
 
 	version bool
 }
@@ -35,6 +36,8 @@ func parse(args []string) (config, error) {
 	fs.BoolVar(&cfg.version, 'v', "version", "Print version.")
 	fs.StringEnumVar(&cfg.LogLevel, 'l', "log-level", "Logging level.", "info", "debug", "error", "warn")
 	_ = fs.String('c', "config", "pug.yaml", "Path to config file.")
+
+	fs.BoolVar(&cfg.DisableReloadAfterApply, 0, "disable-reload-after-apply", "Disable automatic reload of state following an apply.")
 
 	// Plugin cache is enabled not via pug flags but via terraform config
 	tfcfg, _ := cliconfig.LoadConfig()

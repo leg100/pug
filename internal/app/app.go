@@ -66,9 +66,11 @@ func Start(args []string) error {
 		TaskService:      tasks,
 	})
 	runs := run.NewService(run.ServiceOptions{
-		TaskService:      tasks,
-		ModuleService:    modules,
-		WorkspaceService: workspaces,
+		TaskService:             tasks,
+		ModuleService:           modules,
+		WorkspaceService:        workspaces,
+		StateService:            states,
+		DisableReloadAfterApply: cfg.DisableReloadAfterApply,
 	})
 
 	// Construct TUI programme.

@@ -20,7 +20,7 @@ type Maker struct {
 	RunService  *run.Service
 	TaskService *task.Service
 	Spinner     *spinner.Model
-	Breadcrumbs *tui.Breadcrumbs
+	Helpers     *tui.Helpers
 }
 
 func (mm *Maker) Make(rr resource.Resource, width, height int) (tui.Model, error) {
@@ -36,11 +36,11 @@ func (mm *Maker) Make(rr resource.Resource, width, height int) (tui.Model, error
 	}
 
 	m := model{
-		svc:         mm.RunService,
-		tasks:       mm.TaskService,
-		run:         run,
-		taskMaker:   taskMaker,
-		breadcrumbs: mm.Breadcrumbs,
+		svc:       mm.RunService,
+		tasks:     mm.TaskService,
+		run:       run,
+		taskMaker: taskMaker,
+		helpers:   mm.Helpers,
 	}
 	m.tabs = tui.NewTabSet(width, height).WithTabSetInfo(&m)
 
@@ -61,12 +61,12 @@ func (mm *Maker) Make(rr resource.Resource, width, height int) (tui.Model, error
 }
 
 type model struct {
-	svc         *run.Service
-	tasks       *task.Service
-	run         *run.Run
-	tabs        tui.TabSet
-	taskMaker   tui.Maker
-	breadcrumbs *tui.Breadcrumbs
+	svc       *run.Service
+	tasks     *task.Service
+	run       *run.Run
+	tabs      tui.TabSet
+	taskMaker tui.Maker
+	helpers   *tui.Helpers
 }
 
 func (m model) Init() tea.Cmd {
@@ -119,11 +119,11 @@ func (m model) Update(msg tea.Msg) (tui.Model, tea.Cmd) {
 }
 
 func (m model) Title() string {
-	return m.breadcrumbs.Render("Run", *m.run.Parent)
+	return m.helpers.Breadcrumbs("Run", *m.run.Parent)
 }
 
 func (m model) Status() string {
-	return tui.RenderRunStatus(m.run.Status)
+	return m.helpers.RunStatus(m.run)
 }
 
 func (m model) ID() string {
@@ -157,9 +157,9 @@ func (m model) TabSetInfo() string {
 	}
 	switch activeTab.Title {
 	case "plan":
-		return tui.RenderRunReport(m.run.PlanReport, lipgloss.Style{})
+		return m.helpers.RunReport(m.run.PlanReport, lipgloss.Style{})
 	case "apply":
-		return tui.RenderRunReport(m.run.ApplyReport, lipgloss.Style{})
+		return m.helpers.RunReport(m.run.ApplyReport, lipgloss.Style{})
 	default:
 		return ""
 	}

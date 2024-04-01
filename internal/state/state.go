@@ -22,6 +22,13 @@ const (
 	ReloadingState = "reloading"
 )
 
+func EmptyState(workspaceID resource.ID) *State {
+	return &State{
+		WorkspaceID: workspaceID,
+		State:       ReloadingState,
+	}
+}
+
 func NewState(workspaceID resource.ID, file StateFile) *State {
 	return &State{
 		WorkspaceID: workspaceID,

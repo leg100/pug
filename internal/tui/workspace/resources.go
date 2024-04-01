@@ -63,8 +63,16 @@ type resources struct {
 	spinner *spinner.Model
 }
 
+type initState *state.State
+
 func (m resources) Init() tea.Cmd {
-	return tui.CreateTasks("reload state", m.svc.Reload, m.workspace.ID)
+	return func() tea.Msg {
+		state, err := m.svc.Get(m.workspace.ID)
+		if err != nil {
+			return tui.ReportError(err, "loading resources tab")
+		}
+		return initState(state)
+	}
 }
 
 func (m resources) Update(msg tea.Msg) (tui.Model, tea.Cmd) {
@@ -84,6 +92,9 @@ func (m resources) Update(msg tea.Msg) (tui.Model, tea.Cmd) {
 			}
 			return m, tui.CreateTasks("state-rm", fn, m.workspace.ID)
 		}
+	case initState:
+		m.state = (*state.State)(msg)
+		m.table.SetItems(m.state.Resources)
 	case resource.Event[*state.State]:
 		if msg.Payload.WorkspaceID != m.workspace.ID {
 			return m, nil

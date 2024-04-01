@@ -25,7 +25,7 @@ type Maker struct {
 	// the run model.
 	IsRunTab bool
 
-	Breadcrumbs *tui.Breadcrumbs
+	Helpers *tui.Helpers
 }
 
 func (mm *Maker) Make(tr resource.Resource, width, height int) (tui.Model, error) {
@@ -42,10 +42,10 @@ func (mm *Maker) Make(tr resource.Resource, width, height int) (tui.Model, error
 		spinner:  mm.Spinner,
 		isRunTab: mm.IsRunTab,
 		// read upto 1kb at a time
-		buf:         make([]byte, 1024),
-		width:       width,
-		height:      height,
-		breadcrumbs: mm.Breadcrumbs,
+		buf:     make([]byte, 1024),
+		width:   width,
+		height:  height,
+		helpers: mm.Helpers,
 	}
 
 	m.setViewportDimensions(width, height)
@@ -70,7 +70,7 @@ type model struct {
 
 	showInfo bool
 
-	breadcrumbs *tui.Breadcrumbs
+	helpers *tui.Helpers
 }
 
 func (m model) Init() tea.Cmd {
@@ -136,7 +136,7 @@ func (m model) Update(msg tea.Msg) (tui.Model, tea.Cmd) {
 func (m model) Title() string {
 	heading := tui.Bold.Render("Task")
 	cmd := tui.Regular.Copy().Foreground(tui.Green).Render(m.task.CommandString())
-	crumbs := m.breadcrumbs.Render("", *m.task.Parent)
+	crumbs := m.helpers.Breadcrumbs("", *m.task.Parent)
 	return fmt.Sprintf("%s{%s}%s", heading, cmd, crumbs)
 }
 

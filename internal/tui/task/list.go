@@ -2,7 +2,6 @@ package task
 
 import (
 	"fmt"
-	"log/slog"
 	"time"
 
 	"github.com/charmbracelet/bubbles/key"
@@ -42,6 +41,7 @@ type ListMaker struct {
 	RunService       *run.Service
 	TaskService      *task.Service
 	MaxTasks         int
+	Helpers          *tui.Helpers
 }
 
 func (m *ListMaker) Make(parent resource.Resource, width, height int) (tui.Model, error) {
@@ -63,35 +63,6 @@ func (m *ListMaker) Make(parent resource.Resource, width, height int) (tui.Model
 	)
 
 	renderer := func(t *task.Task, inherit lipgloss.Style) table.RenderedRow {
-		row := table.RenderedRow{
-			commandColumn.Key:  t.CommandString(),
-			ageColumn.Key:      tui.Ago(time.Now(), t.Updated),
-			table.IDColumn.Key: t.String(),
-		}
-		switch parent.Kind {
-		case resource.Global:
-			// Show module path and workspace name in global tasks table if it
-			// has one.
-			if mod := t.Module(); mod != nil {
-				mod, err := m.ModuleService.Get(mod.ID)
-				if err != nil {
-					slog.Error("rendering module path", "error", err)
-					break
-				}
-				row[table.ModuleColumn.Key] = mod.Path
-			}
-			fallthrough
-		case resource.Module:
-			// Show workspace name in module tasks table if it has one.
-			if ws := t.Workspace(); ws != nil {
-				ws, err := m.WorkspaceService.Get(ws.ID)
-				if err != nil {
-					slog.Error("rendering workspace name", "error", err)
-					break
-				}
-				row[table.WorkspaceColumn.Key] = ws.Name
-			}
-		}
 		stateStyle := lipgloss.NewStyle()
 		switch t.State {
 		case task.Errored:
@@ -100,8 +71,15 @@ func (m *ListMaker) Make(parent resource.Resource, width, height int) (tui.Model
 			stateStyle = stateStyle.Foreground(lipgloss.Color("40"))
 		default:
 		}
-		row[statusColumn.Key] = stateStyle.Render(string(t.State))
-		return row
+
+		return table.RenderedRow{
+			table.ModuleColumn.Key:    m.Helpers.ModulePath(t.Resource),
+			table.WorkspaceColumn.Key: m.Helpers.WorkspaceName(t.Resource),
+			commandColumn.Key:         t.CommandString(),
+			ageColumn.Key:             tui.Ago(time.Now(), t.Updated),
+			table.IDColumn.Key:        t.String(),
+			statusColumn.Key:          stateStyle.Render(string(t.State)),
+		}
 	}
 
 	table := table.NewResource(table.ResourceOptions[*task.Task]{

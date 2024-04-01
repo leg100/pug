@@ -10,6 +10,7 @@ import (
 	"github.com/leg100/pug/internal/module"
 	"github.com/leg100/pug/internal/pubsub"
 	"github.com/leg100/pug/internal/resource"
+	"github.com/leg100/pug/internal/state"
 	"github.com/leg100/pug/internal/task"
 	"github.com/leg100/pug/internal/workspace"
 )
@@ -21,22 +22,30 @@ type Service struct {
 	tasks      *task.Service
 	modules    *module.Service
 	workspaces *workspace.Service
+	states     *state.Service
+
+	DisableReloadAfterApply bool
 }
 
 type ServiceOptions struct {
 	TaskService      *task.Service
 	ModuleService    *module.Service
 	WorkspaceService *workspace.Service
+	StateService     *state.Service
+
+	DisableReloadAfterApply bool
 }
 
 func NewService(opts ServiceOptions) *Service {
 	broker := pubsub.NewBroker[*Run]()
 	return &Service{
-		table:      resource.NewTable(broker),
-		Broker:     broker,
-		tasks:      opts.TaskService,
-		modules:    opts.ModuleService,
-		workspaces: opts.WorkspaceService,
+		table:                   resource.NewTable(broker),
+		Broker:                  broker,
+		tasks:                   opts.TaskService,
+		modules:                 opts.ModuleService,
+		workspaces:              opts.WorkspaceService,
+		states:                  opts.StateService,
+		DisableReloadAfterApply: opts.DisableReloadAfterApply,
 	}
 }
 
@@ -160,6 +169,12 @@ func (s *Service) Apply(runID resource.ID) (*task.Task, error) {
 			}
 			run.ApplyReport = report
 			run.updateStatus(Applied)
+			slog.Info("applied plan", "run", run)
+
+			if !s.DisableReloadAfterApply {
+				slog.Info("reloading state following apply", "run", run)
+				s.states.Reload(run.WorkspaceID())
+			}
 		},
 	})
 	if err != nil {

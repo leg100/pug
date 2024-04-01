@@ -5,9 +5,11 @@ import (
 
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/leg100/pug/internal/module"
 	"github.com/leg100/pug/internal/resource"
 	"github.com/leg100/pug/internal/run"
+	"github.com/leg100/pug/internal/state"
 	"github.com/leg100/pug/internal/tui"
 	"github.com/leg100/pug/internal/tui/keys"
 	"github.com/leg100/pug/internal/tui/table"
@@ -15,10 +17,16 @@ import (
 )
 
 var currentColumn = table.Column{
-	Key:   "current",
-	Title: "CURRENT",
-	// width of "CURRENT"; the actual content is a '✓' or nothing
-	Width:      7,
+	Key:        "current",
+	Title:      "CURRENT",
+	Width:      len("CURRENT"),
+	FlexFactor: 1,
+}
+
+var resourceCountColumn = table.Column{
+	Key:        "resource_count",
+	Title:      "RESOURCES",
+	Width:      len("RESOURCES"),
 	FlexFactor: 1,
 }
 
@@ -26,33 +34,39 @@ type ListMaker struct {
 	ModuleService    *module.Service
 	WorkspaceService *workspace.Service
 	RunService       *run.Service
+	Helpers          *tui.Helpers
 }
 
 func (m *ListMaker) Make(parent resource.Resource, width, height int) (tui.Model, error) {
-	columns := []table.Column{
-		table.WorkspaceColumn,
-	}
+	var columns []table.Column
 	if parent.Kind == resource.Global {
 		// Show module column in global workspaces table
 		columns = append(columns, table.ModuleColumn)
 	}
 	columns = append(columns,
+		table.WorkspaceColumn,
 		currentColumn,
+		resourceCountColumn,
 		table.RunStatusColumn,
 		table.RunChangesColumn,
 	)
 
-	rowRenderer := rowRenderer{
-		ModuleService: m.ModuleService,
-		RunService:    m.RunService,
-		parent:        parent,
+	rowRenderer := func(ws *workspace.Workspace, inherit lipgloss.Style) table.RenderedRow {
+		return table.RenderedRow{
+			table.ModuleColumn.Key:     m.Helpers.ModulePath(ws.Resource),
+			table.WorkspaceColumn.Key:  ws.Name,
+			table.RunStatusColumn.Key:  m.Helpers.WorkspaceCurrentRunStatus(ws),
+			table.RunChangesColumn.Key: m.Helpers.WorkspaceCurrentRunChanges(ws, inherit),
+			resourceCountColumn.Key:    m.Helpers.WorkspaceResourceCount(ws),
+			currentColumn.Key:          m.Helpers.WorkspaceCurrentCheckmark(ws, inherit),
+		}
 	}
 
 	table := table.NewResource(table.ResourceOptions[*workspace.Workspace]{
 		ModuleService:    m.ModuleService,
 		WorkspaceService: m.WorkspaceService,
 		Columns:          columns,
-		Renderer:         rowRenderer.renderRow,
+		Renderer:         rowRenderer,
 		Width:            width,
 		Height:           height,
 		Parent:           parent,
@@ -94,6 +108,9 @@ func (m list) Update(msg tea.Msg) (tui.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case resource.Event[*run.Run]:
 		// Update current run status and changes
+		m.table.UpdateViewport()
+	case resource.Event[*state.State]:
+		// Update resource counts
 		m.table.UpdateViewport()
 	case tea.KeyMsg:
 		switch {

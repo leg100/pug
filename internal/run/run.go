@@ -100,9 +100,9 @@ func (r *Run) IsFinished() bool {
 
 func (r *Run) LogValue() slog.Value {
 	return slog.GroupValue(
-		slog.String("id", r.ID.String()),
-		slog.String("workspace", r.ID.String()),
-		slog.String("module", r.ID.String()),
+		slog.String("id", r.String()),
+		slog.String("workspace", r.String()),
+		slog.String("module", r.String()),
 	)
 }
 

@@ -8,7 +8,7 @@ messages.log
 .terraform
 .terraform.lock.hcl
 *.tfstate
-*.tfstate.backup
+*.tfstate.*
 # pug artifacts
 pug.yaml
 pug

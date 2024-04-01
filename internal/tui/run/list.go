@@ -3,7 +3,6 @@ package run
 import (
 	"errors"
 	"fmt"
-	"log/slog"
 	"slices"
 	"time"
 
@@ -31,6 +30,7 @@ type ListMaker struct {
 	WorkspaceService *workspace.Service
 	RunService       *run.Service
 	TaskService      *task.Service
+	Helpers          *tui.Helpers
 }
 
 func (m *ListMaker) Make(parent resource.Resource, width, height int) (tui.Model, error) {
@@ -53,32 +53,14 @@ func (m *ListMaker) Make(parent resource.Resource, width, height int) (tui.Model
 	)
 
 	renderer := func(r *run.Run, inherit lipgloss.Style) table.RenderedRow {
-		row := table.RenderedRow{
-			table.RunStatusColumn.Key:  tui.RenderRunStatus(r.Status),
-			table.RunChangesColumn.Key: tui.RenderLatestRunReport(r, inherit),
+		return table.RenderedRow{
+			table.ModuleColumn.Key:     m.Helpers.ModulePath(r.Resource),
+			table.WorkspaceColumn.Key:  m.Helpers.WorkspaceName(r.Resource),
+			table.RunStatusColumn.Key:  m.Helpers.RunStatus(r),
+			table.RunChangesColumn.Key: m.Helpers.LatestRunReport(r, inherit),
 			ageColumn.Key:              tui.Ago(time.Now(), r.Updated),
 			table.IDColumn.Key:         r.String(),
 		}
-		switch parent.Kind {
-		case resource.Global:
-			// Show module path and workspace name in global runs table
-			mod, err := m.ModuleService.Get(r.Module().ID)
-			if err != nil {
-				slog.Error("rendering module path", "error", err)
-				break
-			}
-			row[table.ModuleColumn.Key] = mod.Path
-			fallthrough
-		case resource.Module:
-			// Show workspace name in module runs table.
-			ws, err := m.WorkspaceService.Get(r.WorkspaceID())
-			if err != nil {
-				slog.Error("rendering workspace name", "error", err)
-				break
-			}
-			row[table.WorkspaceColumn.Key] = ws.Name
-		}
-		return row
 	}
 	table := table.NewResource(table.ResourceOptions[*run.Run]{
 		ModuleService:    m.ModuleService,
