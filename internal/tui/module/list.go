@@ -186,10 +186,6 @@ func (m list) View() string {
 	return m.table.View()
 }
 
-func (m list) Pagination() string {
-	return ""
-}
-
 func (m list) HelpBindings() (bindings []key.Binding) {
 	return []key.Binding{
 		localKeys.Init,

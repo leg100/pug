@@ -17,8 +17,6 @@ type Model interface {
 	Update(tea.Msg) (Model, tea.Cmd)
 	Title() string
 	View() string
-	// Pagination renders pagination/scrolling info in the bottom right corner.
-	Pagination() string
 	// HelpBindings are those bindings that help should show when this model is
 	// current.
 	HelpBindings() []key.Binding

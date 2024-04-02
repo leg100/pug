@@ -129,10 +129,6 @@ func (m resources) View() string {
 	return m.table.View()
 }
 
-func (m resources) Pagination() string {
-	return ""
-}
-
 func (m resources) TabStatus() string {
 	return fmt.Sprintf("(%d)", len(m.table.Items()))
 }

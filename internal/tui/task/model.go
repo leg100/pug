@@ -194,16 +194,6 @@ func (m model) View() string {
 	)
 }
 
-func (m model) Pagination() string {
-	return lipgloss.NewStyle().
-		Background(lipgloss.Color("#a8a7a5")).
-		// off white
-		Foreground(lipgloss.Color("#FAF9F6")).
-		Padding(0, 1).
-		Margin(0, 1).
-		Render(fmt.Sprintf("%3.f%%", m.viewport.ScrollPercent()*100))
-}
-
 func (m model) TabStatus() string {
 	switch m.task.State {
 	case task.Running:

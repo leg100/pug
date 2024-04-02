@@ -110,10 +110,6 @@ func (m model) View() string {
 	return m.tabs.View()
 }
 
-func (m model) Pagination() string {
-	return ""
-}
-
 func (m model) HelpBindings() (bindings []key.Binding) {
 	return []key.Binding{
 		keys.Common.Apply,

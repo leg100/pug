@@ -165,10 +165,6 @@ func (m model) TabSetInfo() string {
 	}
 }
 
-func (m model) Pagination() string {
-	return ""
-}
-
 func (m model) HelpBindings() (bindings []key.Binding) {
 	return []key.Binding{
 		keys.Common.Apply,
