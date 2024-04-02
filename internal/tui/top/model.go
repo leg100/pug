@@ -13,7 +13,6 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/davecgh/go-spew/spew"
 	"github.com/leg100/pug/internal/logging"
-	"github.com/leg100/pug/internal/module"
 	"github.com/leg100/pug/internal/resource"
 	"github.com/leg100/pug/internal/task"
 	"github.com/leg100/pug/internal/tui"
@@ -122,14 +121,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		*m.spinner, cmd = m.spinner.Update(msg)
 		if m.tasks.Counter() > 0 {
 			return m, cmd
-		}
-	}
-
-	switch msg := msg.(type) {
-	case resource.Event[*module.Module]:
-		switch msg.Type {
-		case resource.CreatedEvent:
-			//		cmds = append(cmds, tui.NavigateTo(tui.ModuleKind, &msg.Payload.Resource))
 		}
 	}
 

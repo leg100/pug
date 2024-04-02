@@ -126,27 +126,6 @@ func (m list) Update(msg tea.Msg) (tui.Model, tea.Cmd) {
 
 	switch msg := msg.(type) {
 	case resource.Event[*workspace.Workspace]:
-		switch msg.Type {
-		case resource.CreatedEvent:
-			//cmds = append(cmds, m.createRun(run.CreateOptions{}))
-			// navigate to the resources tab on the newly created workspace
-			if msg.Payload.Name == "staging" {
-				return m, tui.NavigateTo(tui.WorkspaceKind,
-					tui.WithParent(msg.Payload.Resource),
-				)
-			}
-		}
-	case resource.Event[*run.Run]:
-		switch msg.Type {
-		case resource.UpdatedEvent:
-			if msg.Payload.Status == run.Planned {
-				//return m, tui.NavigateTo(tui.RunKind, &msg.Payload.Resource)
-			}
-		}
-	}
-
-	switch msg := msg.(type) {
-	case resource.Event[*workspace.Workspace]:
 		// Update current workspace and current run
 		m.table.UpdateViewport()
 	case resource.Event[*run.Run]:
@@ -160,6 +139,8 @@ func (m list) Update(msg tea.Msg) (tui.Model, tea.Cmd) {
 		}
 
 		// Only handle following keys if there are modules present
+		//
+		// TODO: don't do this.
 		if len(m.table.Items()) == 0 {
 			break
 		}
