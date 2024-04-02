@@ -2,9 +2,8 @@ package table
 
 import (
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/leg100/pug/internal/module"
 	"github.com/leg100/pug/internal/resource"
-	"github.com/leg100/pug/internal/workspace"
+	"github.com/leg100/pug/internal/tui"
 )
 
 // Resource is a wrapper of table.Model specifically for use with pug
@@ -16,8 +15,8 @@ type Resource[K resource.ID, V ResourceValue] struct {
 }
 
 type ResourceOptions[V ResourceValue] struct {
-	ModuleService    *module.Service
-	WorkspaceService *workspace.Service
+	ModuleService    tui.ModuleService
+	WorkspaceService tui.WorkspaceService
 	Columns          []Column
 	Renderer         RowRenderer[V]
 	Width, Height    int

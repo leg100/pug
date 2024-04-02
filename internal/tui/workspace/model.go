@@ -7,9 +7,6 @@ import (
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/leg100/pug/internal/resource"
-	"github.com/leg100/pug/internal/run"
-	"github.com/leg100/pug/internal/state"
-	"github.com/leg100/pug/internal/task"
 	"github.com/leg100/pug/internal/tui"
 	"github.com/leg100/pug/internal/tui/keys"
 	runtui "github.com/leg100/pug/internal/tui/run"
@@ -25,10 +22,10 @@ const (
 
 // Maker makes workspace models.
 type Maker struct {
-	WorkspaceService *workspace.Service
-	StateService     *state.Service
-	RunService       *run.Service
-	TaskService      *task.Service
+	WorkspaceService tui.WorkspaceService
+	StateService     tui.StateService
+	RunService       tui.RunService
+	TaskService      tui.TaskService
 
 	RunListMaker  *runtui.ListMaker
 	TaskListMaker *tasktui.ListMaker
@@ -71,7 +68,7 @@ func (mm *Maker) Make(workspace resource.Resource, width, height int) (tui.Model
 }
 
 type model struct {
-	runs      *run.Service
+	runs      tui.RunService
 	workspace *workspace.Workspace
 	tabs      tui.TabSet
 	helpers   *tui.Helpers

@@ -6,7 +6,6 @@ import (
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/leg100/pug/internal/module"
 	"github.com/leg100/pug/internal/resource"
 	"github.com/leg100/pug/internal/run"
 	"github.com/leg100/pug/internal/state"
@@ -31,9 +30,9 @@ var resourceCountColumn = table.Column{
 }
 
 type ListMaker struct {
-	ModuleService    *module.Service
-	WorkspaceService *workspace.Service
-	RunService       *run.Service
+	ModuleService    tui.ModuleService
+	WorkspaceService tui.WorkspaceService
+	RunService       tui.RunService
 	Helpers          *tui.Helpers
 }
 
@@ -84,9 +83,9 @@ func (m *ListMaker) Make(parent resource.Resource, width, height int) (tui.Model
 
 type list struct {
 	table   table.Resource[resource.ID, *workspace.Workspace]
-	svc     *workspace.Service
-	modules *module.Service
-	runs    *run.Service
+	svc     tui.WorkspaceService
+	modules tui.ModuleService
+	runs    tui.RunService
 	parent  resource.ID
 }
 

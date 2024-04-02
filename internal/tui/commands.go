@@ -7,7 +7,6 @@ import (
 	"github.com/leg100/pug/internal/resource"
 	"github.com/leg100/pug/internal/run"
 	"github.com/leg100/pug/internal/task"
-	"github.com/leg100/pug/internal/workspace"
 )
 
 // CreateTasks returns a command that creates one or more tasks using the given
@@ -36,7 +35,7 @@ func WaitTasks(created CreatedTasksMsg) tea.Cmd {
 	}
 }
 
-func CreateRuns(runs *run.Service, workspaceIDs ...resource.ID) tea.Cmd {
+func CreateRuns(runs RunService, workspaceIDs ...resource.ID) tea.Cmd {
 	if len(workspaceIDs) == 0 {
 		return nil
 	}
@@ -73,7 +72,7 @@ func OpenVim(path string) tea.Cmd {
 	})
 }
 
-func ReloadModules(workspaces *workspace.Service) tea.Cmd {
+func ReloadModules(workspaces WorkspaceService) tea.Cmd {
 	return func() tea.Msg {
 		multi, errs := workspaces.ReloadAll()
 		return CreatedTasksMsg{

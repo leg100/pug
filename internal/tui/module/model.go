@@ -7,13 +7,11 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/leg100/pug/internal/module"
 	"github.com/leg100/pug/internal/resource"
-	"github.com/leg100/pug/internal/run"
 	"github.com/leg100/pug/internal/tui"
 	"github.com/leg100/pug/internal/tui/keys"
 	runtui "github.com/leg100/pug/internal/tui/run"
 	tasktui "github.com/leg100/pug/internal/tui/task"
 	workspacetui "github.com/leg100/pug/internal/tui/workspace"
-	"github.com/leg100/pug/internal/workspace"
 )
 
 const (
@@ -24,9 +22,9 @@ const (
 
 // Maker makes module models.
 type Maker struct {
-	ModuleService    *module.Service
-	WorkspaceService *workspace.Service
-	RunService       *run.Service
+	ModuleService    tui.ModuleService
+	WorkspaceService tui.WorkspaceService
+	RunService       tui.RunService
 
 	WorkspaceListMaker *workspacetui.ListMaker
 	RunListMaker       *runtui.ListMaker
@@ -66,8 +64,8 @@ func (mm *Maker) Make(mr resource.Resource, width, height int) (tui.Model, error
 }
 
 type model struct {
-	ModuleService *module.Service
-	RunService    *run.Service
+	ModuleService tui.ModuleService
+	RunService    tui.RunService
 
 	module  *module.Module
 	tabs    tui.TabSet

@@ -8,23 +8,21 @@ import (
 
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/spinner"
+	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/davecgh/go-spew/spew"
 	"github.com/leg100/pug/internal/logging"
 	"github.com/leg100/pug/internal/module"
 	"github.com/leg100/pug/internal/resource"
-	"github.com/leg100/pug/internal/run"
-	"github.com/leg100/pug/internal/state"
 	"github.com/leg100/pug/internal/task"
 	"github.com/leg100/pug/internal/tui"
 	"github.com/leg100/pug/internal/tui/keys"
 	"github.com/leg100/pug/internal/version"
-	"github.com/leg100/pug/internal/workspace"
 )
 
 type model struct {
-	WorkspaceService *workspace.Service
+	WorkspaceService tui.WorkspaceService
 
 	*navigator
 
@@ -33,11 +31,14 @@ type model struct {
 
 	showHelp bool
 
+	showQuitPrompt bool
+	quitPrompt     textinput.Model
+
 	// Either an error or an informational message is rendered in the footer.
 	err  error
 	info string
 
-	tasks   *task.Service
+	tasks   tui.TaskService
 	spinner *spinner.Model
 
 	dump *os.File
@@ -46,11 +47,11 @@ type model struct {
 }
 
 type Options struct {
-	ModuleService    *module.Service
-	WorkspaceService *workspace.Service
-	StateService     *state.Service
-	RunService       *run.Service
-	TaskService      *task.Service
+	ModuleService    tui.ModuleService
+	WorkspaceService tui.WorkspaceService
+	StateService     tui.StateService
+	RunService       tui.RunService
+	TaskService      tui.TaskService
 
 	Logger    *logging.Logger
 	Workdir   string
@@ -132,6 +133,26 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 
+	if m.showQuitPrompt {
+		switch msg := msg.(type) {
+		case tea.KeyMsg:
+			switch {
+			case key.Matches(msg, keys.Global.Quit):
+				// pressing ctrl-c again quits the app
+				return m, tea.Quit
+			case key.Matches(msg, keys.Global.Enter):
+				// 'y' quits the app
+				if m.quitPrompt.Value() == "y" {
+					return m, tea.Quit
+				}
+				// any other key closes the prompt and returns to the app
+				m.showQuitPrompt = false
+			}
+			m.quitPrompt, cmd = m.quitPrompt.Update(msg)
+		}
+		return m, cmd
+	}
+
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
@@ -152,8 +173,13 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		switch {
 		case key.Matches(msg, keys.Global.Quit):
-			// ctrl-c quits the app
-			return m, tea.Quit
+			// ctrl-c quits the app, but not before prompting the user for
+			// comfirmation.
+			m.quitPrompt = textinput.New()
+			m.quitPrompt.Prompt = ""
+			m.quitPrompt.Focus()
+			m.showQuitPrompt = true
+			return m, textinput.Blink
 		case key.Matches(msg, keys.Global.Escape):
 			// <esc> closes help or goes back to last page
 			if m.showHelp {
@@ -269,6 +295,10 @@ func (m model) View() string {
 				key.WithHelp("?", "close help"),
 			),
 		}
+	} else if m.showQuitPrompt {
+		content = lipgloss.NewStyle().
+			Margin(0, 1).
+			Render(fmt.Sprintf("Quit pug? (y/N): %s", m.quitPrompt.View()))
 	} else {
 		content = m.currentModel().View()
 		// Within the header, show the model bindings first, and then the

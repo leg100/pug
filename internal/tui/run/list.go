@@ -9,14 +9,12 @@ import (
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/leg100/pug/internal/module"
 	"github.com/leg100/pug/internal/resource"
 	"github.com/leg100/pug/internal/run"
 	"github.com/leg100/pug/internal/task"
 	"github.com/leg100/pug/internal/tui"
 	"github.com/leg100/pug/internal/tui/keys"
 	"github.com/leg100/pug/internal/tui/table"
-	"github.com/leg100/pug/internal/workspace"
 )
 
 var ageColumn = table.Column{
@@ -26,10 +24,10 @@ var ageColumn = table.Column{
 }
 
 type ListMaker struct {
-	ModuleService    *module.Service
-	WorkspaceService *workspace.Service
-	RunService       *run.Service
-	TaskService      *task.Service
+	ModuleService    tui.ModuleService
+	WorkspaceService tui.WorkspaceService
+	RunService       tui.RunService
+	TaskService      tui.TaskService
 	Helpers          *tui.Helpers
 }
 
@@ -83,8 +81,8 @@ func (m *ListMaker) Make(parent resource.Resource, width, height int) (tui.Model
 
 type list struct {
 	table  table.Resource[resource.ID, *run.Run]
-	svc    *run.Service
-	tasks  *task.Service
+	svc    tui.RunService
+	tasks  tui.TaskService
 	parent resource.Resource
 }
 

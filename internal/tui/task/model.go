@@ -18,7 +18,7 @@ import (
 )
 
 type Maker struct {
-	TaskService *task.Service
+	TaskService tui.TaskService
 	Spinner     *spinner.Model
 
 	// If IsRunTab is true then Maker makes task models that are a tab within
@@ -54,7 +54,7 @@ func (mm *Maker) Make(tr resource.Resource, width, height int) (tui.Model, error
 }
 
 type model struct {
-	svc  *task.Service
+	svc  tui.TaskService
 	task *task.Task
 
 	output   io.Reader

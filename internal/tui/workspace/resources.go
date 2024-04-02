@@ -28,7 +28,7 @@ var resourceStatusColumn = table.Column{
 }
 
 type resourceListMaker struct {
-	StateService *state.Service
+	StateService tui.StateService
 	Spinner      *spinner.Model
 }
 
@@ -56,7 +56,7 @@ func (m *resourceListMaker) Make(ws resource.Resource, width, height int) (tui.M
 
 type resources struct {
 	table     table.Model[state.ResourceAddress, *state.Resource]
-	svc       *state.Service
+	svc       tui.StateService
 	workspace resource.Resource
 	state     *state.State
 

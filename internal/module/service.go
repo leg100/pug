@@ -31,7 +31,7 @@ type ServiceOptions struct {
 func NewService(opts ServiceOptions) *Service {
 	broker := pubsub.NewBroker[*Module]()
 	svc := &Service{
-		table:       resource.NewTable[*Module](broker),
+		table:       resource.NewTable(broker),
 		broker:      broker,
 		tasks:       opts.TaskService,
 		workdir:     opts.Workdir,

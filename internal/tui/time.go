@@ -28,6 +28,9 @@ func Ago(now, t time.Time) string {
 	case diff < time.Hour:
 		n = int(diff.Minutes())
 		suffix = "m"
+	default:
+		n = int(diff.Hours())
+		suffix = "h"
 	}
 	return fmt.Sprintf("%d%s ago", n, suffix)
 }

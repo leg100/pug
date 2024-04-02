@@ -10,7 +10,6 @@ import (
 	"github.com/leg100/pug/internal/module"
 	"github.com/leg100/pug/internal/resource"
 	"github.com/leg100/pug/internal/run"
-	"github.com/leg100/pug/internal/state"
 	"github.com/leg100/pug/internal/workspace"
 )
 
@@ -21,10 +20,10 @@ import (
 // table with, say 40 visible rows, means they are invoked 40 times a render,
 // which is 40 lookups.
 type Helpers struct {
-	ModuleService    *module.Service
-	WorkspaceService *workspace.Service
-	RunService       *run.Service
-	StateService     *state.Service
+	ModuleService    ModuleService
+	WorkspaceService WorkspaceService
+	RunService       RunService
+	StateService     StateService
 }
 
 func (h *Helpers) ModulePath(res resource.Resource) string {

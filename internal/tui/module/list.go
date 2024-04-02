@@ -39,9 +39,9 @@ var (
 
 // ListMaker makes module list models
 type ListMaker struct {
-	ModuleService    *module.Service
-	WorkspaceService *workspace.Service
-	RunService       *run.Service
+	ModuleService    tui.ModuleService
+	WorkspaceService tui.WorkspaceService
+	RunService       tui.RunService
 	Spinner          *spinner.Model
 	Workdir          string
 	Helpers          *tui.Helpers
@@ -103,9 +103,9 @@ func (m *ListMaker) Make(_ resource.Resource, width, height int) (tui.Model, err
 }
 
 type list struct {
-	ModuleService    *module.Service
-	WorkspaceService *workspace.Service
-	RunService       *run.Service
+	ModuleService    tui.ModuleService
+	WorkspaceService tui.WorkspaceService
+	RunService       tui.RunService
 
 	table   table.Resource[resource.ID, *module.Module]
 	spinner *spinner.Model

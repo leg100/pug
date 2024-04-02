@@ -7,14 +7,12 @@ import (
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/leg100/pug/internal/module"
 	"github.com/leg100/pug/internal/resource"
 	"github.com/leg100/pug/internal/run"
 	"github.com/leg100/pug/internal/task"
 	"github.com/leg100/pug/internal/tui"
 	"github.com/leg100/pug/internal/tui/keys"
 	"github.com/leg100/pug/internal/tui/table"
-	"github.com/leg100/pug/internal/workspace"
 )
 
 var (
@@ -36,10 +34,10 @@ var (
 )
 
 type ListMaker struct {
-	ModuleService    *module.Service
-	WorkspaceService *workspace.Service
-	RunService       *run.Service
-	TaskService      *task.Service
+	ModuleService    tui.ModuleService
+	WorkspaceService tui.WorkspaceService
+	RunService       tui.RunService
+	TaskService      tui.TaskService
 	MaxTasks         int
 	Helpers          *tui.Helpers
 }
@@ -103,7 +101,7 @@ func (m *ListMaker) Make(parent resource.Resource, width, height int) (tui.Model
 
 type list struct {
 	table  table.Resource[resource.ID, *task.Task]
-	svc    *task.Service
+	svc    tui.TaskService
 	parent resource.Resource
 	max    int
 }

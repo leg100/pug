@@ -17,8 +17,8 @@ import (
 )
 
 type Maker struct {
-	RunService  *run.Service
-	TaskService *task.Service
+	RunService  tui.RunService
+	TaskService tui.TaskService
 	Spinner     *spinner.Model
 	Helpers     *tui.Helpers
 }
@@ -61,8 +61,8 @@ func (mm *Maker) Make(rr resource.Resource, width, height int) (tui.Model, error
 }
 
 type model struct {
-	svc       *run.Service
-	tasks     *task.Service
+	svc       tui.RunService
+	tasks     tui.TaskService
 	run       *run.Run
 	tabs      tui.TabSet
 	taskMaker tui.Maker
