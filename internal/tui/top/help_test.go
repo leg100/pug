@@ -18,9 +18,8 @@ func Test_render(t *testing.T) {
 			[]key.Binding{
 				key.NewBinding(key.WithHelp("a", "aaa")),
 				key.NewBinding(key.WithHelp("b", "bbb")),
-				key.NewBinding(key.WithHelp("c", "ccc")),
 			},
-			"a aaa   \nb bbb   \nc ccc   ",
+			"a aaa\nb bbb",
 		},
 		{
 			"two columns",
@@ -28,9 +27,8 @@ func Test_render(t *testing.T) {
 				key.NewBinding(key.WithHelp("a", "aaa")),
 				key.NewBinding(key.WithHelp("b", "bbb")),
 				key.NewBinding(key.WithHelp("c", "ccc")),
-				key.NewBinding(key.WithHelp("d", "ddd")),
 			},
-			"a aaa   d ddd   \nb bbb           \nc ccc           ",
+			"a aaa   c ccc\nb bbb        ",
 		},
 		{
 			"three columns",
@@ -40,10 +38,8 @@ func Test_render(t *testing.T) {
 				key.NewBinding(key.WithHelp("c", "ccc")),
 				key.NewBinding(key.WithHelp("d", "ddd")),
 				key.NewBinding(key.WithHelp("e", "eee")),
-				key.NewBinding(key.WithHelp("f", "fff")),
-				key.NewBinding(key.WithHelp("g", "ggg")),
 			},
-			"a aaa   d ddd   g ggg   \nb bbb   e eee           \nc ccc   f fff           ",
+			"a aaa   c ccc   e eee\nb bbb   d ddd        ",
 		},
 	}
 	for _, tt := range tests {
