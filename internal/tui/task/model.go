@@ -38,7 +38,6 @@ func (mm *Maker) Make(tr resource.Resource, width, height int) (tui.Model, error
 		svc:      mm.TaskService,
 		task:     task,
 		output:   task.NewReader(),
-		viewport: viewport.New(0, 0),
 		spinner:  mm.Spinner,
 		isRunTab: mm.IsRunTab,
 		// read upto 1kb at a time
@@ -48,6 +47,8 @@ func (mm *Maker) Make(tr resource.Resource, width, height int) (tui.Model, error
 		helpers: mm.Helpers,
 	}
 
+	m.viewport = viewport.New(0, 0)
+	m.viewport.HighPerformanceRendering = false
 	m.setViewportDimensions(width, height)
 
 	return m, nil
@@ -120,7 +121,7 @@ func (m model) Update(msg tea.Msg) (tui.Model, tea.Cmd) {
 			return m, nil
 		}
 		m.task = msg.Payload
-	case tui.BodyResizeMsg:
+	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
 		m.setViewportDimensions(msg.Width, msg.Height)

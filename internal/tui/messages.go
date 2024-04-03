@@ -69,10 +69,3 @@ type CreatedRunsMsg struct {
 	// Errors from creating tasks
 	CreateErrs []error
 }
-
-// BodyResizeMsg is sent whenever the user resizes the terminal window. The width
-// and height refer to area available in the main body between the header and
-// the footer.
-type BodyResizeMsg struct {
-	Width, Height int
-}

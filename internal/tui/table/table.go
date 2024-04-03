@@ -7,7 +7,6 @@ import (
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/leg100/pug/internal/tui"
 	"github.com/leg100/pug/internal/tui/keys"
 	"github.com/mattn/go-runewidth"
 	"golang.org/x/exp/maps"
@@ -198,7 +197,7 @@ func (m Model[K, V]) Update(msg tea.Msg) (Model[K, V], tea.Cmd) {
 		}
 	case DeselectMsg:
 		m.DeselectAll()
-	case tui.BodyResizeMsg:
+	case tea.WindowSizeMsg:
 		m.setDimensions(msg.Width, msg.Height)
 	}
 

@@ -144,19 +144,23 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, cmd
 	}
 
-	switch msg := msg.(type) {
-	case tea.WindowSizeMsg:
-		m.width = msg.Width
-		m.height = msg.Height
+	if wsm, ok := msg.(tea.WindowSizeMsg); ok {
+		m.width = wsm.Width
+		m.height = wsm.Height
 
 		// Inform navigator of new dimenisions for when it builds new models
 		m.navigator.width = m.viewWidth()
 		m.navigator.height = m.viewHeight()
 
-		// Send out new message with adjusted dimensions
-		return m, func() tea.Msg {
-			return tui.BodyResizeMsg{Width: m.viewWidth(), Height: m.viewHeight()}
+		// amend msg to account for header etc, and forward below to all cached
+		// models.
+		msg = tea.WindowSizeMsg{
+			Height: m.viewHeight(),
+			Width:  m.viewWidth(),
 		}
+	}
+
+	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		// Pressing any key makes any info/error message in the footer disappear
 		m.info = ""

@@ -65,7 +65,8 @@ var (
 	longHelpHeadingStyle = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{
 		Light: "#909090",
 		Dark:  "#626262",
-	}).Bold(true)
+	}).Bold(true).Margin(0, 3, 0, 0)
+
 	longHelpKeyStyle = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{
 		Light: "#909090",
 		Dark:  "#626262",

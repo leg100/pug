@@ -148,12 +148,12 @@ func (m TabSet) Update(msg tea.Msg) (TabSet, tea.Cmd) {
 		}
 	case SetActiveTabMsg:
 		m.SetActiveTab(string(msg))
-	case BodyResizeMsg:
+	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
 
 		// Relay modified resize message onto each tab model
-		m.updateTabs(BodyResizeMsg{
+		m.updateTabs(tea.WindowSizeMsg{
 			Width:  m.contentWidth(),
 			Height: m.contentHeight(),
 		})
