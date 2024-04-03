@@ -141,6 +141,7 @@ func (s *Service) SetCurrent(moduleID resource.ID, workspace resource.ID) error 
 	if err != nil {
 		return fmt.Errorf("setting current workspace for module: %w", err)
 	}
+	// TODO: create task to invoke `terraform workspace select <workspace_name>`
 	return nil
 }
 

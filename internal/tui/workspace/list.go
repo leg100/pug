@@ -6,6 +6,7 @@ import (
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/leg100/pug/internal/module"
 	"github.com/leg100/pug/internal/resource"
 	"github.com/leg100/pug/internal/run"
 	"github.com/leg100/pug/internal/state"
@@ -105,6 +106,9 @@ func (m list) Update(msg tea.Msg) (tui.Model, tea.Cmd) {
 	)
 
 	switch msg := msg.(type) {
+	case resource.Event[*module.Module]:
+		// Update changes to current workspace for a module
+		m.table.UpdateViewport()
 	case resource.Event[*run.Run]:
 		// Update current run status and changes
 		m.table.UpdateViewport()
@@ -129,6 +133,15 @@ func (m list) Update(msg tea.Msg) (tui.Model, tea.Cmd) {
 			cmd := tui.CreateTasks("validate", m.modules.Validate, m.highlightedOrSelectedModuleIDs()...)
 			m.table.DeselectAll()
 			return m, cmd
+		case key.Matches(msg, localKeys.SetCurrent):
+			if row, ok := m.table.Highlighted(); ok {
+				return m, func() tea.Msg {
+					if err := m.modules.SetCurrent(row.Value.ModuleID(), row.Value.ID); err != nil {
+						return tui.NewErrorMsg(err, "setting current workspace")
+					}
+					return nil
+				}
+			}
 		case key.Matches(msg, localKeys.Plan):
 			workspaceIDs := m.table.HighlightedOrSelectedKeys()
 			m.table.DeselectAll()

@@ -5,14 +5,15 @@ import (
 )
 
 type keyMap struct {
-	Edit     key.Binding
-	Init     key.Binding
-	Plan     key.Binding
-	Apply    key.Binding
-	Validate key.Binding
-	Format   key.Binding
-	Reload   key.Binding
-	Delete   key.Binding
+	Edit       key.Binding
+	Init       key.Binding
+	Plan       key.Binding
+	Apply      key.Binding
+	Validate   key.Binding
+	Format     key.Binding
+	Reload     key.Binding
+	Delete     key.Binding
+	SetCurrent key.Binding
 }
 
 var localKeys = keyMap{
@@ -47,5 +48,9 @@ var localKeys = keyMap{
 	Delete: key.NewBinding(
 		key.WithKeys("d"),
 		key.WithHelp("d", "delete"),
+	),
+	SetCurrent: key.NewBinding(
+		key.WithKeys("C"),
+		key.WithHelp("C", "set current"),
 	),
 }
