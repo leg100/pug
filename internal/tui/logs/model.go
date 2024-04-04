@@ -86,7 +86,7 @@ type model struct {
 
 func (m model) Init() tea.Cmd {
 	return func() tea.Msg {
-		return table.BulkInsertMsg[logging.Message](m.logger.Messages)
+		return table.BulkInsertMsg[logging.Message](m.logger.Messages())
 	}
 }
 

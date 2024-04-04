@@ -2,11 +2,11 @@ package tui
 
 import (
 	"fmt"
-	"log/slog"
 	"strconv"
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
+	"github.com/leg100/pug/internal/logging"
 	"github.com/leg100/pug/internal/module"
 	"github.com/leg100/pug/internal/resource"
 	"github.com/leg100/pug/internal/run"
@@ -24,6 +24,7 @@ type Helpers struct {
 	WorkspaceService WorkspaceService
 	RunService       RunService
 	StateService     StateService
+	Logger           *logging.Logger
 }
 
 func (h *Helpers) ModulePath(res resource.Resource) string {
@@ -33,7 +34,7 @@ func (h *Helpers) ModulePath(res resource.Resource) string {
 	}
 	mod, err := h.ModuleService.Get(modResource.ID)
 	if err != nil {
-		slog.Error("rendering module path", "error", err)
+		h.Logger.Error("rendering module path", "error", err)
 		return ""
 	}
 	return mod.Path
@@ -46,7 +47,7 @@ func (h *Helpers) WorkspaceName(res resource.Resource) string {
 	}
 	ws, err := h.WorkspaceService.Get(wsResource.ID)
 	if err != nil {
-		slog.Error("rendering workspace name", "error", err)
+		h.Logger.Error("rendering workspace name", "error", err)
 		return ""
 	}
 	return ws.Name
@@ -58,7 +59,7 @@ func (h *Helpers) CurrentWorkspaceName(workspaceID *resource.ID) string {
 	}
 	ws, err := h.WorkspaceService.Get(*workspaceID)
 	if err != nil {
-		slog.Error("rendering current workspace name", "error", err)
+		h.Logger.Error("rendering current workspace name", "error", err)
 		return ""
 	}
 	return ws.Name
@@ -70,7 +71,7 @@ func (h *Helpers) ModuleCurrentRunStatus(mod *module.Module) string {
 	}
 	ws, err := h.WorkspaceService.Get(*mod.CurrentWorkspaceID)
 	if err != nil {
-		slog.Error("rendering module current run status", "error", err)
+		h.Logger.Error("rendering module current run status", "error", err)
 		return ""
 	}
 	return h.WorkspaceCurrentRunStatus(ws)
@@ -82,7 +83,7 @@ func (h *Helpers) ModuleCurrentRunChanges(mod *module.Module, inherit lipgloss.S
 	}
 	ws, err := h.WorkspaceService.Get(*mod.CurrentWorkspaceID)
 	if err != nil {
-		slog.Error("rendering module current run changes", "error", err)
+		h.Logger.Error("rendering module current run changes", "error", err)
 		return ""
 	}
 	return h.WorkspaceCurrentRunChanges(ws, inherit)
@@ -94,7 +95,7 @@ func (h *Helpers) WorkspaceCurrentRunStatus(ws *workspace.Workspace) string {
 	}
 	run, err := h.RunService.Get(*ws.CurrentRunID)
 	if err != nil {
-		slog.Error("rendering module current run status", "error", err)
+		h.Logger.Error("rendering module current run status", "error", err)
 		return ""
 	}
 	return h.RunStatus(run)
@@ -106,7 +107,7 @@ func (h *Helpers) WorkspaceCurrentRunChanges(ws *workspace.Workspace, inherit li
 	}
 	run, err := h.RunService.Get(*ws.CurrentRunID)
 	if err != nil {
-		slog.Error("rendering module current run changes", "error", err)
+		h.Logger.Error("rendering module current run changes", "error", err)
 		return ""
 	}
 	return h.LatestRunReport(run, inherit)
@@ -117,7 +118,7 @@ func (h *Helpers) WorkspaceCurrentRunChanges(ws *workspace.Workspace, inherit li
 func (h *Helpers) WorkspaceCurrentCheckmark(ws *workspace.Workspace, inherit lipgloss.Style) string {
 	mod, err := h.ModuleService.Get(ws.ModuleID())
 	if err != nil {
-		slog.Error("rendering current workspace checkmark", "error", err)
+		h.Logger.Error("rendering current workspace checkmark", "error", err)
 		return ""
 	}
 	if mod.CurrentWorkspaceID != nil && *mod.CurrentWorkspaceID == ws.ID {
@@ -129,7 +130,7 @@ func (h *Helpers) WorkspaceCurrentCheckmark(ws *workspace.Workspace, inherit lip
 func (h *Helpers) WorkspaceResourceCount(ws *workspace.Workspace) string {
 	state, err := h.StateService.Get(ws.ID)
 	if err != nil {
-		slog.Error("rendering workspace resource count", "error", err)
+		h.Logger.Error("rendering workspace resource count", "error", err)
 		return ""
 	}
 	return strconv.Itoa(len(state.Resources))
@@ -193,7 +194,7 @@ func (h *Helpers) Breadcrumbs(title string, parent resource.Resource) string {
 	case resource.Workspace:
 		ws, err := h.WorkspaceService.Get(parent.ID)
 		if err != nil {
-			slog.Error("rendering workspace name", "error", err)
+			h.Logger.Error("rendering workspace name", "error", err)
 			break
 		}
 		name := Regular.Copy().Foreground(Red).Render(ws.Name)
@@ -204,7 +205,7 @@ func (h *Helpers) Breadcrumbs(title string, parent resource.Resource) string {
 	case resource.Module:
 		mod, err := h.ModuleService.Get(parent.ID)
 		if err != nil {
-			slog.Error("rendering module path", "error", err)
+			h.Logger.Error("rendering module path", "error", err)
 			break
 		}
 		path := Regular.Copy().Foreground(Blue).Render(mod.Path)

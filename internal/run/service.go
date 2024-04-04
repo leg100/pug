@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"log/slog"
 	"slices"
 
+	"github.com/leg100/pug/internal/logging"
 	"github.com/leg100/pug/internal/module"
 	"github.com/leg100/pug/internal/pubsub"
 	"github.com/leg100/pug/internal/resource"
@@ -17,23 +17,25 @@ import (
 
 type Service struct {
 	Broker *pubsub.Broker[*Run]
+
 	table  *resource.Table[*Run]
+	logger *logging.Logger
 
 	tasks      *task.Service
 	modules    *module.Service
 	workspaces *workspace.Service
 	states     *state.Service
 
-	DisableReloadAfterApply bool
+	disableReloadAfterApply bool
 }
 
 type ServiceOptions struct {
-	TaskService      *task.Service
-	ModuleService    *module.Service
-	WorkspaceService *workspace.Service
-	StateService     *state.Service
-
+	TaskService             *task.Service
+	ModuleService           *module.Service
+	WorkspaceService        *workspace.Service
+	StateService            *state.Service
 	DisableReloadAfterApply bool
+	Logger                  *logging.Logger
 }
 
 func NewService(opts ServiceOptions) *Service {
@@ -45,7 +47,8 @@ func NewService(opts ServiceOptions) *Service {
 		modules:                 opts.ModuleService,
 		workspaces:              opts.WorkspaceService,
 		states:                  opts.StateService,
-		DisableReloadAfterApply: opts.DisableReloadAfterApply,
+		disableReloadAfterApply: opts.DisableReloadAfterApply,
+		logger:                  opts.Logger,
 	}
 }
 
@@ -53,10 +56,10 @@ func NewService(opts ServiceOptions) *Service {
 func (s *Service) Create(workspaceID resource.ID, opts CreateOptions) (*Run, error) {
 	run, err := s.create(workspaceID, opts)
 	if err != nil {
-		slog.Error("creating run", "error", err)
+		s.logger.Error("creating run", "error", err, "workspace_id", workspaceID)
 		return nil, err
 	}
-	slog.Info("created run", "run", run)
+	s.logger.Info("created run", "run", run)
 	return run, nil
 }
 
@@ -123,19 +126,26 @@ func (s *Service) plan(run *Run) (*task.Task, error) {
 					return
 				}
 			}
+			s.logger.Info("created plan", "run", run, "changes", run.PlanReport)
+		},
+		AfterFinish: func(t *task.Task) {
+			if t.Err != nil {
+				s.logger.Error("creating plan", "error", t.Err, "run", run)
+			}
 		},
 	})
 	if err != nil {
-		return nil, fmt.Errorf("creating plan task: %w", err)
+		s.logger.Error("creating plan task", "error", err, "run", run)
+		return nil, err
 	}
-	return task, err
+	return task, nil
 }
 
 // Apply triggers an apply task for a run. The run must be in the planned state.
 func (s *Service) Apply(runID resource.ID) (*task.Task, error) {
 	run, err := s.table.Get(runID)
 	if err != nil {
-		return nil, fmt.Errorf("applying run: %w", err)
+		return nil, err
 	}
 	if run.Status != Planned {
 		return nil, fmt.Errorf("run is not in the planned state: %s", run.Status)
@@ -169,16 +179,21 @@ func (s *Service) Apply(runID resource.ID) (*task.Task, error) {
 			}
 			run.ApplyReport = report
 			run.updateStatus(Applied)
-			slog.Info("applied plan", "run", run)
 
-			if !s.DisableReloadAfterApply {
-				slog.Info("reloading state following apply", "run", run)
+			if !s.disableReloadAfterApply {
 				s.states.Reload(run.WorkspaceID())
+			}
+		},
+		AfterFinish: func(t *task.Task) {
+			if t.Err != nil {
+				s.logger.Error("applying plan", "error", t.Err, "run", run)
+			} else {
+				s.logger.Info("applied plan", "run", run)
 			}
 		},
 	})
 	if err != nil {
-		return nil, fmt.Errorf("applying run: %w", err)
+		return nil, err
 	}
 	return task, nil
 }
@@ -250,7 +265,7 @@ func (s *Service) Delete(id resource.ID) error {
 	if err := s.delete(id); err != nil {
 		return err
 	}
-	slog.Info("deleted run", "id", id)
+	s.logger.Info("deleted run", "id", id)
 	return nil
 }
 

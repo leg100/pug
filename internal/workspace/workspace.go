@@ -2,6 +2,7 @@ package workspace
 
 import (
 	"fmt"
+	"log/slog"
 	"path/filepath"
 
 	"github.com/leg100/pug/internal/module"
@@ -36,6 +37,12 @@ func (ws *Workspace) TerraformEnv() string {
 
 func (ws *Workspace) PugDirectory() string {
 	return PugDirectory(ws.Name)
+}
+
+func (ws *Workspace) LogValue() slog.Value {
+	return slog.GroupValue(
+		slog.String("name", ws.Name),
+	)
 }
 
 func PugDirectory(name string) string {

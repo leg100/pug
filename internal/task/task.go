@@ -123,6 +123,7 @@ func (f *factory) newTask(opts CreateOptions) (*Task, error) {
 		Path:          opts.Path,
 		Args:          opts.Args,
 		Env:           opts.Env,
+		Blocking:      opts.Blocking,
 		exclusive:     opts.Exclusive,
 		AfterExited:   opts.AfterExited,
 		AfterError:    opts.AfterError,
@@ -196,9 +197,10 @@ func (t *Task) Wait() error {
 func (t *Task) LogValue() slog.Value {
 	return slog.GroupValue(
 		slog.Any("status", t.State),
-		slog.String("id", t.ID.String()),
+		slog.String("id", t.String()),
 		slog.Any("command", t.Command),
 		slog.Any("args", t.Args),
+		slog.Bool("blocking", t.Blocking),
 	)
 }
 
@@ -290,7 +292,6 @@ func (t *Task) updateState(state Status) {
 		if t.AfterFinish != nil {
 			t.AfterFinish(t)
 		}
-		slog.Debug("completed task", "task", t)
 	}
 
 	switch state {

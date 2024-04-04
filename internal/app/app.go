@@ -42,7 +42,6 @@ func Start(args []string) error {
 
 	// Setup logging
 	logger := logging.NewLogger(cfg.LogLevel)
-	slog.SetDefault(logger.Logger)
 
 	// Log some info useful to the user
 	slog.Info(fmt.Sprintf("set max tasks: %d", cfg.MaxTasks))
@@ -50,20 +49,24 @@ func Start(args []string) error {
 	// Instantiate services
 	tasks := task.NewService(task.ServiceOptions{
 		Program: cfg.Program,
+		Logger:  logger,
 	})
 	modules := module.NewService(module.ServiceOptions{
 		TaskService: tasks,
 		Workdir:     workdir,
 		PluginCache: cfg.PluginCache,
+		Logger:      logger,
 	})
 	workspaces := workspace.NewService(ctx, workspace.ServiceOptions{
 		TaskService:   tasks,
 		ModuleService: modules,
+		Logger:        logger,
 	})
 	states := state.NewService(ctx, state.ServiceOptions{
 		ModuleService:    modules,
 		WorkspaceService: workspaces,
 		TaskService:      tasks,
+		Logger:           logger,
 	})
 	runs := run.NewService(run.ServiceOptions{
 		TaskService:             tasks,
@@ -71,6 +74,7 @@ func Start(args []string) error {
 		WorkspaceService:        workspaces,
 		StateService:            states,
 		DisableReloadAfterApply: cfg.DisableReloadAfterApply,
+		Logger:                  logger,
 	})
 
 	// Construct TUI programme.
@@ -142,7 +146,7 @@ func Start(args []string) error {
 
 	// Start daemons
 	go task.StartEnqueuer(ctx, tasks)
-	go task.StartRunner(ctx, tasks, cfg.MaxTasks)
+	go task.StartRunner(ctx, logger, tasks, cfg.MaxTasks)
 	go run.StartScheduler(ctx, runs, workspaces)
 
 	// Blocks until user quits

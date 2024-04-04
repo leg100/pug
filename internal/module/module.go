@@ -46,6 +46,12 @@ func New(path string) *Module {
 	}
 }
 
+func (m *Module) LogValue() slog.Value {
+	return slog.GroupValue(
+		slog.String("path", m.Path),
+	)
+}
+
 // findModules finds root modules that are descendents of the given path and
 // returns their paths. Determining what is a root module is difficult and
 // relies on a set of heuristics:

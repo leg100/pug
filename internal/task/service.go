@@ -2,10 +2,9 @@ package task
 
 import (
 	"context"
-	"fmt"
-	"log/slog"
 	"slices"
 
+	"github.com/leg100/pug/internal/logging"
 	"github.com/leg100/pug/internal/pubsub"
 	"github.com/leg100/pug/internal/resource"
 )
@@ -15,12 +14,14 @@ type Service struct {
 
 	table   *resource.Table[*Task]
 	counter *int
+	logger  *logging.Logger
 
 	*factory
 }
 
 type ServiceOptions struct {
 	Program string
+	Logger  *logging.Logger
 }
 
 func NewService(opts ServiceOptions) *Service {
@@ -38,6 +39,7 @@ func NewService(opts ServiceOptions) *Service {
 		Broker:  broker,
 		factory: factory,
 		counter: &counter,
+		logger:  opts.Logger,
 	}
 	return svc
 }
@@ -50,6 +52,8 @@ func (s *Service) Create(opts CreateOptions) (*Task, error) {
 		return nil, err
 	}
 
+	s.logger.Debug("created task", "task", task)
+
 	// Add to db
 	s.table.Add(task.ID, task)
 	// Increment counter of number of live tasks
@@ -61,12 +65,11 @@ func (s *Service) Create(opts CreateOptions) (*Task, error) {
 
 	go func() {
 		if err := task.Wait(); err != nil {
-			// TODO: log error
+			s.logger.Debug("failed task", "error", err, "task", task)
 			return
 		}
+		s.logger.Debug("completed task", "task", task)
 	}()
-
-	slog.Debug("created task", "task", task)
 	return task, nil
 }
 
@@ -74,12 +77,12 @@ func (s *Service) Create(opts CreateOptions) (*Task, error) {
 func (s *Service) Enqueue(taskID resource.ID) (*Task, error) {
 	task, err := s.table.Get(taskID)
 	if err != nil {
-		slog.Error("enqueuing task", "error", err)
-		return nil, fmt.Errorf("enqueuing task: %w", err)
+		s.logger.Error("enqueuing task", "error", err)
+		return nil, err
 	}
 
 	task.updateState(Queued)
-	slog.Debug("enqueued task", "task", task)
+	s.logger.Debug("enqueued task", "task", task)
 	return task, nil
 }
 
@@ -163,13 +166,13 @@ func (s *Service) Subscribe(ctx context.Context) <-chan resource.Event[*Task] {
 func (s *Service) Cancel(taskID resource.ID) (*Task, error) {
 	task, err := s.table.Get(taskID)
 	if err != nil {
-		slog.Error("canceling task", "id", taskID)
+		s.logger.Error("canceling task", "id", taskID)
 		return nil, err
 	}
 
 	task.cancel()
 
-	slog.Info("canceled task", "task", task)
+	s.logger.Info("canceled task", "task", task)
 	return task, nil
 }
 

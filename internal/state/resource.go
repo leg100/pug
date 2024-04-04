@@ -9,13 +9,15 @@ type Resource struct {
 type ResourceStatus string
 
 const (
-	// Idle indicates the resource is idle (no tasks are currently operating on
+	// Idle means the resource is idle (no tasks are currently operating on
 	// it).
 	Idle ResourceStatus = "idle"
-	// Removing indicates the resource is in the process of being removed.
+	// Removing means the resource is in the process of being removed.
 	Removing = "removing"
-	// Tainting indicates the resource is in the process of being tainted.
+	// Tainting means the resource is in the process of being tainted.
 	Tainting = "tainting"
+	// Tainted means the resource is currently tainted
+	Tainted = "tainted"
 )
 
 func newResource(sfr StateFileResource) *Resource {

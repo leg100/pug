@@ -60,8 +60,3 @@ func (r Resource) Workspace() *Resource {
 func (r Resource) Run() *Resource {
 	return r.getAncestorKind(Run)
 }
-
-// RowParent implements tui/table.ResourceValue
-func (r Resource) RowParent() *Resource {
-	return r.Parent
-}

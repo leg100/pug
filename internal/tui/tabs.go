@@ -111,6 +111,13 @@ func (m *TabSet) SetActiveTab(title string) {
 	}
 }
 
+func (m *TabSet) HelpBindings() (bindings []key.Binding) {
+	if len(m.Tabs) > 0 {
+		return m.Tabs[m.active].HelpBindings()
+	}
+	return nil
+}
+
 func (m *TabSet) setActive(tabIndex int) {
 	if len(m.Tabs) == 0 {
 		// No tabs, no action

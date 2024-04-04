@@ -71,7 +71,7 @@ func newRun(mod *module.Module, ws *workspace.Workspace, opts CreateOptions) (*R
 	}
 
 	// Create directory for artefacts including plan file etc.
-	run.artefactsPath = filepath.Join(ws.PugDirectory(), run.ID.String())
+	run.artefactsPath = filepath.Join(ws.PugDirectory(), run.String())
 	if err := os.MkdirAll(filepath.Join(mod.Path, run.artefactsPath), 0o755); err != nil {
 		return nil, err
 	}
@@ -101,8 +101,7 @@ func (r *Run) IsFinished() bool {
 func (r *Run) LogValue() slog.Value {
 	return slog.GroupValue(
 		slog.String("id", r.String()),
-		slog.String("workspace", r.String()),
-		slog.String("module", r.String()),
+		slog.String("status", string(r.Status)),
 	)
 }
 

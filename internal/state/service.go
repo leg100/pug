@@ -4,9 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"log/slog"
 	"slices"
 
+	"github.com/leg100/pug/internal/logging"
 	"github.com/leg100/pug/internal/module"
 	"github.com/leg100/pug/internal/pubsub"
 	"github.com/leg100/pug/internal/resource"
@@ -18,17 +18,18 @@ type Service struct {
 	modules    *module.Service
 	workspaces *workspace.Service
 	tasks      *task.Service
+	broker     *pubsub.Broker[*State]
+	logger     *logging.Logger
 
 	// Table mapping workspace IDs to states
 	cache *resource.Table[*State]
-
-	broker *pubsub.Broker[*State]
 }
 
 type ServiceOptions struct {
 	ModuleService    *module.Service
 	WorkspaceService *workspace.Service
 	TaskService      *task.Service
+	Logger           *logging.Logger
 }
 
 func NewService(ctx context.Context, opts ServiceOptions) *Service {
@@ -39,6 +40,7 @@ func NewService(ctx context.Context, opts ServiceOptions) *Service {
 		tasks:      opts.TaskService,
 		cache:      resource.NewTable(broker),
 		broker:     broker,
+		logger:     opts.Logger,
 	}
 
 	// Whenever a workspace is added, pull its state
@@ -79,15 +81,20 @@ func (s *Service) Reload(workspaceID resource.ID) (*task.Task, error) {
 		})
 	}
 
+	ws, err := s.workspaces.Get(workspaceID)
+	if err != nil {
+		return nil, err
+	}
+
 	task, err := s.createTask(workspaceID, task.CreateOptions{
 		Command: []string{"state", "pull"},
 		AfterError: func(t *task.Task) {
-			slog.Error("reloading state", "error", t.Err, "workspace_id", workspaceID)
+			s.logger.Error("reloading state", "error", t.Err, "workspace", ws)
 		},
 		AfterExited: func(t *task.Task) {
 			var file StateFile
 			if err := json.NewDecoder(t.NewReader()).Decode(&file); err != nil {
-				slog.Error("reloading state", "error", err)
+				s.logger.Error("reloading state", "error", err, "workspace", ws)
 				return
 			}
 			current := NewState(workspaceID, file)
@@ -103,7 +110,7 @@ func (s *Service) Reload(workspaceID resource.ID) (*task.Task, error) {
 			// table.Add replaces state if it exists already, which is what we
 			// want.
 			s.cache.Add(workspaceID, current)
-			slog.Info("reloaded state", "workspace_id", workspaceID, "total_resources", len(current.Resources))
+			s.logger.Info("reloaded state", "workspace", ws, "total_resources", len(current.Resources))
 		},
 		AfterFinish: func(t *task.Task) {
 			revertIdle()
@@ -130,7 +137,7 @@ func (s *Service) Delete(workspaceID resource.ID, addrs ...ResourceAddress) (*ta
 		},
 		AfterError: func(t *task.Task) {
 			s.updateResourceStatus(workspaceID, Idle, addrs...)
-			slog.Error("deleting resources", "error", t.Err, "resources", addrs)
+			s.logger.Error("deleting resources", "error", t.Err, "resources", addrs)
 		},
 		AfterCanceled: func(t *task.Task) {
 			s.updateResourceStatus(workspaceID, Idle, addrs...)
@@ -146,11 +153,24 @@ func (s *Service) Delete(workspaceID resource.ID, addrs ...ResourceAddress) (*ta
 	})
 }
 
-func (s *Service) Taint(workspaceID resource.ID, addr string) (*task.Task, error) {
+func (s *Service) Taint(workspaceID resource.ID, addr ResourceAddress) (*task.Task, error) {
 	return s.createTask(workspaceID, task.CreateOptions{
 		Blocking: true,
 		Command:  []string{"taint"},
-		Args:     []string{addr},
+		Args:     []string{addr.String()},
+		AfterCreate: func(t *task.Task) {
+			s.updateResourceStatus(workspaceID, Tainting, addr)
+		},
+		AfterError: func(t *task.Task) {
+			s.updateResourceStatus(workspaceID, Idle, addr)
+			s.logger.Error("tainting resources", "error", t.Err, "resources", addr)
+		},
+		AfterCanceled: func(t *task.Task) {
+			s.updateResourceStatus(workspaceID, Idle, addr)
+		},
+		AfterExited: func(t *task.Task) {
+			s.updateResourceStatus(workspaceID, Tainted, addr)
+		},
 	})
 }
 

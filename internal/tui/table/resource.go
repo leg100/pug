@@ -27,7 +27,6 @@ type ResourceOptions[V ResourceValue] struct {
 type ResourceValue interface {
 	HasAncestor(id resource.ID) bool
 	RowKey() resource.ID
-	RowParent() *resource.Resource
 }
 
 // NewResource creates a new resource table

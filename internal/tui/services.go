@@ -28,6 +28,7 @@ type StateService interface {
 	Reload(workspaceID resource.ID) (*task.Task, error)
 	Get(workspaceID resource.ID) (*state.State, error)
 	Delete(workspaceID resource.ID, addrs ...state.ResourceAddress) (*task.Task, error)
+	Taint(workspaceID resource.ID, addr state.ResourceAddress) (*task.Task, error)
 }
 
 type RunService interface {

@@ -5,10 +5,10 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"log/slog"
 	"slices"
 	"strings"
 
+	"github.com/leg100/pug/internal/logging"
 	"github.com/leg100/pug/internal/module"
 	"github.com/leg100/pug/internal/pubsub"
 	"github.com/leg100/pug/internal/resource"
@@ -18,6 +18,7 @@ import (
 type Service struct {
 	broker *pubsub.Broker[*Workspace]
 	table  workspaceTable
+	logger *logging.Logger
 
 	modules moduleService
 	tasks   *task.Service
@@ -26,6 +27,7 @@ type Service struct {
 type ServiceOptions struct {
 	TaskService   *task.Service
 	ModuleService *module.Service
+	Logger        *logging.Logger
 }
 
 type workspaceTable interface {
@@ -47,11 +49,16 @@ type moduleService interface {
 
 func NewService(ctx context.Context, opts ServiceOptions) *Service {
 	broker := pubsub.NewBroker[*Workspace]()
+	table := resource.NewTable(broker)
+
+	opts.Logger.AddEnricher(&logEnricher{table: table})
+
 	svc := &Service{
 		broker:  broker,
-		table:   resource.NewTable(broker),
+		table:   table,
 		modules: opts.ModuleService,
 		tasks:   opts.TaskService,
+		logger:  opts.Logger,
 	}
 	return svc
 }
@@ -69,27 +76,27 @@ func (s *Service) Reload(moduleID resource.ID) (*task.Task, error) {
 	task, err := s.modules.CreateTask(mod, task.CreateOptions{
 		Command: []string{"workspace", "list"},
 		AfterError: func(t *task.Task) {
-			slog.Error("reloading workspaces", "error", t.Err, "module", moduleID, "task", t)
+			s.logger.Error("reloading workspaces", "error", t.Err, "module", mod, "task", t)
 		},
 		AfterExited: func(t *task.Task) {
 			found, current, err := parseList(t.NewReader())
 			if err != nil {
-				slog.Error("reloading workspaces", "error", err, "module", moduleID)
+				s.logger.Error("reloading workspaces", "error", err, "module", mod, "task", t)
 				return
 			}
 			added, removed, err := s.resetWorkspaces(mod, found, current)
 			if err != nil {
-				slog.Error("reloading workspaces", "error", err, "module", moduleID)
+				s.logger.Error("reloading workspaces", "error", err, "module", mod, "task", t)
 				return
 			}
-			slog.Info("reloaded workspaces", "added", added, "removed", removed, "module", moduleID)
+			s.logger.Info("reloaded workspaces", "added", added, "removed", removed, "module", mod)
 		},
 	})
 	if err != nil {
-		slog.Error("reloading workspaces", "error", err, "module", moduleID)
+		s.logger.Error("reloading workspaces", "error", err, "module", mod)
 		return nil, err
 	}
-	slog.Info("reloading workspaces", "module", moduleID, "task", task)
+	s.logger.Info("reloading workspaces", "module", mod)
 	return task, nil
 }
 
@@ -192,7 +199,7 @@ func (s *Service) Create(path, name string) (*Workspace, *task.Task, error) {
 			// `workspace new` implicitly makes the created workspace the
 			// *current* workspace, so better tell pug that too.
 			if err := s.modules.SetCurrent(mod.ID, ws.ID); err != nil {
-				slog.Error("creating workspace: %w", err)
+				s.logger.Error("creating workspace: %w", err)
 			}
 		},
 	})
@@ -240,7 +247,7 @@ func (s *Service) Subscribe(ctx context.Context) <-chan resource.Event[*Workspac
 func (s *Service) SetCurrent(workspaceID resource.ID, run resource.ID) {
 	ws, err := s.table.Get(workspaceID)
 	if err != nil {
-		slog.Error("setting current workspace run", "run_id", run, "error", err)
+		s.logger.Error("setting current workspace run", "run_id", run, "error", err)
 	}
 	ws.CurrentRunID = &run
 }

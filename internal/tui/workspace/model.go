@@ -84,8 +84,6 @@ func (m model) Update(msg tea.Msg) (tui.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch {
-		case key.Matches(msg, localKeys.Plan):
-			return m, tui.CreateRuns(m.runs, m.workspace.ID)
 		case key.Matches(msg, keys.Common.Module):
 			return m, tui.NavigateTo(tui.ModuleKind, tui.WithParent(*m.workspace.Module()))
 		}
@@ -94,7 +92,7 @@ func (m model) Update(msg tea.Msg) (tui.Model, tea.Cmd) {
 			m.workspace = msg.Payload
 		}
 	}
-	// Update tabs
+	// Navigate tabs, send key to current tab.
 	updated, cmd := m.tabs.Update(msg)
 	cmds = append(cmds, cmd)
 	m.tabs = updated
@@ -111,7 +109,8 @@ func (m model) View() string {
 }
 
 func (m model) HelpBindings() (bindings []key.Binding) {
-	return []key.Binding{
-		keys.Common.Apply,
-	}
+	return append(
+		m.tabs.HelpBindings(),
+		keys.Common.Module,
+	)
 }

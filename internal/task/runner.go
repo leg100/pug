@@ -2,7 +2,8 @@ package task
 
 import (
 	"context"
-	"log/slog"
+
+	"github.com/leg100/pug/internal/logging"
 )
 
 // Runner is the global task Runner that provides a couple of invariants:
@@ -15,7 +16,7 @@ type runner struct {
 	tasks taskLister
 }
 
-func StartRunner(ctx context.Context, tasks *Service, maxTasks int) {
+func StartRunner(ctx context.Context, logger *logging.Logger, tasks *Service, maxTasks int) {
 	sub := tasks.Broker.Subscribe(ctx)
 	r := &runner{
 		max:       maxTasks,
@@ -29,8 +30,9 @@ func StartRunner(ctx context.Context, tasks *Service, maxTasks int) {
 		for _, task := range r.runnable() {
 			waitfn, err := task.start()
 			if err != nil {
-				slog.Error(err.Error())
+				logger.Error("starting task", "error", err.Error(), "task", task)
 			} else {
+				logger.Info("started task", "task", task)
 				go waitfn()
 			}
 		}

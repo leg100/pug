@@ -2,25 +2,13 @@ package logging
 
 import (
 	"bytes"
-	"context"
 	"fmt"
-	"io"
-	"os"
 	"time"
-
-	"log/slog"
 
 	"github.com/go-logfmt/logfmt"
 	"github.com/leg100/pug/internal/pubsub"
 	"github.com/leg100/pug/internal/resource"
 )
-
-var levels = map[string]slog.Level{
-	"debug": slog.LevelDebug,
-	"info":  slog.LevelInfo,
-	"warn":  slog.LevelWarn,
-	"error": slog.LevelError,
-}
 
 // Message is the event payload for a log message
 type Message struct {
@@ -39,42 +27,20 @@ type Attr struct {
 	Value string
 }
 
-type Logger struct {
-	Logger   *slog.Logger
+// writer is a slog TextHandler writer that both keeps the log records in
+// memory and emits and them as pug events.
+type writer struct {
 	Messages []Message
 
 	broker *pubsub.Broker[Message]
-	file   io.Writer
-
 	serial uint
 }
 
-// NewLogger constructs a slog logger with the appropriate log level. The logger
-// emits messages as pug events.
-func NewLogger(level string) *Logger {
-	f, _ := os.OpenFile("pug.log", os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0o755)
-
-	logger := &Logger{
-		broker: pubsub.NewBroker[Message](),
-		file:   f,
-	}
-
-	handler := slog.NewTextHandler(
-		logger,
-		&slog.HandlerOptions{
-			Level: slog.Level(levels[level]),
-		},
-	)
-	logger.Logger = slog.New(handler)
-
-	return logger
-}
-
-func (l *Logger) Write(p []byte) (int, error) {
+func (b *writer) Write(p []byte) (int, error) {
 	msgs := make([]Message, 0, 1)
 	d := logfmt.NewDecoder(bytes.NewReader(p))
 	for d.ScanRecord() {
-		msg := Message{Serial: l.serial}
+		msg := Message{Serial: b.serial}
 		for d.ScanKeyval() {
 			switch string(d.Key()) {
 			case "time":
@@ -95,27 +61,12 @@ func (l *Logger) Write(p []byte) (int, error) {
 			}
 		}
 		msgs = append(msgs, msg)
-		l.broker.Publish(resource.CreatedEvent, msg)
-		l.serial++
+		b.broker.Publish(resource.CreatedEvent, msg)
+		b.serial++
 	}
 	if d.Err() != nil {
 		return 0, d.Err()
 	}
-	l.Messages = append(l.Messages, msgs...)
-	if _, err := l.file.Write(p); err != nil {
-		return 0, err
-	}
+	b.Messages = append(b.Messages, msgs...)
 	return len(p), nil
-}
-
-// Subscribe to log messages.
-func (l *Logger) Subscribe(ctx context.Context) <-chan resource.Event[Message] {
-	return l.broker.Subscribe(ctx)
-}
-
-func BySerialDesc(i, j Message) int {
-	if i.Serial < j.Serial {
-		return 1
-	}
-	return -1
 }

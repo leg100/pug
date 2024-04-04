@@ -3,48 +3,52 @@ package module
 import (
 	"context"
 	"fmt"
-	"log/slog"
 	"slices"
 
 	"github.com/leg100/pug/internal"
+	"github.com/leg100/pug/internal/logging"
 	"github.com/leg100/pug/internal/pubsub"
 	"github.com/leg100/pug/internal/resource"
 	"github.com/leg100/pug/internal/task"
 )
 
 type Service struct {
-	table  *resource.Table[*Module]
-	broker *pubsub.Broker[*Module]
-
-	tasks *task.Service
-
+	table       *resource.Table[*Module]
+	broker      *pubsub.Broker[*Module]
+	tasks       *task.Service
 	workdir     string
 	pluginCache bool
+	logger      *logging.Logger
 }
 
 type ServiceOptions struct {
 	TaskService *task.Service
 	Workdir     string
 	PluginCache bool
+	Logger      *logging.Logger
 }
 
 func NewService(opts ServiceOptions) *Service {
 	broker := pubsub.NewBroker[*Module]()
-	svc := &Service{
-		table:       resource.NewTable(broker),
+	table := resource.NewTable(broker)
+
+	opts.Logger.AddEnricher(&logEnricher{table: table})
+
+	return &Service{
+		table:       table,
 		broker:      broker,
 		tasks:       opts.TaskService,
 		workdir:     opts.Workdir,
 		pluginCache: opts.PluginCache,
+		logger:      opts.Logger,
 	}
-	return svc
 }
 
 // Reload searches the working directory recursively for modules and adds them
 // to the store before pruning those that are currently stored but can no longer
 // be found.
 func (s *Service) Reload() error {
-	slog.Info("reloading modules")
+	s.logger.Info("reloading modules")
 
 	var (
 		added   []string
@@ -71,7 +75,7 @@ func (s *Service) Reload() error {
 			removed = append(removed, existing.Path)
 		}
 	}
-	slog.Info("reloaded modules", "added", added, "removed", removed)
+	s.logger.Info("reloaded modules", "added", added, "removed", removed)
 	return nil
 }
 
