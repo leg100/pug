@@ -43,20 +43,16 @@ func (mm *Maker) Make(_ resource.Resource, width, height int) (tea.Model, error)
 		msgColumn,
 	}
 	renderer := func(msg logging.Message, inherit lipgloss.Style) table.RenderedRow {
-		var levelStyle lipgloss.Style
+		var levelColor lipgloss.Color
 		switch msg.Level {
 		case "ERROR":
-			levelStyle = tui.Regular.Foreground(tui.Red)
+			levelColor = tui.ErrorLogLevel
 		case "WARN":
-			levelStyle = tui.Regular.Foreground(tui.Orange)
+			levelColor = tui.WarnLogLevel
 		case "DEBUG":
-			levelStyle = tui.Regular.Foreground(tui.Grey)
-		default:
-			levelStyle = tui.Regular.Foreground(tui.Black)
-		}
-		row := table.RenderedRow{
-			timeColumn.Key:  msg.Time.Format(timeFormat),
-			levelColumn.Key: levelStyle.Copy().Render(msg.Level),
+			levelColor = tui.DebugLogLevel
+		case "INFO":
+			levelColor = tui.InfoLogLevel
 		}
 
 		// combine message and attributes, separated by spaces, with each
@@ -65,12 +61,15 @@ func (mm *Maker) Make(_ resource.Resource, width, height int) (tea.Model, error)
 		b.WriteString(msg.Message)
 		b.WriteRune(' ')
 		for _, attr := range msg.Attributes {
-			b.WriteString(tui.Regular.Copy().Inherit(inherit).Foreground(tui.Black).Render(attr.Key + "="))
+			b.WriteString(tui.Bold.Copy().Inherit(inherit).Render(attr.Key + "="))
 			b.WriteString(tui.Regular.Copy().Inherit(inherit).Render(attr.Value + " "))
 		}
 
-		row[msgColumn.Key] = lipgloss.NewStyle().Inherit(inherit).Render(b.String())
-		return row
+		return table.RenderedRow{
+			timeColumn.Key:  msg.Time.Format(timeFormat),
+			levelColumn.Key: tui.Bold.Copy().Foreground(levelColor).Render(msg.Level),
+			msgColumn.Key:   lipgloss.NewStyle().Inherit(inherit).Render(b.String()),
+		}
 	}
 	table := table.New[uint](columns, renderer, width, height).
 		WithSortFunc(logging.BySerialDesc).
