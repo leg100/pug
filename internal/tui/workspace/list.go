@@ -62,14 +62,12 @@ func (m *ListMaker) Make(parent resource.Resource, width, height int) (tui.Model
 	}
 
 	table := table.NewResource(table.ResourceOptions[*workspace.Workspace]{
-		ModuleService:    m.ModuleService,
-		WorkspaceService: m.WorkspaceService,
-		Columns:          columns,
-		Renderer:         rowRenderer,
-		Width:            width,
-		Height:           height,
-		Parent:           parent,
-		SortFunc:         workspace.Sort(m.ModuleService),
+		Columns:  columns,
+		Renderer: rowRenderer,
+		Width:    width,
+		Height:   height,
+		Parent:   parent,
+		SortFunc: workspace.Sort(m.ModuleService),
 	})
 
 	return list{
