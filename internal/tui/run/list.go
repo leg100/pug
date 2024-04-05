@@ -31,7 +31,7 @@ type ListMaker struct {
 	Helpers          *tui.Helpers
 }
 
-func (m *ListMaker) Make(parent resource.Resource, width, height int) (tui.Model, error) {
+func (m *ListMaker) Make(parent resource.Resource, width, height int) (tea.Model, error) {
 	var columns []table.Column
 	// Add further columns depending upon the kind of parent
 	switch parent.Kind {
@@ -93,7 +93,7 @@ func (m list) Init() tea.Cmd {
 	}
 }
 
-func (m list) Update(msg tea.Msg) (tui.Model, tea.Cmd) {
+func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var (
 		cmd  tea.Cmd
 		cmds []tea.Cmd

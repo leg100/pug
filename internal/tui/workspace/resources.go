@@ -32,7 +32,7 @@ type resourceListMaker struct {
 	Spinner      *spinner.Model
 }
 
-func (m *resourceListMaker) Make(ws resource.Resource, width, height int) (tui.Model, error) {
+func (m *resourceListMaker) Make(ws resource.Resource, width, height int) (tea.Model, error) {
 	columns := []table.Column{
 		resourceColumn,
 		resourceStatusColumn,
@@ -75,7 +75,7 @@ func (m resources) Init() tea.Cmd {
 	}
 }
 
-func (m resources) Update(msg tea.Msg) (tui.Model, tea.Cmd) {
+func (m resources) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var (
 		cmd  tea.Cmd
 		cmds []tea.Cmd

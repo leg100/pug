@@ -26,7 +26,7 @@ func newNavigator(opts Options, spinner *spinner.Model) (*navigator, error) {
 	n := &navigator{
 		makers: makeMakers(opts, spinner),
 		cache: &cache{
-			cache: make(map[cacheKey]tui.Model),
+			cache: make(map[cacheKey]tea.Model),
 		},
 	}
 
@@ -46,7 +46,7 @@ func (n *navigator) currentPage() tui.Page {
 	return n.history[len(n.history)-1]
 }
 
-func (n *navigator) currentModel() tui.Model {
+func (n *navigator) currentModel() tea.Model {
 	return n.cache.get(n.currentPage())
 }
 

@@ -36,7 +36,7 @@ type Maker struct {
 	Logger *logging.Logger
 }
 
-func (mm *Maker) Make(_ resource.Resource, width, height int) (tui.Model, error) {
+func (mm *Maker) Make(_ resource.Resource, width, height int) (tea.Model, error) {
 	columns := []table.Column{
 		timeColumn,
 		levelColumn,
@@ -90,7 +90,7 @@ func (m model) Init() tea.Cmd {
 	}
 }
 
-func (m model) Update(msg tea.Msg) (tui.Model, tea.Cmd) {
+func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var (
 		cmd  tea.Cmd
 		cmds []tea.Cmd

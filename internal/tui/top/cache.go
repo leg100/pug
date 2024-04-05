@@ -11,7 +11,7 @@ import (
 // from the page and later return to the page, and they would expect the same
 // row still to be hightlighted.
 type cache struct {
-	cache map[cacheKey]tui.Model
+	cache map[cacheKey]tea.Model
 }
 
 type cacheKey struct {
@@ -24,11 +24,11 @@ func (c *cache) exists(page tui.Page) bool {
 	return ok
 }
 
-func (c *cache) get(page tui.Page) tui.Model {
+func (c *cache) get(page tui.Page) tea.Model {
 	return c.cache[pageKey(page)]
 }
 
-func (c *cache) put(page tui.Page, model tui.Model) {
+func (c *cache) put(page tui.Page, model tea.Model) {
 	c.cache[pageKey(page)] = model
 }
 

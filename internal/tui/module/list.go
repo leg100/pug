@@ -47,7 +47,7 @@ type ListMaker struct {
 	Helpers          *tui.Helpers
 }
 
-func (m *ListMaker) Make(_ resource.Resource, width, height int) (tui.Model, error) {
+func (m *ListMaker) Make(_ resource.Resource, width, height int) (tea.Model, error) {
 	columns := []table.Column{
 		table.ModuleColumn,
 		currentWorkspace,
@@ -116,7 +116,7 @@ func (m list) Init() tea.Cmd {
 	}
 }
 
-func (m list) Update(msg tea.Msg) (tui.Model, tea.Cmd) {
+func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var (
 		cmd  tea.Cmd
 		cmds []tea.Cmd

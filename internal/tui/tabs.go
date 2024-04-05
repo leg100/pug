@@ -113,7 +113,10 @@ func (m *TabSet) SetActiveTab(title string) {
 
 func (m *TabSet) HelpBindings() (bindings []key.Binding) {
 	if len(m.Tabs) > 0 {
-		return m.Tabs[m.active].HelpBindings()
+		active := m.Tabs[m.active].Model
+		if bindings, ok := active.(ModelHelpBindings); ok {
+			return bindings.HelpBindings()
+		}
 	}
 	return nil
 }
@@ -259,7 +262,7 @@ func (m TabSet) contentHeight() int {
 // A tab is one of a set of tabs. A tab has a title, and an embedded model,
 // which is responsible for the visible content under the tab.
 type Tab struct {
-	Model
+	tea.Model
 
 	Title string
 }

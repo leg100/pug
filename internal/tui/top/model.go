@@ -274,12 +274,17 @@ func (m model) View() string {
 		shortHelpBindings []key.Binding
 	)
 
+	var currentHelpBindings []key.Binding
+	if bindings, ok := m.currentModel().(tui.ModelHelpBindings); ok {
+		currentHelpBindings = bindings.HelpBindings()
+	}
+
 	if m.showHelp {
 		content = lipgloss.NewStyle().
 			Margin(1).
 			Render(
 				fullHelpView(
-					m.currentModel().HelpBindings(),
+					currentHelpBindings,
 					keys.KeyMapToSlice(keys.Global),
 					keys.KeyMapToSlice(keys.Navigation),
 				),
@@ -296,11 +301,8 @@ func (m model) View() string {
 			Render(fmt.Sprintf("Quit pug? (y/N): %s", m.quitPrompt.View()))
 	} else {
 		content = m.currentModel().View()
-		// Within the header, show the model bindings first, and then the
-		// general key bindings. The navigation bindings are only visible in the
-		// full help.
 		shortHelpBindings = append(
-			m.currentModel().HelpBindings(),
+			currentHelpBindings,
 			keys.KeyMapToSlice(keys.Global)...,
 		)
 	}
@@ -320,20 +322,21 @@ func (m model) View() string {
 		Width(shortHelpWidth).
 		Render(shortHelpView(shortHelpBindings, shortHelpWidth))
 
-	// Render title.
-	title := lipgloss.NewStyle().
-		Margin(0, 1).
-		Render(m.currentModel().Title())
+	// Render page title line
+	var (
+		pageTitle  string
+		pageID     string
+		pageStatus string
+	)
+	if titled, ok := m.currentModel().(tui.ModelTitle); ok {
+		pageTitle = tui.Regular.Copy().Margin(0, 1).Render(titled.Title())
+	}
 
 	// Optionally render page id and/or status to the right side of title
 	pageIDAndStatusStyle := tui.Regular.
 		Margin(0, 1).
-		Width(m.width - tui.Width(title) - 2).
+		Width(m.width - tui.Width(pageTitle) - 2).
 		Align(lipgloss.Right)
-	var (
-		pageID     string
-		pageStatus string
-	)
 	if identifiable, ok := m.currentModel().(tui.ModelID); ok {
 		pageID = tui.Regular.Copy().Padding(0, 0, 0, 0).Render(identifiable.ID())
 	}
@@ -343,7 +346,9 @@ func (m model) View() string {
 	pageIDAndStatus := pageIDAndStatusStyle.Render(
 		lipgloss.JoinHorizontal(lipgloss.Left, pageStatus, pageID),
 	)
-	title = lipgloss.JoinHorizontal(lipgloss.Left, title, pageIDAndStatus)
+
+	// Stitch together page title line, and id and status to the right
+	pageTitleLine := lipgloss.JoinHorizontal(lipgloss.Left, pageTitle, pageIDAndStatus)
 
 	// Global-level info goes in the bottom right corner in the footer.
 	metadata := tui.Padded.Copy().Render(
@@ -388,7 +393,7 @@ func (m model) View() string {
 			Width(m.width).
 			// Prefix title with a space to add margin (Inline() doesn't permit
 			// using Margin()).
-			Render(title),
+			Render(pageTitleLine),
 		// horizontal rule
 		strings.Repeat("─", m.width),
 		// content

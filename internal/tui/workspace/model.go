@@ -34,7 +34,7 @@ type Maker struct {
 	Helpers *tui.Helpers
 }
 
-func (mm *Maker) Make(workspace resource.Resource, width, height int) (tui.Model, error) {
+func (mm *Maker) Make(workspace resource.Resource, width, height int) (tea.Model, error) {
 	ws, err := mm.WorkspaceService.Get(workspace.ID)
 	if err != nil {
 		return model{}, err
@@ -78,7 +78,7 @@ func (m model) Init() tea.Cmd {
 	return m.tabs.Init()
 }
 
-func (m model) Update(msg tea.Msg) (tui.Model, tea.Cmd) {
+func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmds []tea.Cmd
 
 	switch msg := msg.(type) {

@@ -23,7 +23,7 @@ type Maker struct {
 	Helpers     *tui.Helpers
 }
 
-func (mm *Maker) Make(rr resource.Resource, width, height int) (tui.Model, error) {
+func (mm *Maker) Make(rr resource.Resource, width, height int) (tea.Model, error) {
 	run, err := mm.RunService.Get(rr.ID)
 	if err != nil {
 		return model{}, err
@@ -73,7 +73,7 @@ func (m model) Init() tea.Cmd {
 	return m.tabs.Init()
 }
 
-func (m model) Update(msg tea.Msg) (tui.Model, tea.Cmd) {
+func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmds []tea.Cmd
 
 	switch msg := msg.(type) {
