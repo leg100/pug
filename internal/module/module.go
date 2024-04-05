@@ -8,6 +8,7 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclwrite"
+	"github.com/leg100/pug/internal/logging"
 	"github.com/leg100/pug/internal/resource"
 	"golang.org/x/exp/maps"
 )
@@ -61,7 +62,7 @@ func (m *Module) LogValue() slog.Value {
 //
 // (a) will only succeed if the module has already been initialized, i.e. terraform
 // init has been run, whereas (b) is necessary if it has not.
-func findModules(parent string) (modules []string, err error) {
+func findModules(logger *logging.Logger, parent string) (modules []string, err error) {
 	found := make(map[string]struct{})
 	walkfn := func(path string, d fs.DirEntry, walkerr error) error {
 		// skip directories that have already been identified as containing a
@@ -91,7 +92,7 @@ func findModules(parent string) (modules []string, err error) {
 		// so this is what is used even though no writing is performed.
 		file, diags := hclwrite.ParseConfig(cfg, path, hcl.Pos{Line: 1, Column: 1})
 		if diags.HasErrors() {
-			slog.Error("reloading modules: parsing hcl", "path", path, "error", diags)
+			logger.Error("reloading modules: parsing hcl", "path", path, "error", diags)
 			return nil
 		}
 		for _, block := range file.Body().Blocks() {

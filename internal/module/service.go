@@ -55,7 +55,7 @@ func (s *Service) Reload() error {
 		removed []string
 	)
 
-	found, err := findModules(s.workdir)
+	found, err := findModules(s.logger, s.workdir)
 	if err != nil {
 		return err
 	}
