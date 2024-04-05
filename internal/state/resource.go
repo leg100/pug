@@ -8,34 +8,16 @@ type Resource struct {
 
 type ResourceStatus string
 
+type ResourceAddress string
+
 const (
 	// Idle means the resource is idle (no tasks are currently operating on
 	// it).
 	Idle ResourceStatus = "idle"
 	// Removing means the resource is in the process of being removed.
-	Removing = "removing"
+	Removing ResourceStatus = "removing"
 	// Tainting means the resource is in the process of being tainted.
-	Tainting = "tainting"
+	Tainting ResourceStatus = "tainting"
 	// Tainted means the resource is currently tainted
-	Tainted = "tainted"
+	Tainted ResourceStatus = "tainted"
 )
-
-func newResource(sfr StateFileResource) *Resource {
-	return &Resource{
-		Address: ResourceAddress{
-			name: sfr.Name,
-			typ:  sfr.Type,
-		},
-		Status: Idle,
-	}
-}
-
-// ResourceAddress is the path for a terraform resource, i.e. its type and name.
-type ResourceAddress struct {
-	typ  string
-	name string
-}
-
-func (p ResourceAddress) String() string {
-	return p.typ + "." + p.name
-}

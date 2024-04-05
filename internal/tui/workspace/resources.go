@@ -39,7 +39,7 @@ func (m *resourceListMaker) Make(ws resource.Resource, width, height int) (tui.M
 	}
 	renderer := func(resource *state.Resource, inherit lipgloss.Style) table.RenderedRow {
 		return table.RenderedRow{
-			resourceColumn.Key:       resource.Address.String(),
+			resourceColumn.Key:       string(resource.Address),
 			resourceStatusColumn.Key: string(resource.Status),
 		}
 	}
@@ -95,12 +95,15 @@ func (m resources) Update(msg tea.Msg) (tui.Model, tea.Cmd) {
 		case key.Matches(msg, resourcesKeys.Taint):
 			addrs := m.table.HighlightedOrSelectedKeys()
 			return m, func() tea.Msg {
-				tasks, errs := m.taintMany(m.workspace.ID, addrs...)
-				return tui.CreatedTasksMsg{
-					Command:    "state-taint",
-					Tasks:      tasks,
-					CreateErrs: errs,
+				msg := tui.CreatedTasksMsg{Command: "taint"}
+				for _, addr := range addrs {
+					task, err := m.svc.Taint(m.workspace.ID, addr)
+					if err != nil {
+						msg.CreateErrs = append(msg.CreateErrs, err)
+					}
+					msg.Tasks = append(msg.Tasks, task)
 				}
+				return msg
 			}
 		}
 	case initState:
@@ -146,17 +149,6 @@ func (m resources) TabStatus() string {
 
 func (m resources) HelpBindings() (bindings []key.Binding) {
 	return keys.KeyMapToSlice(resourcesKeys)
-}
-
-func (m resources) taintMany(workspaceID resource.ID, addrs ...state.ResourceAddress) (multi task.Multi, errs []error) {
-	for _, addr := range addrs {
-		task, err := m.svc.Taint(workspaceID, addr)
-		if err != nil {
-			errs = append(errs, err)
-		}
-		multi = append(multi, task)
-	}
-	return
 }
 
 type resourcesKeyMap struct {

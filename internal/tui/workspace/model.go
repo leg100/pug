@@ -84,6 +84,8 @@ func (m model) Update(msg tea.Msg) (tui.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch {
+		case key.Matches(msg, localKeys.Plan):
+			return m, tui.CreateRuns(m.runs, m.workspace.ID)
 		case key.Matches(msg, keys.Common.Module):
 			return m, tui.NavigateTo(tui.ModuleKind, tui.WithParent(*m.workspace.Module()))
 		}

@@ -196,11 +196,9 @@ func (t *Task) Wait() error {
 
 func (t *Task) LogValue() slog.Value {
 	return slog.GroupValue(
-		slog.Any("status", t.State),
 		slog.String("id", t.String()),
 		slog.Any("command", t.Command),
 		slog.Any("args", t.Args),
-		slog.Bool("blocking", t.Blocking),
 	)
 }
 

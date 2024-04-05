@@ -87,7 +87,7 @@ func (s *Service) Reload(workspaceID resource.ID) (*task.Task, error) {
 	}
 
 	task, err := s.createTask(workspaceID, task.CreateOptions{
-		Command: []string{"state", "pull"},
+		Command: []string{"show", "-json"},
 		AfterError: func(t *task.Task) {
 			s.logger.Error("reloading state", "error", t.Err, "workspace", ws)
 		},
@@ -126,7 +126,7 @@ func (s *Service) Reload(workspaceID resource.ID) (*task.Task, error) {
 func (s *Service) Delete(workspaceID resource.ID, addrs ...ResourceAddress) (*task.Task, error) {
 	addrStrings := make([]string, len(addrs))
 	for i, addr := range addrs {
-		addrStrings[i] = addr.String()
+		addrStrings[i] = string(addr)
 	}
 	return s.createTask(workspaceID, task.CreateOptions{
 		Blocking: true,
@@ -157,7 +157,7 @@ func (s *Service) Taint(workspaceID resource.ID, addr ResourceAddress) (*task.Ta
 	return s.createTask(workspaceID, task.CreateOptions{
 		Blocking: true,
 		Command:  []string{"taint"},
-		Args:     []string{addr.String()},
+		Args:     []string{string(addr)},
 		AfterCreate: func(t *task.Task) {
 			s.updateResourceStatus(workspaceID, Tainting, addr)
 		},
