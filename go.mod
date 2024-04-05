@@ -75,3 +75,5 @@ require (
 )
 
 replace github.com/mattn/go-runewidth => github.com/leg100/go-runewidth v0.0.16-0.20240317085039-79cdd3ecf674
+
+replace github.com/muesli/reflow => github.com/leg100/reflow v0.0.0-20240405105338-95fe252ec5c2
