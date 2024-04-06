@@ -14,9 +14,6 @@ import (
 	"github.com/leg100/pug/internal/resource"
 )
 
-// Func is a function that creates a task.
-type Func func(resource.ID) (*Task, error)
-
 // Task is an execution of a CLI program.
 type Task struct {
 	resource.Resource
