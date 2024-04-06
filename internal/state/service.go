@@ -101,12 +101,13 @@ func (s *Service) Reload(workspaceID resource.ID) (*task.Task, error) {
 			current := NewState(workspaceID, file)
 			// For each current resource, check if it previously existed in the
 			// cache, and if so, copy across its status.
-			s.cache.Update(workspaceID, func(previous *State) {
+			s.cache.Update(workspaceID, func(previous *State) error {
 				for currentAddress := range current.Resources {
 					if previousResource, ok := previous.Resources[currentAddress]; ok {
 						current.Resources[currentAddress].Status = previousResource.Status
 					}
 				}
+				return nil
 			})
 			// table.Add replaces state if it exists already, which is what we
 			// want.
@@ -144,11 +145,12 @@ func (s *Service) Delete(workspaceID resource.ID, addrs ...ResourceAddress) (*ta
 			s.updateResourceStatus(workspaceID, Idle, addrs...)
 		},
 		AfterExited: func(t *task.Task) {
-			s.cache.Update(workspaceID, func(existing *State) {
+			s.cache.Update(workspaceID, func(existing *State) error {
 				// Remove resources from cache
 				for _, addr := range addrs {
 					delete(existing.Resources, addr)
 				}
+				return nil
 			})
 		},
 	})
@@ -198,20 +200,22 @@ func (s *Service) createTask(workspaceID resource.ID, opts task.CreateOptions) (
 
 func (s *Service) updateStateStatus(workspaceID resource.ID, fn func(*State) error) error {
 	var err error
-	s.cache.Update(workspaceID, func(existing *State) {
+	s.cache.Update(workspaceID, func(existing *State) error {
 		if updateErr := fn(existing); updateErr != nil {
 			err = updateErr
 		}
+		return nil
 	})
 	return err
 }
 
 func (s *Service) updateResourceStatus(workspaceID resource.ID, state ResourceStatus, addrs ...ResourceAddress) {
-	s.cache.Update(workspaceID, func(existing *State) {
+	s.cache.Update(workspaceID, func(existing *State) error {
 		for _, res := range existing.Resources {
 			if slices.Contains(addrs, res.Address) {
 				res.Status = state
 			}
 		}
+		return nil
 	})
 }

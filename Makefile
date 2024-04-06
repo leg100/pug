@@ -24,7 +24,7 @@ test:
 
 .PHONY: lint
 lint:
-	go list ./... | xargs staticcheck
+	staticcheck ./...
 
 .PHONY: fmt
 fmt:

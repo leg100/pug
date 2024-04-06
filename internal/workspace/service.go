@@ -32,7 +32,7 @@ type ServiceOptions struct {
 
 type workspaceTable interface {
 	Add(id resource.ID, row *Workspace)
-	Update(id resource.ID, updater func(existing *Workspace)) (*Workspace, error)
+	Update(id resource.ID, updater func(existing *Workspace) error) (*Workspace, error)
 	Delete(id resource.ID)
 	Get(id resource.ID) (*Workspace, error)
 	List() []*Workspace
@@ -245,8 +245,9 @@ func (s *Service) Subscribe(ctx context.Context) <-chan resource.Event[*Workspac
 }
 
 func (s *Service) SetCurrent(workspaceID resource.ID, runID resource.ID) {
-	ws, err := s.table.Update(workspaceID, func(existing *Workspace) {
+	ws, err := s.table.Update(workspaceID, func(existing *Workspace) error {
 		existing.CurrentRunID = &runID
+		return nil
 	})
 	if err != nil {
 		s.logger.Error("setting current workspace run", "workspace_id", workspaceID, "run_id", runID, "error", err)
