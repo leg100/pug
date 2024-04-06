@@ -30,20 +30,20 @@ func (t *Table[T]) Add(id ID, row T) {
 	t.pub.Publish(CreatedEvent, row)
 }
 
-func (t *Table[T]) Update(id ID, updater func(existing T)) error {
+func (t *Table[T]) Update(id ID, updater func(existing T)) (T, error) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
 	// Retrieve row and update
 	row, ok := t.rows[id]
 	if !ok {
-		return ErrNotFound
+		return *new(T), ErrNotFound
 	}
 	updater(row)
 	t.rows[id] = row
 
 	t.pub.Publish(UpdatedEvent, row)
-	return nil
+	return row, nil
 }
 
 func (t *Table[T]) Delete(id ID) {

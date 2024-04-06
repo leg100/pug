@@ -138,13 +138,15 @@ func (s *Service) Subscribe(ctx context.Context) <-chan resource.Event[*Module] 
 	return s.broker.Subscribe(ctx)
 }
 
-func (s *Service) SetCurrent(moduleID resource.ID, workspace resource.ID) error {
-	err := s.table.Update(moduleID, func(existing *Module) {
-		existing.CurrentWorkspaceID = &workspace
+func (s *Service) SetCurrent(moduleID resource.ID, workspaceID resource.ID) error {
+	mod, err := s.table.Update(moduleID, func(existing *Module) {
+		existing.CurrentWorkspaceID = &workspaceID
 	})
 	if err != nil {
-		return fmt.Errorf("setting current workspace for module: %w", err)
+		s.logger.Error("setting current workspace", "module_id", moduleID, "run_id", workspaceID, "error", err)
+		return err
 	}
+	s.logger.Debug("set current workspace", "module", mod, "workspace_id", workspaceID)
 	return nil
 }
 
