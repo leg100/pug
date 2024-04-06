@@ -7,6 +7,8 @@ import (
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/leg100/pug/internal"
+	"github.com/leg100/pug/internal/tui"
 	"github.com/leg100/pug/internal/tui/keys"
 	"github.com/mattn/go-runewidth"
 	"golang.org/x/exp/maps"
@@ -56,7 +58,7 @@ type Row[K comparable, V any] struct {
 	Value V
 }
 
-type RowRenderer[V any] func(V, lipgloss.Style) RenderedRow
+type RowRenderer[V any] func(V) RenderedRow
 
 // RenderedRow provides the rendered string for each column in a row.
 type RenderedRow map[ColumnKey]string
@@ -74,15 +76,13 @@ type Styles struct {
 // DefaultStyles returns a set of default style definitions for this table.
 func DefaultStyles() Styles {
 	return Styles{
-		Highlighted: lipgloss.NewStyle().Bold(true).
-			// light pink
-			Foreground(lipgloss.Color("212")).
-			// purple
-			Background(lipgloss.Color("57")),
-		Selected: lipgloss.NewStyle().Bold(true).
-			// yellow
-			Background(lipgloss.Color("227")),
-		Header: lipgloss.NewStyle().Bold(false).Padding(0, 1),
+		Highlighted: tui.Regular.Copy().
+			Background(tui.HighlightBackground).
+			Foreground(tui.HighlightForeground),
+		Selected: tui.Regular.Copy().
+			Background(tui.SelectedBackground).
+			Foreground(tui.SelectedForeground),
+		Header: tui.Regular.Copy().Padding(0, 1),
 	}
 }
 
@@ -494,16 +494,31 @@ func (m Model[K, V]) headersView() string {
 func (m *Model[K, V]) renderRow(rowIdx int) string {
 	row := m.rows[rowIdx]
 
-	var background lipgloss.Style
+	var (
+		background  lipgloss.Color
+		foreground  lipgloss.Color
+		highlighted bool
+		selected    bool
+	)
 	if _, ok := m.Selected[row.Key]; ok {
-		background = m.styles.Selected
+		selected = true
 	}
 	if rowIdx == m.cursor {
-		background = m.styles.Highlighted
+		highlighted = true
+	}
+	if highlighted && selected {
+		background = tui.HighlightedAndSelectedBackground
+		foreground = tui.HighlightedAndSelectedForeground
+	} else if highlighted {
+		background = tui.HighlightBackground
+		foreground = tui.HighlightForeground
+	} else if selected {
+		background = tui.SelectedBackground
+		foreground = tui.SelectedForeground
 	}
 
 	var renderedCells = make([]string, len(m.cols))
-	cells := m.rowRenderer(row.Value, background)
+	cells := m.rowRenderer(row.Value)
 	for i, col := range m.cols {
 		content := cells[col.Key]
 		// Truncate content if it is wider than column
@@ -512,20 +527,26 @@ func (m *Model[K, V]) renderRow(rowIdx int) string {
 		inlined := lipgloss.NewStyle().
 			Width(col.Width).
 			MaxWidth(col.Width).
-			Inherit(background).
-			Inline(true).
 			Render(truncated)
 		// Apply block-styling to content
 		boxed := lipgloss.NewStyle().
 			Padding(0, 1).
-			Inherit(background).
 			Render(inlined)
-		backgrounded := background.Render(boxed)
-		// If highlighted or selected, apply background
-		renderedCells[i] = backgrounded
+		renderedCells[i] = boxed
 	}
 
-	return lipgloss.JoinHorizontal(lipgloss.Left, renderedCells...)
+	// Join cells together to form a row
+	renderedRow := lipgloss.JoinHorizontal(lipgloss.Left, renderedCells...)
+
+	// If highlighted and/or selected, strip colors and apply background color
+	if highlighted || selected {
+		renderedRow = internal.StripAnsi(renderedRow)
+		renderedRow = lipgloss.NewStyle().
+			Foreground(foreground).
+			Background(background).
+			Render(renderedRow)
+	}
+	return renderedRow
 }
 
 func clamp(v, low, high int) int {

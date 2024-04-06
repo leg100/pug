@@ -3,7 +3,6 @@ package table
 import (
 	"testing"
 
-	"github.com/charmbracelet/lipgloss"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -17,7 +16,7 @@ var (
 )
 
 func setupTest() Model[int, testVar] {
-	renderer := func(v testVar, s lipgloss.Style) RenderedRow { return nil }
+	renderer := func(v testVar) RenderedRow { return nil }
 	tbl := New[int, testVar](nil, renderer, 0, 0)
 	tbl.SetItems(map[int]testVar{
 		0: ent1,

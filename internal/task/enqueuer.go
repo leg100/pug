@@ -17,16 +17,15 @@ func StartEnqueuer(ctx context.Context, tasks *Service) {
 	sub := tasks.Broker.Subscribe(ctx)
 
 	for range sub {
-		for _, t := range e.enqueue() {
-			// TODO: log error
-			_, _ = tasks.Enqueue(t.ID)
+		for _, t := range e.enqueuable() {
+			tasks.Enqueue(t.ID)
 		}
 	}
 }
 
-// enqueue returns a list of a tasks to be moved from the pending state to the
+// enqueuable returns a list of a tasks to be moved from the pending state to the
 // queued state.
-func (e *enqueuer) enqueue() []*Task {
+func (e *enqueuer) enqueuable() []*Task {
 	// Retrieve active tasks
 	active := e.tasks.List(ListOptions{
 		Status: []Status{Queued, Running},
@@ -44,21 +43,25 @@ func (e *enqueuer) enqueue() []*Task {
 		Status: []Status{Pending},
 		Oldest: true,
 	})
-	// Remove tasks from pending that should not be enqueued
-	for i, t := range pending {
+	// Filter pending tasks, keeping only those that are enqueuable
+	var i int
+	for _, t := range pending {
 		// Recursively walk task's ancestors and check if they are currently
 		// blocked; if so then task cannot be enqueued.
 		if hasBlockedAncestor(blocked, *t.Parent) {
-			// Remove from pending
-			pending = append(pending[:i], pending[i+1:]...)
+			// Not enqueuable
+			continue
 		} else if t.Blocking {
 			// Found blocking task in pending queue; no further tasks shall be
 			// enqueued for resources belonging to the task's parent resource
 			blocked[t.Parent.ID] = struct{}{}
 		}
+		// Enqueueable
+		pending[i] = t
+		i++
 	}
 	// Enqueue filtered pending tasks
-	return pending
+	return pending[:i]
 }
 
 func hasBlockedAncestor(blocked map[resource.ID]struct{}, parent resource.Resource) bool {

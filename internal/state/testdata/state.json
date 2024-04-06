@@ -1,0 +1,211 @@
+{
+  "format_version": "1.0",
+  "terraform_version": "1.6.2",
+  "values": {
+    "outputs": {
+      "child_pet1": {
+        "sensitive": false,
+        "value": "guiding-lemming",
+        "type": "string"
+      },
+      "child_pet2": {
+        "sensitive": false,
+        "value": "worthy-monarch",
+        "type": "string"
+      },
+      "pet1": {
+        "sensitive": false,
+        "value": "fun-corgi",
+        "type": "string"
+      }
+    },
+    "root_module": {
+      "resources": [
+        {
+          "address": "random_integer.suffix",
+          "mode": "managed",
+          "type": "random_integer",
+          "name": "suffix",
+          "provider_name": "registry.terraform.io/hashicorp/random",
+          "schema_version": 0,
+          "values": {
+            "id": "4116",
+            "keepers": {
+              "now": "2024-04-04T16:39:26Z"
+            },
+            "max": 9999,
+            "min": 1000,
+            "result": 4116,
+            "seed": null
+          },
+          "sensitive_values": {
+            "keepers": {}
+          }
+        },
+        {
+          "address": "random_pet.pet",
+          "mode": "managed",
+          "type": "random_pet",
+          "name": "pet",
+          "provider_name": "registry.terraform.io/hashicorp/random",
+          "schema_version": 0,
+          "values": {
+            "id": "fun-corgi",
+            "keepers": {
+              "now": "2024-04-04T16:39:26Z"
+            },
+            "length": 2,
+            "prefix": null,
+            "separator": "-"
+          },
+          "sensitive_values": {
+            "keepers": {}
+          }
+        }
+      ],
+      "child_modules": [
+        {
+          "resources": [
+            {
+              "address": "module.child1.random_integer.suffix",
+              "mode": "managed",
+              "type": "random_integer",
+              "name": "suffix",
+              "provider_name": "registry.terraform.io/hashicorp/random",
+              "schema_version": 0,
+              "values": {
+                "id": "8458",
+                "keepers": {
+                  "now": "2024-04-04T16:39:26Z"
+                },
+                "max": 9999,
+                "min": 1000,
+                "result": 8458,
+                "seed": null
+              },
+              "sensitive_values": {
+                "keepers": {}
+              }
+            },
+            {
+              "address": "module.child1.random_pet.pet",
+              "mode": "managed",
+              "type": "random_pet",
+              "name": "pet",
+              "provider_name": "registry.terraform.io/hashicorp/random",
+              "schema_version": 0,
+              "values": {
+                "id": "guiding-lemming",
+                "keepers": {
+                  "now": "2024-04-04T16:39:26Z"
+                },
+                "length": 2,
+                "prefix": null,
+                "separator": "-"
+              },
+              "sensitive_values": {
+                "keepers": {}
+              }
+            }
+          ],
+          "address": "module.child1"
+        },
+        {
+          "resources": [
+            {
+              "address": "module.child2.random_integer.suffix",
+              "mode": "managed",
+              "type": "random_integer",
+              "name": "suffix",
+              "provider_name": "registry.terraform.io/hashicorp/random",
+              "schema_version": 0,
+              "values": {
+                "id": "9439",
+                "keepers": {
+                  "now": "2024-04-04T16:39:26Z"
+                },
+                "max": 9999,
+                "min": 1000,
+                "result": 9439,
+                "seed": null
+              },
+              "sensitive_values": {
+                "keepers": {}
+              }
+            },
+            {
+              "address": "module.child2.random_pet.pet",
+              "mode": "managed",
+              "type": "random_pet",
+              "name": "pet",
+              "provider_name": "registry.terraform.io/hashicorp/random",
+              "schema_version": 0,
+              "values": {
+                "id": "worthy-monarch",
+                "keepers": {
+                  "now": "2024-04-04T16:39:26Z"
+                },
+                "length": 2,
+                "prefix": null,
+                "separator": "-"
+              },
+              "sensitive_values": {
+                "keepers": {}
+              },
+              "tainted": true
+            }
+          ],
+          "address": "module.child2",
+          "child_modules": [
+            {
+              "resources": [
+                {
+                  "address": "module.child2.module.child3.random_integer.suffix",
+                  "mode": "managed",
+                  "type": "random_integer",
+                  "name": "suffix",
+                  "provider_name": "registry.terraform.io/hashicorp/random",
+                  "schema_version": 0,
+                  "values": {
+                    "id": "1119",
+                    "keepers": {
+                      "now": "2024-04-04T16:39:26Z"
+                    },
+                    "max": 9999,
+                    "min": 1000,
+                    "result": 1119,
+                    "seed": null
+                  },
+                  "sensitive_values": {
+                    "keepers": {}
+                  }
+                },
+                {
+                  "address": "module.child2.module.child3.random_pet.pet",
+                  "mode": "managed",
+                  "type": "random_pet",
+                  "name": "pet",
+                  "provider_name": "registry.terraform.io/hashicorp/random",
+                  "schema_version": 0,
+                  "values": {
+                    "id": "arriving-yak",
+                    "keepers": {
+                      "now": "2024-04-04T16:39:26Z"
+                    },
+                    "length": 2,
+                    "prefix": null,
+                    "separator": "-"
+                  },
+                  "sensitive_values": {
+                    "keepers": {}
+                  }
+                }
+              ],
+              "address": "module.child2.module.child3"
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

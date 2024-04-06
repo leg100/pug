@@ -14,20 +14,20 @@ import (
 type Status string
 
 const (
-	Pending            Status = "pending"
-	Scheduled          Status = "scheduled"
-	PlanQueued         Status = "plan queued"
-	Planning           Status = "planning"
-	Planned            Status = "planned"
-	PlannedAndFinished Status = "planned&finished"
-	ApplyQueued        Status = "apply queued"
-	Applying           Status = "applying"
-	Applied            Status = "applied"
-	Errored            Status = "errored"
-	Canceled           Status = "canceled"
-	Discarded          Status = "discarded"
+	Pending     Status = "pending"
+	Scheduled   Status = "scheduled"
+	PlanQueued  Status = "plan queued"
+	Planning    Status = "planning"
+	Planned     Status = "planned"
+	NoChanges   Status = "no changes"
+	ApplyQueued Status = "apply queued"
+	Applying    Status = "applying"
+	Applied     Status = "applied"
+	Errored     Status = "errored"
+	Canceled    Status = "canceled"
+	Discarded   Status = "discarded"
 
-	MaxStatusLen = len(PlannedAndFinished)
+	MaxStatusLen = len(ApplyQueued)
 )
 
 type Run struct {
@@ -38,7 +38,6 @@ type Run struct {
 
 	Status    Status
 	AutoApply bool
-	PlanOnly  bool
 
 	PlanReport  Report
 	ApplyReport Report
@@ -55,8 +54,6 @@ type Run struct {
 }
 
 type CreateOptions struct {
-	PlanOnly bool
-
 	afterUpdate func(run *Run)
 }
 
@@ -71,7 +68,7 @@ func newRun(mod *module.Module, ws *workspace.Workspace, opts CreateOptions) (*R
 	}
 
 	// Create directory for artefacts including plan file etc.
-	run.artefactsPath = filepath.Join(ws.PugDirectory(), run.ID.String())
+	run.artefactsPath = filepath.Join(ws.PugDirectory(), run.String())
 	if err := os.MkdirAll(filepath.Join(mod.Path, run.artefactsPath), 0o755); err != nil {
 		return nil, err
 	}
@@ -91,7 +88,7 @@ func (r *Run) PlanPath() string {
 
 func (r *Run) IsFinished() bool {
 	switch r.Status {
-	case PlannedAndFinished, Applied, Errored, Canceled:
+	case NoChanges, Applied, Errored, Canceled:
 		return true
 	default:
 		return false
@@ -101,8 +98,7 @@ func (r *Run) IsFinished() bool {
 func (r *Run) LogValue() slog.Value {
 	return slog.GroupValue(
 		slog.String("id", r.String()),
-		slog.String("workspace", r.String()),
-		slog.String("module", r.String()),
+		slog.String("status", string(r.Status)),
 	)
 }
 

@@ -8,18 +8,7 @@ import (
 
 // Maker makes new models
 type Maker interface {
-	Make(target resource.Resource, width, height int) (Model, error)
-}
-
-// Model essentially wraps the upstream tea.Model with additional methods.
-type Model interface {
-	Init() tea.Cmd
-	Update(tea.Msg) (Model, tea.Cmd)
-	Title() string
-	View() string
-	// HelpBindings are those bindings that help should show when this model is
-	// current.
-	HelpBindings() []key.Binding
+	Make(target resource.Resource, width, height int) (tea.Model, error)
 }
 
 // Page identifies an instance of a model
@@ -40,4 +29,15 @@ type ModelID interface {
 // identification string.
 type ModelStatus interface {
 	Status() string
+}
+
+// ModelTitle is implemented by models that show a title
+type ModelTitle interface {
+	Title() string
+}
+
+// ModelHelpBindings is implemented by models that surface further help bindings
+// specific to the model.
+type ModelHelpBindings interface {
+	HelpBindings() []key.Binding
 }

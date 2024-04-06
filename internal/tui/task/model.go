@@ -10,6 +10,7 @@ import (
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/hokaccha/go-prettyjson"
 	"github.com/leg100/pug/internal/resource"
 	"github.com/leg100/pug/internal/task"
 	"github.com/leg100/pug/internal/tui"
@@ -28,7 +29,7 @@ type Maker struct {
 	Helpers *tui.Helpers
 }
 
-func (mm *Maker) Make(tr resource.Resource, width, height int) (tui.Model, error) {
+func (mm *Maker) Make(tr resource.Resource, width, height int) (tea.Model, error) {
 	task, err := mm.TaskService.Get(tr.ID)
 	if err != nil {
 		return model{}, err
@@ -78,7 +79,7 @@ func (m model) Init() tea.Cmd {
 	return m.getOutput
 }
 
-func (m model) Update(msg tea.Msg) (tui.Model, tea.Cmd) {
+func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var (
 		cmd  tea.Cmd
 		cmds []tea.Cmd
@@ -112,7 +113,28 @@ func (m model) Update(msg tea.Msg) (tui.Model, tea.Cmd) {
 		m.content = wordwrap.String(m.content, m.width)
 		m.viewport.SetContent(m.content)
 		m.viewport.GotoBottom()
-		if !msg.eof {
+		if msg.eof {
+			if m.task.JSON {
+				// Prettify JSON output from task. This can only be done once
+				// the task has finished and has produced complete and
+				// syntactically valid json object(s).
+				//
+				// Note: terraform commands such as `state -json` can produce
+				// json strings with embedded newlines, which is invalid json
+				// and breaks the pretty printer. So we escape the newlines.
+				//
+				// TODO: avoid casting to string and back, thereby avoiding
+				// unnecessary allocations.
+				m.content = strings.ReplaceAll(m.content, "\n", "\\n")
+				if b, err := prettyjson.Format([]byte(m.content)); err != nil {
+					cmds = append(cmds, tui.ReportError(err, "pretty printing task json output"))
+				} else {
+					m.content = string(b)
+					m.viewport.SetContent(string(b))
+					m.viewport.GotoBottom()
+				}
+			}
+		} else {
 			cmds = append(cmds, m.getOutput)
 		}
 	case resource.Event[*task.Task]:
@@ -135,7 +157,7 @@ func (m model) Update(msg tea.Msg) (tui.Model, tea.Cmd) {
 }
 
 func (m model) Title() string {
-	heading := tui.Bold.Render("Task")
+	heading := tui.TitleStyle.Render("Task")
 	cmd := tui.Regular.Copy().Foreground(tui.Green).Render(m.task.CommandString())
 	crumbs := m.helpers.Breadcrumbs("", *m.task.Parent)
 	return fmt.Sprintf("%s{%s}%s", heading, cmd, crumbs)
@@ -179,7 +201,7 @@ func (m model) View() string {
 	// pagination info container occupies a fixed width section to the right of
 	// the viewport.
 	scrollPercent := tui.Regular.Copy().
-		Background(lipgloss.Color("253")).
+		Background(tui.ScrollPercentageBackground).
 		Padding(0, 1).
 		Render(fmt.Sprintf("%3.f%%", m.viewport.ScrollPercent()*100))
 	pagination := tui.Regular.Copy().

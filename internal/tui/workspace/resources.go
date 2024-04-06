@@ -32,14 +32,14 @@ type resourceListMaker struct {
 	Spinner      *spinner.Model
 }
 
-func (m *resourceListMaker) Make(ws resource.Resource, width, height int) (tui.Model, error) {
+func (m *resourceListMaker) Make(ws resource.Resource, width, height int) (tea.Model, error) {
 	columns := []table.Column{
 		resourceColumn,
 		resourceStatusColumn,
 	}
-	renderer := func(resource *state.Resource, inherit lipgloss.Style) table.RenderedRow {
+	renderer := func(resource *state.Resource) table.RenderedRow {
 		return table.RenderedRow{
-			resourceColumn.Key:       resource.Address.String(),
+			resourceColumn.Key:       string(resource.Address),
 			resourceStatusColumn.Key: string(resource.Status),
 		}
 	}
@@ -75,7 +75,7 @@ func (m resources) Init() tea.Cmd {
 	}
 }
 
-func (m resources) Update(msg tea.Msg) (tui.Model, tea.Cmd) {
+func (m resources) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var (
 		cmd  tea.Cmd
 		cmds []tea.Cmd
@@ -84,13 +84,27 @@ func (m resources) Update(msg tea.Msg) (tui.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch {
-		case key.Matches(msg, localKeys.Reload):
+		case key.Matches(msg, resourcesKeys.Reload):
 			return m, tui.CreateTasks("reload state", m.svc.Reload, m.workspace.ID)
-		case key.Matches(msg, localKeys.Delete):
+		case key.Matches(msg, resourcesKeys.Delete):
+			addrs := m.table.HighlightedOrSelectedKeys()
 			fn := func(workspaceID resource.ID) (*task.Task, error) {
-				return m.svc.Delete(workspaceID, m.table.HighlightedOrSelectedKeys()...)
+				return m.svc.Delete(workspaceID, addrs...)
 			}
 			return m, tui.CreateTasks("state-rm", fn, m.workspace.ID)
+		case key.Matches(msg, resourcesKeys.Taint):
+			addrs := m.table.HighlightedOrSelectedKeys()
+			return m, func() tea.Msg {
+				msg := tui.CreatedTasksMsg{Command: "taint"}
+				for _, addr := range addrs {
+					task, err := m.svc.Taint(m.workspace.ID, addr)
+					if err != nil {
+						msg.CreateErrs = append(msg.CreateErrs, err)
+					}
+					msg.Tasks = append(msg.Tasks, task)
+				}
+				return msg
+			}
 		}
 	case initState:
 		m.state = (*state.State)(msg)
@@ -134,5 +148,26 @@ func (m resources) TabStatus() string {
 }
 
 func (m resources) HelpBindings() (bindings []key.Binding) {
-	return keys.KeyMapToSlice(localKeys)
+	return keys.KeyMapToSlice(resourcesKeys)
+}
+
+type resourcesKeyMap struct {
+	Delete key.Binding
+	Taint  key.Binding
+	Reload key.Binding
+}
+
+var resourcesKeys = resourcesKeyMap{
+	Delete: key.NewBinding(
+		key.WithKeys("d"),
+		key.WithHelp("d", "delete"),
+	),
+	Taint: key.NewBinding(
+		key.WithKeys("t"),
+		key.WithHelp("t", "taint"),
+	),
+	Reload: key.NewBinding(
+		key.WithKeys("ctrl+r"),
+		key.WithHelp("ctrl+r", "reload"),
+	),
 }

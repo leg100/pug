@@ -5,7 +5,6 @@ import (
 
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 	"github.com/leg100/pug/internal/module"
 	"github.com/leg100/pug/internal/resource"
 	"github.com/leg100/pug/internal/run"
@@ -37,7 +36,7 @@ type ListMaker struct {
 	Helpers          *tui.Helpers
 }
 
-func (m *ListMaker) Make(parent resource.Resource, width, height int) (tui.Model, error) {
+func (m *ListMaker) Make(parent resource.Resource, width, height int) (tea.Model, error) {
 	var columns []table.Column
 	if parent.Kind == resource.Global {
 		// Show module column in global workspaces table
@@ -51,26 +50,24 @@ func (m *ListMaker) Make(parent resource.Resource, width, height int) (tui.Model
 		table.RunChangesColumn,
 	)
 
-	rowRenderer := func(ws *workspace.Workspace, inherit lipgloss.Style) table.RenderedRow {
+	rowRenderer := func(ws *workspace.Workspace) table.RenderedRow {
 		return table.RenderedRow{
 			table.ModuleColumn.Key:     m.Helpers.ModulePath(ws.Resource),
 			table.WorkspaceColumn.Key:  ws.Name,
 			table.RunStatusColumn.Key:  m.Helpers.WorkspaceCurrentRunStatus(ws),
-			table.RunChangesColumn.Key: m.Helpers.WorkspaceCurrentRunChanges(ws, inherit),
+			table.RunChangesColumn.Key: m.Helpers.WorkspaceCurrentRunChanges(ws),
 			resourceCountColumn.Key:    m.Helpers.WorkspaceResourceCount(ws),
-			currentColumn.Key:          m.Helpers.WorkspaceCurrentCheckmark(ws, inherit),
+			currentColumn.Key:          m.Helpers.WorkspaceCurrentCheckmark(ws),
 		}
 	}
 
 	table := table.NewResource(table.ResourceOptions[*workspace.Workspace]{
-		ModuleService:    m.ModuleService,
-		WorkspaceService: m.WorkspaceService,
-		Columns:          columns,
-		Renderer:         rowRenderer,
-		Width:            width,
-		Height:           height,
-		Parent:           parent,
-		SortFunc:         workspace.Sort(m.ModuleService),
+		Columns:  columns,
+		Renderer: rowRenderer,
+		Width:    width,
+		Height:   height,
+		Parent:   parent,
+		SortFunc: workspace.Sort(m.ModuleService),
 	})
 
 	return list{
@@ -99,7 +96,7 @@ func (m list) Init() tea.Cmd {
 	}
 }
 
-func (m list) Update(msg tea.Msg) (tui.Model, tea.Cmd) {
+func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var (
 		cmd  tea.Cmd
 		cmds []tea.Cmd

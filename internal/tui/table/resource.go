@@ -3,7 +3,6 @@ package table
 import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/leg100/pug/internal/resource"
-	"github.com/leg100/pug/internal/tui"
 )
 
 // Resource is a wrapper of table.Model specifically for use with pug
@@ -15,19 +14,16 @@ type Resource[K resource.ID, V ResourceValue] struct {
 }
 
 type ResourceOptions[V ResourceValue] struct {
-	ModuleService    tui.ModuleService
-	WorkspaceService tui.WorkspaceService
-	Columns          []Column
-	Renderer         RowRenderer[V]
-	Width, Height    int
-	Parent           resource.Resource
-	SortFunc         SortFunc[V]
+	Columns       []Column
+	Renderer      RowRenderer[V]
+	Width, Height int
+	Parent        resource.Resource
+	SortFunc      SortFunc[V]
 }
 
 type ResourceValue interface {
 	HasAncestor(id resource.ID) bool
 	RowKey() resource.ID
-	RowParent() *resource.Resource
 }
 
 // NewResource creates a new resource table

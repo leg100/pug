@@ -3,7 +3,6 @@ package run
 import (
 	"context"
 
-	"github.com/leg100/pug/internal"
 	"github.com/leg100/pug/internal/resource"
 	"github.com/leg100/pug/internal/workspace"
 	"golang.org/x/exp/maps"
@@ -18,8 +17,7 @@ type runLister interface {
 }
 
 // StartScheduler starts the run scheduler, which is responsible for ensuring
-// there is at most one active run on each workspace at a time. (Note: plan-only
-// runs are not subject this rule).
+// there is at most one active run on each workspace at a time.
 //
 // The scheduler attempts to schedule runs upon every run event it receives.
 func StartScheduler(ctx context.Context, runs *Service, workspaces *workspace.Service) {
@@ -29,10 +27,8 @@ func StartScheduler(ctx context.Context, runs *Service, workspaces *workspace.Se
 		for _, run := range s.schedule() {
 			// Update status from pending to scheduled
 			run.updateStatus(Scheduled)
-			// Set run as workspace's current run if not a plan-only run.
-			if !run.PlanOnly {
-				workspaces.SetCurrent(run.WorkspaceID(), run.ID)
-			}
+			// Set run as workspace's current run
+			workspaces.SetCurrent(run.WorkspaceID(), run.ID)
 			// Trigger a plan task
 			_, _ = runs.plan(run)
 		}
@@ -41,23 +37,15 @@ func StartScheduler(ctx context.Context, runs *Service, workspaces *workspace.Se
 
 // schedule returns runs that are ready to be scheduled.
 func (s *scheduler) schedule() []*Run {
-	// Automatically schedule all pending plan-only runs
-	pendingPlanOnly := s.runs.List(ListOptions{
-		Status:   []Status{Pending},
-		PlanOnly: internal.Bool(true),
-	})
-	scheduled := pendingPlanOnly
-
-	// Retrieve all pending runs that are not plan-only.
+	// Retrieve all pending runs
 	pending := s.runs.List(ListOptions{
 		Status: []Status{Pending},
 		// Oldest runs take priority
-		Oldest:   true,
-		PlanOnly: internal.Bool(false),
+		Oldest: true,
 	})
 	if len(pending) == 0 {
 		// Nothing more to schedule
-		return scheduled
+		return nil
 	}
 
 	// Populate a map of the oldest pending run for each workspace.
@@ -69,13 +57,13 @@ func (s *scheduler) schedule() []*Run {
 		}
 	}
 
-	// Retrieve all active runs.
+	// Retrieve all active runs. Active means a run that is neither in a
+	// finished state, pending, nor planned.
 	active := s.runs.List(ListOptions{
 		Status: []Status{
 			Scheduled,
 			PlanQueued,
 			Planning,
-			Planned,
 			ApplyQueued,
 			Applying,
 		},
@@ -84,7 +72,7 @@ func (s *scheduler) schedule() []*Run {
 	if len(active) == 0 {
 		// Short cut: there aren't any active runs, so we know we can schedule
 		// each of the oldest pending runs for each workspace
-		return append(scheduled, maps.Values(workspacePending)...)
+		return maps.Values(workspacePending)
 	}
 	// There are active runs, so we need to determine which workspaces they're
 	// on before we know whether pending runs are blocked. Therefore we build a
@@ -95,6 +83,7 @@ func (s *scheduler) schedule() []*Run {
 		blocked[workspaceID] = struct{}{}
 	}
 	// Schedule pending runs that are not on a blocked workspace
+	var scheduled []*Run
 	for wid, p := range workspacePending {
 		if _, ok := blocked[wid]; !ok {
 			scheduled = append(scheduled, p)

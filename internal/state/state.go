@@ -32,7 +32,7 @@ func EmptyState(workspaceID resource.ID) *State {
 func NewState(workspaceID resource.ID, file StateFile) *State {
 	return &State{
 		WorkspaceID: workspaceID,
-		Resources:   file.Resources(),
+		Resources:   getResourcesFromFile(file),
 		State:       IdleState,
 	}
 }

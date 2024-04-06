@@ -111,6 +111,16 @@ func (m *TabSet) SetActiveTab(title string) {
 	}
 }
 
+func (m *TabSet) HelpBindings() (bindings []key.Binding) {
+	if len(m.Tabs) > 0 {
+		active := m.Tabs[m.active].Model
+		if bindings, ok := active.(ModelHelpBindings); ok {
+			return bindings.HelpBindings()
+		}
+	}
+	return nil
+}
+
 func (m *TabSet) setActive(tabIndex int) {
 	if len(m.Tabs) == 0 {
 		// No tabs, no action
@@ -181,8 +191,8 @@ func (m *TabSet) updateTab(tabIndex int, msg tea.Msg) tea.Cmd {
 }
 
 var (
-	activeTabStyle   = Bold.Copy().Foreground(lipgloss.Color("13"))
-	inactiveTabStyle = Regular.Copy().Foreground(lipgloss.Color("250"))
+	activeTabStyle   = Bold.Copy().Foreground(activeTabColor)
+	inactiveTabStyle = Regular.Copy().Foreground(inactiveTabColor)
 )
 
 func (m TabSet) View() string {
@@ -252,7 +262,7 @@ func (m TabSet) contentHeight() int {
 // A tab is one of a set of tabs. A tab has a title, and an embedded model,
 // which is responsible for the visible content under the tab.
 type Tab struct {
-	Model
+	tea.Model
 
 	Title string
 }

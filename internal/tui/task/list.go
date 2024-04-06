@@ -42,7 +42,7 @@ type ListMaker struct {
 	Helpers          *tui.Helpers
 }
 
-func (m *ListMaker) Make(parent resource.Resource, width, height int) (tui.Model, error) {
+func (m *ListMaker) Make(parent resource.Resource, width, height int) (tea.Model, error) {
 	var columns []table.Column
 	// Add further columns depending upon the kind of parent
 	switch parent.Kind {
@@ -60,7 +60,7 @@ func (m *ListMaker) Make(parent resource.Resource, width, height int) (tui.Model
 		ageColumn,
 	)
 
-	renderer := func(t *task.Task, inherit lipgloss.Style) table.RenderedRow {
+	renderer := func(t *task.Task) table.RenderedRow {
 		stateStyle := lipgloss.NewStyle()
 		switch t.State {
 		case task.Errored:
@@ -81,14 +81,12 @@ func (m *ListMaker) Make(parent resource.Resource, width, height int) (tui.Model
 	}
 
 	table := table.NewResource(table.ResourceOptions[*task.Task]{
-		ModuleService:    m.ModuleService,
-		WorkspaceService: m.WorkspaceService,
-		Columns:          columns,
-		Renderer:         renderer,
-		Width:            width,
-		Height:           height,
-		Parent:           parent,
-		SortFunc:         task.ByState,
+		Columns:  columns,
+		Renderer: renderer,
+		Width:    width,
+		Height:   height,
+		Parent:   parent,
+		SortFunc: task.ByState,
 	})
 
 	return list{
@@ -115,7 +113,7 @@ func (m list) Init() tea.Cmd {
 	}
 }
 
-func (m list) Update(msg tea.Msg) (tui.Model, tea.Cmd) {
+func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var (
 		cmd  tea.Cmd
 		cmds []tea.Cmd

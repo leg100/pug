@@ -8,7 +8,6 @@ import (
 
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 	"github.com/leg100/pug/internal/resource"
 	"github.com/leg100/pug/internal/run"
 	"github.com/leg100/pug/internal/task"
@@ -31,7 +30,7 @@ type ListMaker struct {
 	Helpers          *tui.Helpers
 }
 
-func (m *ListMaker) Make(parent resource.Resource, width, height int) (tui.Model, error) {
+func (m *ListMaker) Make(parent resource.Resource, width, height int) (tea.Model, error) {
 	var columns []table.Column
 	// Add further columns depending upon the kind of parent
 	switch parent.Kind {
@@ -50,25 +49,23 @@ func (m *ListMaker) Make(parent resource.Resource, width, height int) (tui.Model
 		table.IDColumn,
 	)
 
-	renderer := func(r *run.Run, inherit lipgloss.Style) table.RenderedRow {
+	renderer := func(r *run.Run) table.RenderedRow {
 		return table.RenderedRow{
 			table.ModuleColumn.Key:     m.Helpers.ModulePath(r.Resource),
 			table.WorkspaceColumn.Key:  m.Helpers.WorkspaceName(r.Resource),
 			table.RunStatusColumn.Key:  m.Helpers.RunStatus(r),
-			table.RunChangesColumn.Key: m.Helpers.LatestRunReport(r, inherit),
+			table.RunChangesColumn.Key: m.Helpers.LatestRunReport(r),
 			ageColumn.Key:              tui.Ago(time.Now(), r.Updated),
 			table.IDColumn.Key:         r.String(),
 		}
 	}
 	table := table.NewResource(table.ResourceOptions[*run.Run]{
-		ModuleService:    m.ModuleService,
-		WorkspaceService: m.WorkspaceService,
-		Columns:          columns,
-		Renderer:         renderer,
-		Width:            width,
-		Height:           height,
-		Parent:           parent,
-		SortFunc:         run.ByStatus,
+		Columns:  columns,
+		Renderer: renderer,
+		Width:    width,
+		Height:   height,
+		Parent:   parent,
+		SortFunc: run.ByStatus,
 	})
 
 	return list{
@@ -95,7 +92,7 @@ func (m list) Init() tea.Cmd {
 	}
 }
 
-func (m list) Update(msg tea.Msg) (tui.Model, tea.Cmd) {
+func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var (
 		cmd  tea.Cmd
 		cmds []tea.Cmd

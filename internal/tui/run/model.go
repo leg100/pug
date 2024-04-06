@@ -7,7 +7,6 @@ import (
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 	"github.com/leg100/pug/internal/resource"
 	"github.com/leg100/pug/internal/run"
 	"github.com/leg100/pug/internal/task"
@@ -23,7 +22,7 @@ type Maker struct {
 	Helpers     *tui.Helpers
 }
 
-func (mm *Maker) Make(rr resource.Resource, width, height int) (tui.Model, error) {
+func (mm *Maker) Make(rr resource.Resource, width, height int) (tea.Model, error) {
 	run, err := mm.RunService.Get(rr.ID)
 	if err != nil {
 		return model{}, err
@@ -56,6 +55,8 @@ func (mm *Maker) Make(rr resource.Resource, width, height int) (tui.Model, error
 			return nil, err
 		}
 	}
+	// If there is an apply task tab, then make that the active tab.
+	m.tabs.SetActiveTab("apply")
 
 	return m, nil
 }
@@ -73,7 +74,7 @@ func (m model) Init() tea.Cmd {
 	return m.tabs.Init()
 }
 
-func (m model) Update(msg tea.Msg) (tui.Model, tea.Cmd) {
+func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmds []tea.Cmd
 
 	switch msg := msg.(type) {
@@ -157,9 +158,9 @@ func (m model) TabSetInfo() string {
 	}
 	switch activeTab.Title {
 	case "plan":
-		return m.helpers.RunReport(m.run.PlanReport, lipgloss.Style{})
+		return m.helpers.RunReport(m.run.PlanReport)
 	case "apply":
-		return m.helpers.RunReport(m.run.ApplyReport, lipgloss.Style{})
+		return m.helpers.RunReport(m.run.ApplyReport)
 	default:
 		return ""
 	}

@@ -18,6 +18,8 @@ func TestEnqueuer(t *testing.T) {
 	ws1Task1 := &Task{Resource: resource.New(resource.Task, ws1)}
 	ws1Task2 := &Task{Resource: resource.New(resource.Task, ws1)}
 	ws1TaskBlocking1 := &Task{Resource: resource.New(resource.Task, ws1), Blocking: true}
+	ws1TaskBlocking2 := &Task{Resource: resource.New(resource.Task, ws1), Blocking: true}
+	ws1TaskBlocking3 := &Task{Resource: resource.New(resource.Task, ws1), Blocking: true}
 
 	tests := []struct {
 		name string
@@ -58,6 +60,12 @@ func TestEnqueuer(t *testing.T) {
 			pending: []*Task{ws1Task1},
 			want:    []*Task{},
 		},
+		{
+			name:    "only enqueue one of three tasks which block same parent",
+			active:  []*Task{},
+			pending: []*Task{ws1TaskBlocking1, ws1TaskBlocking2, ws1TaskBlocking3},
+			want:    []*Task{ws1TaskBlocking1},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -67,7 +75,7 @@ func TestEnqueuer(t *testing.T) {
 					active:  tt.active,
 				},
 			}
-			assert.Equal(t, tt.want, e.enqueue())
+			assert.Equal(t, tt.want, e.enqueuable())
 		})
 	}
 }
