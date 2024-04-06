@@ -19,27 +19,18 @@ func Test_Scheduler(t *testing.T) {
 
 	ws1Run1, _ := newRun(mod1, ws1, CreateOptions{})
 	ws1Run2, _ := newRun(mod1, ws1, CreateOptions{})
-	ws1RunPlanOnly, _ := newRun(mod1, ws1, CreateOptions{PlanOnly: true})
 
 	ws2Run1, _ := newRun(mod1, ws2, CreateOptions{})
 	ws2Run2, _ := newRun(mod1, ws2, CreateOptions{})
-	ws2RunPlanOnly, _ := newRun(mod1, ws2, CreateOptions{PlanOnly: true})
 
 	tests := []struct {
-		name            string
-		pending         []*Run
-		pendingPlanOnly []*Run
-		active          []*Run
-		want            []*Run
+		name    string
+		pending []*Run
+		active  []*Run
+		want    []*Run
 	}{
 		{
 			name: "schedule nothing",
-		},
-		{
-			name:            "auto schedule pending plan-only runs",
-			pendingPlanOnly: []*Run{ws1RunPlanOnly, ws2RunPlanOnly},
-			active:          []*Run{},
-			want:            []*Run{ws1RunPlanOnly, ws2RunPlanOnly},
 		},
 		{
 			name:    "schedule oldest pending runs for each workspace",
@@ -58,20 +49,13 @@ func Test_Scheduler(t *testing.T) {
 			active:  []*Run{ws1Run1},
 			want:    []*Run{ws2Run1},
 		},
-		{
-			name:            "schedule both pending plan-only run and a run that is not plan-only",
-			pending:         []*Run{ws1Run1},
-			pendingPlanOnly: []*Run{ws1RunPlanOnly},
-			want:            []*Run{ws1RunPlanOnly, ws1Run1},
-		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			e := scheduler{
 				runs: &fakeSchedulerLister{
-					pending:         tt.pending,
-					pendingPlanOnly: tt.pendingPlanOnly,
-					active:          tt.active,
+					pending: tt.pending,
+					active:  tt.active,
 				},
 			}
 			got := e.schedule()
@@ -84,17 +68,12 @@ func Test_Scheduler(t *testing.T) {
 }
 
 type fakeSchedulerLister struct {
-	pending, pendingPlanOnly, active []*Run
+	pending, active []*Run
 }
 
 func (f *fakeSchedulerLister) List(opts ListOptions) []*Run {
-	if opts.PlanOnly != nil {
-		if *opts.PlanOnly {
-			return f.pendingPlanOnly
-		} else {
-			return f.pending
-		}
+	if len(opts.Status) > 0 && opts.Status[0] == Pending {
+		return f.pending
 	}
-	// Lazily assume lack of plan-only filter means return active runs.
 	return f.active
 }

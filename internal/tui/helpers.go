@@ -139,7 +139,7 @@ func (h *Helpers) WorkspaceResourceCount(ws *workspace.Workspace) string {
 }
 
 func (h *Helpers) RunStatus(r *run.Run) string {
-	var color lipgloss.Color
+	var color lipgloss.TerminalColor
 
 	switch r.Status {
 	case run.Pending:
@@ -150,10 +150,15 @@ func (h *Helpers) RunStatus(r *run.Run) string {
 		color = Blue
 	case run.Planned:
 		color = DeepBlue
-	case run.PlannedAndFinished:
+	case run.NoChanges:
 		color = GreenBlue
+	case run.Applying:
+		color = lipgloss.AdaptiveColor{
+			Light: string(DarkGreen),
+			Dark:  string(LightGreen),
+		}
 	case run.Applied:
-		color = Black
+		color = Green
 	case run.Errored:
 		color = Red
 	}
@@ -162,7 +167,7 @@ func (h *Helpers) RunStatus(r *run.Run) string {
 
 func (h *Helpers) LatestRunReport(r *run.Run) string {
 	switch r.Status {
-	case run.Planned, run.PlannedAndFinished:
+	case run.Planned, run.NoChanges:
 		return h.RunReport(r.PlanReport)
 	case run.Applied:
 		return h.RunReport(r.ApplyReport)

@@ -14,20 +14,20 @@ import (
 type Status string
 
 const (
-	Pending            Status = "pending"
-	Scheduled          Status = "scheduled"
-	PlanQueued         Status = "plan queued"
-	Planning           Status = "planning"
-	Planned            Status = "planned"
-	PlannedAndFinished Status = "planned&finished"
-	ApplyQueued        Status = "apply queued"
-	Applying           Status = "applying"
-	Applied            Status = "applied"
-	Errored            Status = "errored"
-	Canceled           Status = "canceled"
-	Discarded          Status = "discarded"
+	Pending     Status = "pending"
+	Scheduled   Status = "scheduled"
+	PlanQueued  Status = "plan queued"
+	Planning    Status = "planning"
+	Planned     Status = "planned"
+	NoChanges   Status = "no changes"
+	ApplyQueued Status = "apply queued"
+	Applying    Status = "applying"
+	Applied     Status = "applied"
+	Errored     Status = "errored"
+	Canceled    Status = "canceled"
+	Discarded   Status = "discarded"
 
-	MaxStatusLen = len(PlannedAndFinished)
+	MaxStatusLen = len(ApplyQueued)
 )
 
 type Run struct {
@@ -38,7 +38,6 @@ type Run struct {
 
 	Status    Status
 	AutoApply bool
-	PlanOnly  bool
 
 	PlanReport  Report
 	ApplyReport Report
@@ -55,8 +54,6 @@ type Run struct {
 }
 
 type CreateOptions struct {
-	PlanOnly bool
-
 	afterUpdate func(run *Run)
 }
 
@@ -91,7 +88,7 @@ func (r *Run) PlanPath() string {
 
 func (r *Run) IsFinished() bool {
 	switch r.Status {
-	case PlannedAndFinished, Applied, Errored, Canceled:
+	case NoChanges, Applied, Errored, Canceled:
 		return true
 	default:
 		return false

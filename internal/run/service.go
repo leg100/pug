@@ -84,11 +84,12 @@ func (s *Service) create(workspaceID resource.ID, opts CreateOptions) (*Run, err
 	return run, nil
 }
 
-// Trigger a plan task for a run. Only to be called by the scheduler.
+// Create a plan task for a run. Only to be called by the scheduler.
 func (s *Service) plan(run *Run) (*task.Task, error) {
 	task, err := s.createTask(run, task.CreateOptions{
-		Command: []string{"plan"},
-		Args:    []string{"-lock=false", "-input=false", "-out", run.PlanPath()},
+		Command:  []string{"plan"},
+		Args:     []string{"-input=false", "-out", run.PlanPath()},
+		Blocking: true,
 		AfterQueued: func(*task.Task) {
 			run.updateStatus(PlanQueued)
 		},
@@ -116,7 +117,7 @@ func (s *Service) plan(run *Run) (*task.Task, error) {
 
 			// Determine status and whether to automatically proceed to apply
 			if !changes {
-				run.updateStatus(PlannedAndFinished)
+				run.updateStatus(NoChanges)
 				return
 			}
 			run.updateStatus(Planned)
@@ -141,19 +142,31 @@ func (s *Service) plan(run *Run) (*task.Task, error) {
 	return task, nil
 }
 
-// Apply triggers an apply task for a run. The run must be in the planned state.
+// Apply creates an apply task for a run. The run must be in the planned state,
+// and it must be the current run for its workspace.
 func (s *Service) Apply(runID resource.ID) (*task.Task, error) {
-	run, err := s.table.Get(runID)
+	run, err := s.table.Update(runID, func(existing *Run) error {
+		if existing.Status != Planned {
+			return fmt.Errorf("run is not in the planned state: %s", existing.Status)
+		}
+		ws, err := s.workspaces.Get(existing.WorkspaceID())
+		if err != nil {
+			return err
+		}
+		if ws.CurrentRunID == nil || *ws.CurrentRunID != runID {
+			return fmt.Errorf("run is not the current run for its workspace: current run: %s", ws.CurrentRunID)
+		}
+		return nil
+	})
 	if err != nil {
+		s.logger.Error("applying plan", "error", err, "run_id", runID)
 		return nil, err
 	}
-	if run.Status != Planned {
-		return nil, fmt.Errorf("run is not in the planned state: %s", run.Status)
-	}
+
 	task, err := s.createTask(run, task.CreateOptions{
-		Blocking: true,
 		Command:  []string{"apply"},
 		Args:     []string{"-input=false", run.PlanPath()},
+		Blocking: true,
 		AfterQueued: func(*task.Task) {
 			run.updateStatus(ApplyQueued)
 		},
@@ -209,8 +222,6 @@ type ListOptions struct {
 	Status []Status
 	// Order runs by oldest first (true), or newest first (false)
 	Oldest bool
-	// Filter runs by plan-only (true), not plan-only (false), or either (nil)
-	PlanOnly *bool
 }
 
 func (s *Service) List(opts ListOptions) []*Run {
@@ -226,17 +237,6 @@ func (s *Service) List(opts ListOptions) []*Run {
 		}
 		if opts.AncestorID != resource.GlobalID {
 			if !r.HasAncestor(opts.AncestorID) {
-				continue
-			}
-		}
-		if opts.PlanOnly != nil {
-			if *opts.PlanOnly {
-				if !r.PlanOnly {
-					// Exclude runs that are not plan-only
-					continue
-				}
-			} else if r.PlanOnly {
-				// Exclude plan-only runs
 				continue
 			}
 		}

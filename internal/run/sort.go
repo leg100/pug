@@ -14,7 +14,7 @@ func ByUpdatedDesc(i, j *Run) int {
 // * PlanQueued,ApplyQueued (oldest first)
 // * Scheduled (oldest first)
 // * Pending (oldest first)
-// * Applied,Errored,Canceled,Finished,PlannedAndFinished,Discarded (most recent
+// * Applied,Errored,Canceled,Finished,NoChanges,Discarded (most recent
 // first)
 func ByStatus(i, j *Run) int {
 	switch i.Status {
