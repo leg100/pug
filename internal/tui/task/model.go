@@ -135,7 +135,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m model) Title() string {
-	heading := tui.Bold.Render("Task")
+	heading := tui.TitleStyle.Render("Task")
 	cmd := tui.Regular.Copy().Foreground(tui.Green).Render(m.task.CommandString())
 	crumbs := m.helpers.Breadcrumbs("", *m.task.Parent)
 	return fmt.Sprintf("%s{%s}%s", heading, cmd, crumbs)
@@ -179,7 +179,7 @@ func (m model) View() string {
 	// pagination info container occupies a fixed width section to the right of
 	// the viewport.
 	scrollPercent := tui.Regular.Copy().
-		Background(lipgloss.Color("253")).
+		Background(tui.ScrollPercentageBackground).
 		Padding(0, 1).
 		Render(fmt.Sprintf("%3.f%%", m.viewport.ScrollPercent()*100))
 	pagination := tui.Regular.Copy().

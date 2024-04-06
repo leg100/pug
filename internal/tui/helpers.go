@@ -13,6 +13,8 @@ import (
 	"github.com/leg100/pug/internal/workspace"
 )
 
+var TitleStyle = Bold.Copy().Foreground(TitleColor)
+
 // Helper methods for easily surfacing info in the TUI.
 //
 // TODO: leverage a cache to enhance performance, particularly if we introduce
@@ -206,18 +208,18 @@ func (h *Helpers) Breadcrumbs(title string, parent resource.Resource) string {
 			h.Logger.Error("rendering module path", "error", err)
 			break
 		}
-		path := Regular.Copy().Foreground(Blue).Render(mod.Path)
+		path := Regular.Copy().Foreground(modulePathColor).Render(mod.Path)
 		crumbs = append(crumbs, fmt.Sprintf("(%s)", path))
 	case resource.Global:
 		// if parented by global, then state it is global
-		global := Regular.Copy().Foreground(Blue).Render("all")
+		global := Regular.Copy().Foreground(globalColor).Render("all")
 		crumbs = append(crumbs, fmt.Sprintf("(%s)", global))
 	}
-	return fmt.Sprintf("%s%s", Bold.Render(title), strings.Join(crumbs, ""))
+	return fmt.Sprintf("%s%s", TitleStyle.Render(title), strings.Join(crumbs, ""))
 }
 
 func GlobalBreadcrumb(title string) string {
-	title = Bold.Render(title)
-	all := Regular.Copy().Foreground(Blue).Render("all")
+	title = TitleStyle.Render(title)
+	all := Regular.Copy().Foreground(globalColor).Render("all")
 	return fmt.Sprintf("%s(%s)", title, all)
 }

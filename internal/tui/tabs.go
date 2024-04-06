@@ -191,8 +191,8 @@ func (m *TabSet) updateTab(tabIndex int, msg tea.Msg) tea.Cmd {
 }
 
 var (
-	activeTabStyle   = Bold.Copy().Foreground(lipgloss.Color("13"))
-	inactiveTabStyle = Regular.Copy().Foreground(lipgloss.Color("250"))
+	activeTabStyle   = Bold.Copy().Foreground(activeTabColor)
+	inactiveTabStyle = Regular.Copy().Foreground(inactiveTabColor)
 )
 
 func (m TabSet) View() string {

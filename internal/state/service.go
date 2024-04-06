@@ -110,7 +110,7 @@ func (s *Service) Reload(workspaceID resource.ID) (*task.Task, error) {
 			// table.Add replaces state if it exists already, which is what we
 			// want.
 			s.cache.Add(workspaceID, current)
-			s.logger.Info("reloaded state", "workspace", ws, "total_resources", len(current.Resources))
+			s.logger.Info("reloaded state", "workspace", ws, "resources", len(current.Resources))
 		},
 		AfterFinish: func(t *task.Task) {
 			revertIdle()
