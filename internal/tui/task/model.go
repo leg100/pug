@@ -10,6 +10,7 @@ import (
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/hokaccha/go-prettyjson"
 	"github.com/leg100/pug/internal/resource"
 	"github.com/leg100/pug/internal/task"
 	"github.com/leg100/pug/internal/tui"
@@ -112,7 +113,28 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.content = wordwrap.String(m.content, m.width)
 		m.viewport.SetContent(m.content)
 		m.viewport.GotoBottom()
-		if !msg.eof {
+		if msg.eof {
+			if m.task.JSON {
+				// Prettify JSON output from task. This can only be done once
+				// the task has finished and has produced complete and
+				// syntactically valid json object(s).
+				//
+				// Note: terraform commands such as `state -json` can produce
+				// json strings with embedded newlines, which is invalid json
+				// and breaks the pretty printer. So we escape the newlines.
+				//
+				// TODO: avoid casting to string and back, thereby avoiding
+				// unnecessary allocations.
+				m.content = strings.ReplaceAll(m.content, "\n", "\\n")
+				if b, err := prettyjson.Format([]byte(m.content)); err != nil {
+					cmds = append(cmds, tui.ReportError(err, "pretty printing task json output"))
+				} else {
+					m.content = string(b)
+					m.viewport.SetContent(string(b))
+					m.viewport.GotoBottom()
+				}
+			}
+		} else {
 			cmds = append(cmds, m.getOutput)
 		}
 	case resource.Event[*task.Task]:

@@ -27,6 +27,7 @@ type Task struct {
 	Blocking bool
 	State    Status
 	Env      []string
+	JSON     bool
 
 	program   string
 	exclusive bool
@@ -94,6 +95,8 @@ type CreateOptions struct {
 	Blocking bool
 	// Globally exclusive task - at most only one such task can be running
 	Exclusive bool
+	// Set to true to indicate that the task produces JSON output
+	JSON bool
 	// Call this function after the task has successfully finished
 	AfterExited func(*Task)
 	// Call this function after the task is enqueued.
@@ -123,6 +126,7 @@ func (f *factory) newTask(opts CreateOptions) (*Task, error) {
 		Path:          opts.Path,
 		Args:          opts.Args,
 		Env:           opts.Env,
+		JSON:          opts.JSON,
 		Blocking:      opts.Blocking,
 		exclusive:     opts.Exclusive,
 		AfterExited:   opts.AfterExited,

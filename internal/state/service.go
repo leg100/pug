@@ -88,6 +88,7 @@ func (s *Service) Reload(workspaceID resource.ID) (*task.Task, error) {
 
 	task, err := s.createTask(workspaceID, task.CreateOptions{
 		Command: []string{"show", "-json"},
+		JSON:    true,
 		AfterError: func(t *task.Task) {
 			s.logger.Error("reloading state", "error", t.Err, "workspace", ws)
 		},
