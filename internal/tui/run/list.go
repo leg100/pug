@@ -8,7 +8,6 @@ import (
 
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 	"github.com/leg100/pug/internal/resource"
 	"github.com/leg100/pug/internal/run"
 	"github.com/leg100/pug/internal/task"
@@ -50,12 +49,12 @@ func (m *ListMaker) Make(parent resource.Resource, width, height int) (tea.Model
 		table.IDColumn,
 	)
 
-	renderer := func(r *run.Run, inherit lipgloss.Style) table.RenderedRow {
+	renderer := func(r *run.Run) table.RenderedRow {
 		return table.RenderedRow{
 			table.ModuleColumn.Key:     m.Helpers.ModulePath(r.Resource),
 			table.WorkspaceColumn.Key:  m.Helpers.WorkspaceName(r.Resource),
 			table.RunStatusColumn.Key:  m.Helpers.RunStatus(r),
-			table.RunChangesColumn.Key: m.Helpers.LatestRunReport(r, inherit),
+			table.RunChangesColumn.Key: m.Helpers.LatestRunReport(r),
 			ageColumn.Key:              tui.Ago(time.Now(), r.Updated),
 			table.IDColumn.Key:         r.String(),
 		}

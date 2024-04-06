@@ -5,7 +5,6 @@ import (
 
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 	"github.com/leg100/pug/internal/resource"
 	"github.com/leg100/pug/internal/run"
 	"github.com/leg100/pug/internal/state"
@@ -50,14 +49,14 @@ func (m *ListMaker) Make(parent resource.Resource, width, height int) (tea.Model
 		table.RunChangesColumn,
 	)
 
-	rowRenderer := func(ws *workspace.Workspace, inherit lipgloss.Style) table.RenderedRow {
+	rowRenderer := func(ws *workspace.Workspace) table.RenderedRow {
 		return table.RenderedRow{
 			table.ModuleColumn.Key:     m.Helpers.ModulePath(ws.Resource),
 			table.WorkspaceColumn.Key:  ws.Name,
 			table.RunStatusColumn.Key:  m.Helpers.WorkspaceCurrentRunStatus(ws),
-			table.RunChangesColumn.Key: m.Helpers.WorkspaceCurrentRunChanges(ws, inherit),
+			table.RunChangesColumn.Key: m.Helpers.WorkspaceCurrentRunChanges(ws),
 			resourceCountColumn.Key:    m.Helpers.WorkspaceResourceCount(ws),
-			currentColumn.Key:          m.Helpers.WorkspaceCurrentCheckmark(ws, inherit),
+			currentColumn.Key:          m.Helpers.WorkspaceCurrentCheckmark(ws),
 		}
 	}
 

@@ -5,19 +5,12 @@ import (
 
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/leg100/pug/internal/tui"
 )
 
 var (
-	shortHelpKeyStyle = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{
-		//Light: "#909090",
-		Light: "248",
-		Dark:  "#626262",
-	}).Bold(true).Margin(0, 1, 0, 0)
-
-	shortHelpDescStyle = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{
-		Light: "#B2B2B2",
-		Dark:  "#4A4A4A",
-	})
+	shortHelpKeyStyle  = tui.Bold.Foreground(tui.HelpKey).Copy().Margin(0, 1, 0, 0)
+	shortHelpDescStyle = tui.Regular.Foreground(tui.HelpDesc).Copy()
 )
 
 const shortHelpRows = 2

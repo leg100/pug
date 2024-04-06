@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"regexp"
 	"strconv"
+
+	"github.com/leg100/pug/internal"
 )
 
 var (
@@ -18,7 +20,7 @@ var (
 // there were any changes and produces a report of the number of resource
 // changes.
 func parsePlanReport(logs string) (bool, Report, error) {
-	raw := stripAnsi(logs)
+	raw := internal.StripAnsi(logs)
 
 	// No changes
 	if planNoChangesRegex.MatchString(raw) {

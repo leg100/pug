@@ -60,7 +60,7 @@ func (m *ListMaker) Make(parent resource.Resource, width, height int) (tea.Model
 		ageColumn,
 	)
 
-	renderer := func(t *task.Task, inherit lipgloss.Style) table.RenderedRow {
+	renderer := func(t *task.Task) table.RenderedRow {
 		stateStyle := lipgloss.NewStyle()
 		switch t.State {
 		case task.Errored:

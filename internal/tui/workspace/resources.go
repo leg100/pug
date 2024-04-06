@@ -37,7 +37,7 @@ func (m *resourceListMaker) Make(ws resource.Resource, width, height int) (tea.M
 		resourceColumn,
 		resourceStatusColumn,
 	}
-	renderer := func(resource *state.Resource, inherit lipgloss.Style) table.RenderedRow {
+	renderer := func(resource *state.Resource) table.RenderedRow {
 		return table.RenderedRow{
 			resourceColumn.Key:       string(resource.Address),
 			resourceStatusColumn.Key: string(resource.Status),

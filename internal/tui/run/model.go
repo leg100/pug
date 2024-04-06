@@ -7,7 +7,6 @@ import (
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 	"github.com/leg100/pug/internal/resource"
 	"github.com/leg100/pug/internal/run"
 	"github.com/leg100/pug/internal/task"
@@ -157,9 +156,9 @@ func (m model) TabSetInfo() string {
 	}
 	switch activeTab.Title {
 	case "plan":
-		return m.helpers.RunReport(m.run.PlanReport, lipgloss.Style{})
+		return m.helpers.RunReport(m.run.PlanReport)
 	case "apply":
-		return m.helpers.RunReport(m.run.ApplyReport, lipgloss.Style{})
+		return m.helpers.RunReport(m.run.ApplyReport)
 	default:
 		return ""
 	}

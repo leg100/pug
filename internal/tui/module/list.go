@@ -4,7 +4,6 @@ import (
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 	"github.com/leg100/pug/internal/module"
 	"github.com/leg100/pug/internal/resource"
 	"github.com/leg100/pug/internal/run"
@@ -71,7 +70,7 @@ func (m *ListMaker) Make(_ resource.Resource, width, height int) (tea.Model, err
 		}
 	}
 
-	renderer := func(mod *module.Module, inherit lipgloss.Style) table.RenderedRow {
+	renderer := func(mod *module.Module) table.RenderedRow {
 		return table.RenderedRow{
 			table.ModuleColumn.Key:     mod.Path,
 			initColumn.Key:             boolToUnicode(mod.InitInProgress, mod.Initialized),
@@ -79,7 +78,7 @@ func (m *ListMaker) Make(_ resource.Resource, width, height int) (tea.Model, err
 			validColumn.Key:            boolToUnicode(mod.ValidationInProgress, mod.Valid),
 			currentWorkspace.Key:       m.Helpers.CurrentWorkspaceName(mod.CurrentWorkspaceID),
 			table.RunStatusColumn.Key:  m.Helpers.ModuleCurrentRunStatus(mod),
-			table.RunChangesColumn.Key: m.Helpers.ModuleCurrentRunChanges(mod, inherit),
+			table.RunChangesColumn.Key: m.Helpers.ModuleCurrentRunChanges(mod),
 		}
 	}
 	table := table.NewResource(table.ResourceOptions[*module.Module]{

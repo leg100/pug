@@ -23,7 +23,7 @@ var (
 	levelColumn = table.Column{
 		Key:   "level",
 		Title: "LEVEL",
-		Width: 5, // Width of widest level, ERROR
+		Width: len("ERROR"),
 	}
 	msgColumn = table.Column{
 		Key:        "message",
@@ -42,8 +42,8 @@ func (mm *Maker) Make(_ resource.Resource, width, height int) (tea.Model, error)
 		levelColumn,
 		msgColumn,
 	}
-	renderer := func(msg logging.Message, inherit lipgloss.Style) table.RenderedRow {
-		var levelColor lipgloss.Color
+	renderer := func(msg logging.Message) table.RenderedRow {
+		var levelColor lipgloss.TerminalColor
 		switch msg.Level {
 		case "ERROR":
 			levelColor = tui.ErrorLogLevel
@@ -61,14 +61,14 @@ func (mm *Maker) Make(_ resource.Resource, width, height int) (tea.Model, error)
 		b.WriteString(msg.Message)
 		b.WriteRune(' ')
 		for _, attr := range msg.Attributes {
-			b.WriteString(tui.Bold.Copy().Inherit(inherit).Render(attr.Key + "="))
-			b.WriteString(tui.Regular.Copy().Inherit(inherit).Render(attr.Value + " "))
+			b.WriteString(tui.Regular.Copy().Faint(true).Render(attr.Key + "="))
+			b.WriteString(tui.Regular.Copy().Render(attr.Value + " "))
 		}
 
 		return table.RenderedRow{
 			timeColumn.Key:  msg.Time.Format(timeFormat),
 			levelColumn.Key: tui.Bold.Copy().Foreground(levelColor).Render(msg.Level),
-			msgColumn.Key:   lipgloss.NewStyle().Inherit(inherit).Render(b.String()),
+			msgColumn.Key:   tui.Regular.Copy().Render(b.String()),
 		}
 	}
 	table := table.New[uint](columns, renderer, width, height).

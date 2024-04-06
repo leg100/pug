@@ -77,7 +77,7 @@ func (h *Helpers) ModuleCurrentRunStatus(mod *module.Module) string {
 	return h.WorkspaceCurrentRunStatus(ws)
 }
 
-func (h *Helpers) ModuleCurrentRunChanges(mod *module.Module, inherit lipgloss.Style) string {
+func (h *Helpers) ModuleCurrentRunChanges(mod *module.Module) string {
 	if mod.CurrentWorkspaceID == nil {
 		return ""
 	}
@@ -86,7 +86,7 @@ func (h *Helpers) ModuleCurrentRunChanges(mod *module.Module, inherit lipgloss.S
 		h.Logger.Error("rendering module current run changes", "error", err)
 		return ""
 	}
-	return h.WorkspaceCurrentRunChanges(ws, inherit)
+	return h.WorkspaceCurrentRunChanges(ws)
 }
 
 func (h *Helpers) WorkspaceCurrentRunStatus(ws *workspace.Workspace) string {
@@ -101,7 +101,7 @@ func (h *Helpers) WorkspaceCurrentRunStatus(ws *workspace.Workspace) string {
 	return h.RunStatus(run)
 }
 
-func (h *Helpers) WorkspaceCurrentRunChanges(ws *workspace.Workspace, inherit lipgloss.Style) string {
+func (h *Helpers) WorkspaceCurrentRunChanges(ws *workspace.Workspace) string {
 	if ws.CurrentRunID == nil {
 		return ""
 	}
@@ -110,12 +110,12 @@ func (h *Helpers) WorkspaceCurrentRunChanges(ws *workspace.Workspace, inherit li
 		h.Logger.Error("rendering module current run changes", "error", err)
 		return ""
 	}
-	return h.LatestRunReport(run, inherit)
+	return h.LatestRunReport(run)
 }
 
 // WorkspaceCurrentCheckmark returns a check mark if the workspace is the
 // current workspace for its module.
-func (h *Helpers) WorkspaceCurrentCheckmark(ws *workspace.Workspace, inherit lipgloss.Style) string {
+func (h *Helpers) WorkspaceCurrentCheckmark(ws *workspace.Workspace) string {
 	mod, err := h.ModuleService.Get(ws.ModuleID())
 	if err != nil {
 		h.Logger.Error("rendering current workspace checkmark", "error", err)
@@ -158,27 +158,25 @@ func (h *Helpers) RunStatus(r *run.Run) string {
 	return Regular.Copy().Foreground(color).Render(string(r.Status))
 }
 
-func (h *Helpers) LatestRunReport(r *run.Run, inherit lipgloss.Style) string {
+func (h *Helpers) LatestRunReport(r *run.Run) string {
 	switch r.Status {
 	case run.Planned, run.PlannedAndFinished:
-		return h.RunReport(r.PlanReport, inherit)
+		return h.RunReport(r.PlanReport)
 	case run.Applied:
-		return h.RunReport(r.ApplyReport, inherit)
+		return h.RunReport(r.ApplyReport)
 	default:
 		return "-"
 	}
 }
 
-func (h *Helpers) RunReport(report run.Report, inherit lipgloss.Style) string {
+func (h *Helpers) RunReport(report run.Report) string {
 	if !report.HasChanges() {
 		return "no changes"
 	}
 
-	inherit = Regular.Copy().Inherit(inherit)
-
-	additions := inherit.Copy().Foreground(Green).Render(fmt.Sprintf("+%d", report.Additions))
-	changes := inherit.Copy().Foreground(Blue).Render(fmt.Sprintf("~%d", report.Changes))
-	destructions := inherit.Copy().Foreground(Red).Render(fmt.Sprintf("-%d", report.Destructions))
+	additions := Regular.Copy().Foreground(Green).Render(fmt.Sprintf("+%d", report.Additions))
+	changes := Regular.Copy().Foreground(Blue).Render(fmt.Sprintf("~%d", report.Changes))
+	destructions := Regular.Copy().Foreground(Red).Render(fmt.Sprintf("-%d", report.Destructions))
 
 	return fmt.Sprintf("%s%s%s", additions, changes, destructions)
 }

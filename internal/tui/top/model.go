@@ -260,12 +260,12 @@ var (
 			Foreground(tui.Pink).
 			Margin(0, 2, 0, 1).
 			Render("🗀")
-	versionIcon = tui.Regular.Copy().
+	versionIcon = tui.Bold.Copy().
 			Foreground(tui.Pink).
 			Margin(0, 2, 0, 1).
 			Render("ⓥ")
-	workdirStyle = tui.Regular.Foreground(tui.LightGrey)
-	versionStyle = tui.Regular.Foreground(tui.LightGrey)
+	workdirStyle = tui.Regular.Copy()
+	versionStyle = tui.Regular.Copy()
 )
 
 func (m model) View() string {
