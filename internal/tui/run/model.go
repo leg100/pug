@@ -55,6 +55,8 @@ func (mm *Maker) Make(rr resource.Resource, width, height int) (tea.Model, error
 			return nil, err
 		}
 	}
+	// If there is an apply task tab, then make that the active tab.
+	m.tabs.SetActiveTab("apply")
 
 	return m, nil
 }

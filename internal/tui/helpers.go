@@ -178,7 +178,7 @@ func (h *Helpers) LatestRunReport(r *run.Run) string {
 
 func (h *Helpers) RunReport(report run.Report) string {
 	if !report.HasChanges() {
-		return "no changes"
+		return "-"
 	}
 
 	additions := Regular.Copy().Foreground(Green).Render(fmt.Sprintf("+%d", report.Additions))
