@@ -20,6 +20,7 @@ func TestEnqueuer(t *testing.T) {
 	ws1TaskBlocking1 := &Task{Resource: resource.New(resource.Task, ws1), Blocking: true}
 	ws1TaskBlocking2 := &Task{Resource: resource.New(resource.Task, ws1), Blocking: true}
 	ws1TaskBlocking3 := &Task{Resource: resource.New(resource.Task, ws1), Blocking: true}
+	ws1Immediate := &Task{Resource: resource.New(resource.Task, ws1), Immediate: true}
 
 	tests := []struct {
 		name string
@@ -65,6 +66,12 @@ func TestEnqueuer(t *testing.T) {
 			active:  []*Task{},
 			pending: []*Task{ws1TaskBlocking1, ws1TaskBlocking2, ws1TaskBlocking3},
 			want:    []*Task{ws1TaskBlocking1},
+		},
+		{
+			name:    "enqueue immediate task despite being blocked",
+			active:  []*Task{ws1TaskBlocking1},
+			pending: []*Task{ws1Immediate},
+			want:    []*Task{ws1Immediate},
 		},
 	}
 	for _, tt := range tests {

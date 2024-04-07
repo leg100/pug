@@ -61,8 +61,8 @@ type fakeModuleService struct {
 	moduleService
 }
 
-func (f *fakeModuleService) SetCurrent(moduleID resource.ID, workspace resource.ID) error {
-	*f.current = workspace
+func (f *fakeModuleService) SetCurrent(moduleID, workspaceID resource.ID, workspaceName string) error {
+	*f.current = workspaceID
 	return nil
 }
 

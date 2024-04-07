@@ -18,13 +18,14 @@ import (
 type Task struct {
 	resource.Resource
 
-	Command  []string
-	Args     []string
-	Path     string
-	Blocking bool
-	State    Status
-	Env      []string
-	JSON     bool
+	Command   []string
+	Args      []string
+	Path      string
+	Blocking  bool
+	State     Status
+	Env       []string
+	JSON      bool
+	Immediate bool
 
 	program   string
 	exclusive bool
@@ -94,6 +95,8 @@ type CreateOptions struct {
 	Exclusive bool
 	// Set to true to indicate that the task produces JSON output
 	JSON bool
+	// Skip queue and immediately start task
+	Immedidate bool
 	// Call this function after the task has successfully finished
 	AfterExited func(*Task)
 	// Call this function after the task is enqueued.

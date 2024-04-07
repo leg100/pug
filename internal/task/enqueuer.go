@@ -47,8 +47,9 @@ func (e *enqueuer) enqueuable() []*Task {
 	var i int
 	for _, t := range pending {
 		// Recursively walk task's ancestors and check if they are currently
-		// blocked; if so then task cannot be enqueued.
-		if hasBlockedAncestor(blocked, *t.Parent) {
+		// blocked; if so then task cannot be enqueued. The exception to this
+		// rule is an immediate task, which is always enqueuable
+		if !t.Immediate && hasBlockedAncestor(blocked, *t.Parent) {
 			// Not enqueuable
 			continue
 		} else if t.Blocking {

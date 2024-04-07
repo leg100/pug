@@ -141,17 +141,42 @@ func (s *Service) Subscribe(ctx context.Context) <-chan resource.Event[*Module] 
 	return s.broker.Subscribe(ctx)
 }
 
-func (s *Service) SetCurrent(moduleID resource.ID, workspaceID resource.ID) error {
-	mod, err := s.table.Update(moduleID, func(existing *Module) error {
+func (s *Service) SetCurrent(moduleID, workspaceID resource.ID, workspaceName string) error {
+	if err := s.setCurrent(moduleID, workspaceID, workspaceName); err != nil {
+		s.logger.Error("setting current workspace", "module", moduleID, "workspace", workspaceID, "error", err)
+		return err
+	}
+	s.logger.Debug("set current workspace", "module", moduleID, "workspace", workspaceID)
+	return nil
+}
+
+func (s *Service) setCurrent(moduleID, workspaceID resource.ID, workspaceName string) error {
+	mod, err := s.table.Get(moduleID)
+	if err != nil {
+		return err
+	}
+	// Create task to immediately set workspace as current workspace for module.
+	task, err := s.CreateTask(mod, task.CreateOptions{
+		Command:    []string{"workspace", "select"},
+		Args:       []string{workspaceName},
+		Immedidate: true,
+	})
+	if err != nil {
+		return err
+	}
+	if err := task.Wait(); err != nil {
+		return err
+	}
+
+	// Only once task has succeeded do we then update the current workspace in
+	// pug.
+	_, err = s.table.Update(moduleID, func(existing *Module) error {
 		existing.CurrentWorkspaceID = &workspaceID
 		return nil
 	})
 	if err != nil {
-		s.logger.Error("setting current workspace", "module_id", moduleID, "run_id", workspaceID, "error", err)
 		return err
 	}
-	// TODO: create task to invoke `terraform workspace select <workspace_name>`
-	s.logger.Debug("set current workspace", "module", mod, "workspace_id", workspaceID)
 	return nil
 }
 

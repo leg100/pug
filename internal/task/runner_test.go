@@ -16,6 +16,7 @@ func TestRunner_runnable(t *testing.T) {
 	t3 := &Task{Resource: resource.New(resource.Task, mod1)}
 	ex1 := &Task{Resource: resource.New(resource.Task, mod1), exclusive: true}
 	ex2 := &Task{Resource: resource.New(resource.Task, mod1), exclusive: true}
+	immediate := &Task{Resource: resource.New(resource.Task, mod1), Immediate: true}
 
 	tests := []struct {
 		name string
@@ -29,46 +30,53 @@ func TestRunner_runnable(t *testing.T) {
 		want []*Task
 	}{
 		{
-			"all queued tasks are runnable",
-			3,
-			[]*Task{t1, t2, t3},
-			nil,
-			[]*Task{t1, t2, t3},
+			name:    "all queued tasks are runnable",
+			max:     3,
+			queued:  []*Task{t1, t2, t3},
+			running: nil,
+			want:    []*Task{t1, t2, t3},
 		},
 		{
-			"only one queued task is runnable because max tasks is one",
-			1,
-			[]*Task{t1, t2, t3},
-			nil,
-			[]*Task{t1},
+			name:    "only one queued task is runnable because max tasks is one",
+			max:     1,
+			queued:  []*Task{t1, t2, t3},
+			running: nil,
+			want:    []*Task{t1},
 		},
 		{
-			"no tasks are runnable because max tasks are already running",
-			2,
-			[]*Task{t3},
-			[]*Task{t1, t2},
-			nil,
+			name:    "no tasks are runnable because max tasks are already running",
+			max:     2,
+			queued:  []*Task{t3},
+			running: []*Task{t1, t2},
+			want:    []*Task{},
 		},
 		{
-			"only one task is runnable because there is only one available slot",
-			2,
-			[]*Task{t2, t3},
-			[]*Task{t1},
-			[]*Task{t2},
+			name:    "only one task is runnable because there is only one available slot",
+			max:     2,
+			queued:  []*Task{t2, t3},
+			running: []*Task{t1},
+			want:    []*Task{t2},
 		},
 		{
-			"only one exclusive task is runnable",
-			3,
-			[]*Task{ex1, ex2},
-			nil,
-			[]*Task{ex1},
+			name:    "only one exclusive task is runnable",
+			max:     3,
+			queued:  []*Task{ex1, ex2},
+			running: nil,
+			want:    []*Task{ex1},
 		},
 		{
-			"multiple non-exclusive tasks and one exclusive task is runnable",
-			4,
-			[]*Task{t1, t2, ex1, t3},
-			nil,
-			[]*Task{t1, t2, ex1, t3},
+			name:    "multiple non-exclusive tasks and one exclusive task is runnable",
+			max:     4,
+			queued:  []*Task{t1, t2, ex1, t3},
+			running: nil,
+			want:    []*Task{t1, t2, ex1, t3},
+		},
+		{
+			name:    "start immediate task, despite max tasks already running",
+			max:     2,
+			queued:  []*Task{immediate},
+			running: []*Task{t1, t2},
+			want:    []*Task{immediate},
 		},
 	}
 	for _, tt := range tests {

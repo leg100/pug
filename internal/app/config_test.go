@@ -15,6 +15,7 @@ func TestConfig(t *testing.T) {
 	t.Setenv("PUG_DEBUG", "")
 	t.Setenv("PUG_FIRST_PAGE", "")
 	t.Setenv("PUG_LOG_LEVEL", "")
+	t.Setenv("PUG_MAX_TASKS", "")
 
 	tests := []struct {
 		name string

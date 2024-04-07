@@ -180,6 +180,8 @@ func (s *Service) Apply(runID resource.ID) (*task.Task, error) {
 			run.updateStatus(Canceled)
 		},
 		AfterExited: func(t *task.Task) {
+			// TODO: mark all workspace runs in the planned state as stale
+			//
 			out, err := io.ReadAll(t.NewReader())
 			if err != nil {
 				run.setErrored(err)

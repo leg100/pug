@@ -45,31 +45,32 @@ func (r *runner) runnable() []*Task {
 		Status: []Status{Running},
 	})
 	avail := r.max - len(running)
-	if avail == 0 {
-		// Hit max, can't run any more tasks
-		return nil
-	}
+
 	// Process queue, starting with oldest task
 	queued := r.tasks.List(ListOptions{
 		Status: []Status{Queued},
 		Oldest: true,
 	})
-	for i, qt := range queued {
-		if avail == 0 {
-			return queued[:i]
+	var i int
+	for _, qt := range queued {
+		if avail <= 0 && !qt.Immediate {
+			// No more available slots. Note: immediate tasks are immediately runnable, so they
+			// are exempt from the max. For this reason the number of slots may
+			// go into negative territory.
+			continue
 		}
 		if qt.exclusive {
 			// Only run task if exclusive slot is empty
 			select {
 			case r.exclusive <- struct{}{}:
-				avail--
 			default:
 				// Exclusive slot is full; skip task
-				queued = append(queued[:i], queued[i+1:]...)
+				continue
 			}
-		} else {
-			avail--
 		}
+		avail--
+		queued[i] = qt
+		i++
 	}
-	return queued
+	return queued[:i]
 }

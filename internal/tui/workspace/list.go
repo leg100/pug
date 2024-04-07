@@ -133,7 +133,7 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, localKeys.SetCurrent):
 			if row, ok := m.table.Highlighted(); ok {
 				return m, func() tea.Msg {
-					if err := m.modules.SetCurrent(row.Value.ModuleID(), row.Value.ID); err != nil {
+					if err := m.modules.SetCurrent(row.Value.ModuleID(), row.Value.ID, row.Value.Name); err != nil {
 						return tui.NewErrorMsg(err, "setting current workspace")
 					}
 					return nil

@@ -37,8 +37,9 @@ type model struct {
 	err  error
 	info string
 
-	tasks   tui.TaskService
-	spinner *spinner.Model
+	tasks    tui.TaskService
+	spinner  *spinner.Model
+	maxTasks int
 
 	dump *os.File
 
@@ -87,6 +88,7 @@ func New(opts Options) (model, error) {
 		navigator:        navigator,
 		spinner:          &spinner,
 		tasks:            opts.TaskService,
+		maxTasks:         opts.MaxTasks,
 		dump:             dump,
 		workdir:          workdir,
 	}
@@ -352,7 +354,7 @@ func (m model) View() string {
 
 	// Global-level info goes in the bottom right corner in the footer.
 	metadata := tui.Padded.Copy().Render(
-		fmt.Sprintf("%d/%d tasks", m.tasks.Counter(), 32),
+		fmt.Sprintf("%d/%d tasks", m.tasks.Counter(), m.maxTasks),
 	)
 
 	// Render any info/error message to be shown in the bottom left corner in

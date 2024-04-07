@@ -16,7 +16,7 @@ type ModuleService interface {
 	Init(moduleID resource.ID) (*task.Task, error)
 	Format(moduleID resource.ID) (*task.Task, error)
 	Validate(moduleID resource.ID) (*task.Task, error)
-	SetCurrent(moduleID resource.ID, workspace resource.ID) error
+	SetCurrent(moduleID, workspaceID resource.ID, workspaceName string) error
 }
 
 type WorkspaceService interface {
