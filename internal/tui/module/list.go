@@ -164,9 +164,16 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.table.DeselectAll()
 			return m, cmd
 		case key.Matches(msg, localKeys.Plan):
-			workspaceIDs := m.HighlightedOrSelectedCurrentWorkspaceIDs()
+			workspaceIDs := m.highlightedOrSelectedCurrentWorkspaceIDs()
 			m.table.DeselectAll()
 			return m, tui.CreateRuns(m.RunService, workspaceIDs...)
+		case key.Matches(msg, localKeys.Apply):
+			runIDs, err := m.highlightedOrSelectedCurrentRunIDs()
+			if err != nil {
+				return m, tui.ReportError(err, "creating apply tasks")
+			}
+			m.table.DeselectAll()
+			return m, tui.CreateTasks("apply", m.RunService.Apply, runIDs...)
 		}
 	}
 
@@ -194,12 +201,29 @@ func (m list) HelpBindings() (bindings []key.Binding) {
 	}
 }
 
-// HighlightedOrSelectedCurrentWorkspaceIDs returns the IDs of the current
+// highlightedOrSelectedCurrentWorkspaceIDs returns the IDs of the current
 // workspaces of any modules that are currently selected or highlighted.
-func (m list) HighlightedOrSelectedCurrentWorkspaceIDs() (workspaceIDs []resource.ID) {
+func (m list) highlightedOrSelectedCurrentWorkspaceIDs() (workspaceIDs []resource.ID) {
 	for _, row := range m.table.HighlightedOrSelected() {
 		if current := row.Value.CurrentWorkspaceID; current != nil {
 			workspaceIDs = append(workspaceIDs, *current)
+		}
+	}
+	return
+}
+
+// highlightedOrSelectedCurrentRunIDs returns the IDs of the current
+// runs of any modules that are currently selected or highlighted.
+func (m list) highlightedOrSelectedCurrentRunIDs() (runIDs []resource.ID, err error) {
+	for _, row := range m.table.HighlightedOrSelected() {
+		if currentWorkspaceID := row.Value.CurrentWorkspaceID; currentWorkspaceID != nil {
+			ws, err := m.WorkspaceService.Get(*currentWorkspaceID)
+			if err != nil {
+				return nil, err
+			}
+			if currentRunID := ws.CurrentRunID; currentRunID != nil {
+				runIDs = append(runIDs, *currentRunID)
+			}
 		}
 	}
 	return

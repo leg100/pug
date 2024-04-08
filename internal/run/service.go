@@ -145,24 +145,29 @@ func (s *Service) plan(run *Run) (*task.Task, error) {
 // Apply creates an apply task for a run. The run must be in the planned state,
 // and it must be the current run for its workspace.
 func (s *Service) Apply(runID resource.ID) (*task.Task, error) {
-	run, err := s.table.Update(runID, func(existing *Run) error {
-		if existing.Status != Planned {
-			return fmt.Errorf("run is not in the planned state: %s", existing.Status)
-		}
-		ws, err := s.workspaces.Get(existing.WorkspaceID())
-		if err != nil {
-			return err
-		}
-		if ws.CurrentRunID == nil || *ws.CurrentRunID != runID {
-			return fmt.Errorf("run is not the current run for its workspace: current run: %s", ws.CurrentRunID)
-		}
-		return nil
-	})
+	task, err := s.apply(runID)
 	if err != nil {
 		s.logger.Error("applying plan", "error", err, "run_id", runID)
 		return nil, err
 	}
+	return task, err
+}
 
+func (s *Service) apply(runID resource.ID) (*task.Task, error) {
+	run, err := s.table.Get(runID)
+	if err != nil {
+		return nil, err
+	}
+	if run.Status != Planned {
+		return nil, fmt.Errorf("run is not in the planned state: %s", run.Status)
+	}
+	ws, err := s.workspaces.Get(run.WorkspaceID())
+	if err != nil {
+		return nil, err
+	}
+	if ws.CurrentRunID == nil || *ws.CurrentRunID != runID {
+		return nil, fmt.Errorf("run is not the current run for its workspace: current run: %s", ws.CurrentRunID)
+	}
 	task, err := s.createTask(run, task.CreateOptions{
 		Command:  []string{"apply"},
 		Args:     []string{"-input=false", run.PlanPath()},
