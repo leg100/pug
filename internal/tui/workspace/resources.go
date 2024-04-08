@@ -88,10 +88,16 @@ func (m resources) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tui.CreateTasks("reload state", m.svc.Reload, m.workspace.ID)
 		case key.Matches(msg, resourcesKeys.Delete):
 			addrs := m.table.HighlightedOrSelectedKeys()
+			if len(addrs) == 0 {
+				return m, nil
+			}
 			fn := func(workspaceID resource.ID) (*task.Task, error) {
 				return m.svc.Delete(workspaceID, addrs...)
 			}
-			return m, tui.CreateTasks("state-rm", fn, m.workspace.ID)
+			return m, tui.RequestConfirmation(
+				fmt.Sprintf("Delete %d resource(s)", len(addrs)),
+				tui.CreateTasks("state-rm", fn, m.workspace.ID),
+			)
 		case key.Matches(msg, resourcesKeys.Taint):
 			addrs := m.table.HighlightedOrSelectedKeys()
 			return m, m.createStateCommand("taint", m.svc.Taint, addrs...)

@@ -1,6 +1,7 @@
 package workspace
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/charmbracelet/bubbles/key"
@@ -118,6 +119,15 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if row, ok := m.table.Highlighted(); ok {
 				return m, tui.NavigateTo(tui.WorkspaceKind, tui.WithParent(row.Value.Resource))
 			}
+		case key.Matches(msg, keys.Common.Delete):
+			workspaceIDs := m.table.HighlightedOrSelectedKeys()
+			if len(workspaceIDs) == 0 {
+				return m, nil
+			}
+			return m, tui.RequestConfirmation(
+				fmt.Sprintf("Delete %d workspace(s)", len(workspaceIDs)),
+				tui.CreateTasks("delete-workspace", m.svc.Delete, workspaceIDs...),
+			)
 		case key.Matches(msg, localKeys.Init):
 			cmd := tui.CreateTasks("init", m.modules.Init, m.highlightedOrSelectedModuleIDs()...)
 			m.table.DeselectAll()
@@ -145,8 +155,13 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tui.CreateRuns(m.runs, workspaceIDs...)
 		case key.Matches(msg, localKeys.Apply):
 			runIDs := m.highlightedOrSelectedCurrentRunIDs()
-			m.table.DeselectAll()
-			return m, tui.CreateTasks("apply", m.runs.Apply, runIDs...)
+			if len(runIDs) == 0 {
+				return m, tui.ReportError(errors.New("none of the workspaces have a current run"), "")
+			}
+			return m, tui.RequestConfirmation(
+				fmt.Sprintf("Apply current run on %d workspace(s)", len(runIDs)),
+				tui.CreateTasks("apply", m.runs.Apply, runIDs...),
+			)
 		}
 	}
 
@@ -186,7 +201,7 @@ func (m list) highlightedOrSelectedModuleIDs() []resource.ID {
 
 // highlightedOrSelectedCurrentRunIDs returns the IDs of the current runs of the
 // highlighted/selected workspaces.
-func (m list) highlightedOrSelectedCurrentRunIDs() (runIDs []resource.ID) {
+func (m *list) highlightedOrSelectedCurrentRunIDs() (runIDs []resource.ID) {
 	selected := m.table.HighlightedOrSelected()
 	for _, row := range selected {
 		if currentRunID := row.Value.CurrentRunID; currentRunID != nil {

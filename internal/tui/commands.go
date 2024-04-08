@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"fmt"
 	"os/exec"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -79,6 +80,15 @@ func ReloadModules(workspaces WorkspaceService) tea.Cmd {
 			Command:    "reload",
 			Tasks:      multi,
 			CreateErrs: errs,
+		}
+	}
+}
+
+func RequestConfirmation(prompt string, action tea.Cmd) tea.Cmd {
+	return func() tea.Msg {
+		return ConfirmPromptMsg{
+			Prompt: fmt.Sprintf("%s (y/N)? ", prompt),
+			Action: action,
 		}
 	}
 }

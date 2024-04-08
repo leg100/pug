@@ -109,9 +109,14 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// get all highlighted or selected runs, and get the current task
 			// for each run, and then cancel those tasks.
 		case key.Matches(msg, keys.Common.Apply):
-			cmd := tui.CreateTasks("apply", m.svc.Apply, m.table.HighlightedOrSelectedKeys()...)
-			m.table.DeselectAll()
-			return m, cmd
+			runIDs := m.table.HighlightedOrSelectedKeys()
+			if len(runIDs) == 0 {
+				return m, nil
+			}
+			return m, tui.RequestConfirmation(
+				fmt.Sprintf("Apply %d run(s)", len(runIDs)),
+				tui.CreateTasks("apply", m.svc.Apply, runIDs...),
+			)
 		}
 	}
 

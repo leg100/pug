@@ -6,6 +6,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/charmbracelet/bubbles/cursor"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/textinput"
@@ -17,6 +18,7 @@ import (
 	"github.com/leg100/pug/internal/task"
 	"github.com/leg100/pug/internal/tui"
 	"github.com/leg100/pug/internal/tui/keys"
+	"github.com/leg100/pug/internal/tui/table"
 	"github.com/leg100/pug/internal/version"
 )
 
@@ -30,8 +32,9 @@ type model struct {
 
 	showHelp bool
 
-	showQuitPrompt bool
-	quitPrompt     textinput.Model
+	showConfirmPrompt   bool
+	confirmPrompt       textinput.Model
+	confirmPromptAction tea.Cmd
 
 	// Either an error or an informational message is rendered in the footer.
 	err  error
@@ -126,21 +129,30 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 
-	if m.showQuitPrompt {
+	if m.showConfirmPrompt {
 		switch msg := msg.(type) {
 		case tea.KeyMsg:
+			// any key closes the prompt...
+			// 1. send message to current model to resize itself to expand back
+			// into space occupied by prompt.
+			// 2. send message to deselect anything that was selected
+			m.showConfirmPrompt = false
+			_ = m.updateCurrent(tea.WindowSizeMsg{
+				Height: m.viewHeight(),
+				Width:  m.viewWidth(),
+			})
+			_ = m.updateCurrent(table.DeselectMsg{})
 			switch {
-			case key.Matches(msg, keys.Global.Quit):
-				// pressing ctrl-c again quits the app
-				return m, tea.Quit
 			case key.Matches(msg, localKeys.Yes):
-				// 'y' quits the app
-				return m, tea.Quit
+				// 'y' carries out the action
+				return m, m.confirmPromptAction
 			default:
-				// any other key closes the prompt and returns to the app
-				m.showQuitPrompt = false
-				m.info = "canceled quitting pug"
+				// any other key cancels the action
+				m.info = "chosen not to proceed"
 			}
+		default:
+			m.confirmPrompt, cmd = m.confirmPrompt.Update(msg)
+			return m, cmd
 		}
 		return m, cmd
 	}
@@ -162,6 +174,20 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	switch msg := msg.(type) {
+	case tui.ConfirmPromptMsg:
+		m.showConfirmPrompt = true
+		m.confirmPrompt = textinput.New()
+		m.confirmPromptAction = msg.Action
+		m.confirmPrompt.Prompt = msg.Prompt
+		m.confirmPrompt.Cursor = cursor.New()
+		m.confirmPrompt.Focus()
+		// Send out message to current model to resize itself to make room for
+		// the prompt above it.
+		cmd := m.updateCurrent(tea.WindowSizeMsg{
+			Height: m.viewHeight(),
+			Width:  m.viewWidth(),
+		})
+		return m, tea.Batch(cmd, textinput.Blink)
 	case tea.KeyMsg:
 		// Pressing any key makes any info/error message in the footer disappear
 		m.info = ""
@@ -171,11 +197,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, keys.Global.Quit):
 			// ctrl-c quits the app, but not before prompting the user for
 			// comfirmation.
-			m.quitPrompt = textinput.New()
-			m.quitPrompt.Prompt = ""
-			m.quitPrompt.Focus()
-			m.showQuitPrompt = true
-			return m, textinput.Blink
+			return m, tui.RequestConfirmation(
+				"Quit pug",
+				tea.Quit,
+			)
 		case key.Matches(msg, keys.Global.Escape):
 			// <esc> closes help or goes back to last page
 			if m.showHelp {
@@ -296,10 +321,6 @@ func (m model) View() string {
 				key.WithHelp("?", "close help"),
 			),
 		}
-	} else if m.showQuitPrompt {
-		content = lipgloss.NewStyle().
-			Margin(0, 1).
-			Render(fmt.Sprintf("Quit pug? (y/N): %s", m.quitPrompt.View()))
 	} else {
 		content = m.currentModel().View()
 		shortHelpBindings = append(
@@ -370,8 +391,8 @@ func (m model) View() string {
 			Render(m.info)
 	}
 
-	return lipgloss.JoinVertical(
-		lipgloss.Top,
+	// Vertical stack of components that make up the rendered view.
+	components := []string{
 		// header
 		lipgloss.NewStyle().
 			Height(headerHeight).
@@ -397,6 +418,17 @@ func (m model) View() string {
 			Render(pageTitleLine),
 		// horizontal rule
 		strings.Repeat("─", m.width),
+	}
+
+	if m.showConfirmPrompt {
+		components = append(components,
+			tui.Regular.Margin(0, 1).Render(m.confirmPrompt.View()),
+			// horizontal rule
+			strings.Repeat("─", m.width),
+		)
+	}
+
+	components = append(components,
 		// content
 		lipgloss.NewStyle().
 			Height(m.viewHeight()).
@@ -416,15 +448,20 @@ func (m model) View() string {
 			metadata,
 		),
 	)
+
+	return lipgloss.JoinVertical(lipgloss.Top, components...)
 }
 
-// viewHeight retrieves the height available beneath the header and breadcrumbs,
-// and the message footer.
+const promptHeight = 2
+
+// viewHeight returns the height available to the current model (subordinate to
+// the top model).
 func (m model) viewHeight() int {
-	// Take total terminal height and subtract the height of the header, the
-	// title, the horizontal rule under the title, and then in the footer, the
-	// horizontal rule and the message underneath.
-	return m.height - headerHeight - breadcrumbsHeight - 2*horizontalRuleHeight - messageFooterHeight
+	vh := m.height - headerHeight - breadcrumbsHeight - 2*horizontalRuleHeight - messageFooterHeight
+	if m.showConfirmPrompt {
+		vh -= promptHeight
+	}
+	return vh
 }
 
 // viewWidth retrieves the width available within the main view

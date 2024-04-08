@@ -24,6 +24,7 @@ type WorkspaceService interface {
 	Get(id resource.ID) (*workspace.Workspace, error)
 	List(opts workspace.ListOptions) []*workspace.Workspace
 	SelectWorkspace(moduleID, workspaceID resource.ID) error
+	Delete(id resource.ID) (*task.Task, error)
 }
 
 type StateService interface {

@@ -1,6 +1,7 @@
 package tui
 
 import (
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/leg100/pug/internal/resource"
 	"github.com/leg100/pug/internal/run"
 	"github.com/leg100/pug/internal/task"
@@ -68,4 +69,9 @@ type CreatedRunsMsg struct {
 	Runs []*run.Run
 	// Errors from creating tasks
 	CreateErrs []error
+}
+
+type ConfirmPromptMsg struct {
+	Prompt string
+	Action tea.Cmd
 }

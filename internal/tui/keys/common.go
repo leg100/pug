@@ -6,6 +6,7 @@ type common struct {
 	Plan      key.Binding
 	Apply     key.Binding
 	Cancel    key.Binding
+	Delete    key.Binding
 	ShowState key.Binding
 	Retry     key.Binding
 	Reload    key.Binding
@@ -26,6 +27,10 @@ var Common = common{
 	Cancel: key.NewBinding(
 		key.WithKeys("c"),
 		key.WithHelp("c", "cancel"),
+	),
+	Delete: key.NewBinding(
+		key.WithKeys("d"),
+		key.WithHelp("d", "delete"),
 	),
 	ShowState: key.NewBinding(
 		key.WithKeys("s"),

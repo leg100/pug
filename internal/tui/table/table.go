@@ -322,6 +322,24 @@ func (m *Model[K, V]) ToggleSelection() {
 	m.UpdateViewport()
 }
 
+// ToggleSelectionByKey toggles the selection of the row with the given key. If
+// the key does not exist no action is taken.
+func (m *Model[K, V]) ToggleSelectionByKey(key K) {
+	if !m.selectable {
+		return
+	}
+	v, ok := m.items[key]
+	if !ok {
+		return
+	}
+	if _, isSelected := m.Selected[key]; isSelected {
+		delete(m.Selected, key)
+	} else {
+		m.Selected[key] = v
+	}
+	m.UpdateViewport()
+}
+
 // ToggleSelectAll toggles the selection of all rows.
 func (m *Model[K, V]) ToggleSelectAll() {
 	if !m.selectable {

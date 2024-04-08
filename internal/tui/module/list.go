@@ -1,6 +1,9 @@
 package module
 
 import (
+	"errors"
+	"fmt"
+
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
@@ -172,8 +175,13 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if err != nil {
 				return m, tui.ReportError(err, "creating apply tasks")
 			}
-			m.table.DeselectAll()
-			return m, tui.CreateTasks("apply", m.RunService.Apply, runIDs...)
+			if len(runIDs) == 0 {
+				return m, tui.ReportError(errors.New("none of the modules have a current run"), "")
+			}
+			return m, tui.RequestConfirmation(
+				fmt.Sprintf("Apply current run on %d module(s)", len(runIDs)),
+				tui.CreateTasks("apply", m.RunService.Apply, runIDs...),
+			)
 		}
 	}
 
