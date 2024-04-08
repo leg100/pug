@@ -133,15 +133,14 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case key.Matches(msg, keys.Global.Quit):
 				// pressing ctrl-c again quits the app
 				return m, tea.Quit
-			case key.Matches(msg, keys.Global.Enter):
+			case key.Matches(msg, localKeys.Yes):
 				// 'y' quits the app
-				if m.quitPrompt.Value() == "y" {
-					return m, tea.Quit
-				}
+				return m, tea.Quit
+			default:
 				// any other key closes the prompt and returns to the app
 				m.showQuitPrompt = false
+				m.info = "canceled quitting pug"
 			}
-			m.quitPrompt, cmd = m.quitPrompt.Update(msg)
 		}
 		return m, cmd
 	}

@@ -45,9 +45,6 @@ func TestQuit(t *testing.T) {
 		Type:  tea.KeyRunes,
 		Runes: []rune{'y'},
 	})
-	tm.Send(tea.KeyMsg{
-		Type: tea.KeyEnter,
-	})
 
 	tm.WaitFinished(t, teatest.WithFinalTimeout(time.Second))
 }
