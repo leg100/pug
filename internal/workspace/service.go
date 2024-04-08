@@ -41,7 +41,7 @@ type workspaceTable interface {
 type moduleService interface {
 	Get(id resource.ID) (*module.Module, error)
 	GetByPath(path string) (*module.Module, error)
-	SetCurrent(moduleID, workspaceID resource.ID, workspaceName string) error
+	SetCurrent(moduleID, workspaceID resource.ID) error
 	Reload() error
 	List() []*module.Module
 	CreateTask(mod *module.Module, opts task.CreateOptions) (*task.Task, error)
@@ -147,7 +147,7 @@ func (s *Service) resetWorkspaces(mod *module.Module, discovered []string, curre
 	if err != nil {
 		return nil, nil, fmt.Errorf("cannot find current workspace: %s: %w", current, err)
 	}
-	err = s.modules.SetCurrent(mod.ID, currentWorkspace.ID, currentWorkspace.Name)
+	err = s.modules.SetCurrent(mod.ID, currentWorkspace.ID)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -199,7 +199,7 @@ func (s *Service) Create(path, name string) (*Workspace, *task.Task, error) {
 			s.table.Add(ws.ID, ws)
 			// `workspace new` implicitly makes the created workspace the
 			// *current* workspace, so better tell pug that too.
-			if err := s.modules.SetCurrent(mod.ID, ws.ID, ws.Name); err != nil {
+			if err := s.modules.SetCurrent(mod.ID, ws.ID); err != nil {
 				s.logger.Error("creating workspace: %w", err)
 			}
 		},
@@ -245,16 +245,53 @@ func (s *Service) Subscribe(ctx context.Context) <-chan resource.Event[*Workspac
 	return s.broker.Subscribe(ctx)
 }
 
-func (s *Service) SetCurrent(workspaceID resource.ID, runID resource.ID) error {
+func (s *Service) SetCurrentRun(workspaceID, runID resource.ID) error {
 	ws, err := s.table.Update(workspaceID, func(existing *Workspace) error {
 		existing.CurrentRunID = &runID
 		return nil
 	})
 	if err != nil {
-		s.logger.Error("setting current workspace run", "workspace_id", workspaceID, "run_id", runID, "error", err)
+		s.logger.Error("setting current run", "workspace_id", workspaceID, "run_id", runID, "error", err)
 		return err
 	}
-	s.logger.Debug("set current workspace run", "workspace", ws, "run_id", runID, "error", err)
+	s.logger.Debug("set current run", "workspace", ws, "run_id", runID, "error", err)
+	return nil
+}
+
+// SelectWorkspace runs the `terraform workspace select <workspace_name>`
+// command, which sets the current workspace for the module. Once that's
+// finished it then updates the current workspace in pug itself too.
+func (s *Service) SelectWorkspace(moduleID, workspaceID resource.ID) error {
+	if err := s.selectWorkspace(moduleID, workspaceID); err != nil {
+		s.logger.Error("selecting current workspace", "workspace_id", workspaceID, "error", err)
+		return err
+	}
+	s.logger.Debug("selected current workspace", "workspace", workspaceID)
+	return nil
+}
+
+func (s *Service) selectWorkspace(moduleID, workspaceID resource.ID) error {
+	ws, err := s.table.Get(workspaceID)
+	if err != nil {
+		return err
+	}
+	// Create task to immediately set workspace as current workspace for module.
+	task, err := s.createTask(ws, task.CreateOptions{
+		Command:   []string{"workspace", "select"},
+		Args:      []string{ws.Name},
+		Immediate: true,
+	})
+	if err != nil {
+		return err
+	}
+	if err := task.Wait(); err != nil {
+		return err
+	}
+	// Now task has finished successfully, update the current workspace in pug
+	// as well.
+	if err := s.modules.SetCurrent(moduleID, workspaceID); err != nil {
+		return err
+	}
 	return nil
 }
 

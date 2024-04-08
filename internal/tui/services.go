@@ -16,13 +16,14 @@ type ModuleService interface {
 	Init(moduleID resource.ID) (*task.Task, error)
 	Format(moduleID resource.ID) (*task.Task, error)
 	Validate(moduleID resource.ID) (*task.Task, error)
-	SetCurrent(moduleID, workspaceID resource.ID, workspaceName string) error
+	SetCurrent(moduleID, workspaceID resource.ID) error
 }
 
 type WorkspaceService interface {
 	ReloadAll() (task.Multi, []error)
 	Get(id resource.ID) (*workspace.Workspace, error)
 	List(opts workspace.ListOptions) []*workspace.Workspace
+	SelectWorkspace(moduleID, workspaceID resource.ID) error
 }
 
 type StateService interface {

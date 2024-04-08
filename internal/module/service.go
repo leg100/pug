@@ -141,42 +141,16 @@ func (s *Service) Subscribe(ctx context.Context) <-chan resource.Event[*Module] 
 	return s.broker.Subscribe(ctx)
 }
 
-func (s *Service) SetCurrent(moduleID, workspaceID resource.ID, workspaceName string) error {
-	if err := s.setCurrent(moduleID, workspaceID, workspaceName); err != nil {
-		s.logger.Error("setting current workspace", "module", moduleID, "workspace", workspaceID, "error", err)
-		return err
-	}
-	s.logger.Debug("set current workspace", "module", moduleID, "workspace", workspaceID)
-	return nil
-}
-
-func (s *Service) setCurrent(moduleID, workspaceID resource.ID, workspaceName string) error {
-	mod, err := s.table.Get(moduleID)
-	if err != nil {
-		return err
-	}
-	// Create task to immediately set workspace as current workspace for module.
-	task, err := s.CreateTask(mod, task.CreateOptions{
-		Command:    []string{"workspace", "select"},
-		Args:       []string{workspaceName},
-		Immedidate: true,
-	})
-	if err != nil {
-		return err
-	}
-	if err := task.Wait(); err != nil {
-		return err
-	}
-
-	// Only once task has succeeded do we then update the current workspace in
-	// pug.
-	_, err = s.table.Update(moduleID, func(existing *Module) error {
+func (s *Service) SetCurrent(moduleID, workspaceID resource.ID) error {
+	_, err := s.table.Update(moduleID, func(existing *Module) error {
 		existing.CurrentWorkspaceID = &workspaceID
 		return nil
 	})
 	if err != nil {
+		s.logger.Error("setting current workspace", "module", moduleID, "workspace", workspaceID, "error", err)
 		return err
 	}
+	s.logger.Debug("set current workspace", "module", moduleID, "workspace", workspaceID)
 	return nil
 }
 

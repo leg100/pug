@@ -96,7 +96,7 @@ type CreateOptions struct {
 	// Set to true to indicate that the task produces JSON output
 	JSON bool
 	// Skip queue and immediately start task
-	Immedidate bool
+	Immediate bool
 	// Call this function after the task has successfully finished
 	AfterExited func(*Task)
 	// Call this function after the task is enqueued.

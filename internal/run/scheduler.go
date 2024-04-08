@@ -28,7 +28,7 @@ func StartScheduler(ctx context.Context, runs *Service, workspaces *workspace.Se
 			// Update status from pending to scheduled
 			run.updateStatus(Scheduled)
 			// Set run as workspace's current run
-			workspaces.SetCurrent(run.WorkspaceID(), run.ID)
+			workspaces.SetCurrentRun(run.WorkspaceID(), run.ID)
 			// Trigger a plan task
 			_, _ = runs.plan(run)
 		}
