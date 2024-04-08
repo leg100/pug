@@ -20,6 +20,7 @@ require (
 	github.com/charmbracelet/x/exp/teatest v0.0.0-20240329185201-62a6965a9fad
 	github.com/davecgh/go-spew v1.1.1
 	github.com/go-logfmt/logfmt v0.6.0
+	github.com/hokaccha/go-prettyjson v0.0.0-20211117102719-0474bc63780f
 	github.com/mattn/go-runewidth v0.0.15
 	github.com/mitchellh/iochan v1.0.0
 	github.com/muesli/reflow v0.3.0
@@ -49,7 +50,6 @@ require (
 	github.com/hashicorp/go-version v1.2.1 // indirect
 	github.com/hashicorp/hcl v0.0.0-20170504190234-a4b07c25de5f // indirect
 	github.com/hashicorp/terraform-svchost v0.0.0-20200729002733-f050f53b9734 // indirect
-	github.com/hokaccha/go-prettyjson v0.0.0-20211117102719-0474bc63780f // indirect
 	github.com/lucasb-eyer/go-colorful v1.2.0 // indirect
 	github.com/mattn/go-colorable v0.1.4 // indirect
 	github.com/mattn/go-isatty v0.0.19 // indirect
