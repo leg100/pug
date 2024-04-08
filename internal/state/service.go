@@ -178,6 +178,27 @@ func (s *Service) Taint(workspaceID resource.ID, addr ResourceAddress) (*task.Ta
 	})
 }
 
+func (s *Service) Untaint(workspaceID resource.ID, addr ResourceAddress) (*task.Task, error) {
+	return s.createTask(workspaceID, task.CreateOptions{
+		Blocking: true,
+		Command:  []string{"untaint"},
+		Args:     []string{string(addr)},
+		AfterCreate: func(t *task.Task) {
+			s.updateResourceStatus(workspaceID, Untainting, addr)
+		},
+		AfterError: func(t *task.Task) {
+			s.updateResourceStatus(workspaceID, Idle, addr)
+			s.logger.Error("untainting resources", "error", t.Err, "resources", addr)
+		},
+		AfterCanceled: func(t *task.Task) {
+			s.updateResourceStatus(workspaceID, Tainted, addr)
+		},
+		AfterExited: func(t *task.Task) {
+			s.updateResourceStatus(workspaceID, "", addr)
+		},
+	})
+}
+
 func (s *Service) Subscribe(ctx context.Context) <-chan resource.Event[*State] {
 	return s.broker.Subscribe(ctx)
 }

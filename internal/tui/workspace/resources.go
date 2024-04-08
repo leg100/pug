@@ -94,17 +94,10 @@ func (m resources) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tui.CreateTasks("state-rm", fn, m.workspace.ID)
 		case key.Matches(msg, resourcesKeys.Taint):
 			addrs := m.table.HighlightedOrSelectedKeys()
-			return m, func() tea.Msg {
-				msg := tui.CreatedTasksMsg{Command: "taint"}
-				for _, addr := range addrs {
-					task, err := m.svc.Taint(m.workspace.ID, addr)
-					if err != nil {
-						msg.CreateErrs = append(msg.CreateErrs, err)
-					}
-					msg.Tasks = append(msg.Tasks, task)
-				}
-				return msg
-			}
+			return m, m.createStateCommand("taint", m.svc.Taint, addrs...)
+		case key.Matches(msg, resourcesKeys.Untaint):
+			addrs := m.table.HighlightedOrSelectedKeys()
+			return m, m.createStateCommand("untaint", m.svc.Untaint, addrs...)
 		}
 	case initState:
 		m.state = (*state.State)(msg)
@@ -151,10 +144,27 @@ func (m resources) HelpBindings() (bindings []key.Binding) {
 	return keys.KeyMapToSlice(resourcesKeys)
 }
 
+type stateFunc func(workspaceID resource.ID, addr state.ResourceAddress) (*task.Task, error)
+
+func (m resources) createStateCommand(name string, fn stateFunc, addrs ...state.ResourceAddress) tea.Cmd {
+	return func() tea.Msg {
+		msg := tui.CreatedTasksMsg{Command: name}
+		for _, addr := range addrs {
+			task, err := fn(m.workspace.ID, addr)
+			if err != nil {
+				msg.CreateErrs = append(msg.CreateErrs, err)
+			}
+			msg.Tasks = append(msg.Tasks, task)
+		}
+		return msg
+	}
+}
+
 type resourcesKeyMap struct {
-	Delete key.Binding
-	Taint  key.Binding
-	Reload key.Binding
+	Delete  key.Binding
+	Taint   key.Binding
+	Untaint key.Binding
+	Reload  key.Binding
 }
 
 var resourcesKeys = resourcesKeyMap{
@@ -165,6 +175,10 @@ var resourcesKeys = resourcesKeyMap{
 	Taint: key.NewBinding(
 		key.WithKeys("t"),
 		key.WithHelp("t", "taint"),
+	),
+	Untaint: key.NewBinding(
+		key.WithKeys("u"),
+		key.WithHelp("u", "untaint"),
 	),
 	Reload: key.NewBinding(
 		key.WithKeys("ctrl+r"),

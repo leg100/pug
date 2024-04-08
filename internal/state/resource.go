@@ -20,4 +20,6 @@ const (
 	Tainting ResourceStatus = "tainting"
 	// Tainted means the resource is currently tainted
 	Tainted ResourceStatus = "tainted"
+	// Untainting means the resource is in the process of being untainted.
+	Untainting ResourceStatus = "untainting"
 )
