@@ -6,9 +6,9 @@ type enricher struct {
 	enrichers []Enricher
 }
 
-// Enricher implementations add attributes to log records.
+// Enricher implementations update a log record with further info
 type Enricher interface {
-	AddLogAttributes(args ...any) []any
+	EnrichLogRecord(args ...any) []any
 }
 
 func (e *enricher) AddEnricher(enricher Enricher) {
@@ -17,7 +17,7 @@ func (e *enricher) AddEnricher(enricher Enricher) {
 
 func (e *enricher) enrich(args ...any) []any {
 	for _, en := range e.enrichers {
-		args = en.AddLogAttributes(args...)
+		args = en.EnrichLogRecord(args...)
 	}
 	return args
 }
