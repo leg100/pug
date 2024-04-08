@@ -18,4 +18,6 @@ func TestFindModules(t *testing.T) {
 	assert.Contains(t, got, "envs/staging")
 	assert.Contains(t, got, "uninitialized")
 	assert.Contains(t, got, "plan_forever")
+	assert.Contains(t, got, "multiworkspace")
+	assert.Contains(t, got, "with_mods")
 }
