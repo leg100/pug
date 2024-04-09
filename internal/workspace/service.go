@@ -130,7 +130,10 @@ func (s *Service) resetWorkspaces(mod *module.Module, discovered []string, curre
 		if !slices.ContainsFunc(existing, func(ws *Workspace) bool {
 			return ws.Name == name
 		}) {
-			add := New(mod, name)
+			add, err := New(mod, name)
+			if err != nil {
+				return nil, nil, fmt.Errorf("adding workspace: %w", err)
+			}
 			s.table.Add(add.ID, add)
 			added = append(added, name)
 		}
@@ -190,7 +193,10 @@ func (s *Service) Create(path, name string) (*Workspace, *task.Task, error) {
 	if err != nil {
 		return nil, nil, fmt.Errorf("checking for module: %s: %w", path, err)
 	}
-	ws := New(mod, name)
+	ws, err := New(mod, name)
+	if err != nil {
+		return nil, nil, err
+	}
 
 	task, err := s.createTask(ws, task.CreateOptions{
 		Command: []string{"workspace", "new"},

@@ -5,6 +5,7 @@ import (
 
 	"github.com/leg100/pug/internal/module"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // TODO: rewrite as test for resetWorkspaces()
@@ -28,7 +29,8 @@ import (
 
 func TestWorkspace_TerraformEnv(t *testing.T) {
 	mod := module.New("a/b/c")
-	ws := New(mod, "dev")
+	ws, err := New(mod, "dev")
+	require.NoError(t, err)
 
 	assert.Equal(t, "TF_WORKSPACE=dev", ws.TerraformEnv())
 }

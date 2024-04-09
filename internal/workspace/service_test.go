@@ -30,8 +30,10 @@ func TestWorkspace_parseList(t *testing.T) {
 
 func TestWorkspace_resetWorkspaces(t *testing.T) {
 	mod := module.New("a/b/c")
-	dev := New(mod, "dev")
-	staging := New(mod, "staging")
+	dev, err := New(mod, "dev")
+	require.NoError(t, err)
+	staging, err := New(mod, "staging")
+	require.NoError(t, err)
 
 	var gotCurrent resource.ID
 	table := &fakeWorkspaceTable{
@@ -41,7 +43,7 @@ func TestWorkspace_resetWorkspaces(t *testing.T) {
 		modules: &fakeModuleService{current: &gotCurrent},
 		table:   table,
 	}
-	_, _, err := svc.resetWorkspaces(mod, []string{"dev", "prod"}, "dev")
+	_, _, err = svc.resetWorkspaces(mod, []string{"dev", "prod"}, "dev")
 	require.NoError(t, err)
 
 	// expect staging to be dropped

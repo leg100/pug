@@ -3,6 +3,7 @@ package workspace
 import (
 	"fmt"
 	"log/slog"
+	"net/url"
 	"path/filepath"
 
 	"github.com/leg100/pug/internal/module"
@@ -20,11 +21,14 @@ type Workspace struct {
 	AutoApply bool
 }
 
-func New(mod *module.Module, name string) *Workspace {
+func New(mod *module.Module, name string) (*Workspace, error) {
+	if name != url.PathEscape(name) {
+		return nil, fmt.Errorf("invalid workspace name: %s", name)
+	}
 	return &Workspace{
 		Resource: resource.New(resource.Workspace, mod.Resource),
 		Name:     name,
-	}
+	}, nil
 }
 
 func (ws *Workspace) ModuleID() resource.ID {
