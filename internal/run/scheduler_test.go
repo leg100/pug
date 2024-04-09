@@ -7,6 +7,7 @@ import (
 	"github.com/leg100/pug/internal/testutils"
 	"github.com/leg100/pug/internal/workspace"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func Test_Scheduler(t *testing.T) {

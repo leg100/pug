@@ -43,6 +43,15 @@ func TestService_List(t *testing.T) {
 			},
 		},
 		{
+			"list running",
+			ListOptions{Status: []Status{Running}},
+			func(t *testing.T, got []*Task) {
+				if assert.Equal(t, 1, len(got)) {
+					assert.Equal(t, got[0], running)
+				}
+			},
+		},
+		{
 			"list finished",
 			ListOptions{Status: []Status{Exited, Errored}},
 			func(t *testing.T, got []*Task) {

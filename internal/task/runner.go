@@ -10,18 +10,15 @@ import (
 // (a) no more than MAX tasks run at any given time
 // (b) no more than one 'exclusive' task runs at any given time
 type runner struct {
-	max       int
-	exclusive chan struct{}
-
+	max   int
 	tasks taskLister
 }
 
 func StartRunner(ctx context.Context, logger *logging.Logger, tasks *Service, maxTasks int) {
 	sub := tasks.Broker.Subscribe(ctx)
 	r := &runner{
-		max:       maxTasks,
-		exclusive: make(chan struct{}, 1),
-		tasks:     tasks,
+		max:   maxTasks,
+		tasks: tasks,
 	}
 
 	// On each task event, get a list of tasks to be run, start them, and wait
@@ -41,6 +38,9 @@ func StartRunner(ctx context.Context, logger *logging.Logger, tasks *Service, ma
 
 // runnable retrieves a list of tasks to be run
 func (r *runner) runnable() []*Task {
+	// exclusive is true if the one and only exclusive slot is occupied
+	var exclusive bool
+
 	running := r.tasks.List(ListOptions{
 		Status: []Status{Running},
 	})
@@ -60,13 +60,23 @@ func (r *runner) runnable() []*Task {
 			continue
 		}
 		if qt.exclusive {
-			// Only run task if exclusive slot is empty
-			select {
-			case r.exclusive <- struct{}{}:
-			default:
-				// Exclusive slot is full; skip task
+			if exclusive {
+				// Exclusive slot taken
 				continue
 			}
+			// Check if there is an exclusive task running
+			runningExclusiveTasks := r.tasks.List(ListOptions{
+				Exclusive: true,
+				Status:    []Status{Running},
+			})
+			if len(runningExclusiveTasks) > 0 {
+				// Exclusive slot taken
+				exclusive = true
+				continue
+			}
+			// No exclusive tasks are already running, and this exclusive task
+			// takes the available exclusive slot.
+			exclusive = true
 		}
 		avail--
 		queued[i] = qt

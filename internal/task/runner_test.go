@@ -26,6 +26,8 @@ func TestRunner_runnable(t *testing.T) {
 		queued []*Task
 		// Running tasks
 		running []*Task
+		// Running exclusive tasks
+		exclusive []*Task
 		// Want these runnable tasks
 		want []*Task
 	}{
@@ -58,6 +60,20 @@ func TestRunner_runnable(t *testing.T) {
 			want:    []*Task{t2},
 		},
 		{
+			name:    "only one of two queued exclusive tasks is runnable",
+			max:     3,
+			queued:  []*Task{ex1, ex2},
+			running: nil,
+			want:    []*Task{ex1},
+		},
+		{
+			name:      "queued exclusive task is not runnable because an exclusive task is already running",
+			max:       3,
+			queued:    []*Task{ex2},
+			exclusive: []*Task{ex1},
+			want:      []*Task{},
+		},
+		{
 			name:    "only one exclusive task is runnable",
 			max:     3,
 			queued:  []*Task{ex1, ex2},
@@ -82,11 +98,11 @@ func TestRunner_runnable(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			runner := &runner{
-				max:       tt.max,
-				exclusive: make(chan struct{}, 1),
+				max: tt.max,
 				tasks: &fakeRunnerLister{
-					queued:  tt.queued,
-					running: tt.running,
+					queued:    tt.queued,
+					running:   tt.running,
+					exclusive: tt.exclusive,
 				},
 			}
 			assert.Equal(t, tt.want, runner.runnable())
@@ -95,10 +111,13 @@ func TestRunner_runnable(t *testing.T) {
 }
 
 type fakeRunnerLister struct {
-	queued, running []*Task
+	queued, running, exclusive []*Task
 }
 
 func (f *fakeRunnerLister) List(opts ListOptions) []*Task {
+	if opts.Exclusive {
+		return f.exclusive
+	}
 	if slices.Equal(opts.Status, []Status{Queued}) {
 		return f.queued
 	}

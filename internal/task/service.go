@@ -97,6 +97,9 @@ type ListOptions struct {
 	// Filter tasks by only those that are blocking. If false, both blocking and
 	// non-blocking tasks are returned.
 	Blocking bool
+	// Only return those tasks that are exclusive. If false, both exclusive and
+	// non-exclusive tasks are returned.
+	Exclusive bool
 	// Filter tasks by those with one of the following commands
 	Command [][]string
 	// Filter tasks by only those that have an ancestor with the given ID.
@@ -125,6 +128,11 @@ func (s *Service) List(opts ListOptions) []*Task {
 		}
 		if opts.Blocking {
 			if !t.Blocking {
+				continue
+			}
+		}
+		if opts.Exclusive {
+			if !t.exclusive {
 				continue
 			}
 		}
