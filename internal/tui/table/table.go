@@ -550,6 +550,7 @@ func (m *Model[K, V]) renderRow(rowIdx int) string {
 		inlined := lipgloss.NewStyle().
 			Width(col.Width).
 			MaxWidth(col.Width).
+			Inline(true).
 			Render(truncated)
 		// Apply block-styling to content
 		boxed := lipgloss.NewStyle().
