@@ -48,7 +48,7 @@ type moduleService interface {
 }
 
 func NewService(ctx context.Context, opts ServiceOptions) *Service {
-	broker := pubsub.NewBroker[*Workspace]()
+	broker := pubsub.NewBroker[*Workspace](opts.Logger)
 	table := resource.NewTable(broker)
 
 	opts.Logger.AddEnricher(&logEnricher{table: table})

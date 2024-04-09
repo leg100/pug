@@ -39,7 +39,7 @@ type ServiceOptions struct {
 }
 
 func NewService(opts ServiceOptions) *Service {
-	broker := pubsub.NewBroker[*Run]()
+	broker := pubsub.NewBroker[*Run](opts.Logger)
 	return &Service{
 		table:                   resource.NewTable(broker),
 		Broker:                  broker,

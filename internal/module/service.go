@@ -29,7 +29,7 @@ type ServiceOptions struct {
 }
 
 func NewService(opts ServiceOptions) *Service {
-	broker := pubsub.NewBroker[*Module]()
+	broker := pubsub.NewBroker[*Module](opts.Logger)
 	table := resource.NewTable(broker)
 
 	opts.Logger.AddEnricher(&logEnricher{table: table})

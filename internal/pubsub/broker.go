@@ -3,7 +3,6 @@ package pubsub
 import (
 	"context"
 	"errors"
-	"log/slog"
 	"sync"
 
 	"github.com/leg100/pug/internal/resource"
@@ -11,22 +10,32 @@ import (
 
 const (
 	// subBufferSize is the buffer size of the channel for each subscription.
-	subBufferSize = 100
+	subBufferSize = 1024
 )
 
 // ErrSubscriptionTerminated is for use by subscribers to indicate that their
 // subscription has been terminated by the broker.
 var ErrSubscriptionTerminated = errors.New("broker terminated the subscription")
 
+type Logger interface {
+	Debug(msg string, args ...any)
+	Info(msg string, args ...any)
+	Warn(msg string, args ...any)
+	Error(msg string, args ...any)
+}
+
 // Broker allows clients to publish events and subscribe to events
 type Broker[T any] struct {
 	subs map[chan resource.Event[T]]struct{} // subscriptions
 	mu   sync.Mutex                          // sync access to map
+
+	logger Logger
 }
 
-func NewBroker[T any]() *Broker[T] {
+func NewBroker[T any](logger Logger) *Broker[T] {
 	b := &Broker[T]{
-		subs: make(map[chan resource.Event[T]]struct{}),
+		subs:   make(map[chan resource.Event[T]]struct{}),
+		logger: logger,
 	}
 	return b
 }
@@ -73,7 +82,7 @@ func (b *Broker[T]) Publish(t resource.EventType, payload T) {
 	// forceably unsubscribe full subscribers and leave it to them to
 	// re-subscribe
 	for _, name := range fullSubscribers {
-		slog.Error("unsubscribing full subscriber", "sub", name, "queue_length", subBufferSize)
+		b.logger.Error("unsubscribing full subscriber", "sub", name, "queue_length", subBufferSize)
 		b.unsubscribe(name)
 	}
 }

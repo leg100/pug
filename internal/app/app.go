@@ -6,7 +6,6 @@ package app
 import (
 	"context"
 	"fmt"
-	"log/slog"
 	"os"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -44,7 +43,12 @@ func Start(args []string) error {
 	logger := logging.NewLogger(cfg.LogLevel)
 
 	// Log some info useful to the user
-	slog.Info(fmt.Sprintf("set max tasks: %d", cfg.MaxTasks))
+	logger.Info("loaded config",
+		"log_level", cfg.LogLevel,
+		"max_tasks", cfg.MaxTasks,
+		"plugin_cache", cfg.PluginCache,
+		"program", cfg.Program,
+	)
 
 	// Instantiate services
 	tasks := task.NewService(task.ServiceOptions{

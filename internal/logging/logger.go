@@ -17,7 +17,8 @@ var levels = map[string]slog.Level{
 
 // NewLogger constructs Logger, a slog wrapper with additional functionality.
 func NewLogger(level string) *Logger {
-	broker := pubsub.NewBroker[Message]()
+	logger := &Logger{}
+	broker := pubsub.NewBroker[Message](logger)
 	writer := &writer{broker: broker}
 
 	handler := slog.NewTextHandler(
@@ -26,12 +27,13 @@ func NewLogger(level string) *Logger {
 			Level: slog.Level(levels[level]),
 		},
 	)
-	return &Logger{
-		logger:   slog.New(handler),
-		broker:   broker,
-		writer:   writer,
-		enricher: &enricher{},
-	}
+
+	logger.logger = slog.New(handler)
+	logger.broker = broker
+	logger.writer = writer
+	logger.enricher = &enricher{}
+
+	return logger
 }
 
 // Logger wraps slog, providing further functionality such as emitting log

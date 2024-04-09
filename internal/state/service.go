@@ -33,7 +33,7 @@ type ServiceOptions struct {
 }
 
 func NewService(ctx context.Context, opts ServiceOptions) *Service {
-	broker := pubsub.NewBroker[*State]()
+	broker := pubsub.NewBroker[*State](opts.Logger)
 	svc := &Service{
 		modules:    opts.ModuleService,
 		workspaces: opts.WorkspaceService,

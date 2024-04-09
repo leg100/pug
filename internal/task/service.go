@@ -27,7 +27,7 @@ type ServiceOptions struct {
 func NewService(opts ServiceOptions) *Service {
 	var counter int
 
-	broker := pubsub.NewBroker[*Task]()
+	broker := pubsub.NewBroker[*Task](opts.Logger)
 	factory := &factory{
 		publisher: broker,
 		counter:   &counter,
