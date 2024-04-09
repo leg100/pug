@@ -4,6 +4,7 @@ import (
 	"slices"
 
 	"github.com/charmbracelet/bubbles/key"
+	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -199,6 +200,10 @@ func (m Model[K, V]) Update(msg tea.Msg) (Model[K, V], tea.Cmd) {
 		m.DeselectAll()
 	case tea.WindowSizeMsg:
 		m.setDimensions(msg.Width, msg.Height)
+	case spinner.TickMsg:
+		// Rows can contain spinners, so we re-render them whenever a tick is
+		// received.
+		m.UpdateViewport()
 	}
 
 	return m, nil

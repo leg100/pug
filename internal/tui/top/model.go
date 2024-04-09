@@ -42,6 +42,7 @@ type model struct {
 
 	tasks    tui.TaskService
 	spinner  *spinner.Model
+	spinning bool
 	maxTasks int
 
 	dump *os.File
@@ -119,12 +120,22 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case resource.Event[*task.Task]:
 		if m.tasks.Counter() > 0 {
-			cmds = append(cmds, m.spinner.Tick)
+			if !m.spinning {
+				// There are tasks running and the spinner isn't spinning, so start
+				// the spinner.
+				m.spinning = true
+				cmds = append(cmds, m.spinner.Tick)
+			}
+		} else {
+			// No tasks are running so stop spinner
+			m.spinning = false
 		}
 	case spinner.TickMsg:
 		var cmd tea.Cmd
 		*m.spinner, cmd = m.spinner.Update(msg)
-		if m.tasks.Counter() > 0 {
+		_ = m.updateCurrent(msg)
+		if m.spinning {
+			// Continue spinning spinner.
 			return m, cmd
 		}
 	}
