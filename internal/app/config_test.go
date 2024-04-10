@@ -2,6 +2,7 @@ package app
 
 import (
 	"os"
+	"path"
 	"runtime"
 	"strings"
 	"testing"
@@ -16,6 +17,12 @@ func TestConfig(t *testing.T) {
 	t.Setenv("PUG_FIRST_PAGE", "")
 	t.Setenv("PUG_LOG_LEVEL", "")
 	t.Setenv("PUG_MAX_TASKS", "")
+	// Specify terraform config file, to override any such file present at the
+	// default location on the host computer
+	cliConfigFilePath := path.Join(t.TempDir(), "terraform.tfrc")
+	err := os.WriteFile(cliConfigFilePath, []byte(""), 0o644)
+	require.NoError(t, err)
+	t.Setenv("TF_CLI_CONFIG_FILE", cliConfigFilePath)
 
 	tests := []struct {
 		name string
