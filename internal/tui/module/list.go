@@ -132,28 +132,17 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Update current run status and changes
 		m.table.UpdateViewport()
 	case tea.KeyMsg:
-		// Handle keys that don't rely on any modules being present
 		switch {
 		case key.Matches(msg, localKeys.Reload):
 			return m, tui.ReloadModules(m.WorkspaceService)
-		}
-
-		// Only handle following keys if there are modules present
-		//
-		// TODO: don't do this.
-		if len(m.table.Items()) == 0 {
-			break
-		}
-
-		switch {
 		case key.Matches(msg, keys.Global.Enter):
-			row, _ := m.table.Highlighted()
-			return m, tui.NavigateTo(tui.ModuleKind, tui.WithParent(row.Value.Resource))
-		case key.Matches(msg, localKeys.Reload):
-			return m, tui.ReloadModules(m.WorkspaceService)
+			if row, highlighted := m.table.Highlighted(); highlighted {
+				return m, tui.NavigateTo(tui.ModuleKind, tui.WithParent(row.Value.Resource))
+			}
 		case key.Matches(msg, localKeys.Edit):
-			row, _ := m.table.Highlighted()
-			return m, tui.OpenVim(row.Value.Path)
+			if row, highlighted := m.table.Highlighted(); highlighted {
+				return m, tui.OpenVim(row.Value.Path)
+			}
 		case key.Matches(msg, localKeys.Init):
 			cmd := tui.CreateTasks("init", m.ModuleService.Init, m.table.HighlightedOrSelectedKeys()...)
 			m.table.DeselectAll()

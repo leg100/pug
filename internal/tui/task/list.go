@@ -123,11 +123,13 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, keys.Global.Enter):
-			if row, ok := m.table.Highlighted(); ok {
+			if row, highlighted := m.table.Highlighted(); highlighted {
 				return m, tui.NavigateTo(tui.TaskKind, tui.WithParent(row.Value.Resource))
 			}
 		case key.Matches(msg, keys.Common.Cancel):
-			return m, tui.CreateTasks("cancel", m.svc.Cancel, m.table.HighlightedOrSelectedKeys()...)
+			taskIDs := m.table.HighlightedOrSelectedKeys()
+			m.table.DeselectAll()
+			return m, tui.CreateTasks("cancel", m.svc.Cancel, taskIDs...)
 		}
 	}
 	// Handle keyboard and mouse events in the table widget

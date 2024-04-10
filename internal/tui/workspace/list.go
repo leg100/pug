@@ -116,7 +116,7 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, keys.Global.Enter):
-			if row, ok := m.table.Highlighted(); ok {
+			if row, highlighted := m.table.Highlighted(); highlighted {
 				return m, tui.NavigateTo(tui.WorkspaceKind, tui.WithParent(row.Value.Resource))
 			}
 		case key.Matches(msg, keys.Common.Delete):
@@ -141,7 +141,7 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.table.DeselectAll()
 			return m, cmd
 		case key.Matches(msg, localKeys.SetCurrent):
-			if row, ok := m.table.Highlighted(); ok {
+			if row, highlighted := m.table.Highlighted(); highlighted {
 				return m, func() tea.Msg {
 					if err := m.svc.SelectWorkspace(row.Value.ModuleID(), row.Value.ID); err != nil {
 						return tui.NewErrorMsg(err, "setting current workspace")

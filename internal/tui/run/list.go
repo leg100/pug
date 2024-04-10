@@ -102,12 +102,9 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, keys.Global.Enter):
-			if row, ok := m.table.Highlighted(); ok {
+			if row, highlighted := m.table.Highlighted(); highlighted {
 				return m, tui.NavigateTo(tui.RunKind, tui.WithParent(row.Value.Resource))
 			}
-		case key.Matches(msg, keys.Common.Cancel):
-			// get all highlighted or selected runs, and get the current task
-			// for each run, and then cancel those tasks.
 		case key.Matches(msg, keys.Common.Apply):
 			runIDs := m.table.HighlightedOrSelectedKeys()
 			if len(runIDs) == 0 {
