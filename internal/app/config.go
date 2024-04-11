@@ -6,6 +6,7 @@ import (
 	"runtime"
 
 	"github.com/hashicorp/terraform/command/cliconfig"
+	"github.com/leg100/pug/internal"
 	"github.com/peterbourgon/ff/v4"
 	"github.com/peterbourgon/ff/v4/ffhelp"
 	"github.com/peterbourgon/ff/v4/ffyaml"
@@ -19,6 +20,7 @@ type config struct {
 	FirstPage               string
 	Debug                   bool
 	DisableReloadAfterApply bool
+	Workdir                 internal.Workdir
 
 	version bool
 }
@@ -26,10 +28,14 @@ type config struct {
 // set config in order of precedence:
 // 1. flags > 2. env vars > 3. config file
 func parse(args []string) (config, error) {
-	var cfg config
+	var (
+		cfg     config
+		workdir string
+	)
 
 	fs := ff.NewFlagSet("pug")
 	fs.StringVar(&cfg.Program, 'p', "program", "terraform", "The default program to use with pug.")
+	fs.StringVar(&workdir, 'w', "workdir", ".", "The working directory containing modules.")
 	fs.IntVar(&cfg.MaxTasks, 't', "max-tasks", 2*runtime.NumCPU(), "The maximum number of parallel tasks.")
 	fs.StringEnumVar(&cfg.FirstPage, 'f', "first-page", "The first page to open on startup.", "modules", "workspaces", "runs", "tasks", "logs")
 	fs.BoolVar(&cfg.Debug, 'd', "debug", "Log bubbletea messages to messages.log")
@@ -53,6 +59,15 @@ func parse(args []string) (config, error) {
 		// ff.Parse returns an error if there is an error or if -h/--help is
 		// passed; in either case print flag usage in addition to error message.
 		fmt.Fprintln(os.Stderr, ffhelp.Flags(fs))
+		return config{}, err
 	}
-	return cfg, err
+
+	// Perform any conversions from the flag parsed primitive types to pug
+	// defined types.
+	cfg.Workdir, err = internal.NewWorkdir(workdir)
+	if err != nil {
+		return config{}, err
+	}
+
+	return cfg, nil
 }

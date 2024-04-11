@@ -13,6 +13,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/davecgh/go-spew/spew"
+	"github.com/leg100/pug/internal"
 	"github.com/leg100/pug/internal/logging"
 	"github.com/leg100/pug/internal/resource"
 	"github.com/leg100/pug/internal/task"
@@ -58,7 +59,7 @@ type Options struct {
 	TaskService      tui.TaskService
 
 	Logger    *logging.Logger
-	Workdir   string
+	Workdir   internal.Workdir
 	FirstPage string
 	MaxTasks  int
 	Debug     bool
@@ -75,11 +76,6 @@ func New(opts Options) (model, error) {
 		}
 	}
 
-	workdir, err := contractUserPath(opts.Workdir)
-	if err != nil {
-		return model{}, err
-	}
-
 	spinner := spinner.New(spinner.WithSpinner(spinner.Globe))
 
 	navigator, err := newNavigator(opts, &spinner)
@@ -94,7 +90,7 @@ func New(opts Options) (model, error) {
 		tasks:            opts.TaskService,
 		maxTasks:         opts.MaxTasks,
 		dump:             dump,
-		workdir:          workdir,
+		workdir:          opts.Workdir.PrettyString(),
 	}
 	return m, nil
 }

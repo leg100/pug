@@ -7,10 +7,12 @@ import (
 	"log/slog"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/leg100/pug/internal"
 	"github.com/leg100/pug/internal/resource"
 )
 
@@ -75,6 +77,7 @@ type factory struct {
 	counter   *int
 	program   string
 	publisher resource.Publisher[*Task]
+	workdir   internal.Workdir
 }
 
 type CreateOptions struct {
@@ -84,7 +87,7 @@ type CreateOptions struct {
 	Command []string
 	// Args to pass to program.
 	Args []string
-	// Path in which to execute the program.
+	// Path relative to the pug working directory in which to run the command.
 	Path string
 	// Environment variables.
 	Env []string
@@ -123,7 +126,7 @@ func (f *factory) newTask(opts CreateOptions) (*Task, error) {
 		buf:           newBuffer(),
 		program:       f.program,
 		Command:       opts.Command,
-		Path:          opts.Path,
+		Path:          filepath.Join(f.workdir.String(), opts.Path),
 		Args:          opts.Args,
 		Env:           opts.Env,
 		JSON:          opts.JSON,

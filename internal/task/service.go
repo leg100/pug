@@ -4,6 +4,7 @@ import (
 	"context"
 	"slices"
 
+	"github.com/leg100/pug/internal"
 	"github.com/leg100/pug/internal/logging"
 	"github.com/leg100/pug/internal/pubsub"
 	"github.com/leg100/pug/internal/resource"
@@ -22,6 +23,7 @@ type Service struct {
 type ServiceOptions struct {
 	Program string
 	Logger  *logging.Logger
+	Workdir internal.Workdir
 }
 
 func NewService(opts ServiceOptions) *Service {
@@ -32,6 +34,7 @@ func NewService(opts ServiceOptions) *Service {
 		publisher: broker,
 		counter:   &counter,
 		program:   opts.Program,
+		workdir:   opts.Workdir,
 	}
 
 	svc := &Service{

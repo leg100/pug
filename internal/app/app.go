@@ -6,7 +6,6 @@ package app
 import (
 	"context"
 	"fmt"
-	"os"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/leg100/pug/internal/logging"
@@ -34,11 +33,6 @@ func Start(args []string) error {
 		return nil
 	}
 
-	workdir, err := os.Getwd()
-	if err != nil {
-		return fmt.Errorf("getting working directory: %w", err)
-	}
-
 	// Setup logging
 	logger := logging.NewLogger(cfg.LogLevel)
 
@@ -48,16 +42,18 @@ func Start(args []string) error {
 		"max_tasks", cfg.MaxTasks,
 		"plugin_cache", cfg.PluginCache,
 		"program", cfg.Program,
+		"work_dir", cfg.Workdir,
 	)
 
 	// Instantiate services
 	tasks := task.NewService(task.ServiceOptions{
 		Program: cfg.Program,
 		Logger:  logger,
+		Workdir: cfg.Workdir,
 	})
 	modules := module.NewService(module.ServiceOptions{
 		TaskService: tasks,
-		Workdir:     workdir,
+		Workdir:     cfg.Workdir,
 		PluginCache: cfg.PluginCache,
 		Logger:      logger,
 	})
@@ -90,7 +86,7 @@ func Start(args []string) error {
 		RunService:       runs,
 		Logger:           logger,
 		FirstPage:        cfg.FirstPage,
-		Workdir:          workdir,
+		Workdir:          cfg.Workdir,
 		MaxTasks:         cfg.MaxTasks,
 		Debug:            cfg.Debug,
 	})

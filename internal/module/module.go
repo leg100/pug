@@ -8,6 +8,7 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclwrite"
+	"github.com/leg100/pug/internal"
 	"github.com/leg100/pug/internal/logging"
 	"github.com/leg100/pug/internal/resource"
 	"golang.org/x/exp/maps"
@@ -62,7 +63,7 @@ func (m *Module) LogValue() slog.Value {
 //
 // (a) will only succeed if the module has already been initialized, i.e. terraform
 // init has been run, whereas (b) is necessary if it has not.
-func findModules(logger *logging.Logger, parent string) (modules []string, err error) {
+func findModules(logger *logging.Logger, workdir internal.Workdir) (modules []string, err error) {
 	found := make(map[string]struct{})
 	walkfn := func(path string, d fs.DirEntry, walkerr error) error {
 		// skip directories that have already been identified as containing a
@@ -108,13 +109,13 @@ func findModules(logger *logging.Logger, parent string) (modules []string, err e
 		}
 		return nil
 	}
-	if err := filepath.WalkDir(parent, walkfn); err != nil {
+	if err := filepath.WalkDir(workdir.String(), walkfn); err != nil {
 		return nil, err
 	}
 	// Strip parent prefix from paths before returning
 	modules = make([]string, len(found))
 	for i, f := range maps.Keys(found) {
-		stripped, err := filepath.Rel(parent, f)
+		stripped, err := filepath.Rel(workdir.String(), f)
 		if err != nil {
 			return nil, err
 		}

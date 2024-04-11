@@ -16,14 +16,14 @@ type Service struct {
 	table       *resource.Table[*Module]
 	broker      *pubsub.Broker[*Module]
 	tasks       *task.Service
-	workdir     string
+	workdir     internal.Workdir
 	pluginCache bool
 	logger      *logging.Logger
 }
 
 type ServiceOptions struct {
 	TaskService *task.Service
-	Workdir     string
+	Workdir     internal.Workdir
 	PluginCache bool
 	Logger      *logging.Logger
 }

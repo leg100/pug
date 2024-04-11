@@ -47,7 +47,7 @@ func makeMakers(opts Options, spinner *spinner.Model) map[tui.Kind]tui.Maker {
 			WorkspaceService: opts.WorkspaceService,
 			RunService:       opts.RunService,
 			Spinner:          spinner,
-			Workdir:          opts.Workdir,
+			Workdir:          opts.Workdir.PrettyString(),
 			Helpers:          helpers,
 		},
 		tui.ModuleKind: &moduletui.Maker{
