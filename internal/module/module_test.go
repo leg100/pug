@@ -11,7 +11,7 @@ import (
 
 func TestFindModules(t *testing.T) {
 	workdir, _ := internal.NewWorkdir("../testdata/configs")
-	got, err := findModules(logging.NewLogger("info"), workdir)
+	got, err := findModules(logging.Discard, workdir)
 	require.NoError(t, err)
 
 	assert.Equal(t, 7, len(got))

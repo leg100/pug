@@ -14,7 +14,7 @@ type runner struct {
 	tasks taskLister
 }
 
-func StartRunner(ctx context.Context, logger *logging.Logger, tasks *Service, maxTasks int) {
+func StartRunner(ctx context.Context, logger logging.Interface, tasks *Service, maxTasks int) {
 	sub := tasks.Broker.Subscribe(ctx)
 	r := &runner{
 		max:   maxTasks,
@@ -29,7 +29,7 @@ func StartRunner(ctx context.Context, logger *logging.Logger, tasks *Service, ma
 			if err != nil {
 				logger.Error("starting task", "error", err.Error(), "task", task)
 			} else {
-				logger.Info("started task", "task", task)
+				logger.Debug("started task", "task", task)
 				go waitfn()
 			}
 		}

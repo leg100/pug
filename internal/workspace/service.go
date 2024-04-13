@@ -18,7 +18,7 @@ import (
 type Service struct {
 	broker *pubsub.Broker[*Workspace]
 	table  workspaceTable
-	logger *logging.Logger
+	logger logging.Interface
 
 	modules moduleService
 	tasks   *task.Service
@@ -27,7 +27,7 @@ type Service struct {
 type ServiceOptions struct {
 	TaskService   *task.Service
 	ModuleService *module.Service
-	Logger        *logging.Logger
+	Logger        logging.Interface
 }
 
 type workspaceTable interface {

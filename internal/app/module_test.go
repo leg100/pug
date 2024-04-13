@@ -1,37 +1,55 @@
 package app
 
 import (
-	"bytes"
-	"os"
+	"strings"
 	"testing"
-	"time"
 
-	"github.com/charmbracelet/x/exp/teatest"
+	tea "github.com/charmbracelet/bubbletea"
 )
 
 func TestModules(t *testing.T) {
-	wd, _ := os.Getwd()
-	t.Log(wd)
-
 	tm := setup(t)
 
+	// Expect three modules to be listed
 	want := []string{
 		"modules/a",
 		"modules/b",
 		"modules/c",
 	}
-
-	teatest.WaitFor(
-		t, tm.Output(),
-		func(b []byte) bool {
-			for _, w := range want {
-				if !bytes.Contains(b, []byte(w)) {
-					return false
-				}
+	waitFor(t, tm, func(s string) bool {
+		for _, w := range want {
+			if !strings.Contains(s, w) {
+				return false
 			}
-			return true
-		},
-		teatest.WithCheckInterval(time.Millisecond*100),
-		teatest.WithDuration(time.Second*3),
-	)
+		}
+		return true
+	})
+
+	// Initialize first module
+	tm.Type("i")
+	waitFor(t, tm, func(s string) bool {
+		return strings.Contains(s, "✓")
+	})
+
+	// Go to first module's page
+	tm.Send(tea.KeyMsg{Type: tea.KeyEnter})
+
+	// Go to tasks tab (should only need to press tab twice, but some reason
+	// test only passes with three presses?)
+	tm.Send(tea.KeyMsg{Type: tea.KeyTab})
+	tm.Send(tea.KeyMsg{Type: tea.KeyTab})
+	tm.Send(tea.KeyMsg{Type: tea.KeyTab})
+
+	// Expect to see finished init task
+	waitFor(t, tm, func(s string) bool {
+		return strings.Contains(s, "exited")
+	})
+
+	// Go to init task page
+	tm.Send(tea.KeyMsg{Type: tea.KeyEnter})
+
+	// Expect to see successful init message
+	waitFor(t, tm, func(s string) bool {
+		return strings.Contains(s, "Terraform has been successfully initialized!")
+	})
 }

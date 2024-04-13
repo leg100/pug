@@ -2,6 +2,7 @@ package logging
 
 import (
 	"context"
+	"io"
 	"log/slog"
 
 	"github.com/leg100/pug/internal/pubsub"
@@ -16,15 +17,15 @@ var levels = map[string]slog.Level{
 }
 
 // NewLogger constructs Logger, a slog wrapper with additional functionality.
-func NewLogger(level string) *Logger {
+func NewLogger(opts Options) *Logger {
 	logger := &Logger{}
 	broker := pubsub.NewBroker[Message](logger)
 	writer := &writer{broker: broker}
 
 	handler := slog.NewTextHandler(
-		writer,
+		io.MultiWriter(append(opts.AdditionalWriters, writer)...),
 		&slog.HandlerOptions{
-			Level: slog.Level(levels[level]),
+			Level: slog.Level(levels[opts.Level]),
 		},
 	)
 
@@ -34,6 +35,13 @@ func NewLogger(level string) *Logger {
 	logger.enricher = &enricher{}
 
 	return logger
+}
+
+type Options struct {
+	// The log level of the logger
+	Level string
+	// Any additional writers the log handler should write to.
+	AdditionalWriters []io.Writer
 }
 
 // Logger wraps slog, providing further functionality such as emitting log

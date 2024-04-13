@@ -19,7 +19,7 @@ type Service struct {
 	Broker *pubsub.Broker[*Run]
 
 	table  *resource.Table[*Run]
-	logger *logging.Logger
+	logger logging.Interface
 
 	tasks      *task.Service
 	modules    *module.Service
@@ -35,7 +35,7 @@ type ServiceOptions struct {
 	WorkspaceService        *workspace.Service
 	StateService            *state.Service
 	DisableReloadAfterApply bool
-	Logger                  *logging.Logger
+	Logger                  logging.Interface
 }
 
 func NewService(opts ServiceOptions) *Service {

@@ -19,7 +19,7 @@ type Service struct {
 	workspaces *workspace.Service
 	tasks      *task.Service
 	broker     *pubsub.Broker[*State]
-	logger     *logging.Logger
+	logger     logging.Interface
 
 	// Table mapping workspace IDs to states
 	cache *resource.Table[*State]
@@ -29,7 +29,7 @@ type ServiceOptions struct {
 	ModuleService    *module.Service
 	WorkspaceService *workspace.Service
 	TaskService      *task.Service
-	Logger           *logging.Logger
+	Logger           logging.Interface
 }
 
 func NewService(ctx context.Context, opts ServiceOptions) *Service {

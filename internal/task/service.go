@@ -15,14 +15,14 @@ type Service struct {
 
 	table   *resource.Table[*Task]
 	counter *int
-	logger  *logging.Logger
+	logger  logging.Interface
 
 	*factory
 }
 
 type ServiceOptions struct {
 	Program string
-	Logger  *logging.Logger
+	Logger  logging.Interface
 	Workdir internal.Workdir
 }
 

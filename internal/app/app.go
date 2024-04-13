@@ -57,7 +57,7 @@ func Start(stdout, stderr io.Writer, args []string) error {
 
 	// Log some info useful to the user
 	app.logger.Info("loaded config",
-		"log_level", cfg.LogLevel,
+		"log_level", cfg.loggingOptions.Level,
 		"max_tasks", cfg.MaxTasks,
 		"plugin_cache", cfg.PluginCache,
 		"program", cfg.Program,
@@ -89,7 +89,7 @@ func Start(stdout, stderr io.Writer, args []string) error {
 // newApp constructs an instance of the app and the top-level TUI model.
 func newApp(cfg config) (*app, tea.Model, error) {
 	// Setup logging
-	logger := logging.NewLogger(cfg.LogLevel)
+	logger := logging.NewLogger(cfg.loggingOptions)
 
 	// Perform any conversions from the flag parsed primitive types to pug
 	// defined types.

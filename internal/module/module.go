@@ -63,7 +63,7 @@ func (m *Module) LogValue() slog.Value {
 //
 // (a) will only succeed if the module has already been initialized, i.e. terraform
 // init has been run, whereas (b) is necessary if it has not.
-func findModules(logger *logging.Logger, workdir internal.Workdir) (modules []string, err error) {
+func findModules(logger logging.Interface, workdir internal.Workdir) (modules []string, err error) {
 	found := make(map[string]struct{})
 	walkfn := func(path string, d fs.DirEntry, walkerr error) error {
 		// skip directories that have already been identified as containing a

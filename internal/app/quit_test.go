@@ -1,7 +1,7 @@
 package app
 
 import (
-	"bytes"
+	"strings"
 	"testing"
 	"time"
 
@@ -16,14 +16,9 @@ func TestQuit(t *testing.T) {
 		Type: tea.KeyCtrlC,
 	})
 
-	teatest.WaitFor(
-		t, tm.Output(),
-		func(b []byte) bool {
-			return bytes.Contains(b, []byte("Quit pug (y/N)? "))
-		},
-		teatest.WithCheckInterval(time.Millisecond*100),
-		teatest.WithDuration(time.Second*3),
-	)
+	waitFor(t, tm, func(s string) bool {
+		return strings.Contains(s, "Quit pug (y/N)? ")
+	})
 
 	tm.Send(tea.KeyMsg{
 		Type:  tea.KeyRunes,

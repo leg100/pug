@@ -26,7 +26,7 @@ type Helpers struct {
 	WorkspaceService WorkspaceService
 	RunService       RunService
 	StateService     StateService
-	Logger           *logging.Logger
+	Logger           logging.Interface
 }
 
 func (h *Helpers) ModulePath(res resource.Resource) string {

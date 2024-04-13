@@ -18,14 +18,14 @@ type Service struct {
 	tasks       *task.Service
 	workdir     internal.Workdir
 	pluginCache bool
-	logger      *logging.Logger
+	logger      logging.Interface
 }
 
 type ServiceOptions struct {
 	TaskService *task.Service
 	Workdir     internal.Workdir
 	PluginCache bool
-	Logger      *logging.Logger
+	Logger      logging.Interface
 }
 
 func NewService(opts ServiceOptions) *Service {

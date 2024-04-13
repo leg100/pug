@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/leg100/pug/internal/logging"
 	"github.com/leg100/pug/internal/testutils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -43,8 +44,10 @@ func TestConfig(t *testing.T) {
 					Program:   "terraform",
 					MaxTasks:  2 * runtime.NumCPU(),
 					FirstPage: "modules",
-					LogLevel:  "info",
 					Workdir:   ".",
+					loggingOptions: logging.Options{
+						Level: "info",
+					},
 				}
 				assert.Equal(t, want, got)
 			},
