@@ -1,22 +1,19 @@
 package app
 
 import (
+	"io"
 	"os"
 	"path"
 	"runtime"
 	"strings"
 	"testing"
 
-	"github.com/leg100/pug/internal"
+	"github.com/leg100/pug/internal/testutils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestConfig(t *testing.T) {
-	// Setup working directory
-	wd, err := internal.NewWorkdir(t.TempDir())
-	require.NoError(t, err)
-
 	// Unset environment variables set on host computer
 	t.Setenv("PUG_DEBUG", "")
 	t.Setenv("PUG_FIRST_PAGE", "")
@@ -25,7 +22,7 @@ func TestConfig(t *testing.T) {
 	// Specify terraform config file, to override any such file present at the
 	// default location on the host computer
 	cliConfigFilePath := path.Join(t.TempDir(), "terraform.tfrc")
-	err = os.WriteFile(cliConfigFilePath, []byte(""), 0o644)
+	err := os.WriteFile(cliConfigFilePath, []byte(""), 0o644)
 	require.NoError(t, err)
 	t.Setenv("TF_CLI_CONFIG_FILE", cliConfigFilePath)
 
@@ -47,7 +44,7 @@ func TestConfig(t *testing.T) {
 					MaxTasks:  2 * runtime.NumCPU(),
 					FirstPage: "modules",
 					LogLevel:  "info",
-					Workdir:   wd,
+					Workdir:   ".",
 				}
 				assert.Equal(t, want, got)
 			},
@@ -137,8 +134,7 @@ func TestConfig(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// change into a temp dir in case the host computer has a pug.yaml file
-			err := os.Chdir(wd.String())
-			require.NoError(t, err)
+			testutils.ChTempDir(t)
 
 			// set env vars
 			for _, ev := range tt.envs {
@@ -153,7 +149,7 @@ func TestConfig(t *testing.T) {
 			}
 
 			// and pass in flags
-			got, err := parse(tt.args)
+			got, err := parse(io.Discard, tt.args)
 			require.NoError(t, err)
 
 			tt.want(t, got)

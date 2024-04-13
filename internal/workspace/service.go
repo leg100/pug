@@ -47,7 +47,7 @@ type moduleService interface {
 	CreateTask(mod *module.Module, opts task.CreateOptions) (*task.Task, error)
 }
 
-func NewService(ctx context.Context, opts ServiceOptions) *Service {
+func NewService(opts ServiceOptions) *Service {
 	broker := pubsub.NewBroker[*Workspace](opts.Logger)
 	table := resource.NewTable(broker)
 

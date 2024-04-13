@@ -6,38 +6,57 @@ package app
 import (
 	"context"
 	"fmt"
+	"io"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/leg100/pug/internal"
 	"github.com/leg100/pug/internal/logging"
 	"github.com/leg100/pug/internal/module"
 	"github.com/leg100/pug/internal/run"
 	"github.com/leg100/pug/internal/state"
 	"github.com/leg100/pug/internal/task"
-	toptui "github.com/leg100/pug/internal/tui/top"
+	"github.com/leg100/pug/internal/tui/top"
 	"github.com/leg100/pug/internal/version"
 	"github.com/leg100/pug/internal/workspace"
 )
 
-func Start(args []string) error {
+type app struct {
+	modules    *module.Service
+	workspaces *workspace.Service
+	states     *state.Service
+	runs       *run.Service
+	tasks      *task.Service
+	logger     *logging.Logger
+	cfg        config
+}
+
+type sender interface {
+	Send(tea.Msg)
+}
+
+// Start the app.
+func Start(stdout, stderr io.Writer, args []string) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	// Parse configuration from env vars and flags
-	cfg, err := parse(args)
+	cfg, err := parse(stderr, args)
 	if err != nil {
 		return err
 	}
 
 	if cfg.version {
-		fmt.Println("pug", version.Version)
+		fmt.Fprintln(stdout, "pug", version.Version)
 		return nil
 	}
 
-	// Setup logging
-	logger := logging.NewLogger(cfg.LogLevel)
+	app, model, err := newApp(cfg)
+	if err != nil {
+		return err
+	}
 
 	// Log some info useful to the user
-	logger.Info("loaded config",
+	app.logger.Info("loaded config",
 		"log_level", cfg.LogLevel,
 		"max_tasks", cfg.MaxTasks,
 		"plugin_cache", cfg.PluginCache,
@@ -45,24 +64,59 @@ func Start(args []string) error {
 		"work_dir", cfg.Workdir,
 	)
 
+	p := tea.NewProgram(
+		model,
+		// Use the full size of the terminal with its "alternate screen buffer"
+		tea.WithAltScreen(),
+		// Enabling mouse cell motion removes the ability to "blackboard" text
+		// with the mouse, which is useful for then copying text into the
+		// clipboard. Therefore we've decided to disable it and leave it
+		// commented out for posterity.
+		//
+		// tea.WithMouseCellMotion(),
+	)
+
+	// Start daemons and relay events.
+	app.start(ctx, p)
+
+	// Blocks until user quits
+	if _, err := p.Run(); err != nil {
+		return err
+	}
+	return nil
+}
+
+// newApp constructs an instance of the app and the top-level TUI model.
+func newApp(cfg config) (*app, tea.Model, error) {
+	// Setup logging
+	logger := logging.NewLogger(cfg.LogLevel)
+
+	// Perform any conversions from the flag parsed primitive types to pug
+	// defined types.
+	workdir, err := internal.NewWorkdir(cfg.Workdir)
+	if err != nil {
+		return nil, nil, err
+	}
+
 	// Instantiate services
 	tasks := task.NewService(task.ServiceOptions{
 		Program: cfg.Program,
 		Logger:  logger,
-		Workdir: cfg.Workdir,
+		Workdir: workdir,
 	})
 	modules := module.NewService(module.ServiceOptions{
 		TaskService: tasks,
-		Workdir:     cfg.Workdir,
+		Workdir:     workdir,
 		PluginCache: cfg.PluginCache,
 		Logger:      logger,
 	})
-	workspaces := workspace.NewService(ctx, workspace.ServiceOptions{
+	workspaces := workspace.NewService(workspace.ServiceOptions{
 		TaskService:   tasks,
 		ModuleService: modules,
 		Logger:        logger,
 	})
-	states := state.NewService(ctx, state.ServiceOptions{
+	// TODO: separate auto-state pull code
+	states := state.NewService(context.Background(), state.ServiceOptions{
 		ModuleService:    modules,
 		WorkspaceService: workspaces,
 		TaskService:      tasks,
@@ -77,8 +131,8 @@ func Start(args []string) error {
 		Logger:                  logger,
 	})
 
-	// Construct TUI programme.
-	model, err := toptui.New(toptui.Options{
+	// Construct top-level TUI model.
+	model, err := top.New(top.Options{
 		TaskService:      tasks,
 		ModuleService:    modules,
 		WorkspaceService: workspaces,
@@ -86,72 +140,71 @@ func Start(args []string) error {
 		RunService:       runs,
 		Logger:           logger,
 		FirstPage:        cfg.FirstPage,
-		Workdir:          cfg.Workdir,
+		Workdir:          workdir,
 		MaxTasks:         cfg.MaxTasks,
 		Debug:            cfg.Debug,
 	})
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
-	p := tea.NewProgram(
-		model,
-		// use the full size of the terminal with its "alternate screen buffer"
-		tea.WithAltScreen(),
-		// Enabling mouse cell motion removes the ability to "blackboard" text
-		// with the mouse, which is useful for then copying text into the
-		// clipboard. Therefore we've decided to disable it and leave it
-		// commented out for posterity.
-		//
-		// tea.WithMouseCellMotion(),
-	)
+
+	app := &app{
+		modules:    modules,
+		workspaces: workspaces,
+		runs:       runs,
+		states:     states,
+		tasks:      tasks,
+		cfg:        cfg,
+		logger:     logger,
+	}
+	return app, model, nil
+}
+
+// start starts the app daemons and relays events to the TUI.
+func (a *app) start(ctx context.Context, s sender) {
+	// Start daemons
+	//
+	// TODO: have the daemons tell us when they're doing setting up.
+	go task.StartEnqueuer(ctx, a.tasks)
+	go task.StartRunner(ctx, a.logger, a.tasks, a.cfg.MaxTasks)
+	go run.StartScheduler(ctx, a.runs, a.workspaces)
 
 	// Relay resource events to TUI. Deliberately set up subscriptions *before*
 	// any events are triggered, to ensure the TUI receives all messages.
-	logEvents := logger.Subscribe(ctx)
+	logEvents := a.logger.Subscribe(ctx)
 	go func() {
 		for ev := range logEvents {
-			p.Send(ev)
+			s.Send(ev)
 		}
 	}()
-	modEvents := modules.Subscribe(ctx)
+	modEvents := a.modules.Subscribe(ctx)
 	go func() {
 		for ev := range modEvents {
-			p.Send(ev)
+			s.Send(ev)
 		}
 	}()
-	wsEvents := workspaces.Subscribe(ctx)
+	wsEvents := a.workspaces.Subscribe(ctx)
 	go func() {
 		for ev := range wsEvents {
-			p.Send(ev)
+			s.Send(ev)
 		}
 	}()
-	stateEvents := states.Subscribe(ctx)
+	stateEvents := a.states.Subscribe(ctx)
 	go func() {
 		for ev := range stateEvents {
-			p.Send(ev)
+			s.Send(ev)
 		}
 	}()
-	runEvents := runs.Subscribe(ctx)
+	runEvents := a.runs.Subscribe(ctx)
 	go func() {
 		for ev := range runEvents {
-			p.Send(ev)
+			s.Send(ev)
 		}
 	}()
-	taskEvents := tasks.Subscribe(ctx)
+	taskEvents := a.tasks.Subscribe(ctx)
 	go func() {
 		for ev := range taskEvents {
-			p.Send(ev)
+			s.Send(ev)
 		}
 	}()
-
-	// Start daemons
-	go task.StartEnqueuer(ctx, tasks)
-	go task.StartRunner(ctx, logger, tasks, cfg.MaxTasks)
-	go run.StartScheduler(ctx, runs, workspaces)
-
-	// Blocks until user quits
-	if _, err := p.Run(); err != nil {
-		return err
-	}
-	return nil
 }

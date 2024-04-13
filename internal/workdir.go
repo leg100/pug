@@ -24,7 +24,7 @@ func NewWorkdir(path string) (Workdir, error) {
 	// Convert path into an absolute path if not already.
 	abs, err := filepath.Abs(path)
 	if err != nil {
-		return Workdir{}, fmt.Errorf("converting working directory to an absolute path: %w", err)
+		return Workdir{}, fmt.Errorf("converting working directory \"%s\" to an absolute path: %w", path, err)
 	}
 	wd := Workdir{path: abs}
 

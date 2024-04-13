@@ -1,6 +1,7 @@
 package app
 
 import (
+	"io"
 	"testing"
 
 	"github.com/peterbourgon/ff/v4"
@@ -9,10 +10,10 @@ import (
 
 func TestStart_help(t *testing.T) {
 	// Short form
-	err := Start([]string{"-h"})
+	err := Start(io.Discard, io.Discard, []string{"-h"})
 	assert.ErrorIs(t, err, ff.ErrHelp)
 
 	// Long form
-	err = Start([]string{"--help"})
+	err = Start(io.Discard, io.Discard, []string{"--help"})
 	assert.ErrorIs(t, err, ff.ErrHelp)
 }
