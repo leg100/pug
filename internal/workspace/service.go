@@ -112,7 +112,6 @@ func (s *Service) Reload(moduleID resource.ID) (*task.Task, error) {
 		s.logger.Error("reloading workspaces", "error", err, "module", mod)
 		return nil, err
 	}
-	s.logger.Info("reloading workspaces", "module", mod)
 	return task, nil
 }
 

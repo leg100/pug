@@ -48,8 +48,6 @@ func NewService(opts ServiceOptions) *Service {
 // to the store before pruning those that are currently stored but can no longer
 // be found.
 func (s *Service) Reload() error {
-	s.logger.Info("reloading modules")
-
 	var (
 		added   []string
 		removed []string
