@@ -1,4 +1,4 @@
-# Pug
+# PUG
 
 ## Module management
 
