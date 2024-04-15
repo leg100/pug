@@ -14,14 +14,18 @@ func TestRuns(t *testing.T) {
 		return strings.Contains(s, "modules/a")
 	})
 
-	// Initialize first module
+	// Initialize module
 	tm.Type("i")
 	waitFor(t, tm, func(s string) bool {
 		return strings.Contains(s, "✓")
 	})
 
-	// Go to first module's page
-	tm.Send(tea.KeyMsg{Type: tea.KeyEnter})
+	// Invoke plan
+	tm.Type("p")
+	// Expect to be taken automatically to the run page
+	waitFor(t, tm, func(s string) bool {
+		return strings.Contains(s, "Run[default](demos/modules/a)")
+	})
 
 	// Go to tasks tab (should only need to press tab twice, but some reason
 	// test only passes with three presses?)

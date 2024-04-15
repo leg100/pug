@@ -16,11 +16,13 @@ func StartEnqueuer(ctx context.Context, tasks *Service) {
 	e := enqueuer{tasks: tasks}
 	sub := tasks.Broker.Subscribe(ctx)
 
-	for range sub {
-		for _, t := range e.enqueuable() {
-			tasks.Enqueue(t.ID)
+	go func() {
+		for range sub {
+			for _, t := range e.enqueuable() {
+				tasks.Enqueue(t.ID)
+			}
 		}
-	}
+	}()
 }
 
 // enqueuable returns a list of a tasks to be moved from the pending state to the

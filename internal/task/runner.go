@@ -23,17 +23,19 @@ func StartRunner(ctx context.Context, logger logging.Interface, tasks *Service, 
 
 	// On each task event, get a list of tasks to be run, start them, and wait
 	// for them to complete in the background.
-	for range sub {
-		for _, task := range r.runnable() {
-			waitfn, err := task.start()
-			if err != nil {
-				logger.Error("starting task", "error", err.Error(), "task", task)
-			} else {
-				logger.Debug("started task", "task", task)
-				go waitfn()
+	go func() {
+		for range sub {
+			for _, task := range r.runnable() {
+				waitfn, err := task.start()
+				if err != nil {
+					logger.Error("starting task", "error", err.Error(), "task", task)
+				} else {
+					logger.Debug("started task", "task", task)
+					go waitfn()
+				}
 			}
 		}
-	}
+	}()
 }
 
 // runnable retrieves a list of tasks to be run

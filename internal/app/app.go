@@ -163,11 +163,9 @@ func newApp(cfg config) (*app, tea.Model, error) {
 // start starts the app daemons and relays events to the TUI.
 func (a *app) start(ctx context.Context, s sender) {
 	// Start daemons
-	//
-	// TODO: have the daemons tell us when they're done setting up.
-	go task.StartEnqueuer(ctx, a.tasks)
-	go task.StartRunner(ctx, a.logger, a.tasks, a.cfg.MaxTasks)
-	go run.StartScheduler(ctx, a.runs, a.workspaces)
+	task.StartEnqueuer(ctx, a.tasks)
+	task.StartRunner(ctx, a.logger, a.tasks, a.cfg.MaxTasks)
+	run.StartScheduler(ctx, a.runs, a.workspaces)
 
 	// Automatically load workspaces whenever modules are loaded.
 	a.workspaces.LoadWorkspacesUponModuleLoad(ctx, a.modules)

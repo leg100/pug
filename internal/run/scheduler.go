@@ -23,16 +23,19 @@ type runLister interface {
 func StartScheduler(ctx context.Context, runs *Service, workspaces *workspace.Service) {
 	sub := runs.Broker.Subscribe(ctx)
 	s := &scheduler{runs: runs}
-	for range sub {
-		for _, run := range s.schedule() {
-			// Update status from pending to scheduled
-			run.updateStatus(Scheduled)
-			// Set run as workspace's current run
-			workspaces.SetCurrentRun(run.WorkspaceID(), run.ID)
-			// Trigger a plan task
-			_, _ = runs.plan(run)
+
+	go func() {
+		for range sub {
+			for _, run := range s.schedule() {
+				// Update status from pending to scheduled
+				run.updateStatus(Scheduled)
+				// Set run as workspace's current run
+				workspaces.SetCurrentRun(run.WorkspaceID(), run.ID)
+				// Trigger a plan task
+				_, _ = runs.plan(run)
+			}
 		}
-	}
+	}()
 }
 
 // schedule returns runs that are ready to be scheduled.
