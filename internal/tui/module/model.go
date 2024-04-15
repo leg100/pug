@@ -8,7 +8,6 @@ import (
 	"github.com/leg100/pug/internal/module"
 	"github.com/leg100/pug/internal/resource"
 	"github.com/leg100/pug/internal/tui"
-	"github.com/leg100/pug/internal/tui/keys"
 	runtui "github.com/leg100/pug/internal/tui/run"
 	tasktui "github.com/leg100/pug/internal/tui/task"
 	workspacetui "github.com/leg100/pug/internal/tui/workspace"
@@ -54,18 +53,20 @@ func (mm *Maker) Make(mr resource.Resource, width, height int) (tea.Model, error
 	}
 
 	m := model{
-		ModuleService: mm.ModuleService,
-		RunService:    mm.RunService,
-		module:        mod,
-		tabs:          tabs,
-		helpers:       mm.Helpers,
+		ModuleService:    mm.ModuleService,
+		WorkspaceService: mm.WorkspaceService,
+		RunService:       mm.RunService,
+		module:           mod,
+		tabs:             tabs,
+		helpers:          mm.Helpers,
 	}
 	return m, nil
 }
 
 type model struct {
-	ModuleService tui.ModuleService
-	RunService    tui.RunService
+	ModuleService    tui.ModuleService
+	WorkspaceService tui.WorkspaceService
+	RunService       tui.RunService
 
 	module  *module.Module
 	tabs    tui.TabSet
@@ -90,6 +91,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tui.CreateTasks("init", m.ModuleService.Init, m.module.ID)
 		case key.Matches(msg, localKeys.Edit):
 			return m, tui.OpenVim(m.module.Path)
+		case key.Matches(msg, localKeys.ReloadWorkspaces):
+			return m, tui.CreateTasks("reload-workspaces", m.WorkspaceService.Reload, m.module.ID)
 		}
 	case resource.Event[*module.Module]:
 		if msg.Payload.ID == m.module.ID {
@@ -128,5 +131,12 @@ func (m model) View() string {
 }
 
 func (m model) HelpBindings() (bindings []key.Binding) {
-	return keys.KeyMapToSlice(localKeys)
+	return []key.Binding{
+		localKeys.Init,
+		localKeys.Validate,
+		localKeys.Format,
+		localKeys.Plan,
+		localKeys.Edit,
+		localKeys.ReloadWorkspaces,
+	}
 }

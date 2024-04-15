@@ -19,12 +19,13 @@ import (
 	"github.com/leg100/pug/internal/task"
 	"github.com/leg100/pug/internal/tui"
 	"github.com/leg100/pug/internal/tui/keys"
+	"github.com/leg100/pug/internal/tui/module"
 	"github.com/leg100/pug/internal/tui/table"
 	"github.com/leg100/pug/internal/version"
 )
 
 type model struct {
-	WorkspaceService tui.WorkspaceService
+	ModuleService tui.ModuleService
 
 	*navigator
 
@@ -84,13 +85,13 @@ func New(opts Options) (model, error) {
 	}
 
 	m := model{
-		WorkspaceService: opts.WorkspaceService,
-		navigator:        navigator,
-		spinner:          &spinner,
-		tasks:            opts.TaskService,
-		maxTasks:         opts.MaxTasks,
-		dump:             dump,
-		workdir:          opts.Workdir.PrettyString(),
+		ModuleService: opts.ModuleService,
+		navigator:     navigator,
+		spinner:       &spinner,
+		tasks:         opts.TaskService,
+		maxTasks:      opts.MaxTasks,
+		dump:          dump,
+		workdir:       opts.Workdir.PrettyString(),
 	}
 	return m, nil
 }
@@ -98,7 +99,7 @@ func New(opts Options) (model, error) {
 func (m model) Init() tea.Cmd {
 	return tea.Batch(
 		m.currentModel().Init(),
-		tui.ReloadModules(m.WorkspaceService),
+		module.ReloadModules(m.ModuleService),
 	)
 }
 

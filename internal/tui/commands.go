@@ -73,17 +73,6 @@ func OpenVim(path string) tea.Cmd {
 	})
 }
 
-func ReloadModules(workspaces WorkspaceService) tea.Cmd {
-	return func() tea.Msg {
-		multi, errs := workspaces.ReloadAll()
-		return CreatedTasksMsg{
-			Command:    "reload",
-			Tasks:      multi,
-			CreateErrs: errs,
-		}
-	}
-}
-
 func RequestConfirmation(prompt string, action tea.Cmd) tea.Cmd {
 	return func() tea.Msg {
 		return ConfirmPromptMsg{

@@ -133,8 +133,8 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.table.UpdateViewport()
 	case tea.KeyMsg:
 		switch {
-		case key.Matches(msg, localKeys.Reload):
-			return m, tui.ReloadModules(m.WorkspaceService)
+		case key.Matches(msg, localKeys.ReloadModules):
+			return m, ReloadModules(m.ModuleService)
 		case key.Matches(msg, keys.Global.Enter):
 			if row, highlighted := m.table.Highlighted(); highlighted {
 				return m, tui.NavigateTo(tui.ModuleKind, tui.WithParent(row.Value.Resource))
@@ -153,6 +153,10 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, cmd
 		case key.Matches(msg, localKeys.Format):
 			cmd := tui.CreateTasks("format", m.ModuleService.Format, m.table.HighlightedOrSelectedKeys()...)
+			m.table.DeselectAll()
+			return m, cmd
+		case key.Matches(msg, localKeys.ReloadWorkspaces):
+			cmd := tui.CreateTasks("reload-workspace", m.WorkspaceService.Reload, m.table.HighlightedOrSelectedKeys()...)
 			m.table.DeselectAll()
 			return m, cmd
 		case key.Matches(msg, localKeys.Plan):
@@ -192,9 +196,10 @@ func (m list) HelpBindings() (bindings []key.Binding) {
 		localKeys.Init,
 		localKeys.Validate,
 		localKeys.Format,
-		localKeys.Reload,
 		localKeys.Plan,
 		localKeys.Edit,
+		localKeys.ReloadModules,
+		localKeys.ReloadWorkspaces,
 	}
 }
 

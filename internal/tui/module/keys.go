@@ -5,13 +5,14 @@ import (
 )
 
 type keyMap struct {
-	Edit     key.Binding
-	Init     key.Binding
-	Plan     key.Binding
-	Apply    key.Binding
-	Validate key.Binding
-	Format   key.Binding
-	Reload   key.Binding
+	Edit             key.Binding
+	Init             key.Binding
+	Plan             key.Binding
+	Apply            key.Binding
+	Validate         key.Binding
+	Format           key.Binding
+	ReloadModules    key.Binding
+	ReloadWorkspaces key.Binding
 }
 
 var localKeys = keyMap{
@@ -39,8 +40,12 @@ var localKeys = keyMap{
 		key.WithKeys("f"),
 		key.WithHelp("f", "format"),
 	),
-	Reload: key.NewBinding(
+	ReloadModules: key.NewBinding(
 		key.WithKeys("ctrl+r"),
-		key.WithHelp("ctrl+r", "reload"),
+		key.WithHelp("ctrl+r", "reload modules"),
+	),
+	ReloadWorkspaces: key.NewBinding(
+		key.WithKeys("ctrl+w"),
+		key.WithHelp("ctrl+w", "reload workspaces"),
 	),
 }

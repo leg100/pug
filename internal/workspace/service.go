@@ -47,6 +47,10 @@ type moduleService interface {
 	CreateTask(mod *module.Module, opts task.CreateOptions) (*task.Task, error)
 }
 
+type moduleSubscription interface {
+	Subscribe(ctx context.Context) <-chan resource.Event[*module.Module]
+}
+
 func NewService(opts ServiceOptions) *Service {
 	broker := pubsub.NewBroker[*Workspace](opts.Logger)
 	table := resource.NewTable(broker)
@@ -63,11 +67,23 @@ func NewService(opts ServiceOptions) *Service {
 	return svc
 }
 
+// LoadWorkspacesUponModuleLoad automatically loads workspaces for a module
+// whenever a new module is loaded into pug.
+func (s *Service) LoadWorkspacesUponModuleLoad(ctx context.Context, ms moduleSubscription) {
+	sub := ms.Subscribe(ctx)
+
+	go func() {
+		for event := range sub {
+			if event.Type == resource.CreatedEvent {
+				s.Reload(event.Payload.ID)
+			}
+		}
+	}()
+}
+
 // Reload invokes `terraform workspace list` on a module and updates pug with
 // the results, adding any newly discovered workspaces and pruning any
 // workspaces no longer found to exist.
-//
-// TODO: only permit one reload at a time.
 func (s *Service) Reload(moduleID resource.ID) (*task.Task, error) {
 	mod, err := s.modules.Get(moduleID)
 	if err != nil {
@@ -98,19 +114,6 @@ func (s *Service) Reload(moduleID resource.ID) (*task.Task, error) {
 	}
 	s.logger.Info("reloading workspaces", "module", mod)
 	return task, nil
-}
-
-func (s *Service) ReloadAll() (task.Multi, []error) {
-	if err := s.modules.Reload(); err != nil {
-		return nil, []error{err}
-	}
-	mods := s.modules.List()
-
-	modIDs := make([]resource.ID, len(mods))
-	for i, mod := range s.modules.List() {
-		modIDs[i] = mod.ID
-	}
-	return task.CreateMulti(s.Reload, modIDs...)
 }
 
 // resetWorkspaces resets the workspaces for a module, adding newly discovered

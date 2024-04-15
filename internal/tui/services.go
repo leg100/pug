@@ -20,7 +20,7 @@ type ModuleService interface {
 }
 
 type WorkspaceService interface {
-	ReloadAll() (task.Multi, []error)
+	Reload(moduleID resource.ID) (*task.Task, error)
 	Get(id resource.ID) (*workspace.Workspace, error)
 	List(opts workspace.ListOptions) []*workspace.Workspace
 	SelectWorkspace(moduleID, workspaceID resource.ID) error
