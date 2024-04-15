@@ -47,3 +47,8 @@ debug:
 .PHONY: connect
 connect:
 	dlv connect 127.0.0.1:4300 .
+
+.PHONY: demos
+demos:
+	./hacks/reset_demo.sh
+	./hacks/make_demos.sh
