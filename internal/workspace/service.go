@@ -68,13 +68,35 @@ func NewService(opts ServiceOptions) *Service {
 }
 
 // LoadWorkspacesUponModuleLoad automatically loads workspaces for a module
-// whenever a new module is loaded into pug.
+// whenever:
+// * a new module is loaded into pug for the first time, unless it is yet to be
+// initialized (because `terraform workspace list` would fail)
+// * an existing module is updated, has been initialized, and does not yet have
+// a current workspace.
 func (s *Service) LoadWorkspacesUponModuleLoad(ctx context.Context, ms moduleSubscription) {
 	sub := ms.Subscribe(ctx)
 
 	go func() {
 		for event := range sub {
-			if event.Type == resource.CreatedEvent {
+			switch event.Type {
+			case resource.CreatedEvent:
+				if event.Payload.Initialized == nil || *event.Payload.Initialized {
+					// Module is new, and has a .terraform dir, so try
+					// running `workspace list`
+					s.Reload(event.Payload.ID)
+				}
+			case resource.UpdatedEvent:
+				if event.Payload.CurrentWorkspaceID != nil {
+					continue
+				}
+				if event.Payload.Initialized == nil {
+					// Initialization status unknown; ignore
+					continue
+				}
+				if !*event.Payload.Initialized {
+					// No .terraform dir, or terraform init has failed; ignore
+					continue
+				}
 				s.Reload(event.Payload.ID)
 			}
 		}

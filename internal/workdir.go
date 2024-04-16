@@ -5,6 +5,9 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 // Workdir is the working directory for pug, which is the directory in which
@@ -38,6 +41,12 @@ func NewWorkdir(path string) (Workdir, error) {
 		wd.prettyPath = "~" + strings.TrimPrefix(abs, home)
 	}
 	return wd, nil
+}
+
+func NewTestWorkdir(t *testing.T) Workdir {
+	wd, err := NewWorkdir(t.TempDir())
+	require.NoError(t, err)
+	return wd
 }
 
 func (wd Workdir) String() string {

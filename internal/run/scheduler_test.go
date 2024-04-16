@@ -3,6 +3,7 @@ package run
 import (
 	"testing"
 
+	"github.com/leg100/pug/internal"
 	"github.com/leg100/pug/internal/module"
 	"github.com/leg100/pug/internal/testutils"
 	"github.com/leg100/pug/internal/workspace"
@@ -14,7 +15,7 @@ func Test_Scheduler(t *testing.T) {
 	// newRun() creates a directory so change into a temp dir first
 	testutils.ChTempDir(t)
 
-	mod1 := module.New("a/b/c")
+	mod1 := module.New(internal.NewTestWorkdir(t), "a/b/c")
 	ws1, err := workspace.New(mod1, "dev")
 	require.NoError(t, err)
 	ws2, err := workspace.New(mod1, "prod")

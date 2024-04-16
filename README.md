@@ -9,17 +9,6 @@ A TUI application for terraform power users.
 * Supports workspaces
 * Backend agnostic
 
-Currently supports the following tasks:
-
-* Init
-* Plan
-* Apply
-* Format
-* Validate
-* Taint/Untaint state resources
-* Delete state resources
-* Change current workspace
-
 ## Modules
 
 *Note: a pug "module" is more accurately a [root module](https://developer.hashicorp.com/terraform/language/modules#the-root-module)*.
@@ -29,7 +18,6 @@ Currently supports the following tasks:
 ## Runs
 
 ![Runs demo](https://vhs.charm.sh/vhs-3S1rr3069uuKKYVgjD8NtJ.gif)
-
 
 ## FAQ
 

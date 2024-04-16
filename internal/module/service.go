@@ -60,7 +60,7 @@ func (s *Service) Reload() error {
 	for _, path := range found {
 		// Add module if it isn't in pug already
 		if _, err := s.GetByPath(path); err == resource.ErrNotFound {
-			mod := New(path)
+			mod := New(s.workdir, path)
 			s.table.Add(mod.ID, mod)
 			added = append(added, path)
 		}

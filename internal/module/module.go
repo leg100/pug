@@ -14,6 +14,7 @@ import (
 	"golang.org/x/exp/maps"
 )
 
+// Module is a terraform root module.
 type Module struct {
 	resource.Resource
 
@@ -39,13 +40,22 @@ type Module struct {
 	ValidationInProgress bool
 }
 
-// Path is the path to the module relative to the pug working directory. The
-// path also uniquely identifies a module.
-func New(path string) *Module {
-	return &Module{
+// New constructs a module. Workdir is the pug working directory, and path is
+// the module path relative to the working directory.
+func New(workdir internal.Workdir, path string) *Module {
+	mod := &Module{
 		Resource: resource.New(resource.Module, resource.GlobalResource),
 		Path:     path,
 	}
+	// We can say, with certitude, that the absence of a .terraform directory
+	// means the module has not been initialized (but we cannot make the
+	// opposite case, that the presence of a .terraform directory means
+	// terraform init has successfully been run, only that it has been run in
+	// the some point in the past).
+	if _, err := os.Stat(filepath.Join(workdir.String(), path, ".terraform")); err != nil {
+		mod.Initialized = internal.Bool(false)
+	}
+	return mod
 }
 
 func (m *Module) LogValue() slog.Value {

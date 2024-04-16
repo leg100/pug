@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/leg100/pug/internal"
 	"github.com/leg100/pug/internal/module"
 	"github.com/leg100/pug/internal/testutils"
 	"github.com/leg100/pug/internal/workspace"
@@ -12,7 +13,7 @@ import (
 )
 
 func TestRun_MakePugDirectory(t *testing.T) {
-	mod := module.New("a/b/c")
+	mod := module.New(internal.NewTestWorkdir(t), "a/b/c")
 	ws, err := workspace.New(mod, "dev")
 	require.NoError(t, err)
 
@@ -26,7 +27,7 @@ func TestRun_MakePugDirectory(t *testing.T) {
 }
 
 func TestRun_PugDirectory(t *testing.T) {
-	mod := module.New("a/b/c")
+	mod := module.New(internal.NewTestWorkdir(t), "a/b/c")
 	ws, err := workspace.New(mod, "dev")
 	require.NoError(t, err)
 
@@ -38,7 +39,7 @@ func TestRun_PugDirectory(t *testing.T) {
 }
 
 func TestRun_PlanPath(t *testing.T) {
-	mod := module.New("a/b/c")
+	mod := module.New(internal.NewTestWorkdir(t), "a/b/c")
 	ws, err := workspace.New(mod, "dev")
 	require.NoError(t, err)
 

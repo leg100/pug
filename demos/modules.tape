@@ -21,4 +21,3 @@ Type "M"
 Ctrl+a Sleep 1s Type "f" Sleep 2s
 Ctrl+a Sleep 1s Type "v" Sleep 2s
 Type "T" Sleep 2s Enter Sleep 3s
-Type "M"
