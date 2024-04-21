@@ -13,7 +13,7 @@ import (
 
 func Test_Scheduler(t *testing.T) {
 	// newRun() creates a directory so change into a temp dir first
-	testutils.ChTempDir(t)
+	testutils.ChTempDir(t, t.TempDir())
 
 	mod1 := module.New(internal.NewTestWorkdir(t), "a/b/c")
 	ws1, err := workspace.New(mod1, "dev")

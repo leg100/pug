@@ -69,7 +69,7 @@ func newRun(mod *module.Module, ws *workspace.Workspace, opts CreateOptions) (*R
 
 	// Create directory for artefacts including plan file etc.
 	run.artefactsPath = filepath.Join(ws.PugDirectory(), run.String())
-	if err := os.MkdirAll(filepath.Join(mod.Path, run.artefactsPath), 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Join(mod.FullPath(), run.artefactsPath), 0o755); err != nil {
 		return nil, err
 	}
 

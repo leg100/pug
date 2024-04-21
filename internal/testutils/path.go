@@ -7,13 +7,13 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func ChTempDir(t *testing.T) {
+func ChTempDir(t *testing.T, path string) {
 	t.Helper()
 
 	wd, err := os.Getwd()
 	require.NoError(t, err)
 
-	err = os.Chdir(t.TempDir())
+	err = os.Chdir(path)
 	require.NoError(t, err)
 
 	t.Cleanup(func() {

@@ -18,6 +18,9 @@ import (
 type Module struct {
 	resource.Resource
 
+	// Pug working directory
+	Workdir internal.Workdir
+
 	// Path relative to pug working directory
 	Path string
 
@@ -46,6 +49,7 @@ func New(workdir internal.Workdir, path string) *Module {
 	mod := &Module{
 		Resource: resource.New(resource.Module, resource.GlobalResource),
 		Path:     path,
+		Workdir:  workdir,
 	}
 	// We can say, with certitude, that the absence of a .terraform directory
 	// means the module has not been initialized (but we cannot make the
@@ -56,6 +60,10 @@ func New(workdir internal.Workdir, path string) *Module {
 		mod.Initialized = internal.Bool(false)
 	}
 	return mod
+}
+
+func (m *Module) FullPath() string {
+	return filepath.Join(m.Workdir.String(), m.Path)
 }
 
 func (m *Module) LogValue() slog.Value {

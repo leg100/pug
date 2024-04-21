@@ -2,6 +2,7 @@ package task
 
 import (
 	"bufio"
+	"context"
 	"io"
 	"testing"
 
@@ -20,7 +21,7 @@ func TestTask_stdout(t *testing.T) {
 	task, err := f.newTask(CreateOptions{})
 	require.NoError(t, err)
 	task.updateState(Queued)
-	waitfn, err := task.start()
+	waitfn, err := task.start(context.Background())
 	require.NoError(t, err)
 	waitfn()
 
@@ -52,7 +53,7 @@ func TestTask_cancel(t *testing.T) {
 
 	done := make(chan struct{})
 	go func() {
-		waitfn, err := task.start()
+		waitfn, err := task.start(context.Background())
 		require.NoError(t, err)
 		waitfn()
 		done <- struct{}{}

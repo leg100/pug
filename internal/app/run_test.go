@@ -3,13 +3,12 @@ package app
 import (
 	"strings"
 	"testing"
-
-	tea "github.com/charmbracelet/bubbletea"
 )
 
-func TestRuns(t *testing.T) {
+func TestRun(t *testing.T) {
 	tm := setup(t)
 
+	// Wait for module to be loaded
 	waitFor(t, tm, func(s string) bool {
 		return strings.Contains(s, "modules/a")
 	})
@@ -17,32 +16,30 @@ func TestRuns(t *testing.T) {
 	// Initialize module
 	tm.Type("i")
 	waitFor(t, tm, func(s string) bool {
-		return strings.Contains(s, "✓")
-	})
-
-	// Invoke plan
-	tm.Type("p")
-	// Expect to be taken automatically to the run page
-	waitFor(t, tm, func(s string) bool {
-		return strings.Contains(s, "Run[default](demos/modules/a)")
-	})
-
-	// Go to tasks tab (should only need to press tab twice, but some reason
-	// test only passes with three presses?)
-	tm.Send(tea.KeyMsg{Type: tea.KeyTab})
-	tm.Send(tea.KeyMsg{Type: tea.KeyTab})
-	tm.Send(tea.KeyMsg{Type: tea.KeyTab})
-
-	// Expect to see finished init task
-	waitFor(t, tm, func(s string) bool {
-		return strings.Contains(s, "exited")
-	})
-
-	// Go to init task page
-	tm.Send(tea.KeyMsg{Type: tea.KeyEnter})
-
-	// Expect to see successful init message
-	waitFor(t, tm, func(s string) bool {
 		return strings.Contains(s, "Terraform has been successfully initialized!")
+	})
+
+	// Go to workspaces
+	tm.Type("W")
+
+	// Wait for workspace to be loaded
+	waitFor(t, tm, func(s string) bool {
+		return strings.Contains(s, "default")
+	})
+
+	// Create plan for first module
+	tm.Type("p")
+
+	// Expect to see summary of changes
+	waitFor(t, tm, func(s string) bool {
+		return strings.Contains(s, "+10~0-0")
+	})
+
+	// Apply plan
+	tm.Type("a")
+
+	// Wait for apply to complete
+	waitFor(t, tm, func(s string) bool {
+		return strings.Contains(s, "Apply complete! Resources: 10 added, 0 changed, 0 destroyed.")
 	})
 }

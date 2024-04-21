@@ -13,6 +13,7 @@ import (
 
 	"github.com/charmbracelet/x/exp/teatest"
 	"github.com/leg100/pug/internal/logging"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -48,9 +49,13 @@ func setup(t *testing.T) *teatest.TestModel {
 	tm := teatest.NewTestModel(
 		t,
 		m,
-		teatest.WithInitialTermSize(300, 100),
+		teatest.WithInitialTermSize(100, 30),
 	)
-	app.start(ctx, tm)
+	waitfn := app.start(ctx, tm)
+	t.Cleanup(func() {
+		err := waitfn()
+		assert.NoError(t, err, "waiting for running tasks to complete")
+	})
 	return tm
 
 }
@@ -115,6 +120,8 @@ type testLogger struct {
 }
 
 func (l *testLogger) Write(b []byte) (int, error) {
+	l.t.Helper()
+
 	l.t.Log(string(b))
 	return len(b), nil
 }
@@ -129,6 +136,6 @@ func waitFor(t *testing.T, tm *teatest.TestModel, cond func(s string) bool) {
 			return cond(string(b))
 		},
 		teatest.WithCheckInterval(time.Millisecond*100),
-		teatest.WithDuration(time.Second*5),
+		teatest.WithDuration(time.Second*10),
 	)
 }

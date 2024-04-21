@@ -9,15 +9,19 @@ import (
 	"github.com/leg100/pug/internal/tui"
 )
 
-func handleCreatedTasksMsg(msg tui.CreatedTasksMsg) (wait tea.Cmd, info string, err error) {
+func handleCreatedTasksMsg(msg tui.CreatedTasksMsg) (cmd tea.Cmd, info string, err error) {
+	var cmds []tea.Cmd
+
 	// If any tasks were created, then wait for them to complete.
 	if len(msg.Tasks) > 0 {
-		wait = tui.WaitTasks(msg)
+		cmds = append(cmds, tui.WaitTasks(msg))
 	}
 
 	if len(msg.Tasks) == 1 {
 		// User created one task successfully
 		info = fmt.Sprintf("created %s task successfully", msg.Command)
+		// When *one* task is successfully created we send the user to the page
+		cmds = append(cmds, tui.NavigateTo(tui.TaskKind, tui.WithParent(msg.Tasks[0].Resource)))
 	} else if len(msg.Tasks) == 0 && len(msg.CreateErrs) == 1 {
 		// User attempted to create one task but it failed to be created
 		err = fmt.Errorf("creating %s task failed: %w", msg.Command, msg.CreateErrs[0])
@@ -34,7 +38,7 @@ func handleCreatedTasksMsg(msg tui.CreatedTasksMsg) (wait tea.Cmd, info string, 
 		// created.
 		info = fmt.Sprintf("created %d %s tasks successfully", len(msg.Tasks), msg.Command)
 	}
-	return
+	return tea.Batch(cmds...), info, err
 }
 
 func handleCompletedTasksMsg(msg tui.CompletedTasksMsg) (info string, err error) {

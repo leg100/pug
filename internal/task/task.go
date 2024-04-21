@@ -1,6 +1,7 @@
 package task
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -232,8 +233,8 @@ func (t *Task) cancel() {
 	}
 }
 
-func (t *Task) start() (func(), error) {
-	cmd := exec.Command(t.program, append(t.Command, t.Args...)...)
+func (t *Task) start(ctx context.Context) (func(), error) {
+	cmd := exec.CommandContext(ctx, t.program, append(t.Command, t.Args...)...)
 	cmd.Dir = t.Path
 	cmd.Stdout = t.buf
 	cmd.Stderr = t.buf

@@ -77,13 +77,14 @@ func Start(stdout, stderr io.Writer, args []string) error {
 	)
 
 	// Start daemons and relay events.
-	app.start(ctx, p)
+	waitfn := app.start(ctx, p)
 
 	// Blocks until user quits
 	if _, err := p.Run(); err != nil {
 		return err
 	}
-	return nil
+	// Wait for running tasks to complete
+	return waitfn()
 }
 
 // newApp constructs an instance of the app and the top-level TUI model.
@@ -161,11 +162,11 @@ func newApp(cfg config) (*app, tea.Model, error) {
 }
 
 // start starts the app daemons and relays events to the TUI.
-func (a *app) start(ctx context.Context, s sender) {
+func (a *app) start(ctx context.Context, s sender) func() error {
 	// Start daemons
 	task.StartEnqueuer(ctx, a.tasks)
-	task.StartRunner(ctx, a.logger, a.tasks, a.cfg.MaxTasks)
 	run.StartScheduler(ctx, a.runs, a.workspaces)
+	waitfn := task.StartRunner(ctx, a.logger, a.tasks, a.cfg.MaxTasks)
 
 	// Automatically load workspaces whenever modules are loaded.
 	a.workspaces.LoadWorkspacesUponModuleLoad(ctx, a.modules)
@@ -208,4 +209,6 @@ func (a *app) start(ctx context.Context, s sender) {
 			s.Send(ev)
 		}
 	}()
+
+	return waitfn
 }

@@ -13,11 +13,12 @@ import (
 )
 
 func TestRun_MakePugDirectory(t *testing.T) {
-	mod := module.New(internal.NewTestWorkdir(t), "a/b/c")
+	workdir := internal.NewTestWorkdir(t)
+	testutils.ChTempDir(t, workdir.String())
+
+	mod := module.New(workdir, "a/b/c")
 	ws, err := workspace.New(mod, "dev")
 	require.NoError(t, err)
-
-	testutils.ChTempDir(t)
 
 	run, err := newRun(mod, ws, CreateOptions{})
 	require.NoError(t, err)

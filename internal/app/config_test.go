@@ -137,7 +137,7 @@ func TestConfig(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// change into a temp dir in case the host computer has a pug.yaml file
-			testutils.ChTempDir(t)
+			testutils.ChTempDir(t, t.TempDir())
 
 			// set env vars
 			for _, ev := range tt.envs {
