@@ -49,7 +49,7 @@ func setup(t *testing.T) *teatest.TestModel {
 	tm := teatest.NewTestModel(
 		t,
 		m,
-		teatest.WithInitialTermSize(100, 30),
+		teatest.WithInitialTermSize(100, 50),
 	)
 	waitfn := app.start(ctx, tm)
 	t.Cleanup(func() {

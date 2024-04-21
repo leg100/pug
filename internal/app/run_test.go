@@ -3,6 +3,8 @@ package app
 import (
 	"strings"
 	"testing"
+
+	"github.com/leg100/pug/internal"
 )
 
 func TestRun(t *testing.T) {
@@ -32,8 +34,9 @@ func TestRun(t *testing.T) {
 
 	// Expect to see summary of changes
 	waitFor(t, tm, func(s string) bool {
-		t.Log(s)
-		return strings.Contains(s, "+10~0-0")
+		// Remove bold formatting
+		s = internal.StripAnsi(s)
+		return strings.Contains(s, "Plan: 10 to add, 0 to change, 0 to destroy.")
 	})
 
 	// Apply plan
