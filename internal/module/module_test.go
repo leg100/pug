@@ -1,6 +1,7 @@
 package module
 
 import (
+	"os"
 	"testing"
 
 	"github.com/leg100/pug/internal"
@@ -10,6 +11,13 @@ import (
 )
 
 func TestNew(t *testing.T) {
+	// The test depends upon a .terraform directory being present in testdata.
+	// However we ignore .terraform in .gitignore, because it is often created
+	// by terraform processes and contains numerous artefacts we don't want in
+	// git. Therefore, for this test, we create the directory if it doesn't
+	// exist already.
+	os.MkdirAll("./testdata/modules/with_both_s3_backend_and_dot_terraform_dir/.terraform", 0o755)
+
 	workdir, _ := internal.NewWorkdir("./testdata/modules")
 
 	t.Run("with_dot_terraform_dir", func(t *testing.T) {
