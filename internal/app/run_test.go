@@ -32,6 +32,7 @@ func TestRun(t *testing.T) {
 
 	// Expect to see summary of changes
 	waitFor(t, tm, func(s string) bool {
+		t.Log(s)
 		return strings.Contains(s, "+10~0-0")
 	})
 
