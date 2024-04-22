@@ -25,17 +25,17 @@ var (
 	initColumn = table.Column{
 		Key:   "init",
 		Title: "INIT",
-		Width: 4,
+		Width: len("INIT"),
 	}
 	formatColumn = table.Column{
 		Key:   "format",
 		Title: "FORMAT",
-		Width: 6,
+		Width: len("FORMAT"),
 	}
 	validColumn = table.Column{
 		Key:   "valid",
 		Title: "VALID",
-		Width: 5,
+		Width: len("VALID"),
 	}
 )
 

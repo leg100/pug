@@ -133,14 +133,13 @@ func (m Model[K, V]) WithSortFunc(sortFunc func(V, V) int) Model[K, V] {
 }
 
 func (m *Model[K, V]) setDimensions(width, height int) {
-	// TODO: does this need to be set?
-	// m.viewport.Width = w
 
-	// Accomodate height of table header
+	// Accommodate height of table header
 	m.viewport.Height = height - headerHeight
 	// Set available width for table to expand into, whilst respecting a
 	// minimum width of 80.
 	m.width = max(80, width)
+	m.viewport.Width = m.width
 
 	m.recalculateWidth()
 
@@ -425,22 +424,6 @@ func (m *Model[K, V]) SetColumns(c []Column) {
 	m.UpdateViewport()
 }
 
-// SetWidth sets the width of the viewport of the table.
-//
-// TODO: redundant, remove?
-func (m *Model[K, V]) SetWidth(w int) {
-	m.viewport.Width = w
-	m.UpdateViewport()
-}
-
-// SetHeight sets the height of the viewport of the table.
-//
-// TODO: redundant, remove?
-func (m *Model[K, V]) SetHeight(h int) {
-	m.viewport.Height = h
-	m.UpdateViewport()
-}
-
 // Height returns the viewport height of the table.
 func (m Model[K, V]) Height() int {
 	return m.viewport.Height
@@ -470,9 +453,9 @@ func (m *Model[K, V]) MoveUp(n int) {
 	case m.start == 0:
 		m.viewport.SetYOffset(clamp(m.viewport.YOffset, 0, m.cursor))
 	case m.start < m.viewport.Height:
-		m.viewport.YOffset = (clamp(clamp(m.viewport.YOffset+n, 0, m.cursor), 0, m.viewport.Height))
+		m.viewport.SetYOffset(clamp(clamp(m.viewport.YOffset+n, 0, m.cursor), 0, m.viewport.Height))
 	case m.viewport.YOffset >= 1:
-		m.viewport.YOffset = clamp(m.viewport.YOffset+n, 1, m.viewport.Height)
+		m.viewport.SetYOffset(clamp(m.viewport.YOffset+n, 1, m.viewport.Height))
 	}
 	m.UpdateViewport()
 }

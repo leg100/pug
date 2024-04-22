@@ -77,7 +77,7 @@ func New(opts Options) (model, error) {
 		}
 	}
 
-	spinner := spinner.New(spinner.WithSpinner(spinner.Globe))
+	spinner := spinner.New(spinner.WithSpinner(spinner.Line))
 
 	navigator, err := newNavigator(opts, &spinner)
 	if err != nil {

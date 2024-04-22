@@ -57,7 +57,7 @@ func (h *Helpers) WorkspaceName(res resource.Resource) string {
 
 func (h *Helpers) CurrentWorkspaceName(workspaceID *resource.ID) string {
 	if workspaceID == nil {
-		return ""
+		return "-"
 	}
 	ws, err := h.WorkspaceService.Get(*workspaceID)
 	if err != nil {
