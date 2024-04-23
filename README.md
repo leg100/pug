@@ -13,19 +13,25 @@ A TUI application for terraform power users.
 
 ## Modules
 
-*Note: a pug "module" is more accurately a [root module](https://developer.hashicorp.com/terraform/language/modules#the-root-module)*.
+Invoke `init`, `validate`, and `fmt` across multiple modules.
 
-![Modules demo](https://vhs.charm.sh/vhs-25Rrh8wNPvkuQ3gdDUlELu.gif)
+![Modules demo](https://vhs.charm.sh/vhs-yP3fHxUgxvKfimnTk9GLk.gif)
 
 ## Runs
 
-![Runs demo](https://vhs.charm.sh/vhs-3NlDZpoxnp6o31lzWAy1PJ.gif)
+Create multiple plans and apply them in parallel.
 
-![Run demo](https://vhs.charm.sh/vhs-5MIcWiERfQPPYyUUksgNRb.gif)
+![Runs demo](https://vhs.charm.sh/vhs-5cktxirUmHmO7R37AYRYib.gif)
+
+View the output of current and past runs.
+
+![Run demo](https://vhs.charm.sh/vhs-6rzYrbsZN98dPUUMyVkWPN.gif)
 
 ## State management
 
-![State demo](https://vhs.charm.sh/vhs-X34EQIErI8F2gRvA2cD63.gif)
+Manage state resources. Taint, untaint and delete multiple resources. Select resources for targeted plans.
+
+![State demo](https://vhs.charm.sh/vhs-oPUY2OAFmb4nvtVl1xY88.gif)
 
 ## FAQ
 
