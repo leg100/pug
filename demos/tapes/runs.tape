@@ -3,7 +3,7 @@ Output demos/output/runs.gif
 Set Shell "bash"
 Set FontSize 14
 Set Width 1200
-Set Height 800
+Set Height 700
 Set Framerate 24
 Set Padding 5
 

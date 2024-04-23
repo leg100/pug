@@ -21,7 +21,7 @@ Invoke `init`, `validate`, and `fmt` across multiple modules.
 
 Create multiple plans and apply them in parallel.
 
-![Runs demo](https://vhs.charm.sh/vhs-7Ft8HCyYogjOCqHAXfUkns.gif)
+![Runs demo](https://vhs.charm.sh/vhs-5OhPKN3y6ZERyKFQNpjiIV.gif)
 
 View the output of plans and applies.
 
