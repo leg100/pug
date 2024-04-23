@@ -4,7 +4,7 @@ A TUI application for terraform power users.
 
 * Perform tasks in parallel (plan, apply, init, etc)
 * Manage state resources
-* Task queueing.
+* Task queueing
 * Supports tofu as well as terraform
 * Supports workspaces
 * Backend agnostic
@@ -21,7 +21,7 @@ Invoke `init`, `validate`, and `fmt` across multiple modules.
 
 Create multiple plans and apply them in parallel.
 
-![Runs demo](https://vhs.charm.sh/vhs-61FyNZHAGIN5VnlCOefWl7.gif)
+![Runs demo](https://vhs.charm.sh/vhs-7Ft8HCyYogjOCqHAXfUkns.gif)
 
 View the output of plans and applies.
 
