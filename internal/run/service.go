@@ -88,7 +88,7 @@ func (s *Service) create(workspaceID resource.ID, opts CreateOptions) (*Run, err
 func (s *Service) plan(run *Run) (*task.Task, error) {
 	task, err := s.createTask(run, task.CreateOptions{
 		Command:  []string{"plan"},
-		Args:     []string{"-input=false", "-out", run.PlanPath()},
+		Args:     run.PlanArgs(),
 		Blocking: true,
 		AfterQueued: func(*task.Task) {
 			run.updateStatus(PlanQueued)

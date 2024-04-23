@@ -9,6 +9,7 @@ import (
 
 	"github.com/leg100/pug/internal/module"
 	"github.com/leg100/pug/internal/resource"
+	"github.com/leg100/pug/internal/state"
 	"github.com/leg100/pug/internal/workspace"
 )
 
@@ -37,8 +38,9 @@ type Run struct {
 	Created time.Time
 	Updated time.Time
 
-	Status    Status
-	AutoApply bool
+	Status      Status
+	AutoApply   bool
+	TargetAddrs []state.ResourceAddress
 
 	PlanReport  Report
 	ApplyReport Report
@@ -55,6 +57,8 @@ type Run struct {
 }
 
 type CreateOptions struct {
+	TargetAddrs []state.ResourceAddress
+
 	afterUpdate func(run *Run)
 }
 
@@ -63,6 +67,7 @@ func newRun(mod *module.Module, ws *workspace.Workspace, opts CreateOptions) (*R
 		Resource:    resource.New(resource.Run, ws.Resource),
 		Status:      Pending,
 		AutoApply:   ws.AutoApply,
+		TargetAddrs: opts.TargetAddrs,
 		Created:     time.Now(),
 		Updated:     time.Now(),
 		afterUpdate: opts.afterUpdate,
@@ -85,6 +90,15 @@ func (r *Run) WorkspaceID() resource.ID {
 // directory.
 func (r *Run) PlanPath() string {
 	return filepath.Join(r.artefactsPath, "plan.out")
+}
+
+// PlanArgs produces the arguments for terraform plan
+func (r *Run) PlanArgs() []string {
+	args := []string{"-input=false", "-out", r.PlanPath()}
+	for _, addr := range r.TargetAddrs {
+		args = append(args, fmt.Sprintf("-target=%s", addr))
+	}
+	return args
 }
 
 func (r *Run) IsFinished() bool {

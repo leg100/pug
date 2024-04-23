@@ -8,6 +8,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/leg100/pug/internal/resource"
+	"github.com/leg100/pug/internal/run"
 	"github.com/leg100/pug/internal/state"
 	"github.com/leg100/pug/internal/task"
 	"github.com/leg100/pug/internal/tui"
@@ -29,6 +30,7 @@ var resourceStatusColumn = table.Column{
 
 type resourceListMaker struct {
 	StateService tui.StateService
+	RunService   tui.RunService
 	Spinner      *spinner.Model
 }
 
@@ -48,7 +50,8 @@ func (m *resourceListMaker) Make(ws resource.Resource, width, height int) (tea.M
 
 	return resources{
 		table:     table,
-		svc:       m.StateService,
+		states:    m.StateService,
+		runs:      m.RunService,
 		workspace: ws,
 		spinner:   m.Spinner,
 	}, nil
@@ -56,7 +59,8 @@ func (m *resourceListMaker) Make(ws resource.Resource, width, height int) (tea.M
 
 type resources struct {
 	table     table.Model[state.ResourceAddress, *state.Resource]
-	svc       tui.StateService
+	states    tui.StateService
+	runs      tui.RunService
 	workspace resource.Resource
 	state     *state.State
 
@@ -67,7 +71,7 @@ type initState *state.State
 
 func (m resources) Init() tea.Cmd {
 	return func() tea.Msg {
-		state, err := m.svc.Get(m.workspace.ID)
+		state, err := m.states.Get(m.workspace.ID)
 		if err != nil {
 			return tui.ReportError(err, "loading resources tab")
 		}
@@ -85,14 +89,15 @@ func (m resources) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, resourcesKeys.Reload):
-			return m, tui.CreateTasks("reload state", m.svc.Reload, m.workspace.ID)
+			return m, tui.CreateTasks("reload state", m.states.Reload, m.workspace.ID)
 		case key.Matches(msg, resourcesKeys.Delete):
 			addrs := m.table.HighlightedOrSelectedKeys()
 			if len(addrs) == 0 {
+				// no rows; do nothing
 				return m, nil
 			}
 			fn := func(workspaceID resource.ID) (*task.Task, error) {
-				return m.svc.Delete(workspaceID, addrs...)
+				return m.states.Delete(workspaceID, addrs...)
 			}
 			return m, tui.RequestConfirmation(
 				fmt.Sprintf("Delete %d resource(s)", len(addrs)),
@@ -100,10 +105,26 @@ func (m resources) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			)
 		case key.Matches(msg, resourcesKeys.Taint):
 			addrs := m.table.HighlightedOrSelectedKeys()
-			return m, m.createStateCommand("taint", m.svc.Taint, addrs...)
+			m.table.DeselectAll()
+			return m, m.createStateCommand("taint", m.states.Taint, addrs...)
 		case key.Matches(msg, resourcesKeys.Untaint):
 			addrs := m.table.HighlightedOrSelectedKeys()
-			return m, m.createStateCommand("untaint", m.svc.Untaint, addrs...)
+			m.table.DeselectAll()
+			return m, m.createStateCommand("untaint", m.states.Untaint, addrs...)
+		case key.Matches(msg, localKeys.Plan):
+			// Create a targeted run.
+			addrs := m.table.HighlightedOrSelectedKeys()
+			// NOTE: even if the user hasn't selected any rows, we still proceed
+			// to create a run without targeted resources.
+			return m, func() tea.Msg {
+				run, err := m.runs.Create(m.workspace.ID, run.CreateOptions{
+					TargetAddrs: addrs,
+				})
+				if err != nil {
+					return tui.NewErrorMsg(err, "creating targeted run")
+				}
+				return tui.NewNavigationMsg(tui.RunKind, tui.WithParent(run.Resource))
+			}
 		}
 	case initState:
 		m.state = (*state.State)(msg)

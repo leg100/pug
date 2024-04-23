@@ -144,9 +144,26 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, tui.OpenVim(row.Value.Path)
 			}
 		case key.Matches(msg, localKeys.Init):
-			cmd := tui.CreateTasks("init", m.ModuleService.Init, m.table.HighlightedOrSelectedKeys()...)
-			m.table.DeselectAll()
-			return m, cmd
+			rows := m.table.HighlightedOrSelected()
+			switch len(rows) {
+			case 0:
+				// no rows, do nothing
+			case 1:
+				// create init task and switch user to its task page
+				return m, func() tea.Msg {
+					task, err := m.ModuleService.Init(rows[0].Key)
+					if err != nil {
+						return tui.NewErrorMsg(err, "creating init task")
+					}
+					return tui.NewNavigationMsg(tui.TaskKind, tui.WithParent(task.Resource))
+				}
+			default:
+				// create init tasks, deselect whatever was selected, and keep
+				// user on current page.
+				cmd := tui.CreateTasks("init", m.ModuleService.Init, m.table.HighlightedOrSelectedKeys()...)
+				m.table.DeselectAll()
+				return m, cmd
+			}
 		case key.Matches(msg, localKeys.Validate):
 			cmd := tui.CreateTasks("validate", m.ModuleService.Validate, m.table.HighlightedOrSelectedKeys()...)
 			m.table.DeselectAll()

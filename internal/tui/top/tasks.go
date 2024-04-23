@@ -20,8 +20,6 @@ func handleCreatedTasksMsg(msg tui.CreatedTasksMsg) (cmd tea.Cmd, info string, e
 	if len(msg.Tasks) == 1 {
 		// User created one task successfully
 		info = fmt.Sprintf("created %s task successfully", msg.Command)
-		// When *one* task is successfully created we send the user to the page
-		cmds = append(cmds, tui.NavigateTo(tui.TaskKind, tui.WithParent(msg.Tasks[0].Resource)))
 	} else if len(msg.Tasks) == 0 && len(msg.CreateErrs) == 1 {
 		// User attempted to create one task but it failed to be created
 		err = fmt.Errorf("creating %s task failed: %w", msg.Command, msg.CreateErrs[0])

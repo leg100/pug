@@ -41,6 +41,7 @@ func (mm *Maker) Make(workspace resource.Resource, width, height int) (tea.Model
 	}
 	rlm := &resourceListMaker{
 		StateService: mm.StateService,
+		RunService:   mm.RunService,
 		Spinner:      mm.Spinner,
 	}
 
@@ -85,6 +86,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, localKeys.Plan):
+			// Create a plan. If the resources tab is selected, then ignore and
+			// let the resources model handle creating a *targeted* plan.
+			if m.tabs.ActiveTitle() == resourcesTabTitle {
+				break
+			}
 			return m, tui.CreateRuns(m.runs, m.workspace.ID)
 		case key.Matches(msg, keys.Common.Module):
 			return m, tui.NavigateTo(tui.ModuleKind, tui.WithParent(*m.workspace.Module()))
@@ -94,7 +100,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.workspace = msg.Payload
 		}
 	}
-	// Navigate tabs, send key to current tab.
+	// Navigate tabs
 	updated, cmd := m.tabs.Update(msg)
 	cmds = append(cmds, cmd)
 	m.tabs = updated
