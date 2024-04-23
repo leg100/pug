@@ -9,13 +9,13 @@ A TUI application for terraform power users.
 * Supports workspaces
 * Backend agnostic
 
-![Applying runs](./demos/applying_runs.png)
+![Applying runs](./demos/output/applying_runs.png)
 
 ## Modules
 
 Invoke `init`, `validate`, and `fmt` across multiple modules.
 
-![Modules demo](https://vhs.charm.sh/vhs-1LUHIATo0kRJlEcJ4z2qwd.gif)
+![Modules demo](https://vhs.charm.sh/vhs-17bpPibLbmms7APdbzONz0.gif)
 
 ## Runs
 

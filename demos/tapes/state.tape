@@ -1,5 +1,13 @@
 Output demos/state.gif
-Source demos/setup.tape
+
+Set Shell "bash"
+Set FontSize 14
+Set Width 1200
+Set Height 800
+Set Framerate 24
+Set Padding 5
+
+Source demos/tapes/setup.tape
 
 Type "i" Sleep 1s
 Type "W" Sleep 1s
