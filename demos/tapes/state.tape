@@ -32,4 +32,4 @@ Type "d" Sleep 1s Type "y" Sleep 2s
 Type "s" Sleep 0.5s
 Down Type "s" Sleep 0.5s
 Down Type "s" Sleep 0.5s
-Type "p" Sleep 2s
+Type "p" Sleep 3s

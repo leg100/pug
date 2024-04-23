@@ -2,36 +2,36 @@
 
 A TUI application for terraform power users.
 
-* Perform tasks in parallel (plan, apply, init, state ops etc)
-* Built-in queuing of tasks.
+* Perform tasks in parallel (plan, apply, init, etc)
 * Manage state resources
+* Task queueing.
 * Supports tofu as well as terraform
 * Supports workspaces
 * Backend agnostic
 
-![Applying runs](./demos/output/applying_runs.png)
+![Applying runs](./demos/output/applied_runs.png)
 
 ## Modules
 
 Invoke `init`, `validate`, and `fmt` across multiple modules.
 
-![Modules demo](https://vhs.charm.sh/vhs-1tInHcZ3A5i0loBNKXAwOj.gif)
+![Modules demo](https://vhs.charm.sh/vhs-1rsDMnWznm105jZPZD3oW5.gif)
 
 ## Runs
 
 Create multiple plans and apply them in parallel.
 
-![Runs demo](https://vhs.charm.sh/vhs-7AMxHuCfHd9Gj7mdyZMqGi.gif)
+![Runs demo](https://vhs.charm.sh/vhs-61FyNZHAGIN5VnlCOefWl7.gif)
 
-View the output of current and past runs.
+View the output of plans and applies.
 
-![Run demo](https://vhs.charm.sh/vhs-2d4EMFNjK3sHaxFE56ArQn.gif)
+![Run demo](https://vhs.charm.sh/vhs-madv068t0GBZOIq7uybMR.gif)
 
 ## State management
 
 Manage state resources. Taint, untaint and delete multiple resources. Select resources for targeted plans.
 
-![State demo](https://vhs.charm.sh/vhs-ah0JkIk7dVhBWlMhqz3cL.gif)
+![State demo](https://vhs.charm.sh/vhs-181dbgBQnI6XBy5oIZhWqr.gif)
 
 ## FAQ
 
