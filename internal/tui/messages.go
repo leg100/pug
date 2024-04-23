@@ -9,8 +9,7 @@ import (
 
 // NavigationMsg is an instruction to navigate to a page.
 type NavigationMsg struct {
-	Page     Page
-	TabTitle string
+	Page Page
 }
 
 func NewNavigationMsg(kind Kind, opts ...NavigateOption) NavigationMsg {
