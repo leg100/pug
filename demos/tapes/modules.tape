@@ -1,4 +1,4 @@
-Output demos/modules.gif
+Output demos/output/modules.gif
 
 Set Shell "bash"
 Set FontSize 14

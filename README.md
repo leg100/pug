@@ -15,23 +15,23 @@ A TUI application for terraform power users.
 
 Invoke `init`, `validate`, and `fmt` across multiple modules.
 
-![Modules demo](https://vhs.charm.sh/vhs-17bpPibLbmms7APdbzONz0.gif)
+![Modules demo](https://vhs.charm.sh/vhs-1tInHcZ3A5i0loBNKXAwOj.gif)
 
 ## Runs
 
 Create multiple plans and apply them in parallel.
 
-![Runs demo](https://vhs.charm.sh/vhs-6WHWY5MBjYYxXHdi48Fug9.gif)
+![Runs demo](https://vhs.charm.sh/vhs-7AMxHuCfHd9Gj7mdyZMqGi.gif)
 
 View the output of current and past runs.
 
-![Run demo](https://vhs.charm.sh/vhs-10kwE7TQ9DrOBIsXiiNmad.gif)
+![Run demo](https://vhs.charm.sh/vhs-2d4EMFNjK3sHaxFE56ArQn.gif)
 
 ## State management
 
 Manage state resources. Taint, untaint and delete multiple resources. Select resources for targeted plans.
 
-![State demo](https://vhs.charm.sh/vhs-7hdI85fruJREA66ODbG38J.gif)
+![State demo](https://vhs.charm.sh/vhs-ah0JkIk7dVhBWlMhqz3cL.gif)
 
 ## FAQ
 
