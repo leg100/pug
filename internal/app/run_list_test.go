@@ -7,7 +7,8 @@ import (
 	"github.com/leg100/pug/internal"
 )
 
-func TestRun(t *testing.T) {
+// TestRunList_Single tests interacting with a single run in the run list view.
+func TestRunList_Single(t *testing.T) {
 	tm := setup(t)
 
 	// Wait for module to be loaded
@@ -41,12 +42,28 @@ func TestRun(t *testing.T) {
 		return strings.Contains(s, "Plan: 10 to add, 0 to change, 0 to destroy.")
 	})
 
-	// Apply plan and provide confirmation
+	// Go to the run list page
+	tm.Type("R")
+
+	// Wait for run list page to be populated with planned run
+	waitFor(t, tm, func(s string) bool {
+		return strings.Contains(s, "planned")
+	})
+
+	// Apply run and provide confirmation
 	tm.Type("a")
 	waitFor(t, tm, func(s string) bool {
 		return strings.Contains(s, "Proceed with apply (y/N)?")
 	})
 	tm.Type("y")
+
+	// Expect to be taken back to the run page
+	waitFor(t, tm, func(s string) bool {
+		// Expect run page breadcrumbs
+		t.Log(s)
+		return strings.Contains(s, "Run[default](modules/a)")
+		// TODO: expect 'apply <tick>' tab header
+	})
 
 	// Wait for apply to complete
 	waitFor(t, tm, func(s string) bool {

@@ -106,14 +106,29 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, tui.NavigateTo(tui.RunKind, tui.WithParent(row.Value.Resource))
 			}
 		case key.Matches(msg, keys.Common.Apply):
-			runIDs := m.table.HighlightedOrSelectedKeys()
-			if len(runIDs) == 0 {
+			rows := m.table.HighlightedOrSelected()
+			switch len(rows) {
+			case 0:
 				return m, nil
+			case 1:
+				run := rows[0].Value
+				return m, tui.RequestConfirmation(
+					"Proceed with apply",
+					func() tea.Msg {
+						if _, err := m.svc.Apply(run.ID); err != nil {
+							return tui.NewErrorMsg(err, "applying run")
+						}
+						return tui.NewNavigationMsg(tui.RunKind, tui.WithParent(run.Resource))
+					},
+				)
+			default:
+				// Multiple runs; stay on run list page
+				runIDs := m.table.HighlightedOrSelectedKeys()
+				return m, tui.RequestConfirmation(
+					fmt.Sprintf("Apply %d runs", len(runIDs)),
+					tui.CreateTasks("apply", m.svc.Apply, runIDs...),
+				)
 			}
-			return m, tui.RequestConfirmation(
-				fmt.Sprintf("Apply %d run(s)", len(runIDs)),
-				tui.CreateTasks("apply", m.svc.Apply, runIDs...),
-			)
 		}
 	}
 
