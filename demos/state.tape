@@ -1,19 +1,8 @@
-Output state.gif
+Output demos/state.gif
+Source demos/setup.tape
 
-Set Shell "bash"
-Set FontSize 14
-Set Width 1200
-Set Height 600
-Set Padding 10
-Set Framerate 24
-
-Type "go run main.go" Sleep 500ms  Enter
-
-Sleep 3s
-
-Ctrl+a Sleep 1s Type "i" Sleep 3s
-Ctrl+a Sleep 1s Type "f" Sleep 2s
-Ctrl+a Sleep 1s Type "v" Sleep 2s
-Ctrl+a Sleep 1s Type "p" Sleep 4s
-Ctrl+a Sleep 1s Type "a" Sleep 1s Type "y" Sleep 6s
-Type "T" Sleep 10s
+Sleep 1s Type "i" Sleep 1s
+Type "W" Sleep 1s
+Type "p" Sleep 2s
+Type "a" Sleep 0.5s Type "y" Sleep 4s
+Type "W" Sleep 1s Enter Sleep 1s Tab Sleep 0.5s Tab Sleep 1s

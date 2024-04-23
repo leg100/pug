@@ -19,6 +19,12 @@ A TUI application for terraform power users.
 
 ![Runs demo](https://vhs.charm.sh/vhs-3S1rr3069uuKKYVgjD8NtJ.gif)
 
+![Run demo](https://vhs.charm.sh/vhs-3S1rr3069uuKKYVgjD8NtJ.gif)
+
+## State management
+
+![State demo](https://vhs.charm.sh/vhs-3S1rr3069uuKKYVgjD8NtJ.gif)
+
 ## FAQ
 
 ### Can I use the [provider plugin cache](https://developer.hashicorp.com/terraform/cli/config/config-file#provider-plugin-cache)?

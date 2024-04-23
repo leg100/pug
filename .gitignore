@@ -6,7 +6,6 @@
 messages.log
 # terraform artifacts
 .terraform
-.terraform.lock.hcl
 *.tfstate
 *.tfstate.*
 # pug artifacts
