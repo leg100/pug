@@ -1,3 +1,5 @@
+# provider mirror providers
+mirror/registry.terraform.io
 # infracost artifacts
 **/.infracost/
 # direnv

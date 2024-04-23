@@ -13,17 +13,17 @@ A TUI application for terraform power users.
 
 *Note: a pug "module" is more accurately a [root module](https://developer.hashicorp.com/terraform/language/modules#the-root-module)*.
 
-![Modules demo](https://vhs.charm.sh/vhs-3S1rr3069uuKKYVgjD8NtJ.gif)
+![Modules demo](https://vhs.charm.sh/vhs-7ArmCzFglrUTFgj2mmZRJC.gif)
 
 ## Runs
 
-![Runs demo](https://vhs.charm.sh/vhs-3S1rr3069uuKKYVgjD8NtJ.gif)
+![Runs demo](https://vhs.charm.sh/vhs-4sdOKO3fH8ZIjv7XbJuxCK.gif)
 
-![Run demo](https://vhs.charm.sh/vhs-3S1rr3069uuKKYVgjD8NtJ.gif)
+![Run demo](https://vhs.charm.sh/vhs-64wGmCEJjrEB3NWftF3quc.gif)
 
 ## State management
 
-![State demo](https://vhs.charm.sh/vhs-3S1rr3069uuKKYVgjD8NtJ.gif)
+![State demo](https://vhs.charm.sh/vhs-2UagSNRCP0z1vxm0TImu2e.gif)
 
 ## FAQ
 

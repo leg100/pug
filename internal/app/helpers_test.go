@@ -2,7 +2,6 @@ package app
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"io/fs"
 	"os"
@@ -86,32 +85,15 @@ func cleanupArtefacts() {
 
 }
 
-const cliConfigTemplate = `
-provider_installation {
-  filesystem_mirror {
-    path = "%s"
-  }
-}
-`
-
-// setupProviderMirror creates and configures a dedicated provider filesystem
-// mirror for for a test.
+// setupProviderMirror configures a dedicated provider filesystem mirror for for
+// a test.
 func setupProviderMirror(t *testing.T) {
 	t.Helper()
 
-	// Copy providers into a temp dir
-	mirrorPath := t.TempDir()
-	err := CopyDirectory("../../testdata/providers", mirrorPath)
+	abs, err := filepath.Abs("../../mirror/mirror.tfrc")
 	require.NoError(t, err)
 
-	// Write terraform CLI config file pointing at filesystem mirror
-	config := fmt.Sprintf(cliConfigTemplate, mirrorPath)
-	configPath := filepath.Join(t.TempDir(), "_terraform.tfrc")
-	err = os.WriteFile(configPath, []byte(config), 0o644)
-	require.NoError(t, err)
-
-	// Configure test to use mirror
-	t.Setenv("TF_CLI_CONFIG_FILE", configPath)
+	t.Setenv("TF_CLI_CONFIG_FILE", abs)
 }
 
 // testLogger relays pug log records to the go test logger
