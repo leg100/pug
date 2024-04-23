@@ -12,14 +12,14 @@ Down Type "s" Sleep 0.5s
 Down Type "s" Sleep 0.5s
 Type "t" Sleep 2s
 
-Up Type "s" Sleep 0.5s
+Type "s" Sleep 0.5s
 Up Type "s" Sleep 0.5s
 Up Type "s" Sleep 0.5s
 Type "u" Sleep 2s
 
 Type "s" Sleep 0.5s
 Down Type "s" Sleep 0.5s
-Type "d" Type "y" Sleep 2s
+Type "d" Sleep 1s Type "y" Sleep 2s
 
 Type "s" Sleep 0.5s
 Down Type "s" Sleep 0.5s
