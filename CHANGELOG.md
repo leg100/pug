@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.3](https://github.com/leg100/pug/compare/v0.1.2...v0.1.3) (2024-04-24)
+
+
+### Bug Fixes
+
+* brew release missing token env ([751f6f1](https://github.com/leg100/pug/commit/751f6f18876dc3c2a1ec37e712c57bf437253258))
+
 ## [0.1.2](https://github.com/leg100/pug/compare/v0.1.1...v0.1.2) (2024-04-24)
 
 
