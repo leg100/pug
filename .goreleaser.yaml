@@ -3,6 +3,20 @@
 
 version: 1
 
+brews:
+  - name: pug
+    homepage: https://github.com/leg100/pug
+    description: "Terminal user interface for terraform power users."
+    folder: Formula
+    commit_author:
+      name: "Louis Garman"
+      email: "louisgarman@gmail.com"
+    repository:
+      owner: leg100
+      name: homebrew-tap
+      branch: master
+      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
+
 builds:
   - env:
       - CGO_ENABLED=0
