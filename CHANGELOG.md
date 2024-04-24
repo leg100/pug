@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.1.2](https://github.com/leg100/pug/compare/v0.1.1...v0.1.2) (2024-04-24)
+
+
+### Bug Fixes
+
+* surface version ([6c6b086](https://github.com/leg100/pug/commit/6c6b086c1886c69b5f42ec07779b4c001a497e08))
+
+
+### Miscellaneous
+
+* create brew tap ([81ddc8f](https://github.com/leg100/pug/commit/81ddc8fa789a55ae122eb536752ebab2ea9a5726))
+
 ## [0.1.1](https://github.com/leg100/pug/compare/v0.1.0...v0.1.1) (2024-04-24)
 
 
