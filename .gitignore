@@ -8,8 +8,8 @@ mirror/registry.terraform.io
 messages.log
 # terraform artifacts
 .terraform
-*.tfstate
-*.tfstate.*
+terraform.tfstate
+*.backup
 # pug artifacts
 pug.yaml
 pug
