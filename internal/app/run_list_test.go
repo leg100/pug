@@ -60,7 +60,6 @@ func TestRunList_Single(t *testing.T) {
 	// Expect to be taken back to the run page
 	waitFor(t, tm, func(s string) bool {
 		// Expect run page breadcrumbs
-		t.Log(s)
 		return strings.Contains(s, "Run[default](modules/a)")
 		// TODO: expect 'apply <tick>' tab header
 	})

@@ -46,7 +46,6 @@ func TestModule_SetCurrentWorkspace(t *testing.T) {
 	// Expect two workspaces to be listed, and expect default to be the current
 	// workspace
 	waitFor(t, tm, func(s string) bool {
-		t.Log(s)
 		defaultIsCurrent, err := regexp.MatchString(`default.*✓`, s)
 		require.NoError(t, err)
 		return defaultIsCurrent && strings.Contains(s, "dev")
