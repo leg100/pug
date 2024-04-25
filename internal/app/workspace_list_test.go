@@ -9,24 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestModule(t *testing.T) {
-	tm := setup(t)
-
-	// Expect module to be listed
-	waitFor(t, tm, func(s string) bool {
-		return strings.Contains(s, "modules/a")
-	})
-
-	// Initialize module
-	tm.Type("i")
-
-	// Expect to see successful init message
-	waitFor(t, tm, func(s string) bool {
-		return strings.Contains(s, "Terraform has been successfully initialized!")
-	})
-}
-
-func TestModule_SetCurrentWorkspace(t *testing.T) {
+func TestWorkspaceList_SetCurrentWorkspace(t *testing.T) {
 	tm := setup(t)
 
 	// Wait for module to be loaded
@@ -40,13 +23,12 @@ func TestModule_SetCurrentWorkspace(t *testing.T) {
 		return strings.Contains(s, "Terraform has been successfully initialized!")
 	})
 
-	// Go to module A's page
-	tm.Type("m")
+	// Go to global workspaces page
+	tm.Type("W")
 
 	// Expect two workspaces to be listed, and expect default to be the current
 	// workspace
 	waitFor(t, tm, func(s string) bool {
-		t.Log(s)
 		defaultIsCurrent, err := regexp.MatchString(`default.*✓`, s)
 		require.NoError(t, err)
 		return defaultIsCurrent && strings.Contains(s, "dev")

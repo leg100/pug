@@ -98,6 +98,18 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			return m, tui.CreateTasks("cancel", m.svc.Cancel, m.task.ID)
 			// TODO: retry
+		case key.Matches(msg, keys.Common.Module):
+			// 'm' takes the user to the task's module, but only if the task
+			// belongs to a module.
+			if mod := m.task.Module(); mod != nil {
+				return m, tui.NavigateTo(tui.ModuleKind, tui.WithParent(*mod))
+			}
+		case key.Matches(msg, keys.Common.Workspace):
+			// 'w' takes the user to the task's workspace, but only if the task
+			// belongs to a workspace.
+			if ws := m.task.Workspace(); ws != nil {
+				return m, tui.NavigateTo(tui.WorkspaceKind, tui.WithParent(*ws))
+			}
 		}
 	case outputMsg:
 		if msg.taskID != m.task.ID {
@@ -247,13 +259,17 @@ func (m model) Status() string {
 	return tui.Regular.Copy().Foreground(color).Render(string(m.task.State))
 }
 
-func (m model) HelpBindings() (bindings []key.Binding) {
-	// TODO: filter keys depending upon current task.
-	return []key.Binding{
-		keys.Common.Plan,
-		keys.Common.Apply,
+func (m model) HelpBindings() []key.Binding {
+	bindings := []key.Binding{
 		keys.Common.Cancel,
 	}
+	if mod := m.task.Module(); mod != nil {
+		bindings = append(bindings, keys.Common.Module)
+	}
+	if ws := m.task.Workspace(); ws != nil {
+		bindings = append(bindings, keys.Common.Workspace)
+	}
+	return bindings
 }
 
 func (m model) getOutput() tea.Msg {

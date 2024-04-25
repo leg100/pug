@@ -72,17 +72,20 @@ func cleanupArtefacts() {
 		}
 		if d.IsDir() {
 			switch d.Name() {
-			case ".terraform", ".pug", "terraform.tfstate.d":
+			case ".terraform", ".pug":
 				os.RemoveAll(path)
 				return fs.SkipDir
 			}
 		}
-		// TODO: consider leaving this; it prevents a warning message cropping
+		// TODO: consider leaving lock file; it prevents a warning message cropping
 		// up.
 		if filepath.Base(path) == ".terraform.lock.hcl" {
 			os.Remove(path)
 		}
-		if strings.HasPrefix(filepath.Base(path), "terraform.tfstate") {
+		if filepath.Base(path) == "terraform.tfstate" {
+			os.Remove(path)
+		}
+		if strings.HasSuffix(filepath.Base(path), ".backup") {
 			os.Remove(path)
 		}
 		return nil
