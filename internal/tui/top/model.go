@@ -99,7 +99,7 @@ func New(opts Options) (model, error) {
 func (m model) Init() tea.Cmd {
 	return tea.Batch(
 		m.currentModel().Init(),
-		module.ReloadModules(m.ModuleService),
+		module.ReloadModules(true, m.ModuleService),
 	)
 }
 

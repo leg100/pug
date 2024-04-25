@@ -42,7 +42,7 @@ type moduleService interface {
 	Get(id resource.ID) (*module.Module, error)
 	GetByPath(path string) (*module.Module, error)
 	SetCurrent(moduleID, workspaceID resource.ID) error
-	Reload() error
+	Reload() ([]string, []string, error)
 	List() []*module.Module
 	CreateTask(mod *module.Module, opts task.CreateOptions) (*task.Task, error)
 }

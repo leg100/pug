@@ -47,15 +47,10 @@ func NewService(opts ServiceOptions) *Service {
 // Reload searches the working directory recursively for modules and adds them
 // to the store before pruning those that are currently stored but can no longer
 // be found.
-func (s *Service) Reload() error {
-	var (
-		added   []string
-		removed []string
-	)
-
+func (s *Service) Reload() (added []string, removed []string, err error) {
 	found, err := findModules(s.logger, s.workdir)
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
 	for _, path := range found {
 		// Add module if it isn't in pug already
@@ -74,7 +69,7 @@ func (s *Service) Reload() error {
 		}
 	}
 	s.logger.Info("reloaded modules", "added", added, "removed", removed)
-	return nil
+	return
 }
 
 // Init invokes terraform init on the module.

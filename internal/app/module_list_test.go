@@ -52,3 +52,23 @@ func TestModuleList(t *testing.T) {
 		return strings.Contains(s, "completed validate tasks: (3 successful; 0 errored; 0 canceled; 0 uncreated)")
 	})
 }
+
+func TestModuleList_Reload(t *testing.T) {
+	tm := setup(t)
+
+	// Expect message to inform user that three modules have been loaded
+	waitFor(t, tm, func(s string) bool {
+		return strings.Contains(s, "loaded 3 modules")
+	})
+
+	// Reload modules
+	tm.Send(tea.KeyMsg{
+		Type: tea.KeyCtrlR,
+	})
+
+	// Expect message to inform user that reload has finished and no modules
+	// have been added nor removed.
+	waitFor(t, tm, func(s string) bool {
+		return strings.Contains(s, "reloaded modules: added 0; removed 0")
+	})
+}

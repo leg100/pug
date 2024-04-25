@@ -12,7 +12,7 @@ import (
 type ModuleService interface {
 	Get(id resource.ID) (*module.Module, error)
 	List() []*module.Module
-	Reload() error
+	Reload() ([]string, []string, error)
 	Init(moduleID resource.ID) (*task.Task, error)
 	Format(moduleID resource.ID) (*task.Task, error)
 	Validate(moduleID resource.ID) (*task.Task, error)
