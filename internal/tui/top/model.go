@@ -266,8 +266,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	case tui.InfoMsg:
 		m.info = string(msg)
-	case tui.DeferCmdMsg:
-		return m, tea.Cmd(msg)
 	default:
 		// Send remaining msg types to all cached models
 		cmds = append(cmds, m.cache.updateAll(msg)...)

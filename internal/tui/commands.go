@@ -85,12 +85,3 @@ func RequestConfirmation(prompt string, action tea.Cmd) tea.Cmd {
 		}
 	}
 }
-
-// DeferCmd is defers the processing of a tea.Cmd until the next iteration.
-func DeferCmd(cmd tea.Cmd) tea.Cmd {
-	return func() tea.Msg {
-		return DeferCmdMsg(cmd)
-	}
-}
-
-type DeferCmdMsg tea.Cmd

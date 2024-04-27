@@ -78,17 +78,6 @@ func (m Resource[K, V]) Update(msg tea.Msg) (Resource[K, V], tea.Cmd) {
 	return m, cmd
 }
 
-// PruneSelection
-func (m *Resource[K, V]) PruneSelection(fn func(value V) bool) {
-	for k, v := range m.Selected {
-		if prune := fn(v); prune {
-			// De-select
-			m.ToggleSelectionByKey(k)
-			continue
-		}
-	}
-}
-
 // Prune passes each value from the selected rows (or if there are no
 // selections, from the highlighted row) to the provided func. If the func
 // returns an error the row is de-selected (or if there are no selections, then
