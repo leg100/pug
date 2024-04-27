@@ -188,6 +188,7 @@ func (m resources) createStateCommand(name string, fn stateFunc, addrs ...state.
 }
 
 type resourcesKeyMap struct {
+	Plan    key.Binding
 	Delete  key.Binding
 	Taint   key.Binding
 	Untaint key.Binding
@@ -195,6 +196,7 @@ type resourcesKeyMap struct {
 }
 
 var resourcesKeys = resourcesKeyMap{
+	Plan: keys.Common.Plan,
 	Delete: key.NewBinding(
 		key.WithKeys("d"),
 		key.WithHelp("d", "delete"),
