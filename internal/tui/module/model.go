@@ -114,6 +114,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				// The workspaces tab model takes care of listening to this key
 				// press and creating the actual run, and only once that's done
 				// do we then send the user to the runs tab.
+				//
+				// TODO: change this behaviour: instead send user directly to
+				// the run's page.
 				m.tabs.SetActiveTab(runsTabTitle)
 			}
 		}
@@ -130,13 +133,14 @@ func (m model) View() string {
 	return m.tabs.View()
 }
 
-func (m model) HelpBindings() (bindings []key.Binding) {
-	return []key.Binding{
+func (m model) HelpBindings() []key.Binding {
+	return append(
+		m.tabs.HelpBindings(),
 		localKeys.Init,
 		localKeys.Validate,
 		localKeys.Format,
 		localKeys.Plan,
 		localKeys.Edit,
 		localKeys.ReloadWorkspaces,
-	}
+	)
 }

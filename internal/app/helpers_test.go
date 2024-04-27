@@ -6,6 +6,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -173,4 +174,10 @@ func initAndApplyModuleA(t *testing.T, tm *teatest.TestModel) {
 	waitFor(t, tm, func(s string) bool {
 		return strings.Contains(s, "Apply complete! Resources: 10 added, 0 changed, 0 destroyed.")
 	})
+}
+
+func matchPattern(t *testing.T, pattern string, s string) bool {
+	matched, err := regexp.MatchString(pattern, s)
+	require.NoError(t, err)
+	return matched
 }

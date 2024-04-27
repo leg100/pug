@@ -311,6 +311,7 @@ func (m model) View() string {
 	var currentHelpBindings []key.Binding
 	if bindings, ok := m.currentModel().(tui.ModelHelpBindings); ok {
 		currentHelpBindings = bindings.HelpBindings()
+		currentHelpBindings = tui.RemoveDuplicateBindings(currentHelpBindings)
 	}
 
 	if m.showHelp {

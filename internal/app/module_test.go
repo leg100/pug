@@ -1,12 +1,10 @@
 package app
 
 import (
-	"regexp"
 	"strings"
 	"testing"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/stretchr/testify/require"
 )
 
 func TestModule(t *testing.T) {
@@ -46,8 +44,7 @@ func TestModule_SetCurrentWorkspace(t *testing.T) {
 	// Expect two workspaces to be listed, and expect default to be the current
 	// workspace
 	waitFor(t, tm, func(s string) bool {
-		defaultIsCurrent, err := regexp.MatchString(`default.*✓`, s)
-		require.NoError(t, err)
+		defaultIsCurrent := matchPattern(t, `default.*✓`, s)
 		return defaultIsCurrent && strings.Contains(s, "dev")
 	})
 
@@ -60,8 +57,6 @@ func TestModule_SetCurrentWorkspace(t *testing.T) {
 
 	// Expect dev to be the new current workspace
 	waitFor(t, tm, func(s string) bool {
-		devIsCurrent, err := regexp.MatchString(`dev.*✓`, s)
-		require.NoError(t, err)
-		return devIsCurrent
+		return matchPattern(t, `dev.*✓`, s)
 	})
 }

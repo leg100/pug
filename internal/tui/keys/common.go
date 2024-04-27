@@ -12,6 +12,10 @@ type common struct {
 	Reload    key.Binding
 	Module    key.Binding
 	Workspace key.Binding
+	Edit      key.Binding
+	Init      key.Binding
+	Validate  key.Binding
+	Format    key.Binding
 }
 
 // Keys shared by several models.
@@ -51,5 +55,21 @@ var Common = common{
 	Workspace: key.NewBinding(
 		key.WithKeys("w"),
 		key.WithHelp("w", "workspace"),
+	),
+	Edit: key.NewBinding(
+		key.WithKeys("e"),
+		key.WithHelp("e", "edit"),
+	),
+	Init: key.NewBinding(
+		key.WithKeys("i"),
+		key.WithHelp("i", "init"),
+	),
+	Validate: key.NewBinding(
+		key.WithKeys("v"),
+		key.WithHelp("v", "validate"),
+	),
+	Format: key.NewBinding(
+		key.WithKeys("f"),
+		key.WithHelp("f", "format"),
 	),
 }

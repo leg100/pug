@@ -111,7 +111,7 @@ func (m resources) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			addrs := m.table.HighlightedOrSelectedKeys()
 			m.table.DeselectAll()
 			return m, m.createStateCommand("untaint", m.states.Untaint, addrs...)
-		case key.Matches(msg, localKeys.Plan):
+		case key.Matches(msg, keys.Common.Plan):
 			// Create a targeted run.
 			addrs := m.table.HighlightedOrSelectedKeys()
 			// NOTE: even if the user hasn't selected any rows, we still proceed

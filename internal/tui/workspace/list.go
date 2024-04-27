@@ -12,6 +12,7 @@ import (
 	"github.com/leg100/pug/internal/state"
 	"github.com/leg100/pug/internal/tui"
 	"github.com/leg100/pug/internal/tui/keys"
+	tuirun "github.com/leg100/pug/internal/tui/run"
 	"github.com/leg100/pug/internal/tui/table"
 	"github.com/leg100/pug/internal/workspace"
 )
@@ -128,15 +129,15 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				fmt.Sprintf("Delete %d workspace(s)", len(workspaceIDs)),
 				tui.CreateTasks("delete-workspace", m.svc.Delete, workspaceIDs...),
 			)
-		case key.Matches(msg, localKeys.Init):
+		case key.Matches(msg, keys.Common.Init):
 			cmd := tui.CreateTasks("init", m.modules.Init, m.highlightedOrSelectedModuleIDs()...)
 			m.table.DeselectAll()
 			return m, cmd
-		case key.Matches(msg, localKeys.Format):
+		case key.Matches(msg, keys.Common.Format):
 			cmd := tui.CreateTasks("format", m.modules.Format, m.highlightedOrSelectedModuleIDs()...)
 			m.table.DeselectAll()
 			return m, cmd
-		case key.Matches(msg, localKeys.Validate):
+		case key.Matches(msg, keys.Common.Validate):
 			cmd := tui.CreateTasks("validate", m.modules.Validate, m.highlightedOrSelectedModuleIDs()...)
 			m.table.DeselectAll()
 			return m, cmd
@@ -149,19 +150,21 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return nil
 				}
 			}
-		case key.Matches(msg, localKeys.Plan):
+		case key.Matches(msg, keys.Common.Plan):
 			workspaceIDs := m.table.HighlightedOrSelectedKeys()
 			m.table.DeselectAll()
 			return m, tui.CreateRuns(m.runs, workspaceIDs...)
-		case key.Matches(msg, localKeys.Apply):
-			runIDs := m.highlightedOrSelectedCurrentRunIDs()
-			if len(runIDs) == 0 {
-				return m, tui.ReportError(errors.New("none of the workspaces have a current run"), "")
+		case key.Matches(msg, keys.Common.Apply):
+			runIDs, err := m.table.Prune(func(ws *workspace.Workspace) (resource.ID, error) {
+				if runID := ws.CurrentRunID; runID != nil {
+					return *runID, nil
+				}
+				return resource.ID{}, errors.New("workspace does not have a current run")
+			})
+			if err != nil {
+				return m, tui.ReportError(err, "")
 			}
-			return m, tui.RequestConfirmation(
-				fmt.Sprintf("Apply current run on %d workspace(s)", len(runIDs)),
-				tui.CreateTasks("apply", m.runs.Apply, runIDs...),
-			)
+			return m, tuirun.ApplyCommand(m.runs, runIDs...)
 		}
 	}
 
@@ -184,8 +187,13 @@ func (m list) TabStatus() string {
 	return fmt.Sprintf("(%d)", len(m.table.Items()))
 }
 
-func (m list) HelpBindings() (bindings []key.Binding) {
-	return keys.KeyMapToSlice(localKeys)
+func (m list) HelpBindings() []key.Binding {
+	return []key.Binding{
+		keys.Common.Init,
+		keys.Common.Format,
+		keys.Common.Validate,
+		localKeys.SetCurrent,
+	}
 }
 
 // highlightedOrSelectedModuleIDs returns the IDs of the modules of the
@@ -197,16 +205,4 @@ func (m list) highlightedOrSelectedModuleIDs() []resource.ID {
 		moduleIDs[i] = row.Value.ModuleID()
 	}
 	return moduleIDs
-}
-
-// highlightedOrSelectedCurrentRunIDs returns the IDs of the current runs of the
-// highlighted/selected workspaces.
-func (m *list) highlightedOrSelectedCurrentRunIDs() (runIDs []resource.ID) {
-	selected := m.table.HighlightedOrSelected()
-	for _, row := range selected {
-		if currentRunID := row.Value.CurrentRunID; currentRunID != nil {
-			runIDs = append(runIDs, *currentRunID)
-		}
-	}
-	return
 }

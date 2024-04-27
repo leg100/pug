@@ -22,6 +22,7 @@ const (
 
 // Maker makes workspace models.
 type Maker struct {
+	ModuleService    tui.ModuleService
 	WorkspaceService tui.WorkspaceService
 	StateService     tui.StateService
 	RunService       tui.RunService
@@ -60,6 +61,7 @@ func (mm *Maker) Make(workspace resource.Resource, width, height int) (tea.Model
 	}
 
 	m := model{
+		modules:   mm.ModuleService,
 		runs:      mm.RunService,
 		workspace: ws,
 		tabs:      tabs,
@@ -69,6 +71,7 @@ func (mm *Maker) Make(workspace resource.Resource, width, height int) (tea.Model
 }
 
 type model struct {
+	modules   tui.ModuleService
 	runs      tui.RunService
 	workspace *workspace.Workspace
 	tabs      tui.TabSet
@@ -85,13 +88,26 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch {
-		case key.Matches(msg, localKeys.Plan):
+		case key.Matches(msg, keys.Common.Plan):
 			// Create a plan. If the resources tab is selected, then ignore and
 			// let the resources model handle creating a *targeted* plan.
 			if m.tabs.ActiveTitle() == resourcesTabTitle {
 				break
 			}
 			return m, tui.CreateRuns(m.runs, m.workspace.ID)
+		case key.Matches(msg, keys.Common.Init):
+			// create init task and switch user to its task page
+			return m, func() tea.Msg {
+				task, err := m.modules.Init(m.workspace.ModuleID())
+				if err != nil {
+					return tui.NewErrorMsg(err, "creating init task")
+				}
+				return tui.NewNavigationMsg(tui.TaskKind, tui.WithParent(task.Resource))
+			}
+		case key.Matches(msg, keys.Common.Validate):
+			return m, tui.CreateTasks("validate", m.modules.Validate, m.workspace.ModuleID())
+		case key.Matches(msg, keys.Common.Format):
+			return m, tui.CreateTasks("format", m.modules.Format, m.workspace.ModuleID())
 		case key.Matches(msg, keys.Common.Module):
 			return m, tui.NavigateTo(tui.ModuleKind, tui.WithParent(*m.workspace.Module()))
 		}
@@ -119,6 +135,9 @@ func (m model) View() string {
 func (m model) HelpBindings() (bindings []key.Binding) {
 	return append(
 		m.tabs.HelpBindings(),
+		keys.Common.Init,
+		keys.Common.Validate,
+		keys.Common.Format,
 		keys.Common.Module,
 	)
 }

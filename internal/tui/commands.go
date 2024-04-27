@@ -63,6 +63,10 @@ func ReportError(err error, msg string, args ...any) tea.Cmd {
 	return CmdHandler(NewErrorMsg(err, msg, args...))
 }
 
+func ReportInfo(msg string, args ...any) tea.Cmd {
+	return CmdHandler(InfoMsg(fmt.Sprintf(msg, args...)))
+}
+
 func OpenVim(path string) tea.Cmd {
 	// TODO: use env var EDITOR
 	// TODO: check for side effects of exec blocking the tui - do

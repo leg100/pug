@@ -15,23 +15,29 @@ A TUI application for terraform power users.
 
 Invoke `init`, `validate`, and `fmt` across multiple modules.
 
-![Modules demo](https://vhs.charm.sh/vhs-3Cy7AzQGztpAUvNmekM7f9.gif)
+![Modules demo](https://vhs.charm.sh/vhs-2SDiU03uHVMZ1OweMU5qnw.gif)
+
+## Workspaces
+
+Pug supports workspaces. Invoke plan and apply on workspaces. Change the current workspace for a module.
+
+![Workspaces demo](https://vhs.charm.sh/vhs-2VVSWika2ZVjUeBNGVXzYq.gif)
 
 ## Runs
 
 Create multiple plans and apply them in parallel.
 
-![Runs demo](https://vhs.charm.sh/vhs-141kKh9q7Ikije2rN8EBK1.gif)
+![Runs demo](https://vhs.charm.sh/vhs-2XzgTM8B8zMmL5kXSSP8hv.gif)
 
 View the output of plans and applies.
 
-![Run demo](https://vhs.charm.sh/vhs-3qwIobBxxLGB6bC5OR5kYd.gif)
+![Run demo](https://vhs.charm.sh/vhs-6SbXJmeccgQG0xoENCH20A.gif)
 
 ## State management
 
 Manage state resources. Taint, untaint and delete multiple resources. Select resources for targeted plans.
 
-![State demo](https://vhs.charm.sh/vhs-77uh1e8YRXR5Aux8mSU1Z3.gif)
+![State demo](https://vhs.charm.sh/vhs-79IoDj23zTHZnbHKekcz0o.gif)
 
 ## FAQ
 
