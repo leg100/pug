@@ -60,3 +60,35 @@ func TestModule_SetCurrentWorkspace(t *testing.T) {
 		return matchPattern(t, `dev.*✓`, s)
 	})
 }
+
+func TestModule_ReloadWorkspaces(t *testing.T) {
+	tm := setup(t)
+
+	// Wait for module to be loaded
+	waitFor(t, tm, func(s string) bool {
+		return strings.Contains(s, "modules/a")
+	})
+
+	// Initialize module
+	tm.Type("i")
+	waitFor(t, tm, func(s string) bool {
+		return strings.Contains(s, "Terraform has been successfully initialized!")
+	})
+
+	// Go to module's page
+	tm.Type("m")
+
+	// Expect two workspaces to be listed
+	waitFor(t, tm, func(s string) bool {
+		return matchPattern(t, `(?s)WORKSPACE.*default.*dev`, s)
+	})
+
+	// Reload workspaces for current module
+	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlW})
+
+	// Expect message to inform user that reload has finished.
+	waitFor(t, tm, func(s string) bool {
+		t.Log(s)
+		return strings.Contains(s, "completed reload-workspaces task successfully")
+	})
+}

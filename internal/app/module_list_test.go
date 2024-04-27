@@ -62,14 +62,49 @@ func TestModuleList_Reload(t *testing.T) {
 	})
 
 	// Reload modules
-	tm.Send(tea.KeyMsg{
-		Type: tea.KeyCtrlR,
-	})
+	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlR})
 
 	// Expect message to inform user that reload has finished and no modules
 	// have been added nor removed.
 	waitFor(t, tm, func(s string) bool {
 		return strings.Contains(s, "reloaded modules: added 0; removed 0")
+	})
+}
+
+func TestModuleList_ReloadWorkspaces(t *testing.T) {
+	tm := setup(t)
+
+	// Expect message to inform user that three modules have been loaded
+	waitFor(t, tm, func(s string) bool {
+		return strings.Contains(s, "loaded 3 modules")
+	})
+
+	// Select all modules and init
+	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlA})
+	tm.Type("i")
+
+	// Wait for each module to be initialized, and to have its current workspace
+	// set (should be "default")
+	waitFor(t, tm, func(s string) bool {
+		return strings.Count(s, "default") == 3
+	})
+
+	// Reload workspaces for current module
+	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlW})
+
+	// Expect message to inform user that reload has finished.
+	waitFor(t, tm, func(s string) bool {
+		return strings.Contains(s, "completed reload-workspace task successfully")
+	})
+
+	// Reload workspaces for each and every module
+	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlA})
+	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlW})
+
+	// Expect message to inform user that all three reloads have completed
+	// successfully.
+	waitFor(t, tm, func(s string) bool {
+		return strings.Contains(s, "completed reload-workspace tasks: (3 successful; 0 errored; 0 canceled; 0 uncreated)")
 	})
 }
 
