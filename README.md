@@ -9,7 +9,7 @@ A TUI application for terraform power users.
 * Supports workspaces
 * Backend agnostic
 
-![Applying runs](./demos/output/applied_runs.png)
+![Applying runs](./demos/runs/applied_runs.png)
 
 ## Modules
 
