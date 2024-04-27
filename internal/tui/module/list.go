@@ -12,6 +12,7 @@ import (
 	"github.com/leg100/pug/internal/run"
 	"github.com/leg100/pug/internal/tui"
 	"github.com/leg100/pug/internal/tui/keys"
+	tuirun "github.com/leg100/pug/internal/tui/run"
 	"github.com/leg100/pug/internal/tui/table"
 	"github.com/leg100/pug/internal/workspace"
 )
@@ -177,21 +178,36 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.table.DeselectAll()
 			return m, cmd
 		case key.Matches(msg, localKeys.Plan):
-			workspaceIDs := m.highlightedOrSelectedCurrentWorkspaceIDs()
-			m.table.DeselectAll()
+			workspaceIDs, err := m.table.Prune(func(mod *module.Module) (resource.ID, error) {
+				if workspaceID := mod.CurrentWorkspaceID; workspaceID != nil {
+					return *workspaceID, nil
+				}
+				return resource.ID{}, errors.New("module does not have a current workspace")
+			})
+			if err != nil {
+				return m, tui.ReportError(err, "")
+			}
 			return m, tui.CreateRuns(m.RunService, workspaceIDs...)
 		case key.Matches(msg, localKeys.Apply):
-			runIDs, err := m.highlightedOrSelectedCurrentRunIDs()
+			runIDs, err := m.table.Prune(func(mod *module.Module) (resource.ID, error) {
+				curr, err := m.currentRun(mod)
+				if err != nil {
+					return resource.ID{}, err
+				}
+				if curr == nil {
+					return resource.ID{}, errors.New("module does not have a current run")
+				}
+				if curr.Status != run.Planned {
+					return resource.ID{}, fmt.Errorf("run not in unapplyable state: %s", string(curr.Status))
+				}
+				// module has current run and it is applyable, so do not
+				// prune
+				return curr.ID, nil
+			})
 			if err != nil {
-				return m, tui.ReportError(err, "creating apply tasks")
+				return m, tui.ReportError(err, "")
 			}
-			if len(runIDs) == 0 {
-				return m, tui.ReportError(errors.New("none of the modules have a current run"), "")
-			}
-			return m, tui.RequestConfirmation(
-				fmt.Sprintf("Apply current run on %d module(s)", len(runIDs)),
-				tui.CreateTasks("apply", m.RunService.Apply, runIDs...),
-			)
+			return m, tuirun.ApplyCommand(m.RunService, runIDs...)
 		}
 	}
 
@@ -214,36 +230,27 @@ func (m list) HelpBindings() (bindings []key.Binding) {
 		localKeys.Validate,
 		localKeys.Format,
 		localKeys.Plan,
+		localKeys.Apply,
 		localKeys.Edit,
 		localKeys.ReloadModules,
 		localKeys.ReloadWorkspaces,
 	}
 }
 
-// highlightedOrSelectedCurrentWorkspaceIDs returns the IDs of the current
-// workspaces of any modules that are currently selected or highlighted.
-func (m list) highlightedOrSelectedCurrentWorkspaceIDs() (workspaceIDs []resource.ID) {
-	for _, row := range m.table.HighlightedOrSelected() {
-		if current := row.Value.CurrentWorkspaceID; current != nil {
-			workspaceIDs = append(workspaceIDs, *current)
-		}
+// currentRun retrieves current run for a module. If there is no current run for
+// the module, then a nil run is returned.
+func (m list) currentRun(mod *module.Module) (*run.Run, error) {
+	currentWorkspaceID := mod.CurrentWorkspaceID
+	if currentWorkspaceID == nil {
+		return nil, nil
 	}
-	return
-}
-
-// highlightedOrSelectedCurrentRunIDs returns the IDs of the current
-// runs of any modules that are currently selected or highlighted.
-func (m list) highlightedOrSelectedCurrentRunIDs() (runIDs []resource.ID, err error) {
-	for _, row := range m.table.HighlightedOrSelected() {
-		if currentWorkspaceID := row.Value.CurrentWorkspaceID; currentWorkspaceID != nil {
-			ws, err := m.WorkspaceService.Get(*currentWorkspaceID)
-			if err != nil {
-				return nil, err
-			}
-			if currentRunID := ws.CurrentRunID; currentRunID != nil {
-				runIDs = append(runIDs, *currentRunID)
-			}
-		}
+	run, err := m.WorkspaceService.Get(*currentWorkspaceID)
+	if err != nil {
+		return nil, err
 	}
-	return
+	currentRunID := run.CurrentRunID
+	if currentRunID == nil {
+		return nil, nil
+	}
+	return m.RunService.Get(*currentRunID)
 }

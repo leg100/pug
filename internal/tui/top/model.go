@@ -266,6 +266,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	case tui.InfoMsg:
 		m.info = string(msg)
+	case tui.DeferCmdMsg:
+		return m, tea.Cmd(msg)
 	default:
 		// Send remaining msg types to all cached models
 		cmds = append(cmds, m.cache.updateAll(msg)...)
@@ -311,6 +313,7 @@ func (m model) View() string {
 	var currentHelpBindings []key.Binding
 	if bindings, ok := m.currentModel().(tui.ModelHelpBindings); ok {
 		currentHelpBindings = bindings.HelpBindings()
+		currentHelpBindings = tui.RemoveDuplicateBindings(currentHelpBindings)
 	}
 
 	if m.showHelp {

@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/leg100/pug/internal/logging"
 	"github.com/leg100/pug/internal/module"
@@ -227,4 +228,22 @@ func GlobalBreadcrumb(title string) string {
 	title = TitleStyle.Render(title)
 	all := Regular.Copy().Foreground(globalColor).Render("all")
 	return fmt.Sprintf("%s(%s)", title, all)
+}
+
+// RemoveDuplicateBindings removes duplicate bindings from a list of bindings. A
+// binding is deemed a duplicate if another binding has the same list of keys.
+func RemoveDuplicateBindings(bindings []key.Binding) []key.Binding {
+	seen := make(map[string]struct{})
+	var i int
+	for _, b := range bindings {
+		key := strings.Join(b.Keys(), " ")
+		if _, ok := seen[key]; ok {
+			// duplicate, skip
+			continue
+		}
+		seen[key] = struct{}{}
+		bindings[i] = b
+		i++
+	}
+	return bindings[:i]
 }
