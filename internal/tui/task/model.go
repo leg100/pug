@@ -110,6 +110,12 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if ws := m.task.Workspace(); ws != nil {
 				return m, tui.NavigateTo(tui.WorkspaceKind, tui.WithParent(*ws))
 			}
+		case key.Matches(msg, keys.Common.Run):
+			// 'r' takes the user to the task's run, but only if the task
+			// belongs to a run.
+			if run := m.task.Run(); run != nil {
+				return m, tui.NavigateTo(tui.RunKind, tui.WithParent(*run))
+			}
 		}
 	case outputMsg:
 		if msg.taskID != m.task.ID {
@@ -268,6 +274,9 @@ func (m model) HelpBindings() []key.Binding {
 	}
 	if ws := m.task.Workspace(); ws != nil {
 		bindings = append(bindings, keys.Common.Workspace)
+	}
+	if run := m.task.Run(); run != nil {
+		bindings = append(bindings, keys.Common.Run)
 	}
 	return bindings
 }

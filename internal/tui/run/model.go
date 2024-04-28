@@ -172,5 +172,7 @@ func (m model) TabSetInfo() string {
 func (m model) HelpBindings() (bindings []key.Binding) {
 	return []key.Binding{
 		keys.Common.Apply,
+		keys.Common.Module,
+		keys.Common.Workspace,
 	}
 }
