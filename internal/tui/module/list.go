@@ -191,6 +191,7 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if err != nil {
 				return m, tui.ReportError(err, "")
 			}
+			m.table.DeselectAll()
 			return m, tuirun.CreateRuns(m.RunService, createRunOptions, workspaceIDs...)
 		case key.Matches(msg, keys.Common.Apply):
 			runIDs, err := m.table.Prune(func(mod *module.Module) (resource.ID, error) {

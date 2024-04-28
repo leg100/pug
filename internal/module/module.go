@@ -72,15 +72,11 @@ func (m *Module) LogValue() slog.Value {
 	)
 }
 
-// findModules finds root modules that are descendents of the given path and
-// returns their paths. Determining what is a root module is difficult and
-// relies on a set of heuristics:
+// findModules finds root modules that are descendents of the workdir and
+// returns their paths relative to the workdir.
 //
-// (a) check if path contains a .terraform directory, else fallback to:
-// (b) path has a .tf file containing a backend block
-//
-// (a) will only succeed if the module has already been initialized, i.e. terraform
-// init has been run, whereas (b) is necessary if it has not.
+// A root module is deemed to be a directory that contains a .tf file that
+// contains a backend block.
 func findModules(logger logging.Interface, workdir internal.Workdir) (modules []string, err error) {
 	found := make(map[string]struct{})
 	walkfn := func(path string, d fs.DirEntry, walkerr error) error {
@@ -94,10 +90,10 @@ func findModules(logger logging.Interface, workdir internal.Workdir) (modules []
 		}
 		if d.IsDir() {
 			if d.Name() == ".terraform" {
-				found[filepath.Dir(path)] = struct{}{}
 				// skip walking .terraform/
 				return filepath.SkipDir
 			}
+			// Ignore directory entries
 			return nil
 		}
 		if filepath.Ext(path) != ".tf" {

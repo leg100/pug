@@ -27,30 +27,48 @@ func TestModuleList(t *testing.T) {
 	})
 
 	// Select all modules and init
-	tm.Send(tea.KeyMsg{
-		Type: tea.KeyCtrlA,
-	})
+	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlA})
 	tm.Type("i")
 	waitFor(t, tm, func(s string) bool {
 		return strings.Contains(s, "completed init tasks: (3 successful; 0 errored; 0 canceled; 0 uncreated)")
 	})
 
 	// Select all modules and format
-	tm.Send(tea.KeyMsg{
-		Type: tea.KeyCtrlA,
-	})
+	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlA})
 	tm.Type("f")
 	waitFor(t, tm, func(s string) bool {
 		return strings.Contains(s, "completed format tasks: (3 successful; 0 errored; 0 canceled; 0 uncreated)")
 	})
 
 	// Select all modules and validate
-	tm.Send(tea.KeyMsg{
-		Type: tea.KeyCtrlA,
-	})
+	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlA})
 	tm.Type("v")
 	waitFor(t, tm, func(s string) bool {
 		return strings.Contains(s, "completed validate tasks: (3 successful; 0 errored; 0 canceled; 0 uncreated)")
+	})
+
+	// Select all modules and plan
+	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlA})
+	tm.Type("p")
+	// Expect all 3 modules to be in planned state
+	waitFor(t, tm, func(s string) bool {
+		t.Log(s)
+		return matchPattern(t, `(?s)(planned.*)[3]`, s)
+	})
+
+	// Select all modules and apply
+	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlA})
+	tm.Type("a")
+
+	// Confirm apply
+	waitFor(t, tm, func(s string) bool {
+		return strings.Contains(s, "Apply 3 runs (y/N)?")
+	})
+	tm.Type("y")
+
+	// Expect all 3 modules to be in applied state
+	waitFor(t, tm, func(s string) bool {
+		return matchPattern(t, `(?s)(applied.*)[3]`, s)
 	})
 }
 
