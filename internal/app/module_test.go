@@ -92,3 +92,36 @@ func TestModule_ReloadWorkspaces(t *testing.T) {
 		return strings.Contains(s, "completed reload-workspaces task successfully")
 	})
 }
+
+// TestModule_Destroy demonstrates creating a destroy plan on a module.
+func TestModule_Destroy(t *testing.T) {
+	// Setup test with pre-existing state
+	tm := setup(t, "./testdata/module_destroy", keepState())
+
+	// Wait for module to be loaded
+	waitFor(t, tm, func(s string) bool {
+		return strings.Contains(s, "modules/a")
+	})
+
+	// Initialize module
+	tm.Type("i")
+	waitFor(t, tm, func(s string) bool {
+		return strings.Contains(s, "Terraform has been successfully initialized!")
+	})
+
+	// Go to module page
+	tm.Type("m")
+
+	// Wait for workspace to be loaded
+	waitFor(t, tm, func(s string) bool {
+		return matchPattern(t, `(?s)WORKSPACE.*default`, s)
+	})
+
+	// Create destroy plan
+	tm.Type("d")
+
+	// Expect umpteen resources to be proposed for deletion
+	waitFor(t, tm, func(s string) bool {
+		return strings.Contains(s, "+0~0-10")
+	})
+}

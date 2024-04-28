@@ -72,7 +72,7 @@ func TestWorkspace_Resources(t *testing.T) {
 	tm.Type("s")
 	tm.Send(tea.KeyMsg{Type: tea.KeyDown})
 	tm.Type("s")
-	tm.Type("d")
+	tm.Type("D")
 
 	// Confirm deletion
 	waitFor(t, tm, func(s string) bool {

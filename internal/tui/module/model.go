@@ -8,6 +8,7 @@ import (
 	"github.com/leg100/pug/internal/module"
 	"github.com/leg100/pug/internal/resource"
 	"github.com/leg100/pug/internal/tui"
+	"github.com/leg100/pug/internal/tui/keys"
 	runtui "github.com/leg100/pug/internal/tui/run"
 	tasktui "github.com/leg100/pug/internal/tui/task"
 	workspacetui "github.com/leg100/pug/internal/tui/workspace"
@@ -84,12 +85,12 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch {
-		case key.Matches(msg, localKeys.Init):
+		case key.Matches(msg, keys.Common.Init):
 			// 'i' creates a terraform init task and sends the user to the tasks
 			// tab.
 			m.tabs.SetActiveTab(tasksTabTitle)
 			return m, tui.CreateTasks("init", m.ModuleService.Init, m.module.ID)
-		case key.Matches(msg, localKeys.Edit):
+		case key.Matches(msg, keys.Common.Edit):
 			return m, tui.OpenVim(m.module.Path)
 		case key.Matches(msg, localKeys.ReloadWorkspaces):
 			return m, tui.CreateTasks("reload-workspaces", m.WorkspaceService.Reload, m.module.ID)
@@ -110,7 +111,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch msg := msg.(type) {
 		case tea.KeyMsg:
 			switch {
-			case key.Matches(msg, localKeys.Plan):
+			case key.Matches(msg, keys.Common.Plan):
 				// The workspaces tab model takes care of listening to this key
 				// press and creating the actual run, and only once that's done
 				// do we then send the user to the runs tab.
@@ -136,11 +137,11 @@ func (m model) View() string {
 func (m model) HelpBindings() []key.Binding {
 	return append(
 		m.tabs.HelpBindings(),
-		localKeys.Init,
-		localKeys.Validate,
-		localKeys.Format,
-		localKeys.Plan,
-		localKeys.Edit,
+		keys.Common.Init,
+		keys.Common.Validate,
+		keys.Common.Format,
+		keys.Common.Plan,
+		keys.Common.Edit,
 		localKeys.ReloadWorkspaces,
 	)
 }

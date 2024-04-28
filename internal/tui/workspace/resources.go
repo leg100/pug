@@ -81,8 +81,9 @@ func (m resources) Init() tea.Cmd {
 
 func (m resources) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var (
-		cmd  tea.Cmd
-		cmds []tea.Cmd
+		cmd              tea.Cmd
+		cmds             []tea.Cmd
+		createRunOptions run.CreateOptions
 	)
 
 	switch msg := msg.(type) {
@@ -90,7 +91,7 @@ func (m resources) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch {
 		case key.Matches(msg, resourcesKeys.Reload):
 			return m, tui.CreateTasks("reload state", m.states.Reload, m.workspace.ID)
-		case key.Matches(msg, resourcesKeys.Delete):
+		case key.Matches(msg, keys.Common.Delete):
 			addrs := m.table.HighlightedOrSelectedKeys()
 			if len(addrs) == 0 {
 				// no rows; do nothing
@@ -111,15 +112,16 @@ func (m resources) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			addrs := m.table.HighlightedOrSelectedKeys()
 			m.table.DeselectAll()
 			return m, m.createStateCommand("untaint", m.states.Untaint, addrs...)
+		case key.Matches(msg, keys.Common.Destroy):
+			createRunOptions.Destroy = true
+			fallthrough
 		case key.Matches(msg, keys.Common.Plan):
 			// Create a targeted run.
-			addrs := m.table.HighlightedOrSelectedKeys()
+			createRunOptions.TargetAddrs = m.table.HighlightedOrSelectedKeys()
 			// NOTE: even if the user hasn't selected any rows, we still proceed
 			// to create a run without targeted resources.
 			return m, func() tea.Msg {
-				run, err := m.runs.Create(m.workspace.ID, run.CreateOptions{
-					TargetAddrs: addrs,
-				})
+				run, err := m.runs.Create(m.workspace.ID, createRunOptions)
 				if err != nil {
 					return tui.NewErrorMsg(err, "creating targeted run")
 				}
@@ -167,8 +169,15 @@ func (m resources) TabStatus() string {
 	return fmt.Sprintf("(%d)", len(m.table.Items()))
 }
 
-func (m resources) HelpBindings() (bindings []key.Binding) {
-	return keys.KeyMapToSlice(resourcesKeys)
+func (m resources) HelpBindings() []key.Binding {
+	return []key.Binding{
+		keys.Common.Plan,
+		keys.Common.Destroy,
+		keys.Common.Delete,
+		resourcesKeys.Taint,
+		resourcesKeys.Untaint,
+		resourcesKeys.Reload,
+	}
 }
 
 type stateFunc func(workspaceID resource.ID, addr state.ResourceAddress) (*task.Task, error)
@@ -188,19 +197,12 @@ func (m resources) createStateCommand(name string, fn stateFunc, addrs ...state.
 }
 
 type resourcesKeyMap struct {
-	Plan    key.Binding
-	Delete  key.Binding
 	Taint   key.Binding
 	Untaint key.Binding
 	Reload  key.Binding
 }
 
 var resourcesKeys = resourcesKeyMap{
-	Plan: keys.Common.Plan,
-	Delete: key.NewBinding(
-		key.WithKeys("d"),
-		key.WithHelp("d", "delete"),
-	),
 	Taint: key.NewBinding(
 		key.WithKeys("t"),
 		key.WithHelp("t", "taint"),

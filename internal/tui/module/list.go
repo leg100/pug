@@ -121,8 +121,9 @@ func (m list) Init() tea.Cmd {
 
 func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var (
-		cmd  tea.Cmd
-		cmds []tea.Cmd
+		cmd              tea.Cmd
+		cmds             []tea.Cmd
+		createRunOptions run.CreateOptions
 	)
 
 	switch msg := msg.(type) {
@@ -140,11 +141,11 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if row, highlighted := m.table.Highlighted(); highlighted {
 				return m, tui.NavigateTo(tui.ModuleKind, tui.WithParent(row.Value.Resource))
 			}
-		case key.Matches(msg, localKeys.Edit):
+		case key.Matches(msg, keys.Common.Edit):
 			if row, highlighted := m.table.Highlighted(); highlighted {
 				return m, tui.OpenVim(row.Value.Path)
 			}
-		case key.Matches(msg, localKeys.Init):
+		case key.Matches(msg, keys.Common.Init):
 			rows := m.table.HighlightedOrSelected()
 			switch len(rows) {
 			case 0:
@@ -165,11 +166,11 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.table.DeselectAll()
 				return m, cmd
 			}
-		case key.Matches(msg, localKeys.Validate):
+		case key.Matches(msg, keys.Common.Validate):
 			cmd := tui.CreateTasks("validate", m.ModuleService.Validate, m.table.HighlightedOrSelectedKeys()...)
 			m.table.DeselectAll()
 			return m, cmd
-		case key.Matches(msg, localKeys.Format):
+		case key.Matches(msg, keys.Common.Format):
 			cmd := tui.CreateTasks("format", m.ModuleService.Format, m.table.HighlightedOrSelectedKeys()...)
 			m.table.DeselectAll()
 			return m, cmd
@@ -177,7 +178,10 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			cmd := tui.CreateTasks("reload-workspace", m.WorkspaceService.Reload, m.table.HighlightedOrSelectedKeys()...)
 			m.table.DeselectAll()
 			return m, cmd
-		case key.Matches(msg, localKeys.Plan):
+		case key.Matches(msg, keys.Common.Destroy):
+			createRunOptions.Destroy = true
+			fallthrough
+		case key.Matches(msg, keys.Common.Plan):
 			workspaceIDs, err := m.table.Prune(func(mod *module.Module) (resource.ID, error) {
 				if workspaceID := mod.CurrentWorkspaceID; workspaceID != nil {
 					return *workspaceID, nil
@@ -187,8 +191,8 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if err != nil {
 				return m, tui.ReportError(err, "")
 			}
-			return m, tui.CreateRuns(m.RunService, workspaceIDs...)
-		case key.Matches(msg, localKeys.Apply):
+			return m, tuirun.CreateRuns(m.RunService, createRunOptions, workspaceIDs...)
+		case key.Matches(msg, keys.Common.Apply):
 			runIDs, err := m.table.Prune(func(mod *module.Module) (resource.ID, error) {
 				curr, err := m.currentRun(mod)
 				if err != nil {
@@ -226,12 +230,13 @@ func (m list) View() string {
 
 func (m list) HelpBindings() (bindings []key.Binding) {
 	return []key.Binding{
-		localKeys.Init,
-		localKeys.Validate,
-		localKeys.Format,
-		localKeys.Plan,
-		localKeys.Apply,
-		localKeys.Edit,
+		keys.Common.Init,
+		keys.Common.Format,
+		keys.Common.Validate,
+		keys.Common.Plan,
+		keys.Common.Apply,
+		keys.Common.Destroy,
+		keys.Common.Edit,
 		localKeys.ReloadModules,
 		localKeys.ReloadWorkspaces,
 	}

@@ -7,9 +7,10 @@ import (
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/leg100/pug/internal/resource"
+	"github.com/leg100/pug/internal/run"
 	"github.com/leg100/pug/internal/tui"
 	"github.com/leg100/pug/internal/tui/keys"
-	runtui "github.com/leg100/pug/internal/tui/run"
+	tuirun "github.com/leg100/pug/internal/tui/run"
 	tasktui "github.com/leg100/pug/internal/tui/task"
 	"github.com/leg100/pug/internal/workspace"
 )
@@ -28,7 +29,7 @@ type Maker struct {
 	RunService       tui.RunService
 	TaskService      tui.TaskService
 
-	RunListMaker  *runtui.ListMaker
+	RunListMaker  *tuirun.ListMaker
 	TaskListMaker *tasktui.ListMaker
 
 	Spinner *spinner.Model
@@ -83,18 +84,24 @@ func (m model) Init() tea.Cmd {
 }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	var cmds []tea.Cmd
+	var (
+		cmds             []tea.Cmd
+		createRunOptions run.CreateOptions
+	)
 
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch {
+		case key.Matches(msg, keys.Common.Destroy):
+			createRunOptions.Destroy = true
+			fallthrough
 		case key.Matches(msg, keys.Common.Plan):
 			// Create a plan. If the resources tab is selected, then ignore and
 			// let the resources model handle creating a *targeted* plan.
 			if m.tabs.ActiveTitle() == resourcesTabTitle {
 				break
 			}
-			return m, tui.CreateRuns(m.runs, m.workspace.ID)
+			return m, tuirun.CreateRuns(m.runs, createRunOptions, m.workspace.ID)
 		case key.Matches(msg, keys.Common.Init):
 			// create init task and switch user to its task page
 			return m, func() tea.Msg {
@@ -135,9 +142,11 @@ func (m model) View() string {
 func (m model) HelpBindings() (bindings []key.Binding) {
 	return append(
 		m.tabs.HelpBindings(),
+		keys.Common.Plan,
+		keys.Common.Destroy,
 		keys.Common.Init,
-		keys.Common.Validate,
 		keys.Common.Format,
+		keys.Common.Validate,
 		keys.Common.Module,
 	)
 }

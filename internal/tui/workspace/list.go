@@ -100,8 +100,9 @@ func (m list) Init() tea.Cmd {
 
 func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var (
-		cmd  tea.Cmd
-		cmds []tea.Cmd
+		cmd              tea.Cmd
+		cmds             []tea.Cmd
+		createRunOptions run.CreateOptions
 	)
 
 	switch msg := msg.(type) {
@@ -150,10 +151,13 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return nil
 				}
 			}
+		case key.Matches(msg, keys.Common.Destroy):
+			createRunOptions.Destroy = true
+			fallthrough
 		case key.Matches(msg, keys.Common.Plan):
 			workspaceIDs := m.table.HighlightedOrSelectedKeys()
 			m.table.DeselectAll()
-			return m, tui.CreateRuns(m.runs, workspaceIDs...)
+			return m, tuirun.CreateRuns(m.runs, createRunOptions, workspaceIDs...)
 		case key.Matches(msg, keys.Common.Apply):
 			runIDs, err := m.table.Prune(func(ws *workspace.Workspace) (resource.ID, error) {
 				if runID := ws.CurrentRunID; runID != nil {
@@ -192,6 +196,9 @@ func (m list) HelpBindings() []key.Binding {
 		keys.Common.Init,
 		keys.Common.Format,
 		keys.Common.Validate,
+		keys.Common.Plan,
+		keys.Common.Apply,
+		keys.Common.Destroy,
 		localKeys.SetCurrent,
 	}
 }

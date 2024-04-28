@@ -18,16 +18,33 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func setup(t *testing.T, workdir string) *teatest.TestModel {
+type setupOption func(*setupOptions)
+
+type setupOptions struct {
+	keepState bool
+}
+
+func keepState() setupOption {
+	return func(opts *setupOptions) {
+		opts.keepState = true
+	}
+}
+
+func setup(t *testing.T, workdir string, sopts ...setupOption) *teatest.TestModel {
 	t.Helper()
+
+	var opts setupOptions
+	for _, fn := range sopts {
+		fn(&opts)
+	}
 
 	// Clean up any leftover artefacts from previous tests (previous tests
 	// neglect to clean up artefacts if they end with a panic).
-	cleanupArtefacts(workdir)
+	cleanupArtefacts(workdir, opts)
 
 	// And clean up artefacts once test finishes
 	t.Cleanup(func() {
-		cleanupArtefacts(workdir)
+		cleanupArtefacts(workdir, opts)
 	})
 
 	// Cancel context once test finishes.
@@ -69,7 +86,7 @@ func setup(t *testing.T, workdir string) *teatest.TestModel {
 }
 
 // cleanupArtefacts removes all the detritus that terraform leaves behind.
-func cleanupArtefacts(workdir string) {
+func cleanupArtefacts(workdir string, opts setupOptions) {
 	_ = filepath.WalkDir(workdir, func(path string, d fs.DirEntry, walkerr error) error {
 		if walkerr != nil {
 			return walkerr
@@ -86,7 +103,7 @@ func cleanupArtefacts(workdir string) {
 		if filepath.Base(path) == ".terraform.lock.hcl" {
 			os.Remove(path)
 		}
-		if filepath.Base(path) == "terraform.tfstate" {
+		if !opts.keepState && filepath.Base(path) == "terraform.tfstate" {
 			os.Remove(path)
 		}
 		if strings.HasSuffix(filepath.Base(path), ".backup") {

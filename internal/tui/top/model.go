@@ -20,6 +20,7 @@ import (
 	"github.com/leg100/pug/internal/tui"
 	"github.com/leg100/pug/internal/tui/keys"
 	"github.com/leg100/pug/internal/tui/module"
+	tuirun "github.com/leg100/pug/internal/tui/run"
 	"github.com/leg100/pug/internal/tui/table"
 	"github.com/leg100/pug/internal/version"
 )
@@ -247,7 +248,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if created {
 			cmds = append(cmds, m.currentModel().Init())
 		}
-	case tui.CreatedRunsMsg:
+	case tuirun.CreatedRunsMsg:
 		cmd, m.info, m.err = handleCreatedRunsMsg(msg)
 		cmds = append(cmds, cmd)
 	case tui.CreatedTasksMsg:

@@ -41,6 +41,7 @@ type Run struct {
 	Status      Status
 	AutoApply   bool
 	TargetAddrs []state.ResourceAddress
+	Destroy     bool
 
 	PlanReport  Report
 	ApplyReport Report
@@ -57,7 +58,10 @@ type Run struct {
 }
 
 type CreateOptions struct {
+	// TargetAddrs creates a plan targeting specific resources.
 	TargetAddrs []state.ResourceAddress
+	// Destroy creates a plan to destroy all resources.
+	Destroy bool
 
 	afterUpdate func(run *Run)
 }
@@ -68,6 +72,7 @@ func newRun(mod *module.Module, ws *workspace.Workspace, opts CreateOptions) (*R
 		Status:      Pending,
 		AutoApply:   ws.AutoApply,
 		TargetAddrs: opts.TargetAddrs,
+		Destroy:     opts.Destroy,
 		Created:     time.Now(),
 		Updated:     time.Now(),
 		afterUpdate: opts.afterUpdate,
@@ -97,6 +102,9 @@ func (r *Run) PlanArgs() []string {
 	args := []string{"-input=false", "-out", r.PlanPath()}
 	for _, addr := range r.TargetAddrs {
 		args = append(args, fmt.Sprintf("-target=%s", addr))
+	}
+	if r.Destroy {
+		args = append(args, "-destroy")
 	}
 	return args
 }

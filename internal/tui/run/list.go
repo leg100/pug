@@ -140,7 +140,6 @@ func (m list) TabStatus() string {
 
 func (m list) HelpBindings() (bindings []key.Binding) {
 	return []key.Binding{
-		keys.Common.Plan,
 		keys.Common.Apply,
 		keys.Common.Cancel,
 	}

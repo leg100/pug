@@ -9,6 +9,7 @@ messages.log
 # terraform artifacts
 .terraform
 terraform.tfstate
+!**/testdata/**/terraform.tfstate
 *.backup
 # pug artifacts
 pug.yaml

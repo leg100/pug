@@ -3,7 +3,6 @@ package tui
 import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/leg100/pug/internal/resource"
-	"github.com/leg100/pug/internal/run"
 	"github.com/leg100/pug/internal/task"
 )
 
@@ -61,12 +60,6 @@ type CompletedTasksMsg struct {
 	Command string
 	Tasks   task.Multi
 	// Errors from originally creating tasks
-	CreateErrs []error
-}
-
-type CreatedRunsMsg struct {
-	Runs []*run.Run
-	// Errors from creating tasks
 	CreateErrs []error
 }
 

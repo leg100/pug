@@ -5,9 +5,10 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/leg100/pug/internal/tui"
+	tuirun "github.com/leg100/pug/internal/tui/run"
 )
 
-func handleCreatedRunsMsg(msg tui.CreatedRunsMsg) (navigate tea.Cmd, info string, err error) {
+func handleCreatedRunsMsg(msg tuirun.CreatedRunsMsg) (navigate tea.Cmd, info string, err error) {
 	if len(msg.Runs) == 1 {
 		// User created one run successfully. Only in this scenario do we send
 		// the user to the run page (in the scenario that *multiple* runs are

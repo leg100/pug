@@ -6,8 +6,33 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/leg100/pug/internal/resource"
+	"github.com/leg100/pug/internal/run"
 	"github.com/leg100/pug/internal/tui"
 )
+
+// CreateRuns creates a tea command for creating runs.
+func CreateRuns(runs tui.RunService, opts run.CreateOptions, workspaceIDs ...resource.ID) tea.Cmd {
+	if len(workspaceIDs) == 0 {
+		return nil
+	}
+	return func() tea.Msg {
+		var msg CreatedRunsMsg
+		for _, wid := range workspaceIDs {
+			run, err := runs.Create(wid, opts)
+			if err != nil {
+				msg.CreateErrs = append(msg.CreateErrs, err)
+			}
+			msg.Runs = append(msg.Runs, run)
+		}
+		return msg
+	}
+}
+
+type CreatedRunsMsg struct {
+	Runs []*run.Run
+	// Errors from creating tasks
+	CreateErrs []error
+}
 
 // ApplyCommand creates a tea command for applying runs
 func ApplyCommand(runs tui.RunService, runIDs ...resource.ID) tea.Cmd {
