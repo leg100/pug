@@ -10,7 +10,7 @@ import (
 )
 
 func TestWorkspaceList_SetCurrentWorkspace(t *testing.T) {
-	tm := setup(t)
+	tm := setup(t, "./testdata/module_list")
 
 	// Wait for module to be loaded
 	waitFor(t, tm, func(s string) bool {
@@ -50,7 +50,7 @@ func TestWorkspaceList_SetCurrentWorkspace(t *testing.T) {
 }
 
 func TestWorkspaceList_CreateRun(t *testing.T) {
-	tm := setup(t)
+	tm := setup(t, "./testdata/module_list")
 
 	// Expect message to inform user that modules have been loaded
 	waitFor(t, tm, func(s string) bool {
@@ -98,7 +98,7 @@ func TestWorkspaceList_CreateRun(t *testing.T) {
 }
 
 func TestWorkspaceList_ApplyCurrentRun(t *testing.T) {
-	tm := setup(t)
+	tm := setup(t, "./testdata/module_list")
 
 	// Expect message to inform user that modules have been loaded
 	waitFor(t, tm, func(s string) bool {

@@ -1,12 +1,10 @@
 package logging
 
 import (
-	"context"
 	"io"
 	"log/slog"
 
 	"github.com/leg100/pug/internal/pubsub"
-	"github.com/leg100/pug/internal/resource"
 )
 
 var levels = map[string]slog.Level{
@@ -30,7 +28,7 @@ func NewLogger(opts Options) *Logger {
 	)
 
 	logger.logger = slog.New(handler)
-	logger.broker = broker
+	logger.Broker = broker
 	logger.writer = writer
 	logger.enricher = &enricher{}
 
@@ -48,9 +46,9 @@ type Options struct {
 // records as pug events, and enriching records with further attributes.
 type Logger struct {
 	logger *slog.Logger
-	broker *pubsub.Broker[Message]
 	writer *writer
 
+	*pubsub.Broker[Message]
 	*enricher
 }
 
@@ -68,11 +66,6 @@ func (l *Logger) Warn(msg string, args ...any) {
 
 func (l *Logger) Error(msg string, args ...any) {
 	l.logger.Error(msg, l.enrich(args...)...)
-}
-
-// Subscribe to log messages.
-func (l *Logger) Subscribe(ctx context.Context) <-chan resource.Event[Message] {
-	return l.broker.Subscribe(ctx)
 }
 
 // Messages provides the log messages received thus far.

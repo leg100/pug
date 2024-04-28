@@ -1,7 +1,6 @@
 package task
 
 import (
-	"context"
 	"slices"
 
 	"github.com/leg100/pug/internal"
@@ -11,12 +10,11 @@ import (
 )
 
 type Service struct {
-	Broker *pubsub.Broker[*Task]
-
 	table   *resource.Table[*Task]
 	counter *int
 	logger  logging.Interface
 
+	*pubsub.Broker[*Task]
 	*factory
 }
 
@@ -168,10 +166,6 @@ func (s *Service) List(opts ListOptions) []*Task {
 
 func (s *Service) Get(taskID resource.ID) (*Task, error) {
 	return s.table.Get(taskID)
-}
-
-func (s *Service) Subscribe(ctx context.Context) <-chan resource.Event[*Task] {
-	return s.Broker.Subscribe(ctx)
 }
 
 func (s *Service) Cancel(taskID resource.ID) (*Task, error) {

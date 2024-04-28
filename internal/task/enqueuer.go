@@ -1,8 +1,6 @@
 package task
 
 import (
-	"context"
-
 	"github.com/leg100/pug/internal/resource"
 )
 
@@ -12,9 +10,9 @@ type enqueuer struct {
 	tasks taskLister
 }
 
-func StartEnqueuer(ctx context.Context, tasks *Service) {
+func StartEnqueuer(tasks *Service) {
 	e := enqueuer{tasks: tasks}
-	sub := tasks.Broker.Subscribe(ctx)
+	sub := tasks.Broker.Subscribe()
 
 	go func() {
 		for range sub {

@@ -18,11 +18,12 @@ type Service struct {
 	modules    *module.Service
 	workspaces *workspace.Service
 	tasks      *task.Service
-	broker     *pubsub.Broker[*State]
 	logger     logging.Interface
 
 	// Table mapping workspace IDs to states
 	cache *resource.Table[*State]
+
+	*pubsub.Broker[*State]
 }
 
 type ServiceOptions struct {
@@ -39,13 +40,13 @@ func NewService(ctx context.Context, opts ServiceOptions) *Service {
 		workspaces: opts.WorkspaceService,
 		tasks:      opts.TaskService,
 		cache:      resource.NewTable(broker),
-		broker:     broker,
+		Broker:     broker,
 		logger:     opts.Logger,
 	}
 
 	// Whenever a workspace is added, pull its state
 	go func() {
-		for event := range opts.WorkspaceService.Subscribe(ctx) {
+		for event := range opts.WorkspaceService.Subscribe() {
 			if event.Type == resource.CreatedEvent {
 				_, _ = svc.Reload(event.Payload.ID)
 			}
@@ -197,10 +198,6 @@ func (s *Service) Untaint(workspaceID resource.ID, addr ResourceAddress) (*task.
 			s.updateResourceStatus(workspaceID, "", addr)
 		},
 	})
-}
-
-func (s *Service) Subscribe(ctx context.Context) <-chan resource.Event[*State] {
-	return s.broker.Subscribe(ctx)
 }
 
 func (s *Service) createTask(workspaceID resource.ID, opts task.CreateOptions) (*task.Task, error) {

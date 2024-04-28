@@ -10,7 +10,7 @@ import (
 )
 
 func TestQuit(t *testing.T) {
-	tm := setup(t)
+	tm := setup(t, "./testdata/module_list")
 
 	tm.Send(tea.KeyMsg{
 		Type: tea.KeyCtrlC,

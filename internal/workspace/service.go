@@ -2,7 +2,6 @@ package workspace
 
 import (
 	"bufio"
-	"context"
 	"fmt"
 	"io"
 	"slices"
@@ -16,12 +15,13 @@ import (
 )
 
 type Service struct {
-	broker *pubsub.Broker[*Workspace]
 	table  workspaceTable
 	logger logging.Interface
 
 	modules moduleService
 	tasks   *task.Service
+
+	*pubsub.Broker[*Workspace]
 }
 
 type ServiceOptions struct {
@@ -48,7 +48,7 @@ type moduleService interface {
 }
 
 type moduleSubscription interface {
-	Subscribe(ctx context.Context) <-chan resource.Event[*module.Module]
+	Subscribe() <-chan resource.Event[*module.Module]
 }
 
 func NewService(opts ServiceOptions) *Service {
@@ -58,7 +58,7 @@ func NewService(opts ServiceOptions) *Service {
 	opts.Logger.AddEnricher(&logEnricher{table: table})
 
 	svc := &Service{
-		broker:  broker,
+		Broker:  broker,
 		table:   table,
 		modules: opts.ModuleService,
 		tasks:   opts.TaskService,
@@ -73,8 +73,8 @@ func NewService(opts ServiceOptions) *Service {
 // initialized (because `terraform workspace list` would fail)
 // * an existing module is updated, has been initialized, and does not yet have
 // a current workspace.
-func (s *Service) LoadWorkspacesUponModuleLoad(ctx context.Context, ms moduleSubscription) {
-	sub := ms.Subscribe(ctx)
+func (s *Service) LoadWorkspacesUponModuleLoad(ms moduleSubscription) {
+	sub := ms.Subscribe()
 
 	go func() {
 		for event := range sub {
@@ -269,10 +269,6 @@ func (s *Service) List(opts ListOptions) []*Workspace {
 		existing = append(existing, ws)
 	}
 	return existing
-}
-
-func (s *Service) Subscribe(ctx context.Context) <-chan resource.Event[*Workspace] {
-	return s.broker.Subscribe(ctx)
 }
 
 func (s *Service) SetCurrentRun(workspaceID, runID resource.ID) error {

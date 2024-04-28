@@ -16,7 +16,7 @@ type runner struct {
 }
 
 func StartRunner(ctx context.Context, logger logging.Interface, tasks *Service, maxTasks int) func() error {
-	sub := tasks.Broker.Subscribe(ctx)
+	sub := tasks.Subscribe()
 	r := &runner{
 		max:   maxTasks,
 		tasks: tasks,

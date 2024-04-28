@@ -50,7 +50,7 @@ func Start(stdout, stderr io.Writer, args []string) error {
 		return nil
 	}
 
-	app, model, err := newApp(cfg)
+	app, model, err := newApp(ctx, cfg)
 	if err != nil {
 		return err
 	}
@@ -88,7 +88,7 @@ func Start(stdout, stderr io.Writer, args []string) error {
 }
 
 // newApp constructs an instance of the app and the top-level TUI model.
-func newApp(cfg config) (*app, tea.Model, error) {
+func newApp(ctx context.Context, cfg config) (*app, tea.Model, error) {
 	// Setup logging
 	logger := logging.NewLogger(cfg.loggingOptions)
 
@@ -132,6 +132,17 @@ func newApp(cfg config) (*app, tea.Model, error) {
 		Logger:                  logger,
 	})
 
+	// Shutdown services once context is done.
+	go func() {
+		<-ctx.Done()
+		logger.Shutdown()
+		tasks.Shutdown()
+		modules.Shutdown()
+		workspaces.Shutdown()
+		states.Shutdown()
+		runs.Shutdown()
+	}()
+
 	// Construct top-level TUI model.
 	model, err := top.New(top.Options{
 		TaskService:      tasks,
@@ -164,46 +175,46 @@ func newApp(cfg config) (*app, tea.Model, error) {
 // start starts the app daemons and relays events to the TUI.
 func (a *app) start(ctx context.Context, s sender) func() error {
 	// Start daemons
-	task.StartEnqueuer(ctx, a.tasks)
-	run.StartScheduler(ctx, a.runs, a.workspaces)
+	task.StartEnqueuer(a.tasks)
+	run.StartScheduler(a.runs, a.workspaces)
 	waitfn := task.StartRunner(ctx, a.logger, a.tasks, a.cfg.MaxTasks)
 
 	// Automatically load workspaces whenever modules are loaded.
-	a.workspaces.LoadWorkspacesUponModuleLoad(ctx, a.modules)
+	a.workspaces.LoadWorkspacesUponModuleLoad(a.modules)
 
 	// Relay resource events to TUI. Deliberately set up subscriptions *before*
 	// any events are triggered, to ensure the TUI receives all messages.
-	logEvents := a.logger.Subscribe(ctx)
+	logEvents := a.logger.Subscribe()
 	go func() {
 		for ev := range logEvents {
 			s.Send(ev)
 		}
 	}()
-	modEvents := a.modules.Subscribe(ctx)
+	modEvents := a.modules.Subscribe()
 	go func() {
 		for ev := range modEvents {
 			s.Send(ev)
 		}
 	}()
-	wsEvents := a.workspaces.Subscribe(ctx)
+	wsEvents := a.workspaces.Subscribe()
 	go func() {
 		for ev := range wsEvents {
 			s.Send(ev)
 		}
 	}()
-	stateEvents := a.states.Subscribe(ctx)
+	stateEvents := a.states.Subscribe()
 	go func() {
 		for ev := range stateEvents {
 			s.Send(ev)
 		}
 	}()
-	runEvents := a.runs.Subscribe(ctx)
+	runEvents := a.runs.Subscribe()
 	go func() {
 		for ev := range runEvents {
 			s.Send(ev)
 		}
 	}()
-	taskEvents := a.tasks.Subscribe(ctx)
+	taskEvents := a.tasks.Subscribe()
 	go func() {
 		for ev := range taskEvents {
 			s.Send(ev)

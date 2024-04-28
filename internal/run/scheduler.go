@@ -1,8 +1,6 @@
 package run
 
 import (
-	"context"
-
 	"github.com/leg100/pug/internal/resource"
 	"github.com/leg100/pug/internal/workspace"
 	"golang.org/x/exp/maps"
@@ -20,8 +18,8 @@ type runLister interface {
 // there is at most one active run on each workspace at a time.
 //
 // The scheduler attempts to schedule runs upon every run event it receives.
-func StartScheduler(ctx context.Context, runs *Service, workspaces *workspace.Service) {
-	sub := runs.Broker.Subscribe(ctx)
+func StartScheduler(runs *Service, workspaces *workspace.Service) {
+	sub := runs.Broker.Subscribe()
 	s := &scheduler{runs: runs}
 
 	go func() {

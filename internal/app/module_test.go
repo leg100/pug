@@ -8,7 +8,7 @@ import (
 )
 
 func TestModule(t *testing.T) {
-	tm := setup(t)
+	tm := setup(t, "./testdata/module_list")
 
 	// Expect module to be listed
 	waitFor(t, tm, func(s string) bool {
@@ -25,7 +25,7 @@ func TestModule(t *testing.T) {
 }
 
 func TestModule_SetCurrentWorkspace(t *testing.T) {
-	tm := setup(t)
+	tm := setup(t, "./testdata/module_list")
 
 	// Wait for module to be loaded
 	waitFor(t, tm, func(s string) bool {
@@ -62,7 +62,7 @@ func TestModule_SetCurrentWorkspace(t *testing.T) {
 }
 
 func TestModule_ReloadWorkspaces(t *testing.T) {
-	tm := setup(t)
+	tm := setup(t, "./testdata/module_list")
 
 	// Wait for module to be loaded
 	waitFor(t, tm, func(s string) bool {

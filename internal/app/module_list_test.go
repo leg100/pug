@@ -8,7 +8,7 @@ import (
 )
 
 func TestModuleList(t *testing.T) {
-	tm := setup(t)
+	tm := setup(t, "./testdata/module_list")
 
 	// Expect three modules to be listed
 	want := []string{
@@ -17,6 +17,7 @@ func TestModuleList(t *testing.T) {
 		"modules/c",
 	}
 	waitFor(t, tm, func(s string) bool {
+		t.Log(s)
 		for _, w := range want {
 			if !strings.Contains(s, w) {
 				return false
@@ -54,7 +55,7 @@ func TestModuleList(t *testing.T) {
 }
 
 func TestModuleList_Reload(t *testing.T) {
-	tm := setup(t)
+	tm := setup(t, "./testdata/module_list")
 
 	// Expect message to inform user that three modules have been loaded
 	waitFor(t, tm, func(s string) bool {
@@ -72,7 +73,7 @@ func TestModuleList_Reload(t *testing.T) {
 }
 
 func TestModuleList_ReloadWorkspaces(t *testing.T) {
-	tm := setup(t)
+	tm := setup(t, "./testdata/module_list")
 
 	// Expect message to inform user that three modules have been loaded
 	waitFor(t, tm, func(s string) bool {
@@ -112,7 +113,7 @@ func TestModuleList_ReloadWorkspaces(t *testing.T) {
 // then attempting to create a run on each. Pug should de-select those
 // selections which are not initialized / have no current workspace.
 func TestModuleList_CreateRun(t *testing.T) {
-	tm := setup(t)
+	tm := setup(t, "./testdata/module_list")
 
 	// Expect message to inform user that modules have been loaded
 	waitFor(t, tm, func(s string) bool {
@@ -155,7 +156,7 @@ func TestModuleList_CreateRun(t *testing.T) {
 // should de-select those selections which have no current run in a planned
 // state.
 func TestModuleList_ApplyCurrentRun(t *testing.T) {
-	tm := setup(t)
+	tm := setup(t, "./testdata/module_list")
 
 	// Expect message to inform user that modules have been loaded
 	waitFor(t, tm, func(s string) bool {

@@ -1,7 +1,6 @@
 package run
 
 import (
-	"context"
 	"fmt"
 	"io"
 	"slices"
@@ -16,8 +15,6 @@ import (
 )
 
 type Service struct {
-	Broker *pubsub.Broker[*Run]
-
 	table  *resource.Table[*Run]
 	logger logging.Interface
 
@@ -27,6 +24,8 @@ type Service struct {
 	states     *state.Service
 
 	disableReloadAfterApply bool
+
+	*pubsub.Broker[*Run]
 }
 
 type ServiceOptions struct {
@@ -74,7 +73,7 @@ func (s *Service) create(workspaceID resource.ID, opts CreateOptions) (*Run, err
 	}
 	// Publish an event upon every run status update
 	opts.afterUpdate = func(run *Run) {
-		s.Broker.Publish(resource.UpdatedEvent, run)
+		s.Publish(resource.UpdatedEvent, run)
 	}
 	run, err := newRun(mod, ws, opts)
 	if err != nil {
@@ -262,10 +261,6 @@ func (s *Service) List(opts ListOptions) []*Run {
 	})
 
 	return runs
-}
-
-func (s *Service) Subscribe(ctx context.Context) <-chan resource.Event[*Run] {
-	return s.Broker.Subscribe(ctx)
 }
 
 func (s *Service) Delete(id resource.ID) error {

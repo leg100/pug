@@ -18,28 +18,31 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func setup(t *testing.T) *teatest.TestModel {
+func setup(t *testing.T, workdir string) *teatest.TestModel {
 	t.Helper()
 
 	// Clean up any leftover artefacts from previous tests (previous tests
 	// neglect to clean up artefacts if they end with a panic).
-	cleanupArtefacts()
+	cleanupArtefacts(workdir)
+
+	// And clean up artefacts once test finishes
+	t.Cleanup(func() {
+		cleanupArtefacts(workdir)
+	})
 
 	// Cancel context once test finishes.
 	ctx, cancel := context.WithCancel(context.Background())
 	t.Cleanup(cancel)
 
-	// Clean up artefacts once test finishes
-	t.Cleanup(cleanupArtefacts)
-
 	// Setup provider mirror
 	setupProviderMirror(t)
 
 	app, m, err := newApp(
+		ctx,
 		config{
 			FirstPage: "modules",
 			Program:   "terraform",
-			Workdir:   "./testdata",
+			Workdir:   workdir,
 			MaxTasks:  3,
 			loggingOptions: logging.Options{
 				Level: "debug",
@@ -66,8 +69,8 @@ func setup(t *testing.T) *teatest.TestModel {
 }
 
 // cleanupArtefacts removes all the detritus that terraform leaves behind.
-func cleanupArtefacts() {
-	_ = filepath.WalkDir("./testdata/modules", func(path string, d fs.DirEntry, walkerr error) error {
+func cleanupArtefacts(workdir string) {
+	_ = filepath.WalkDir(workdir, func(path string, d fs.DirEntry, walkerr error) error {
 		if walkerr != nil {
 			return walkerr
 		}

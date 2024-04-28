@@ -1,7 +1,6 @@
 package module
 
 import (
-	"context"
 	"fmt"
 	"slices"
 
@@ -14,11 +13,12 @@ import (
 
 type Service struct {
 	table       *resource.Table[*Module]
-	broker      *pubsub.Broker[*Module]
 	tasks       *task.Service
 	workdir     internal.Workdir
 	pluginCache bool
 	logger      logging.Interface
+
+	*pubsub.Broker[*Module]
 }
 
 type ServiceOptions struct {
@@ -36,7 +36,7 @@ func NewService(opts ServiceOptions) *Service {
 
 	return &Service{
 		table:       table,
-		broker:      broker,
+		Broker:      broker,
 		tasks:       opts.TaskService,
 		workdir:     opts.Workdir,
 		pluginCache: opts.PluginCache,
@@ -128,10 +128,6 @@ func (s *Service) GetByPath(path string) (*Module, error) {
 		}
 	}
 	return nil, resource.ErrNotFound
-}
-
-func (s *Service) Subscribe(ctx context.Context) <-chan resource.Event[*Module] {
-	return s.broker.Subscribe(ctx)
 }
 
 func (s *Service) SetCurrent(moduleID, workspaceID resource.ID) error {
