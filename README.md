@@ -72,56 +72,48 @@ For each module it finds, it'll attempt to run `terraform workspace list`, to se
 
 For each workspace it finds, it'll attempt to run `terraform show -json`, to retrieve the workspace's state.
 
-To get started with some pre-existing root modules, clone this repo, change into the `./demos/modules` directory, and start pug:
+To get started with some pre-existing root modules, clone this repo, change into the `./demos/getting_started` directory, and start pug:
 
 ```bash
 git clone https://github.com/leg100/pug.git
 cd pug
-cd demos/modules
+cd demos/getting_started
 pug
 ```
 
 At startup, pug lists your root modules:
 
-TODO: show screenshot
+![list root modules](./demos/getting_started/modules.gif)
 
 Initialize module `modules/a` by pressing `i`:
 
-TODO: show screenshot
+![init](./demos/getting_started/init.gif)
 
 That takes you to the task view, which includes the output from `terraform init`.
 
 Press `m` to show the corresponding module page for the task:
 
-TODO: show screenshot
+![module](./demos/getting_started/module.gif)
 
-You'll be presented with multiple tabs. To cycle through tabs press the `tab` key:
-
-TODO: show screenshot
+You'll be presented with multiple tabs. To cycle through tabs press the `tab` key.
 
 On the `workspaces` tab, press `p` to create a plan:
 
-TODO: show screenshot
+![plan](./demos/getting_started/plan.gif)
 
 That takes you to the `plan` tab in the run view, showing the output from `terraform plan`. A run is composed of a plan, and optionally an apply. Once the plan has complete, press `a` to apply the plan:
 
-TODO: show screenshot
+![apply](./demos/getting_started/apply.gif)
 
 That takes you to the `apply` tab on the run view, showing the output from `terraform apply`.
 
-All the tasks that have been triggered can be seen in the global task list. Press `T` to see this list:
+Note that pug automatically pulls state after a workspace is loaded for the first time, and after an apply completes.
 
-TODO: show screenshot.
+To see the state resources for the workspace, press `w` and cycle through the tabs to the `resources` tab.
 
-Note that pug automatically pulls state after a workspace is loaded for the first time, and after an apply completes. To see the state resources, go to the global workspaces listing by pressing `W`:
+![resources](./demos/getting_started/resources.gif)
 
-TODO: show screenshot.
-
-Press `enter` on the `default` workspace. Then cycle through the tabs by pressing `tab` until you get to the `resources` tab:
-
-TODO: show screenshot.
-
-This lists the resources in the state for the `default` workspace.
+This is the end of the getting started walkthrough.
 
 ## Configuration
 
