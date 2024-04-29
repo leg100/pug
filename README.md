@@ -5,6 +5,7 @@ A TUI application for terraform power users.
 * Perform tasks in parallel (plan, apply, init, etc)
 * Manage state resources
 * Task queueing
+* Supports tofu as well as terraform
 * Supports workspaces
 * Backend agnostic
 
@@ -64,13 +65,9 @@ Or download and unzip a [GitHub release](https://github.com/leg100/pug/releases)
 
 ## Getting started
 
-Pug requires `terraform` to be installed on your system (or `tofu` via `--program=tofu`).
+Pug requires `terraform` to be installed on your system.
 
 The first time you run `pug`, it'll recursively search sub-directories in the current working directory for terraform root modules.
-
-For each module it finds, it'll attempt to run `terraform workspace list`, to search for workspaces belonging to the module.
-
-For each workspace it finds, it'll attempt to run `terraform show -json`, to retrieve the workspace's state.
 
 To get started with some pre-existing root modules, clone this repo, change into the `./demos/getting_started` directory, and start pug:
 
@@ -83,35 +80,35 @@ pug
 
 At startup, pug lists your root modules:
 
-![list root modules](./demos/getting_started/modules.gif)
+![list root modules](./demos/getting_started/modules.png)
 
-Initialize module `modules/a` by pressing `i`:
+Initialize module `modules/a` by pressing `i`. That takes you to the task view, which includes the output from `terraform init`:
 
-![init](./demos/getting_started/init.gif)
-
-That takes you to the task view, which includes the output from `terraform init`.
+![init](./demos/getting_started/init.png)
 
 Press `m` to show the corresponding module page for the task:
 
-![module](./demos/getting_started/module.gif)
+![module](./demos/getting_started/module.png)
 
 You'll be presented with multiple tabs. To cycle through tabs press the `tab` key.
 
-On the `workspaces` tab, press `p` to create a plan:
+On the `workspaces` tab, press `p` to create a plan. That takes you to the `plan` tab in the run view, showing the output from `terraform plan`:
 
-![plan](./demos/getting_started/plan.gif)
+![plan](./demos/getting_started/plan.png)
 
-That takes you to the `plan` tab in the run view, showing the output from `terraform plan`. A run is composed of a plan, and optionally an apply. Once the plan has complete, press `a` to apply the plan:
+A run is composed of a plan, and optionally an apply. Once the plan has completed, press `a` to apply:
 
-![apply](./demos/getting_started/apply.gif)
+![confirm](./demos/getting_started/confirm.png)
 
-That takes you to the `apply` tab on the run view, showing the output from `terraform apply`.
+You're presented with a prompt to confirm whether you want to proceed with an apply. Press `y` to confirm. That takes you to the `apply` tab on the run view, showing the output from `terraform apply`:
+
+![apply](./demos/getting_started/apply.png)
 
 Note that pug automatically pulls state after a workspace is loaded for the first time, and after an apply completes.
 
-To see the state resources for the workspace, press `w` and cycle through the tabs to the `resources` tab.
+To see the state resources for the workspace, press `w` and cycle through the tabs to the `resources` tab:
 
-![resources](./demos/getting_started/resources.gif)
+![resources](./demos/getting_started/resources.png)
 
 This is the end of the getting started walkthrough.
 
@@ -164,3 +161,15 @@ A task starts in the `pending` state. It enters the `queued` state only if it is
 An exception to this rule are tasks which are classified as *immediate*. Immediate tasks enter the running state regardless of available capacity. At time of writing only the `terraform workspace select` task is classified as such.
 
 A task can further be classed as *exclusive*. These tasks are globally mutually exclusive and cannot run concurrently. The only task classified as such is the `init` task, and only when you have enabled the [provider plugin cache](https://developer.hashicorp.com/terraform/cli/config/config-file#provider-plugin-cache) (the plugin cache does not permit concurrent writes).
+
+## Automatic tasks
+
+Pug automatically creates particular tasks.
+
+For each module it finds, it'll create a task that invokes `terraform workspace list`, to search for workspaces belonging to the module. Any workspaces it finds are loaded into pug.
+
+For each workspace it finds, it'll create a task that invokes `terraform show -json`, to retrieve the workspace's state.
+
+## Tofu support
+
+To use tofu instead of terraform, set `--program=tofu`.

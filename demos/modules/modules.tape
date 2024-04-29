@@ -11,6 +11,7 @@ Hide
 Type "demos/modules/reset.sh" Enter
 Type `TF_CLI_CONFIG_FILE=$PWD/mirror/mirror.tfrc go run main.go -w demos/modules/configs` Enter
 Sleep 1s
+Screenshot demos/modules/modules_listing.png
 Show
 
 Sleep 1s
