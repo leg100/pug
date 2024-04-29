@@ -17,7 +17,6 @@ func TestModuleList(t *testing.T) {
 		"modules/c",
 	}
 	waitFor(t, tm, func(s string) bool {
-		t.Log(s)
 		for _, w := range want {
 			if !strings.Contains(s, w) {
 				return false
@@ -52,8 +51,9 @@ func TestModuleList(t *testing.T) {
 	tm.Type("p")
 	// Expect all 3 modules to be in planned state
 	waitFor(t, tm, func(s string) bool {
-		t.Log(s)
-		return matchPattern(t, `(?s)(planned.*)[3]`, s)
+		return matchPattern(t, `modules/a.*default.*planned`, s) &&
+			matchPattern(t, `modules/b.*default.*planned`, s) &&
+			matchPattern(t, `modules/c.*default.*planned`, s)
 	})
 
 	// Select all modules and apply

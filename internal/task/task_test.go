@@ -15,7 +15,7 @@ import (
 func TestTask_stdout(t *testing.T) {
 	f := factory{
 		counter:   internal.Int(0),
-		program:   "../testdata/task",
+		program:   "./testdata/task",
 		publisher: &fakePublisher[*Task]{},
 	}
 	task, err := f.newTask(CreateOptions{})
@@ -44,7 +44,7 @@ func TestTask_stdout(t *testing.T) {
 func TestTask_cancel(t *testing.T) {
 	f := factory{
 		counter:   internal.Int(0),
-		program:   "../testdata/killme",
+		program:   "./testdata/killme",
 		publisher: &fakePublisher[*Task]{},
 	}
 	task, err := f.newTask(CreateOptions{})

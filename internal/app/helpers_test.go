@@ -133,7 +133,7 @@ type testLogger struct {
 func (l *testLogger) Write(b []byte) (int, error) {
 	l.t.Helper()
 
-	l.t.Log(string(b))
+	//l.t.Log(string(b))
 	return len(b), nil
 }
 

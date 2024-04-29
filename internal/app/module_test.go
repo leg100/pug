@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/leg100/pug/internal"
 )
 
 func TestModule(t *testing.T) {
@@ -88,7 +89,6 @@ func TestModule_ReloadWorkspaces(t *testing.T) {
 
 	// Expect message to inform user that reload has finished.
 	waitFor(t, tm, func(s string) bool {
-		t.Log(s)
 		return strings.Contains(s, "completed reload-workspaces task successfully")
 	})
 }
@@ -122,6 +122,7 @@ func TestModule_Destroy(t *testing.T) {
 
 	// Expect umpteen resources to be proposed for deletion
 	waitFor(t, tm, func(s string) bool {
+		s = internal.StripAnsi(s)
 		return strings.Contains(s, "+0~0-10")
 	})
 }

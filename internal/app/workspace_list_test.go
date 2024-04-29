@@ -150,6 +150,9 @@ func TestWorkspaceList_ApplyCurrentRun(t *testing.T) {
 
 	// Expect all four workspaces' current run to enter the applied state
 	waitFor(t, tm, func(s string) bool {
-		return matchPattern(t, `(?s)default.*applied.*dev.*applied.*default.*applied.*default.*applied`, s)
+		return matchPattern(t, `modules/a.*default.*applied`, s) &&
+			matchPattern(t, `modules/a.*dev.*applied`, s) &&
+			matchPattern(t, `modules/b.*default.*applied`, s) &&
+			matchPattern(t, `modules/c.*default.*applied`, s)
 	})
 }
