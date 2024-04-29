@@ -16,6 +16,8 @@ Invoke `init`, `validate`, and `fmt` across multiple modules.
 
 ![Modules demo](https://vhs.charm.sh/vhs-224dkO2QdUANY0xFpvDbu5.gif)
 
+*Note: what pug calls a module is equivalent to a [root module](https://developer.hashicorp.com/terraform/language/modules#the-root-module), i.e. a directory containing terraform configuration, including a backend definition. It is not to be confused with a [child module](https://developer.hashicorp.com/terraform/language/modules#child-modules).*
+
 ## Workspaces
 
 Pug supports workspaces. Invoke plan and apply on workspaces. Change the current workspace for a module.
@@ -58,15 +60,95 @@ Homebrew:
 brew install leg100/tap/pug
 ```
 
-Or download and unzip a [GitHub release](https://github.com/leg100/pug/releases) for your platform.
+Or download and unzip a [GitHub release](https://github.com/leg100/pug/releases) for your system and architecture.
 
 ## Getting started
 
-The first time you run `pug`, it'll recursively search sub-directories for terraform root modules.
+Pug requires `terraform` to be installed on your system (or `tofu` via `--program=tofu`).
+
+The first time you run `pug`, it'll recursively search sub-directories in the current working directory for terraform root modules.
 
 For each module it finds, it'll attempt to run `terraform workspace list`, to search for workspaces belonging to the module.
 
 For each workspace it finds, it'll attempt to run `terraform show -json`, to retrieve the workspace's state.
+
+To get started with some pre-existing root modules, clone this repo, change into the `./demos/modules` directory, and start pug:
+
+```bash
+git clone https://github.com/leg100/pug.git
+cd pug
+cd demos/modules
+pug
+```
+
+At startup, pug lists your root modules:
+
+TODO: show screenshot
+
+Initialize module `modules/a` by pressing `i`:
+
+TODO: show screenshot
+
+That takes you to the task view, which includes the output from `terraform init`.
+
+Press `m` to show the corresponding module page for the task:
+
+TODO: show screenshot
+
+You'll be presented with multiple tabs. To cycle through tabs press the `tab` key:
+
+TODO: show screenshot
+
+On the `workspaces` tab, press `p` to create a plan:
+
+TODO: show screenshot
+
+That takes you to the `plan` tab in the run view, showing the output from `terraform plan`. A run is composed of a plan, and optionally an apply. Once the plan has complete, press `a` to apply the plan:
+
+TODO: show screenshot
+
+That takes you to the `apply` tab on the run view, showing the output from `terraform apply`.
+
+All the tasks that have been triggered can be seen in the global task list. Press `T` to see this list:
+
+TODO: show screenshot.
+
+Note that pug automatically pulls state after a workspace is loaded for the first time, and after an apply completes. To see the state resources, go to the global workspaces listing by pressing `W`:
+
+TODO: show screenshot.
+
+Press `enter` on the `default` workspace. Then cycle through the tabs by pressing `tab` until you get to the `resources` tab:
+
+TODO: show screenshot.
+
+This lists the resources in the state for the `default` workspace.
+
+## Configuration
+
+Pug can be configured with - in order of precedence - flags, environment variables, and a config file.
+
+Flags:
+
+```bash
+> pug -h
+NAME
+  pug
+
+FLAGS
+  -p, --program STRING               The default program to use with pug. (default: terraform)
+  -w, --workdir STRING               The working directory containing modules. (default: .)
+  -t, --max-tasks INT                The maximum number of parallel tasks. (default: 32)
+  -f, --first-page STRING            The first page to open on startup. (default: modules)
+  -d, --debug                        Log bubbletea messages to messages.log
+  -v, --version                      Print version.
+  -l, --log-level STRING             Logging level. (default: info)
+  -c, --config STRING                Path to config file. (default: pug.yaml)
+      --disable-reload-after-apply   Disable automatic reload of state following an apply.
+```
+
+Environment variables are specified by prefixing the value with `PUG_` and appending the equivalent flag value, replacing hyphens with underscores. For example, to set the max number of tasks to 100, specify `PUG_MAX_TASKS=100`.
+
+The config file by default is expected to be found in the current working directory in which you invoke pug, and by default it's expected to be named `pug.yaml`. Override the default using the flag `-c` or environment variable `PUG_CONFIG`.
 
 ## Resource hierarchy
 
