@@ -166,9 +166,9 @@ A task can further be classed as *exclusive*. These tasks are globally mutually 
 
 Pug automatically creates particular tasks.
 
-For each module it finds, it'll create a task that invokes `terraform workspace list`, to search for workspaces belonging to the module. Any workspaces it finds are loaded into pug.
+When a module is loaded into pug for the first time, it'll create a task that invokes `terraform workspace list`, to search for workspaces belonging to the module. Any workspaces it finds are loaded into pug.
 
-For each workspace it finds, it'll create a task that invokes `terraform show -json`, to retrieve the workspace's state.
+When a workspace is loaded into pug for the first time, it'll create a task that invokes `terraform show -json`, to retrieve the workspace's state. This task is also created after each successful apply.
 
 ## Tofu support
 
