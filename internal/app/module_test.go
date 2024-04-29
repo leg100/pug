@@ -112,9 +112,10 @@ func TestModule_Destroy(t *testing.T) {
 	// Go to module page
 	tm.Type("m")
 
-	// Wait for workspace to be loaded
+	// Wait for the one-and-only default workspace - which should be the current
+	// workspace - and which should have 10 resources in its state loaded.
 	waitFor(t, tm, func(s string) bool {
-		return matchPattern(t, `(?s)WORKSPACE.*default`, s)
+		return matchPattern(t, `default.*✓.*10`, s)
 	})
 
 	// Create destroy plan
