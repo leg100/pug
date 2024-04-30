@@ -1,3 +1,5 @@
+# ignore vhs animated gifs - they are published to imgur or somewhere
+demos/**/*.gif
 # asdf/mise
 .tool-versions
 # provider mirror providers
