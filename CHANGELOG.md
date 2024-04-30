@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.6](https://github.com/leg100/pug/compare/v0.1.5...v0.1.6) (2024-04-30)
+
+
+### Features
+
+* auto load workspace tfvars file ([#45](https://github.com/leg100/pug/issues/45)) ([95ebc7e](https://github.com/leg100/pug/commit/95ebc7e4ee9d7e6c9aa8fe7eb4eba7a3ec89f08d))
+
 ## [0.1.5](https://github.com/leg100/pug/compare/v0.1.4...v0.1.5) (2024-04-30)
 
 
