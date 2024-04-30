@@ -7,6 +7,8 @@ Set Height 800
 Set Framerate 24
 Set Padding 5
 
+Type "Welcome to the demo...." Sleep 0.5s
+
 Hide
 Type "demos/tasks/reset.sh" Enter
 Type `TF_CLI_CONFIG_FILE=$PWD/mirror/mirror.tfrc go run main.go -w demos/tasks/configs` Enter
@@ -30,3 +32,6 @@ Type "T" Sleep 0.5s Down Sleep 0.5s Enter Sleep 1s
 # scroll up apply output
 Enter Sleep 1s PageUp Sleep 1s
 Type "T" Sleep 1s
+
+Ctrl+C Sleep 0.5s Type "y"
+Type "That's the end of the demo...." Sleep 0.5s

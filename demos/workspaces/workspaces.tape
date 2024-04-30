@@ -7,6 +7,8 @@ Set Height 800
 Set Framerate 24
 Set Padding 5
 
+Type "Welcome to the demo...." Sleep 0.5s
+
 Hide
 Type "demos/workspaces/reset.sh" Enter
 Type `TF_CLI_CONFIG_FILE=$PWD/mirror/mirror.tfrc go run main.go -w demos/workspaces/configs` Enter
@@ -28,3 +30,6 @@ Type "y" Sleep 4s
 Down Sleep 1s Type "C" Sleep 2s
 # switch to global module listing, showing the current workspace has changed for module a
 Type "M" Sleep 2s
+
+Ctrl+C Sleep 0.5s Type "y"
+Type "That's the end of the demo...." Sleep 0.5s
