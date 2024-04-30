@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.1.5](https://github.com/leg100/pug/compare/v0.1.4...v0.1.5) (2024-04-30)
+
+
+### Bug Fixes
+
+* add user's env to tasks ([f71fd11](https://github.com/leg100/pug/commit/f71fd115e2a8e15935e02c2b408146755c6fc438))
+
+
+### Miscellaneous
+
+* add example to getting started ([e2c3658](https://github.com/leg100/pug/commit/e2c3658714b25ab39150d7b856cfcb2de9c6e26c))
+* add getting started section ([98323e0](https://github.com/leg100/pug/commit/98323e0ff6ff0c192915887545e8accfbe43dab2))
+* add start and finish msgs to demos ([fad6742](https://github.com/leg100/pug/commit/fad674205fe4a802304074a2dc97f12f90814b7e))
+* update automatic tasks ([64552f7](https://github.com/leg100/pug/commit/64552f73f3f85cb7371dfffb4fa4a970c3694807))
+* update getting started guide ([faf691a](https://github.com/leg100/pug/commit/faf691aabc55055c6de1f0f1e7ea4114785472e7))
+* update readme.md ([49a71ed](https://github.com/leg100/pug/commit/49a71ed4f11d0b88705eca915e547db371863e81))
+
 ## [0.1.4](https://github.com/leg100/pug/compare/v0.1.3...v0.1.4) (2024-04-29)
 
 
