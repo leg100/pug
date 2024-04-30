@@ -55,6 +55,10 @@ type Run struct {
 
 	// Call this function after every status update
 	afterUpdate func(run *Run)
+
+	// Name of tfvars file to pass to terraform plan. An empty string means
+	// there is no vars file.
+	varsFilename string
 }
 
 type CreateOptions struct {
@@ -84,6 +88,14 @@ func newRun(mod *module.Module, ws *workspace.Workspace, opts CreateOptions) (*R
 		return nil, err
 	}
 
+	// Check if a tfvars file exists for the workspace. If so then use it for
+	// the plan.
+	varsFilename := fmt.Sprintf("%s.tfvars", ws.Name)
+	tfvars := filepath.Join(mod.FullPath(), varsFilename)
+	if _, err := os.Stat(tfvars); err == nil {
+		run.varsFilename = varsFilename
+	}
+
 	return run, nil
 }
 
@@ -105,6 +117,9 @@ func (r *Run) PlanArgs() []string {
 	}
 	if r.Destroy {
 		args = append(args, "-destroy")
+	}
+	if r.varsFilename != "" {
+		args = append(args, fmt.Sprintf("-var-file=%s", r.varsFilename))
 	}
 	return args
 }
