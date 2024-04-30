@@ -129,7 +129,7 @@ func (f *factory) newTask(opts CreateOptions) (*Task, error) {
 		Command:       opts.Command,
 		Path:          filepath.Join(f.workdir.String(), opts.Path),
 		Args:          opts.Args,
-		Env:           opts.Env,
+		Env:           append(os.Environ(), opts.Env...),
 		JSON:          opts.JSON,
 		Blocking:      opts.Blocking,
 		exclusive:     opts.Exclusive,
