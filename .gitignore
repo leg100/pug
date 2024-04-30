@@ -1,3 +1,5 @@
+# asdf/mise
+.tool-versions
 # provider mirror providers
 mirror/registry.terraform.io
 # infracost artifacts
