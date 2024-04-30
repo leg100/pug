@@ -178,10 +178,6 @@ func (h *Helpers) LatestRunReport(r *run.Run) string {
 }
 
 func (h *Helpers) RunReport(report run.Report) string {
-	if !report.HasChanges() {
-		return "-"
-	}
-
 	additions := Regular.Copy().Foreground(Green).Render(fmt.Sprintf("+%d", report.Additions))
 	changes := Regular.Copy().Foreground(Blue).Render(fmt.Sprintf("~%d", report.Changes))
 	destructions := Regular.Copy().Foreground(Red).Render(fmt.Sprintf("-%d", report.Destructions))
