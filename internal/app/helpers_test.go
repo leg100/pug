@@ -76,10 +76,10 @@ func setup(t *testing.T, workdir string, sopts ...setupOption) *teatest.TestMode
 		m,
 		teatest.WithInitialTermSize(100, 50),
 	)
-	waitfn := app.start(ctx, tm)
+	cleanup := app.start(ctx, io.Discard, tm)
 	t.Cleanup(func() {
-		err := waitfn()
-		assert.NoError(t, err, "waiting for running tasks to complete")
+		err := cleanup()
+		assert.NoError(t, err, "cleaning up app resources")
 	})
 	return tm
 

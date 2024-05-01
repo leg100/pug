@@ -76,15 +76,16 @@ func Start(stdout, stderr io.Writer, args []string) error {
 		// tea.WithMouseCellMotion(),
 	)
 
-	// Start daemons and relay events.
-	waitfn := app.start(ctx, p)
+	// Start daemons and relay events. When the app exits, use the returned func
+	// to wait for any running tasks to complete.
+	cleanup := app.start(ctx, stdout, p)
 
 	// Blocks until user quits
 	if _, err := p.Run(); err != nil {
 		return err
 	}
-	// Wait for running tasks to complete
-	return waitfn()
+
+	return cleanup()
 }
 
 // newApp constructs an instance of the app and the top-level TUI model.
@@ -117,7 +118,7 @@ func newApp(ctx context.Context, cfg config) (*app, tea.Model, error) {
 		Logger:        logger,
 	})
 	// TODO: separate auto-state pull code
-	states := state.NewService(context.Background(), state.ServiceOptions{
+	states := state.NewService(ctx, state.ServiceOptions{
 		ModuleService:    modules,
 		WorkspaceService: workspaces,
 		TaskService:      tasks,
@@ -172,8 +173,9 @@ func newApp(ctx context.Context, cfg config) (*app, tea.Model, error) {
 	return app, model, nil
 }
 
-// start starts the app daemons and relays events to the TUI.
-func (a *app) start(ctx context.Context, s sender) func() error {
+// start starts the app daemons and relays events to the TUI, returning a func
+// to wait for running tasks to complete.
+func (a *app) start(ctx context.Context, stdout io.Writer, s sender) func() error {
 	// Start daemons
 	task.StartEnqueuer(a.tasks)
 	run.StartScheduler(a.runs, a.workspaces)
@@ -221,5 +223,17 @@ func (a *app) start(ctx context.Context, s sender) func() error {
 		}
 	}()
 
-	return waitfn
+	// Return cleanup function to be invoked when app is terminated.
+	return func() error {
+		// Cancel any running processes
+		running := a.tasks.List(task.ListOptions{Status: []task.Status{task.Running}})
+		if len(running) > 0 {
+			fmt.Fprintf(stdout, "terminating %d terraform processes\n", len(running))
+		}
+		for _, task := range running {
+			a.tasks.Cancel(task.ID)
+		}
+		// Wait for canceled tasks to terminate.
+		return waitfn()
+	}
 }
