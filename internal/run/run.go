@@ -25,6 +25,7 @@ const (
 	ApplyQueued Status = "apply queued"
 	Applying    Status = "applying"
 	Applied     Status = "applied"
+	Stale       Status = "stale"
 	Errored     Status = "errored"
 	Canceled    Status = "canceled"
 	Discarded   Status = "discarded"
@@ -126,7 +127,7 @@ func (r *Run) PlanArgs() []string {
 
 func (r *Run) IsFinished() bool {
 	switch r.Status {
-	case NoChanges, Applied, Errored, Canceled:
+	case NoChanges, Applied, Errored, Canceled, Stale:
 		return true
 	default:
 		return false

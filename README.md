@@ -180,7 +180,11 @@ If you add/remove workspaces outside of Pug, you can instruct Pug to reload work
 
 A run represents a terraform plan and the optional apply of that plan. Under the hood, it invokes `terraform plan -out <plan-file>`. Should you then apply the run, it invokes `terraform apply <plan-file>`.
 
-A run starts in the `pending` state. If its workspace doesn't have a current run, then Pug transitions it into the `scheduled` state and sets it as the workspace's current run. Otherwise the run remains in the `pending` state until the current run has finished.
+A run starts in the `pending` state. It remains in that state until it can be scheduled. It can only be scheduled once all runs created prior to it on the same workspace have finished.
+
+An exception to this rule is if the previous run is in the `planned` state. In which case the previous run is placed into the `stale` termination state, i.e. its plan file is deemed stale and cannot be applied.
+
+Once a run is scheduled, it's placed into `scheduled` state and it's designated as the *current run* for the workspace.
 
 If there are no blocked tasks running on its workspace and module (see tasks below) then the run transitions into the `plan queued` state. Once there is sufficient task capacity, the run enters the `planning` state, and `terraform plan` is invoked.
 

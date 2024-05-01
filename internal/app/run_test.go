@@ -14,6 +14,71 @@ func TestRun(t *testing.T) {
 	initAndApplyModuleA(t, tm)
 }
 
+// TestRun_Stale tests that a planned run is placed into the 'stale' state when
+// a succeeding run is created.
+func TestRun_Stale(t *testing.T) {
+	tm := setup(t, "./testdata/module_list")
+
+	// Wait for module to be loaded
+	waitFor(t, tm, func(s string) bool {
+		return strings.Contains(s, "modules/a")
+	})
+
+	// Initialize module
+	tm.Type("i")
+	waitFor(t, tm, func(s string) bool {
+		return strings.Contains(s, "Terraform has been successfully initialized!")
+	})
+
+	// Go to workspaces
+	tm.Type("W")
+
+	// Wait for workspace to be loaded
+	waitFor(t, tm, func(s string) bool {
+		return strings.Contains(s, "default")
+	})
+
+	// Create plan for first workspace
+	tm.Type("p")
+
+	// User should now be taken to the run page...
+
+	// Expect to see summary of changes
+	waitFor(t, tm, func(s string) bool {
+		// Remove bold formatting
+		s = internal.StripAnsi(s)
+		return strings.Contains(s, "Plan: 10 to add, 0 to change, 0 to destroy.")
+	})
+
+	// Go to its workspace page
+	tm.Type("w")
+
+	// Expect one run in the planned state
+	waitFor(t, tm, func(s string) bool {
+		return strings.Contains(s, "runs (1)") && matchPattern(t, `planned.*\+10~0\-0`, s)
+	})
+
+	// Start another run
+	tm.Type("p")
+
+	// Expect to see summary of changes, again.
+	waitFor(t, tm, func(s string) bool {
+		// Remove bold formatting
+		s = internal.StripAnsi(s)
+		return strings.Contains(s, "Plan: 10 to add, 0 to change, 0 to destroy.")
+	})
+
+	// Go to its workspace page
+	tm.Type("w")
+
+	// Expect two runs, one in the planned state, one in the stale state
+	waitFor(t, tm, func(s string) bool {
+		return strings.Contains(s, "runs (2)") &&
+			matchPattern(t, `planned.*\+10~0\-0`, s) &&
+			matchPattern(t, `stale.*\+10~0\-0`, s)
+	})
+}
+
 func TestRun_WithVars(t *testing.T) {
 	tm := setup(t, "./testdata/run_with_vars")
 

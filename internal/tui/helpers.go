@@ -162,13 +162,15 @@ func (h *Helpers) RunStatus(r *run.Run) string {
 		color = Green
 	case run.Errored:
 		color = Red
+	case run.Stale:
+		color = Orange
 	}
 	return Regular.Copy().Foreground(color).Render(string(r.Status))
 }
 
 func (h *Helpers) LatestRunReport(r *run.Run) string {
 	switch r.Status {
-	case run.Planned, run.NoChanges:
+	case run.Planned, run.NoChanges, run.Stale:
 		return h.RunReport(r.PlanReport)
 	case run.Applied:
 		return h.RunReport(r.ApplyReport)

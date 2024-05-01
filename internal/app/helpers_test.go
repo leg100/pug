@@ -114,7 +114,7 @@ func cleanupArtefacts(workdir string, opts setupOptions) {
 
 }
 
-// setupProviderMirror configures a dedicated provider filesystem mirror for for
+// setupProviderMirror configures a dedicated provider filesystem mirror for
 // a test.
 func setupProviderMirror(t *testing.T) {
 	t.Helper()

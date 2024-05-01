@@ -27,8 +27,20 @@ func StartScheduler(runs *Service, workspaces *workspace.Service) {
 			for _, run := range s.schedule() {
 				// Update status from pending to scheduled
 				run.updateStatus(Scheduled)
+
+				// If the current current run is in planned state, mark it as stale
+				//
+				// TODO: handle errors
+				ws, _ := workspaces.Get(run.WorkspaceID())
+				if runID := ws.CurrentRunID; runID != nil {
+					current, _ := runs.Get(*runID)
+					if current.Status == Planned {
+						current.updateStatus(Stale)
+					}
+				}
+
 				// Set run as workspace's current run
-				workspaces.SetCurrentRun(run.WorkspaceID(), run.ID)
+				_ = workspaces.SetCurrentRun(run.WorkspaceID(), run.ID)
 				// Trigger a plan task
 				_, _ = runs.plan(run)
 			}
