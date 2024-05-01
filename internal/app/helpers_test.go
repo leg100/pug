@@ -93,7 +93,7 @@ func cleanupArtefacts(workdir string, opts setupOptions) {
 		}
 		if d.IsDir() {
 			switch d.Name() {
-			case ".terraform", ".pug":
+			case ".terraform", internal.PugDirectory:
 				os.RemoveAll(path)
 				return fs.SkipDir
 			}

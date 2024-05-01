@@ -62,6 +62,7 @@ func New(workdir internal.Workdir, path string) *Module {
 	return mod
 }
 
+// FullPath returns the absolute path to the module.
 func (m *Module) FullPath() string {
 	return filepath.Join(m.Workdir.String(), m.Path)
 }

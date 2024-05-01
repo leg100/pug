@@ -291,7 +291,7 @@ func (s *Service) createTask(run *Run, opts task.CreateOptions) (*task.Task, err
 	if err != nil {
 		return nil, err
 	}
-	opts.Env = []string{workspace.TerraformEnv(ws.Name)}
+	opts.Env = []string{ws.TerraformEnv()}
 
 	mod, err := s.modules.Get(ws.ModuleID())
 	if err != nil {
