@@ -50,9 +50,8 @@ type Run struct {
 	// Error is non-nil when the run status is Errored
 	Error error
 
-	// Run's dedicated directory for artefacts created during its lifetime. The
-	// path is relative to its module directory.
-	artefactsPath string
+	// Path to pug's data directory
+	dataDir string
 
 	// Call this function after every status update
 	afterUpdate func(run *Run)
@@ -69,6 +68,7 @@ type CreateOptions struct {
 	Destroy bool
 
 	afterUpdate func(run *Run)
+	dataDir     string
 }
 
 func newRun(mod *module.Module, ws *workspace.Workspace, opts CreateOptions) (*Run, error) {
@@ -81,12 +81,12 @@ func newRun(mod *module.Module, ws *workspace.Workspace, opts CreateOptions) (*R
 		Created:     time.Now(),
 		Updated:     time.Now(),
 		afterUpdate: opts.afterUpdate,
+		dataDir:     opts.dataDir,
 	}
 
-	// Create directory for artefacts including plan file etc.
-	run.artefactsPath = filepath.Join(ws.PugDirectory(), run.String())
-	if err := os.MkdirAll(filepath.Join(mod.FullPath(), run.artefactsPath), 0o755); err != nil {
-		return nil, err
+	// Create directory for run artefacts including plan file etc.
+	if err := os.MkdirAll(run.ArtefactsPath(), 0o755); err != nil {
+		return nil, fmt.Errorf("creating run artefacts directory: %w", err)
 	}
 
 	// Check if a tfvars file exists for the workspace. If so then use it for
@@ -107,7 +107,7 @@ func (r *Run) WorkspaceID() resource.ID {
 // PlanPath is the path to the run's plan file, relative to the module's
 // directory.
 func (r *Run) PlanPath() string {
-	return filepath.Join(r.artefactsPath, "plan.out")
+	return filepath.Join(r.ArtefactsPath(), "plan")
 }
 
 // PlanArgs produces the arguments for terraform plan
@@ -141,6 +141,11 @@ func (r *Run) LogValue() slog.Value {
 	)
 }
 
+// Run's dedicated directory for artefacts created during its lifetime.
+func (r *Run) ArtefactsPath() string {
+	return filepath.Join(r.dataDir, r.String())
+}
+
 func (r *Run) setErrored(err error) {
 	r.Error = err
 	r.updateStatus(Errored)
@@ -154,5 +159,8 @@ func (r *Run) updateStatus(status Status) {
 	}
 	if r.IsFinished() {
 		slog.Info("completed run", "status", r.Status, "run", r)
+
+		// Once a run is finished remove its artefacts
+		_ = os.RemoveAll(r.ArtefactsPath())
 	}
 }

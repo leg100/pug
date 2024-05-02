@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"os"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/leg100/pug/internal"
@@ -61,7 +62,7 @@ func Start(stdout, stderr io.Writer, args []string) error {
 		"max_tasks", cfg.MaxTasks,
 		"plugin_cache", cfg.PluginCache,
 		"program", cfg.Program,
-		"work_dir", cfg.Workdir,
+		"work_dir", cfg.WorkDir,
 	)
 
 	p := tea.NewProgram(
@@ -95,7 +96,7 @@ func newApp(ctx context.Context, cfg config) (*app, tea.Model, error) {
 
 	// Perform any conversions from the flag parsed primitive types to pug
 	// defined types.
-	workdir, err := internal.NewWorkdir(cfg.Workdir)
+	workdir, err := internal.NewWorkdir(cfg.WorkDir)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -130,6 +131,7 @@ func newApp(ctx context.Context, cfg config) (*app, tea.Model, error) {
 		WorkspaceService:        workspaces,
 		StateService:            states,
 		DisableReloadAfterApply: cfg.DisableReloadAfterApply,
+		DataDir:                 cfg.DataDir,
 		Logger:                  logger,
 	})
 
@@ -232,6 +234,10 @@ func (a *app) start(ctx context.Context, stdout io.Writer, s sender) func() erro
 		}
 		for _, task := range running {
 			a.tasks.Cancel(task.ID)
+		}
+		// Remove all run artefacts (plan files etc,...)
+		for _, run := range a.runs.List(run.ListOptions{}) {
+			_ = os.RemoveAll(run.ArtefactsPath())
 		}
 		// Wait for canceled tasks to terminate.
 		return waitfn()

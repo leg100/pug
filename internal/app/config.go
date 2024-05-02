@@ -3,6 +3,8 @@ package app
 import (
 	"fmt"
 	"io"
+	"os"
+	"path/filepath"
 	"runtime"
 
 	"github.com/hashicorp/terraform/command/cliconfig"
@@ -19,7 +21,8 @@ type config struct {
 	FirstPage               string
 	Debug                   bool
 	DisableReloadAfterApply bool
-	Workdir                 string
+	WorkDir                 string
+	DataDir                 string
 
 	loggingOptions logging.Options
 	version        bool
@@ -30,10 +33,17 @@ type config struct {
 func parse(stderr io.Writer, args []string) (config, error) {
 	var cfg config
 
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return config{}, fmt.Errorf("retrieving user's home directory: %w", err)
+	}
+	defaultDataDir := filepath.Join(home, ".pug")
+
 	fs := ff.NewFlagSet("pug")
 	fs.StringVar(&cfg.Program, 'p', "program", "terraform", "The default program to use with pug.")
-	fs.StringVar(&cfg.Workdir, 'w', "workdir", ".", "The working directory containing modules.")
+	fs.StringVar(&cfg.WorkDir, 'w', "workdir", ".", "The working directory containing modules.")
 	fs.IntVar(&cfg.MaxTasks, 't', "max-tasks", 2*runtime.NumCPU(), "The maximum number of parallel tasks.")
+	fs.StringVar(&cfg.DataDir, 0, "data-dir", defaultDataDir, "Directory in which to store plan files.")
 	fs.StringEnumVar(&cfg.FirstPage, 'f', "first-page", "The first page to open on startup.", "modules", "workspaces", "runs", "tasks", "logs")
 	fs.BoolVar(&cfg.Debug, 'd', "debug", "Log bubbletea messages to messages.log")
 	fs.BoolVar(&cfg.version, 'v', "version", "Print version.")
@@ -46,7 +56,7 @@ func parse(stderr io.Writer, args []string) (config, error) {
 	tfcfg, _ := cliconfig.LoadConfig()
 	cfg.PluginCache = (tfcfg.PluginCacheDir != "")
 
-	err := ff.Parse(fs, args,
+	err = ff.Parse(fs, args,
 		ff.WithEnvVarPrefix("PUG"),
 		ff.WithConfigFileFlag("config"),
 		ff.WithConfigFileParser(ffyaml.Parse),

@@ -59,8 +59,9 @@ func setup(t *testing.T, workdir string, sopts ...setupOption) *teatest.TestMode
 		config{
 			FirstPage: "modules",
 			Program:   "terraform",
-			Workdir:   workdir,
+			WorkDir:   workdir,
 			MaxTasks:  3,
+			DataDir:   t.TempDir(),
 			loggingOptions: logging.Options{
 				Level: "debug",
 				AdditionalWriters: []io.Writer{
@@ -91,12 +92,9 @@ func cleanupArtefacts(workdir string, opts setupOptions) {
 		if walkerr != nil {
 			return walkerr
 		}
-		if d.IsDir() {
-			switch d.Name() {
-			case ".terraform", internal.PugDirectory:
-				os.RemoveAll(path)
-				return fs.SkipDir
-			}
+		if d.IsDir() && d.Name() == ".terraform" {
+			os.RemoveAll(path)
+			return fs.SkipDir
 		}
 		// TODO: consider leaving lock file; it prevents a warning message cropping
 		// up.

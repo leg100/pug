@@ -24,6 +24,7 @@ type Service struct {
 	states     *state.Service
 
 	disableReloadAfterApply bool
+	dataDir                 string
 
 	*pubsub.Broker[*Run]
 }
@@ -34,6 +35,7 @@ type ServiceOptions struct {
 	WorkspaceService        *workspace.Service
 	StateService            *state.Service
 	DisableReloadAfterApply bool
+	DataDir                 string
 	Logger                  logging.Interface
 }
 
@@ -47,6 +49,7 @@ func NewService(opts ServiceOptions) *Service {
 		workspaces:              opts.WorkspaceService,
 		states:                  opts.StateService,
 		disableReloadAfterApply: opts.DisableReloadAfterApply,
+		dataDir:                 opts.DataDir,
 		logger:                  opts.Logger,
 	}
 }
@@ -75,6 +78,7 @@ func (s *Service) create(workspaceID resource.ID, opts CreateOptions) (*Run, err
 	opts.afterUpdate = func(run *Run) {
 		s.Publish(resource.UpdatedEvent, run)
 	}
+	opts.dataDir = s.dataDir
 	run, err := newRun(mod, ws, opts)
 	if err != nil {
 		return nil, fmt.Errorf("constructing run: %w", err)

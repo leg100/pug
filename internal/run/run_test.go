@@ -1,7 +1,6 @@
 package run
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -35,41 +34,15 @@ func TestRun_VarsFile(t *testing.T) {
 	assert.Contains(t, run.PlanArgs(), "-var-file=dev.tfvars")
 }
 
-func TestRun_MakePugDirectory(t *testing.T) {
-	workdir := internal.NewTestWorkdir(t)
-	testutils.ChTempDir(t, workdir.String())
+func TestRun_MakeArtefactsPath(t *testing.T) {
+	dataDir := t.TempDir()
 
-	mod := module.New(workdir, "a/b/c")
-	ws, err := workspace.New(mod, "dev")
-	require.NoError(t, err)
-
-	run, err := newRun(mod, ws, CreateOptions{})
-	require.NoError(t, err)
-
-	want := fmt.Sprintf("a/b/c/.pug/dev/%s", run.ID)
-	assert.DirExists(t, want)
-}
-
-func TestRun_PugDirectory(t *testing.T) {
 	mod := module.New(internal.NewTestWorkdir(t), "a/b/c")
 	ws, err := workspace.New(mod, "dev")
 	require.NoError(t, err)
 
-	run, err := newRun(mod, ws, CreateOptions{})
+	run, err := newRun(mod, ws, CreateOptions{dataDir: dataDir})
 	require.NoError(t, err)
 
-	want := fmt.Sprintf(".pug/dev/%s", run.ID)
-	assert.Equal(t, want, run.artefactsPath)
-}
-
-func TestRun_PlanPath(t *testing.T) {
-	mod := module.New(internal.NewTestWorkdir(t), "a/b/c")
-	ws, err := workspace.New(mod, "dev")
-	require.NoError(t, err)
-
-	run, err := newRun(mod, ws, CreateOptions{})
-	require.NoError(t, err)
-
-	want := fmt.Sprintf(".pug/dev/%s/plan.out", run.ID)
-	assert.Equal(t, want, run.PlanPath())
+	assert.DirExists(t, run.ArtefactsPath())
 }

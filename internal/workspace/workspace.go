@@ -4,9 +4,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/url"
-	"path/filepath"
 
-	"github.com/leg100/pug/internal"
 	"github.com/leg100/pug/internal/module"
 	"github.com/leg100/pug/internal/resource"
 )
@@ -38,12 +36,6 @@ func (ws *Workspace) ModuleID() resource.ID {
 
 func (ws *Workspace) TerraformEnv() string {
 	return fmt.Sprintf("TF_WORKSPACE=%s", ws.Name)
-}
-
-// PugDirectory returns the workspace's pug directory, relative to its module
-// directory.
-func (ws *Workspace) PugDirectory() string {
-	return filepath.Join(internal.PugDirectory, ws.Name)
 }
 
 func (ws *Workspace) LogValue() slog.Value {
