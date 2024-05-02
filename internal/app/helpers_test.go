@@ -3,8 +3,9 @@ package app
 import (
 	"context"
 	"io"
-	"io/fs"
-	"os"
+
+	cp "github.com/otiai10/copy"
+
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -38,21 +39,24 @@ func setup(t *testing.T, workdir string, sopts ...setupOption) *teatest.TestMode
 		fn(&opts)
 	}
 
-	// Clean up any leftover artefacts from previous tests (previous tests
-	// neglect to clean up artefacts if they end with a panic).
-	cleanupArtefacts(workdir, opts)
-
-	// And clean up artefacts once test finishes
-	t.Cleanup(func() {
-		cleanupArtefacts(workdir, opts)
-	})
+	// Copy workdir to a dedicated directory for this test, to ensure any
+	// artefacts created in workdir are done so in isolation from other
+	// tests that are run in parallel, and to ensure artefacts don't persist to
+	// future invocations of this test.
+	target := t.TempDir()
+	err := cp.Copy(workdir, target)
+	require.NoError(t, err)
+	workdir = target
 
 	// Cancel context once test finishes.
 	ctx, cancel := context.WithCancel(context.Background())
 	t.Cleanup(cancel)
 
-	// Setup provider mirror
-	setupProviderMirror(t)
+	// Get absolute path to terraform cli config. The config sets up terraform
+	// to use a provider filesystem mirror, which ensures tests avoid any
+	// network roundtrips to retrieve or query providers.
+	mirrorConfigPath, err := filepath.Abs("../../mirror/mirror.tfrc")
+	require.NoError(t, err)
 
 	app, m, err := newApp(
 		ctx,
@@ -62,6 +66,7 @@ func setup(t *testing.T, workdir string, sopts ...setupOption) *teatest.TestMode
 			WorkDir:   workdir,
 			MaxTasks:  3,
 			DataDir:   t.TempDir(),
+			Envs:      []string{"TF_CLI_CONFIG_FILE", mirrorConfigPath},
 			loggingOptions: logging.Options{
 				Level: "debug",
 				AdditionalWriters: []io.Writer{
@@ -84,43 +89,6 @@ func setup(t *testing.T, workdir string, sopts ...setupOption) *teatest.TestMode
 	})
 	return tm
 
-}
-
-// cleanupArtefacts removes all the detritus that terraform leaves behind.
-func cleanupArtefacts(workdir string, opts setupOptions) {
-	_ = filepath.WalkDir(workdir, func(path string, d fs.DirEntry, walkerr error) error {
-		if walkerr != nil {
-			return walkerr
-		}
-		if d.IsDir() && d.Name() == ".terraform" {
-			os.RemoveAll(path)
-			return fs.SkipDir
-		}
-		// TODO: consider leaving lock file; it prevents a warning message cropping
-		// up.
-		if filepath.Base(path) == ".terraform.lock.hcl" {
-			os.Remove(path)
-		}
-		if !opts.keepState && filepath.Base(path) == "terraform.tfstate" {
-			os.Remove(path)
-		}
-		if strings.HasSuffix(filepath.Base(path), ".backup") {
-			os.Remove(path)
-		}
-		return nil
-	})
-
-}
-
-// setupProviderMirror configures a dedicated provider filesystem mirror for
-// a test.
-func setupProviderMirror(t *testing.T) {
-	t.Helper()
-
-	abs, err := filepath.Abs("../../mirror/mirror.tfrc")
-	require.NoError(t, err)
-
-	t.Setenv("TF_CLI_CONFIG_FILE", abs)
 }
 
 // testLogger relays pug log records to the go test logger

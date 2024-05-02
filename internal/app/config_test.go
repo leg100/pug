@@ -129,6 +129,27 @@ func TestConfig(t *testing.T) {
 				assert.Equal(t, got.FirstPage, "runs")
 			},
 		},
+		{
+			"set terraform process environment variable",
+			"",
+			[]string{"-e", "TF_LOG=DEBUG"},
+			nil,
+			func(t *testing.T, got config) {
+				assert.Equal(t, got.Envs, []string{"TF_LOG=DEBUG"})
+			},
+		},
+		{
+			"set multiple terraform process environment variables",
+			"",
+			[]string{"-e", "TF_LOG=DEBUG", "-e", "TF_IGNORE=TRACE", "-e", "TF_PLUGIN_CACHE_DIR=/tmp"},
+			nil,
+			func(t *testing.T, got config) {
+				assert.Len(t, got.Envs, 3)
+				assert.Contains(t, got.Envs, "TF_LOG=DEBUG")
+				assert.Contains(t, got.Envs, "TF_IGNORE=TRACE")
+				assert.Contains(t, got.Envs, "TF_PLUGIN_CACHE_DIR=/tmp")
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

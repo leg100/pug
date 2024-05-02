@@ -10,6 +10,8 @@ import (
 )
 
 func TestWorkspaceList_SetCurrentWorkspace(t *testing.T) {
+	t.Parallel()
+
 	tm := setup(t, "./testdata/module_list")
 
 	// Wait for module to be loaded
@@ -50,6 +52,8 @@ func TestWorkspaceList_SetCurrentWorkspace(t *testing.T) {
 }
 
 func TestWorkspaceList_CreateRun(t *testing.T) {
+	t.Parallel()
+
 	tm := setup(t, "./testdata/module_list")
 
 	// Expect message to inform user that modules have been loaded
@@ -98,6 +102,8 @@ func TestWorkspaceList_CreateRun(t *testing.T) {
 }
 
 func TestWorkspaceList_ApplyCurrentRun(t *testing.T) {
+	t.Parallel()
+
 	tm := setup(t, "./testdata/module_list")
 
 	// Expect message to inform user that modules have been loaded

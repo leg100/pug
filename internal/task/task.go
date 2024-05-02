@@ -79,6 +79,8 @@ type factory struct {
 	program   string
 	publisher resource.Publisher[*Task]
 	workdir   internal.Workdir
+	// Additional user-supplied environment variables.
+	userEnvs []string
 }
 
 type CreateOptions struct {
@@ -129,7 +131,7 @@ func (f *factory) newTask(opts CreateOptions) (*Task, error) {
 		Command:       opts.Command,
 		Path:          filepath.Join(f.workdir.String(), opts.Path),
 		Args:          opts.Args,
-		Env:           append(os.Environ(), opts.Env...),
+		Env:           append(append(f.userEnvs, opts.Env...), os.Environ()...),
 		JSON:          opts.JSON,
 		Blocking:      opts.Blocking,
 		exclusive:     opts.Exclusive,

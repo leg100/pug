@@ -9,6 +9,8 @@ import (
 )
 
 func TestModule(t *testing.T) {
+	t.Parallel()
+
 	tm := setup(t, "./testdata/module_list")
 
 	// Expect module to be listed
@@ -26,6 +28,8 @@ func TestModule(t *testing.T) {
 }
 
 func TestModule_SetCurrentWorkspace(t *testing.T) {
+	t.Parallel()
+
 	tm := setup(t, "./testdata/module_list")
 
 	// Wait for module to be loaded
@@ -63,6 +67,8 @@ func TestModule_SetCurrentWorkspace(t *testing.T) {
 }
 
 func TestModule_ReloadWorkspaces(t *testing.T) {
+	t.Parallel()
+
 	tm := setup(t, "./testdata/module_list")
 
 	// Wait for module to be loaded
@@ -95,6 +101,8 @@ func TestModule_ReloadWorkspaces(t *testing.T) {
 
 // TestModule_Destroy demonstrates creating a destroy plan on a module.
 func TestModule_Destroy(t *testing.T) {
+	t.Parallel()
+
 	// Setup test with pre-existing state
 	tm := setup(t, "./testdata/module_destroy", keepState())
 
@@ -123,6 +131,7 @@ func TestModule_Destroy(t *testing.T) {
 
 	// Expect umpteen resources to be proposed for deletion
 	waitFor(t, tm, func(s string) bool {
+		t.Log(s)
 		s = internal.StripAnsi(s)
 		return strings.Contains(s, "+0~0-10")
 	})

@@ -9,6 +9,8 @@ import (
 )
 
 func TestWorkspace_Resources(t *testing.T) {
+	t.Parallel()
+
 	tm := setup(t, "./testdata/module_list")
 
 	// Initialize and apply run on modules/a

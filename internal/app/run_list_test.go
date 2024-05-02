@@ -10,6 +10,8 @@ import (
 
 // TestRunList_Single tests interacting with a single run in the run list view.
 func TestRunList_Single(t *testing.T) {
+	t.Parallel()
+
 	tm := setup(t, "./testdata/module_list")
 
 	// Wait for module to be loaded
@@ -74,6 +76,8 @@ func TestRunList_Single(t *testing.T) {
 // TestRunList_Multiple demonstrates interacting with multiple runs on the run
 // list page.
 func TestRunList_Multiple(t *testing.T) {
+	t.Parallel()
+
 	tm := setup(t, "./testdata/module_list")
 
 	// Expect message to inform user that modules have been loaded

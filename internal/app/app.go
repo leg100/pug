@@ -103,9 +103,10 @@ func newApp(ctx context.Context, cfg config) (*app, tea.Model, error) {
 
 	// Instantiate services
 	tasks := task.NewService(task.ServiceOptions{
-		Program: cfg.Program,
-		Logger:  logger,
-		Workdir: workdir,
+		Program:  cfg.Program,
+		Logger:   logger,
+		Workdir:  workdir,
+		UserEnvs: cfg.Envs,
 	})
 	modules := module.NewService(module.ServiceOptions{
 		TaskService: tasks,

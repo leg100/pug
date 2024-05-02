@@ -8,6 +8,8 @@ import (
 )
 
 func TestRun(t *testing.T) {
+	t.Parallel()
+
 	tm := setup(t, "./testdata/module_list")
 
 	// Initialize and apply run on modules/a
@@ -17,6 +19,8 @@ func TestRun(t *testing.T) {
 // TestRun_Stale tests that a planned run is placed into the 'stale' state when
 // a succeeding run is created.
 func TestRun_Stale(t *testing.T) {
+	t.Parallel()
+
 	tm := setup(t, "./testdata/module_list")
 
 	// Wait for module to be loaded
@@ -80,6 +84,8 @@ func TestRun_Stale(t *testing.T) {
 }
 
 func TestRun_WithVars(t *testing.T) {
+	t.Parallel()
+
 	tm := setup(t, "./testdata/run_with_vars")
 
 	// Wait for module to be loaded
