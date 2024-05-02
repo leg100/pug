@@ -81,6 +81,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, keys.Common.Apply):
+			// Only run an apply if run is in the planned state
+			if m.run.Status != run.Planned {
+				return m, nil
+			}
 			return m, tui.RequestConfirmation(
 				"Proceed with apply",
 				func() tea.Msg {
@@ -170,9 +174,12 @@ func (m model) TabSetInfo() string {
 }
 
 func (m model) HelpBindings() (bindings []key.Binding) {
-	return []key.Binding{
-		keys.Common.Apply,
-		keys.Common.Module,
-		keys.Common.Workspace,
+	if m.run.Status == run.Planned {
+		bindings = append(bindings, keys.Common.Apply)
 	}
+	bindings = append(bindings,
+		keys.Common.Workspace,
+		keys.Common.Module,
+	)
+	return
 }
