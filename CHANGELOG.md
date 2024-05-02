@@ -1,5 +1,27 @@
 # Changelog
 
+## [0.1.7](https://github.com/leg100/pug/compare/v0.1.6...v0.1.7) (2024-05-02)
+
+
+### Features
+
+* add stale state to runs ([246315c](https://github.com/leg100/pug/commit/246315cf252fd24ea8d97ea79b92e2913174cb2f))
+* move plan files to ~/.pug, and auto-delete them ([05c039d](https://github.com/leg100/pug/commit/05c039d71c1c2c826149e0896572dfd0a65412fd))
+
+
+### Bug Fixes
+
+* show '+0~0-0' when no changes, not '-' ([9661610](https://github.com/leg100/pug/commit/9661610d889d4afd71b4007e67249d906bc87c0c))
+* terminate running tasks upon exit ([7ad8289](https://github.com/leg100/pug/commit/7ad8289bee4aeff5007058621e9e4b97d9f98e0f))
+
+
+### Miscellaneous
+
+* clean up pug path code ([81c27c1](https://github.com/leg100/pug/commit/81c27c1b8adab5ea9b689ad34b9f9a33768a6468))
+* document resource hierarchy ([05e4932](https://github.com/leg100/pug/commit/05e4932a0cafb90279d0bfcb7f7e1affbe666b0f))
+* git ignore asdf .tool-versions files ([3f598bb](https://github.com/leg100/pug/commit/3f598bbea52165beae0298ce4acc0f6583553d62))
+* remove vhs vids from git ([2126a1b](https://github.com/leg100/pug/commit/2126a1b35821da53f3990a47f80d153de678359e))
+
 ## [0.1.6](https://github.com/leg100/pug/compare/v0.1.5...v0.1.6) (2024-04-30)
 
 
