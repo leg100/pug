@@ -206,7 +206,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				"Quit pug",
 				tea.Quit,
 			)
-		case key.Matches(msg, keys.Global.Escape):
+		case key.Matches(msg, keys.Global.Back):
 			// <esc> closes help or goes back to last page
 			if m.showHelp {
 				m.showHelp = false

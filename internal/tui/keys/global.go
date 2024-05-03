@@ -10,7 +10,7 @@ type global struct {
 	Runs        key.Binding
 	Tasks       key.Binding
 	Logs        key.Binding
-	Escape      key.Binding
+	Back        key.Binding
 	Enter       key.Binding
 	Select      key.Binding
 	SelectAll   key.Binding
@@ -41,9 +41,9 @@ var Global = global{
 		key.WithKeys("l"),
 		key.WithHelp("l", "logs"),
 	),
-	Escape: key.NewBinding(
-		key.WithKeys("esc", "`"),
-		key.WithHelp("esc/`", "back"),
+	Back: key.NewBinding(
+		key.WithKeys("esc", "`", "shift+tab"),
+		key.WithHelp("esc/`/shift+tab", "back"),
 	),
 	Enter: key.NewBinding(
 		key.WithKeys("enter"),
