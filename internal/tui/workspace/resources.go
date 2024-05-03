@@ -106,11 +106,9 @@ func (m resources) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			)
 		case key.Matches(msg, resourcesKeys.Taint):
 			addrs := m.table.HighlightedOrSelectedKeys()
-			m.table.DeselectAll()
 			return m, m.createStateCommand("taint", m.states.Taint, addrs...)
 		case key.Matches(msg, resourcesKeys.Untaint):
 			addrs := m.table.HighlightedOrSelectedKeys()
-			m.table.DeselectAll()
 			return m, m.createStateCommand("untaint", m.states.Untaint, addrs...)
 		case key.Matches(msg, keys.Common.Destroy):
 			createRunOptions.Destroy = true

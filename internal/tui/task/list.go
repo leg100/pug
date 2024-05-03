@@ -128,7 +128,6 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		case key.Matches(msg, keys.Common.Cancel):
 			taskIDs := m.table.HighlightedOrSelectedKeys()
-			m.table.DeselectAll()
 			return m, tui.CreateTasks("cancel", m.svc.Cancel, taskIDs...)
 		}
 	}

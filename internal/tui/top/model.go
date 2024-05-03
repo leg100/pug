@@ -21,7 +21,6 @@ import (
 	"github.com/leg100/pug/internal/tui/keys"
 	"github.com/leg100/pug/internal/tui/module"
 	tuirun "github.com/leg100/pug/internal/tui/run"
-	"github.com/leg100/pug/internal/tui/table"
 	"github.com/leg100/pug/internal/version"
 )
 
@@ -72,7 +71,7 @@ func New(opts Options) (model, error) {
 	var dump *os.File
 	if opts.Debug {
 		var err error
-		dump, err = os.OpenFile("messages.log", os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0o755)
+		dump, err = os.OpenFile("messages.log", os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0o644)
 		if err != nil {
 			return model{}, err
 		}
@@ -141,16 +140,13 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if m.showConfirmPrompt {
 		switch msg := msg.(type) {
 		case tea.KeyMsg:
-			// any key closes the prompt...
-			// 1. send message to current model to resize itself to expand back
-			// into space occupied by prompt.
-			// 2. send message to deselect anything that was selected
+			// any key closes the prompt and sends message to current model to
+			// resize itself to expand back into space occupied by prompt.
 			m.showConfirmPrompt = false
 			_ = m.updateCurrent(tea.WindowSizeMsg{
 				Height: m.viewHeight(),
 				Width:  m.viewWidth(),
 			})
-			_ = m.updateCurrent(table.DeselectMsg{})
 			switch {
 			case key.Matches(msg, localKeys.Yes):
 				// 'y' carries out the action
@@ -210,7 +206,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				"Quit pug",
 				tea.Quit,
 			)
-		case key.Matches(msg, keys.Global.Escape):
+		case key.Matches(msg, keys.Global.Back):
 			// <esc> closes help or goes back to last page
 			if m.showHelp {
 				m.showHelp = false

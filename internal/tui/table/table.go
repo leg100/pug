@@ -194,9 +194,11 @@ func (m Model[K, V]) Update(msg tea.Msg) (Model[K, V], tea.Cmd) {
 			m.ToggleSelection()
 		case key.Matches(msg, keys.Global.SelectAll):
 			m.ToggleSelectAll()
+		case key.Matches(msg, keys.Global.SelectClear):
+			m.DeselectAll()
+		case key.Matches(msg, keys.Global.SelectRange):
+			m.SelectRange()
 		}
-	case DeselectMsg:
-		m.DeselectAll()
 	case tea.WindowSizeMsg:
 		m.setDimensions(msg.Width, msg.Height)
 	case spinner.TickMsg:
@@ -264,6 +266,8 @@ func (m Model[K, V]) currentRow() (Row[K, V], bool) {
 }
 
 // Highlighted returns the currently highlighted entity.
+//
+// TODO: This is identical to currentRow above; remove.
 func (m Model[K, V]) Highlighted() (Row[K, V], bool) {
 	row, ok := m.currentRow()
 	if !ok {
@@ -273,6 +277,8 @@ func (m Model[K, V]) Highlighted() (Row[K, V], bool) {
 }
 
 // Highlighted returns the currently highlighted entity key.
+//
+// TODO: rename currentRowKey or currentKey
 func (m Model[K, V]) HighlightedKey() (K, bool) {
 	row, ok := m.currentRow()
 	if !ok {
@@ -310,6 +316,8 @@ func (m Model[K, V]) HighlightedOrSelectedKeys() []K {
 }
 
 // ToggleSelection toggles the selection of the currently highlighted row.
+//
+// TODO: rename 'highlighted' to current
 func (m *Model[K, V]) ToggleSelection() {
 	if !m.selectable {
 		return
@@ -369,6 +377,46 @@ func (m *Model[K, V]) DeselectAll() {
 
 	m.Selected = make(map[K]V)
 	m.selectAll = false
+	m.UpdateViewport()
+}
+
+// SelectRange selects a range of rows. If the current row is *below* a selected
+// row then rows between them are selected, including the current row.
+// Otherwise, if the current row is *above* a selected row then rows between
+// them are selected, including the current row. If there are no selected rows
+// then no action is taken.
+func (m *Model[K, V]) SelectRange() {
+	if !m.selectable {
+		return
+	}
+	if len(m.Selected) == 0 {
+		return
+	}
+	// Get position of first and last selected row.
+	var first, last int
+	for i, row := range m.rows {
+		if _, ok := m.Selected[row.Key]; !ok {
+			// Ignore unselected rows
+			continue
+		}
+		if first == 0 {
+			first = i
+		}
+		if i > last {
+			last = i
+		}
+	}
+	if m.cursor > last {
+		for i := range m.cursor - last {
+			row := m.rows[last+i+1]
+			m.Selected[row.Key] = row.Value
+		}
+	} else if m.cursor < first {
+		for i := range first - m.cursor {
+			row := m.rows[m.cursor+i]
+			m.Selected[row.Key] = row.Value
+		}
+	}
 	m.UpdateViewport()
 }
 

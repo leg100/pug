@@ -7,7 +7,7 @@ Set Height 800
 Set Framerate 24
 Set Padding 5
 
-Type "Welcome to the demo...." Sleep 0.5s
+Type "# Welcome to the demo...." Sleep 0.5s
 
 Hide
 Type "demos/state/reset.sh" Enter
@@ -24,24 +24,27 @@ Show
 
 Sleep 1s Enter Sleep 0.5s Tab Sleep 0.5s Tab Sleep 1s
 
+# select first three resources
 Type "s" Sleep 0.5s
 Down Type "s" Sleep 0.5s
 Down Type "s" Sleep 0.5s
+
+# taint selected resources
 Type "t" Sleep 2s
 
-Type "s" Sleep 0.5s
-Up Type "s" Sleep 0.5s
-Up Type "s" Sleep 0.5s
+# untaint selected resources
 Type "u" Sleep 2s
 
-Type "s" Sleep 0.5s
-Down Type "s" Sleep 0.5s
-Type "d" Sleep 1s Type "y" Sleep 2s
+# delete selected resources
+Type "D" Sleep 1s Type "y" Sleep 2s
 
-Type "s" Sleep 0.5s
-Down Type "s" Sleep 0.5s
-Down Type "s" Sleep 0.5s
+# select three more resources
+Type "s"
+Up Type "s" Sleep 0.5s
+Up Type "s" Sleep 0.5s
+
+# create plan targeting selected resources
 Type "p" Sleep 3s
 
-Ctrl+C Sleep 0.5s Type "y"
+Ctrl+C Sleep 1s Type "y"
 Type "That's the end of the demo...." Sleep 0.5s

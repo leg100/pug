@@ -5,17 +5,19 @@ import (
 )
 
 type global struct {
-	Modules    key.Binding
-	Workspaces key.Binding
-	Runs       key.Binding
-	Tasks      key.Binding
-	Logs       key.Binding
-	Escape     key.Binding
-	Enter      key.Binding
-	Select     key.Binding
-	SelectAll  key.Binding
-	Quit       key.Binding
-	Help       key.Binding
+	Modules     key.Binding
+	Workspaces  key.Binding
+	Runs        key.Binding
+	Tasks       key.Binding
+	Logs        key.Binding
+	Back        key.Binding
+	Enter       key.Binding
+	Select      key.Binding
+	SelectAll   key.Binding
+	SelectClear key.Binding
+	SelectRange key.Binding
+	Quit        key.Binding
+	Help        key.Binding
 }
 
 var Global = global{
@@ -39,9 +41,9 @@ var Global = global{
 		key.WithKeys("l"),
 		key.WithHelp("l", "logs"),
 	),
-	Escape: key.NewBinding(
-		key.WithKeys("esc", "`"),
-		key.WithHelp("esc,`", "back"),
+	Back: key.NewBinding(
+		key.WithKeys("esc", "`", "shift+tab"),
+		key.WithHelp("esc/`/shift+tab", "back"),
 	),
 	Enter: key.NewBinding(
 		key.WithKeys("enter"),
@@ -49,15 +51,23 @@ var Global = global{
 	),
 	Select: key.NewBinding(
 		key.WithKeys("s", " "),
-		key.WithHelp("<space>,s", "select"),
+		key.WithHelp("<space>/s", "select"),
 	),
 	SelectAll: key.NewBinding(
 		key.WithKeys("ctrl+a"),
 		key.WithHelp("ctrl+a", "select all"),
 	),
+	SelectClear: key.NewBinding(
+		key.WithKeys(`ctrl+\`),
+		key.WithHelp(`ctrl+\`, "clear selection"),
+	),
+	SelectRange: key.NewBinding(
+		key.WithKeys(`ctrl+@`),
+		key.WithHelp(`ctrl+<space>`, "select range"),
+	),
 	Quit: key.NewBinding(
 		key.WithKeys("ctrl+c"),
-		key.WithHelp("^c", "exit"),
+		key.WithHelp("ctrl+c", "exit"),
 	),
 	Help: key.NewBinding(
 		key.WithKeys("?"),

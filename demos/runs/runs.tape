@@ -7,14 +7,14 @@ Set Height 700
 Set Framerate 24
 Set Padding 5
 
-Type "Welcome to the demo...." Sleep 0.5s
+Type "# Welcome to the demo...." Sleep 0.5s
 
 Hide
 Type "demos/runs/reset.sh" Enter
 Type `TF_CLI_CONFIG_FILE=$PWD/mirror/mirror.tfrc go run main.go -w demos/runs/configs` Enter
 Sleep 1s
 # run terraform init to initialize modules but don't show viewer this
-Ctrl+a Type "i" Sleep 3s
+Ctrl+a Type "i" Ctrl+a Sleep 3s
 Show
 
 Sleep 2s
@@ -22,8 +22,8 @@ Sleep 2s
 # select all modules and create plan for each
 Ctrl+a Sleep 0.5s Type "p" Sleep 4s
 
-# select all modules and create an apply for each, and enter 'y' to confirm
-Ctrl+a Sleep 0.5s Type "a" Sleep 1s
+# create an apply for all, and enter 'y' to confirm
+Sleep 0.5s Type "a" Sleep 1s
 Screenshot demos/runs/apply_awaiting_confirmation.png
 Type "y" Sleep 2s
 

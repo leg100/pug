@@ -53,10 +53,10 @@ var Navigation = navigation{
 	),
 	TabNext: key.NewBinding(
 		key.WithKeys("tab", "ctrl+pgdown"),
-		key.WithHelp("tab/^pgdn", "next tab"),
+		key.WithHelp("tab/ctrl+pgdn", "next tab"),
 	),
 	TabLast: key.NewBinding(
 		key.WithKeys("ctrl+pgup"),
-		key.WithHelp("^pgup", "last tab"),
+		key.WithHelp("ctrl+pgup", "last tab"),
 	),
 }

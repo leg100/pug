@@ -160,23 +160,18 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return tui.NewNavigationMsg(tui.TaskKind, tui.WithParent(task.Resource))
 				}
 			default:
-				// create init tasks, deselect whatever was selected, and keep
-				// user on current page.
+				// create init tasks, and keep user on current page.
 				cmd := tui.CreateTasks("init", m.ModuleService.Init, m.table.HighlightedOrSelectedKeys()...)
-				m.table.DeselectAll()
 				return m, cmd
 			}
 		case key.Matches(msg, keys.Common.Validate):
 			cmd := tui.CreateTasks("validate", m.ModuleService.Validate, m.table.HighlightedOrSelectedKeys()...)
-			m.table.DeselectAll()
 			return m, cmd
 		case key.Matches(msg, keys.Common.Format):
 			cmd := tui.CreateTasks("format", m.ModuleService.Format, m.table.HighlightedOrSelectedKeys()...)
-			m.table.DeselectAll()
 			return m, cmd
 		case key.Matches(msg, localKeys.ReloadWorkspaces):
 			cmd := tui.CreateTasks("reload-workspace", m.WorkspaceService.Reload, m.table.HighlightedOrSelectedKeys()...)
-			m.table.DeselectAll()
 			return m, cmd
 		case key.Matches(msg, keys.Common.Destroy):
 			createRunOptions.Destroy = true
@@ -191,7 +186,6 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if err != nil {
 				return m, tui.ReportError(err, "")
 			}
-			m.table.DeselectAll()
 			return m, tuirun.CreateRuns(m.RunService, createRunOptions, workspaceIDs...)
 		case key.Matches(msg, keys.Common.Apply):
 			runIDs, err := m.table.Prune(func(mod *module.Module) (resource.ID, error) {
