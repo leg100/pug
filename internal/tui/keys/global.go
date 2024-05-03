@@ -43,7 +43,7 @@ var Global = global{
 	),
 	Escape: key.NewBinding(
 		key.WithKeys("esc", "`"),
-		key.WithHelp("esc,`", "back"),
+		key.WithHelp("esc/`", "back"),
 	),
 	Enter: key.NewBinding(
 		key.WithKeys("enter"),
@@ -51,7 +51,7 @@ var Global = global{
 	),
 	Select: key.NewBinding(
 		key.WithKeys("s", " "),
-		key.WithHelp("<space>,s", "select"),
+		key.WithHelp("<space>/s", "select"),
 	),
 	SelectAll: key.NewBinding(
 		key.WithKeys("ctrl+a"),
@@ -67,7 +67,7 @@ var Global = global{
 	),
 	Quit: key.NewBinding(
 		key.WithKeys("ctrl+c"),
-		key.WithHelp("^c", "exit"),
+		key.WithHelp("ctrl+c", "exit"),
 	),
 	Help: key.NewBinding(
 		key.WithKeys("?"),
