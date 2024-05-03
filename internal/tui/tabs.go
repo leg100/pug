@@ -20,9 +20,12 @@ type tabStatus interface {
 }
 
 // models implementing this can report info that'll be rendered on the opposite
-// side away from the tab headers.
+// side from from the tab headers.
 type tabSetInfo interface {
-	TabSetInfo() string
+	// TabSetInfo is called with the name of the currently-active tab, or an
+	// empty string if there are no tabs. It is expected to return a widget to
+	// render.
+	TabSetInfo(active string) string
 }
 
 // TabSet is a related set of zero or more tabs, one of which is active, i.e.
@@ -38,6 +41,14 @@ type TabSet struct {
 	active int
 
 	info tabSetInfo
+}
+
+// A tab is one of a set of tabs. A tab has a title, and an embedded model,
+// which is responsible for the visible content under the tab.
+type Tab struct {
+	tea.Model
+
+	Title string
 }
 
 func NewTabSet(width, height int) TabSet {
@@ -231,7 +242,7 @@ func (m TabSet) View() string {
 		rightSideInfo = Padded.Copy().
 			Width(remainingWidth).
 			Align(lipgloss.Right).
-			Render(m.info.TabSetInfo())
+			Render(m.info.TabSetInfo(m.ActiveTitle()))
 	}
 	tabHeadersFiller := lipgloss.JoinVertical(lipgloss.Top,
 		rightSideInfo,
@@ -257,12 +268,4 @@ func (m TabSet) contentWidth() int {
 // Height of the tab content area
 func (m TabSet) contentHeight() int {
 	return m.height - tabHeaderHeight
-}
-
-// A tab is one of a set of tabs. A tab has a title, and an embedded model,
-// which is responsible for the visible content under the tab.
-type Tab struct {
-	tea.Model
-
-	Title string
 }
