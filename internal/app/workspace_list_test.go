@@ -65,16 +65,16 @@ func TestWorkspaceList_CreateRun(t *testing.T) {
 	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlA})
 	tm.Type("i")
 
-	// Wait for each module to be initialized, and to have its current workspace
-	// set (should be "default")
-	waitFor(t, tm, func(s string) bool {
-		return strings.Count(s, "default") == 3
-	})
-
-	// Go to global workspaces page
+	// Go to global workspaces listing
 	tm.Type("W")
 
-	// Create run on first workspace
+	// Wait for modules/a's default workspace to be listed. This should be the
+	// first workspace listed.
+	waitFor(t, tm, func(s string) bool {
+		return matchPattern(t, `modules/a.*default`, s)
+	})
+
+	// Create run on modules/a default
 	tm.Type("p")
 
 	// Expect to be taken to the run's page
@@ -85,9 +85,13 @@ func TestWorkspaceList_CreateRun(t *testing.T) {
 	// Return to global workspaces page
 	tm.Type("W")
 
-	// Wait for all four workspaces to be listed
+	// Wait for all four workspaces to be listed. The current run for the
+	// default workspace on modules/a should be in the planned state.
 	waitFor(t, tm, func(s string) bool {
-		return matchPattern(t, `(?s)WORKSPACE.*default.*dev.*default.*default`, s)
+		return matchPattern(t, `modules/a.*default.*planned`, s) &&
+			matchPattern(t, `modules/a.*dev`, s) &&
+			matchPattern(t, `modules/b.*default`, s) &&
+			matchPattern(t, `modules/c.*default`, s)
 	})
 
 	// Create run on all four workspaces
@@ -96,7 +100,10 @@ func TestWorkspaceList_CreateRun(t *testing.T) {
 
 	// Expect all four workspaces' current run to enter the planned state
 	waitFor(t, tm, func(s string) bool {
-		return strings.Count(s, "planned") == 4
+		return matchPattern(t, `modules/a.*default.*planned`, s) &&
+			matchPattern(t, `modules/a.*dev.*planned`, s) &&
+			matchPattern(t, `modules/b.*default.*planned`, s) &&
+			matchPattern(t, `modules/c.*default.*planned`, s)
 	})
 
 }
