@@ -158,12 +158,8 @@ func (m model) View() string {
 	return m.tabs.View()
 }
 
-func (m model) TabSetInfo() string {
-	hasTabs, activeTab := m.tabs.Active()
-	if !hasTabs {
-		return ""
-	}
-	switch activeTab.Title {
+func (m model) TabSetInfo(activeTabTitle string) string {
+	switch activeTabTitle {
 	case "plan":
 		return m.helpers.RunReport(m.run.PlanReport)
 	case "apply":
