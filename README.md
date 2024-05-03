@@ -17,35 +17,35 @@ A TUI application for terraform power users.
 
 Invoke `init`, `validate`, and `fmt` across multiple modules.
 
-![Modules demo](https://vhs.charm.sh/vhs-5z5NmW7rbOMDkYnAEwztHX.gif)
+![Modules demo](https://vhs.charm.sh/vhs-7a2fX8uTLwStDklqZc6Nad.gif)
 
 ### Workspaces
 
 Pug supports workspaces. Invoke plan and apply on workspaces. Change the current workspace for a module.
 
-![Workspaces demo](https://vhs.charm.sh/vhs-78nBUqLQOGwUZRQQcFlqPW.gif)
+![Workspaces demo](https://vhs.charm.sh/vhs-4r3RHTv4yItO02bo9PnYnZ.gif)
 
 ### Runs
 
 Create multiple plans and apply them in parallel.
 
-![Runs demo](https://vhs.charm.sh/vhs-3q0zjvU4QkmOJLuJipkKiN.gif)
+![Runs demo](https://vhs.charm.sh/vhs-4uyyJer1lkJFr4P9ceeu9a.gif)
 
 View the output of plans and applies.
 
-![Run demo](https://vhs.charm.sh/vhs-7tJF3hhNthAlcF9GRSFncz.gif)
+![Run demo](https://vhs.charm.sh/vhs-41uUiiIvg8FZGKDG2pl1OX.gif)
 
 ### State management
 
 Manage state resources. Taint, untaint and delete multiple resources. Select resources for targeted plans.
 
-![State demo](https://vhs.charm.sh/vhs-72fjT8HIMg8qyxhkvDsdYU.gif)
+![State demo](https://vhs.charm.sh/vhs-5ZnivgxZYmVZD2RzIaCkAt.gif)
 
 ### Tasks
 
 All invocations of terraform are represented as a task.
 
-![Tasks demo](https://vhs.charm.sh/vhs-6aebd3IUorgv2sakpBRGNz.gif)
+![Tasks demo](https://vhs.charm.sh/vhs-WPrJNhcviGlZxXlDdRQnj.gif)
 
 ## Install instructions
 

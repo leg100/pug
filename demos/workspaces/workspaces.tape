@@ -7,7 +7,7 @@ Set Height 800
 Set Framerate 24
 Set Padding 5
 
-Type "Welcome to the demo...." Sleep 0.5s
+Type "# Welcome to the demo...." Sleep 0.5s
 
 Hide
 Type "demos/workspaces/reset.sh" Enter
