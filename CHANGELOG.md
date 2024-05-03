@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.1.8](https://github.com/leg100/pug/compare/v0.1.7...v0.1.8) (2024-05-03)
+
+
+### Features
+
+* don't auto-deselect and add select-range ([fa4eeee](https://github.com/leg100/pug/commit/fa4eeeef4e68e1d380f9c7d4250d250359e5b998))
+
+
+### Bug Fixes
+
+* comment out demo welcome message ([7653899](https://github.com/leg100/pug/commit/765389966bc17950901e625457ecf3bb283df389))
+* hide apply key for non-applyable runs ([82f6880](https://github.com/leg100/pug/commit/82f6880c5c8b4b3e6f2e918ef38e7b5595ec7375))
+* tab info now uses active tab ([fbed323](https://github.com/leg100/pug/commit/fbed323d1d5a750743a574c6a6d81fd90d482c2b))
+
 ## [0.1.7](https://github.com/leg100/pug/compare/v0.1.6...v0.1.7) (2024-05-02)
 
 
