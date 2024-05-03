@@ -24,13 +24,13 @@ Type "T" Sleep 0.5s
 Show
 
 # wait for apply to complete (it runs for at least 3 seconds) and for state to be reloaded
-Sleep 5s
+Sleep 4s
 # show task page for latest task, which should be the reloading of state, and scroll up
-Enter Sleep 1s PageUp Sleep 0.5s PageUp 2 Sleep 0.5s PageUp Sleep 0.5s PageUp 2 Sleep 1s
+Enter Sleep 1s PageUp Sleep 0.5s PageUp 3 Sleep 0.5s PageUp Sleep 0.5s PageUp 2 Sleep 1s
 # go back and show task page for penultimate task, which should be the apply
-Type "T" Sleep 0.5s Down Sleep 0.5s Enter Sleep 1s
+Type "T" Sleep 0.5s Down Sleep 0.5s Enter Sleep 2s
 # scroll up apply output
-Enter Sleep 1s PageUp Sleep 1s
+Enter Sleep 1s PageUp Sleep 0.5s PageUp Sleep 0.5s PageUp Sleep 1s
 Type "T" Sleep 1s
 
 Ctrl+C Sleep 0.5s Type "y"

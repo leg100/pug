@@ -132,15 +132,12 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			)
 		case key.Matches(msg, keys.Common.Init):
 			cmd := tui.CreateTasks("init", m.modules.Init, m.highlightedOrSelectedModuleIDs()...)
-			m.table.DeselectAll()
 			return m, cmd
 		case key.Matches(msg, keys.Common.Format):
 			cmd := tui.CreateTasks("format", m.modules.Format, m.highlightedOrSelectedModuleIDs()...)
-			m.table.DeselectAll()
 			return m, cmd
 		case key.Matches(msg, keys.Common.Validate):
 			cmd := tui.CreateTasks("validate", m.modules.Validate, m.highlightedOrSelectedModuleIDs()...)
-			m.table.DeselectAll()
 			return m, cmd
 		case key.Matches(msg, localKeys.SetCurrent):
 			if row, highlighted := m.table.Highlighted(); highlighted {
@@ -156,7 +153,6 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			fallthrough
 		case key.Matches(msg, keys.Common.Plan):
 			workspaceIDs := m.table.HighlightedOrSelectedKeys()
-			m.table.DeselectAll()
 			return m, tuirun.CreateRuns(m.runs, createRunOptions, workspaceIDs...)
 		case key.Matches(msg, keys.Common.Apply):
 			runIDs, err := m.table.Prune(func(ws *workspace.Workspace) (resource.ID, error) {

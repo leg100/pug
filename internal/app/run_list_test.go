@@ -91,6 +91,9 @@ func TestRunList_Multiple(t *testing.T) {
 		return strings.Count(s, "default") == 3
 	})
 
+	// Clear selection
+	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlBackslash})
+
 	// Go to global workspaces page
 	tm.Type("W")
 
@@ -102,6 +105,9 @@ func TestRunList_Multiple(t *testing.T) {
 	// Create run on all four workspaces
 	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlA})
 	tm.Type("p")
+
+	// Clear selection
+	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlBackslash})
 
 	// Go to global runs page
 	tm.Type("R")
@@ -121,6 +127,9 @@ func TestRunList_Multiple(t *testing.T) {
 		return strings.Contains(s, "Apply 4 runs (y/N)?")
 	})
 	tm.Type("y")
+
+	// Clear selection
+	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlBackslash})
 
 	// Expect all four runs to enter the applied state.
 	waitFor(t, tm, func(s string) bool {

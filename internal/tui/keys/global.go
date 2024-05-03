@@ -5,17 +5,19 @@ import (
 )
 
 type global struct {
-	Modules    key.Binding
-	Workspaces key.Binding
-	Runs       key.Binding
-	Tasks      key.Binding
-	Logs       key.Binding
-	Escape     key.Binding
-	Enter      key.Binding
-	Select     key.Binding
-	SelectAll  key.Binding
-	Quit       key.Binding
-	Help       key.Binding
+	Modules     key.Binding
+	Workspaces  key.Binding
+	Runs        key.Binding
+	Tasks       key.Binding
+	Logs        key.Binding
+	Escape      key.Binding
+	Enter       key.Binding
+	Select      key.Binding
+	SelectAll   key.Binding
+	SelectClear key.Binding
+	SelectRange key.Binding
+	Quit        key.Binding
+	Help        key.Binding
 }
 
 var Global = global{
@@ -54,6 +56,14 @@ var Global = global{
 	SelectAll: key.NewBinding(
 		key.WithKeys("ctrl+a"),
 		key.WithHelp("ctrl+a", "select all"),
+	),
+	SelectClear: key.NewBinding(
+		key.WithKeys(`ctrl+\`),
+		key.WithHelp(`ctrl+\`, "clear selection"),
+	),
+	SelectRange: key.NewBinding(
+		key.WithKeys(`ctrl+@`),
+		key.WithHelp(`ctrl+<space>`, "select range"),
 	),
 	Quit: key.NewBinding(
 		key.WithKeys("ctrl+c"),

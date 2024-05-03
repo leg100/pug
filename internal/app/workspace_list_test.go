@@ -67,6 +67,9 @@ func TestWorkspaceList_CreateRun(t *testing.T) {
 		return strings.Count(s, "default") == 3
 	})
 
+	// Clear selection
+	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlBackslash})
+
 	// Go to global workspaces page
 	tm.Type("W")
 
@@ -115,6 +118,9 @@ func TestWorkspaceList_ApplyCurrentRun(t *testing.T) {
 		return strings.Count(s, "default") == 3
 	})
 
+	// Clear selection
+	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlBackslash})
+
 	// Go to global workspaces page
 	tm.Type("W")
 
@@ -141,7 +147,6 @@ func TestWorkspaceList_ApplyCurrentRun(t *testing.T) {
 	})
 
 	// Apply all four workspaces
-	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlA})
 	tm.Type("a")
 	waitFor(t, tm, func(s string) bool {
 		return strings.Contains(s, "Apply 4 runs (y/N)?")
