@@ -8,6 +8,8 @@ import (
 )
 
 func TestModuleList(t *testing.T) {
+	t.Parallel()
+
 	tm := setup(t, "./testdata/module_list")
 
 	// Expect three modules to be listed
@@ -69,6 +71,8 @@ func TestModuleList(t *testing.T) {
 }
 
 func TestModuleList_Reload(t *testing.T) {
+	t.Parallel()
+
 	tm := setup(t, "./testdata/module_list")
 
 	// Expect message to inform user that three modules have been loaded
@@ -87,6 +91,8 @@ func TestModuleList_Reload(t *testing.T) {
 }
 
 func TestModuleList_ReloadWorkspaces(t *testing.T) {
+	t.Parallel()
+
 	tm := setup(t, "./testdata/module_list")
 
 	// Expect message to inform user that three modules have been loaded
@@ -118,6 +124,8 @@ func TestModuleList_ReloadWorkspaces(t *testing.T) {
 // then attempting to create a run on each. Pug should de-select those
 // selections which are not initialized / have no current workspace.
 func TestModuleList_CreateRun(t *testing.T) {
+	t.Parallel()
+
 	tm := setup(t, "./testdata/module_list")
 
 	// Expect message to inform user that modules have been loaded
@@ -162,6 +170,8 @@ func TestModuleList_CreateRun(t *testing.T) {
 // should de-select those selections which have no current run in a planned
 // state.
 func TestModuleList_ApplyCurrentRun(t *testing.T) {
+	t.Parallel()
+
 	tm := setup(t, "./testdata/module_list")
 
 	// Expect message to inform user that modules have been loaded

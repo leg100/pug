@@ -10,6 +10,8 @@ import (
 )
 
 func TestWorkspaceList_SetCurrentWorkspace(t *testing.T) {
+	t.Parallel()
+
 	tm := setup(t, "./testdata/module_list")
 
 	// Wait for module to be loaded
@@ -50,11 +52,15 @@ func TestWorkspaceList_SetCurrentWorkspace(t *testing.T) {
 }
 
 func TestWorkspaceList_CreateRun(t *testing.T) {
+	t.Parallel()
+
 	tm := setup(t, "./testdata/module_list")
 
-	// Expect message to inform user that modules have been loaded
+	// Expect all four modules to be listed
 	waitFor(t, tm, func(s string) bool {
-		return strings.Contains(s, "loaded 3 modules")
+		return matchPattern(t, `modules/a`, s) &&
+			matchPattern(t, `modules/b`, s) &&
+			matchPattern(t, `modules/c`, s)
 	})
 
 	// Select all modules and init
@@ -64,16 +70,24 @@ func TestWorkspaceList_CreateRun(t *testing.T) {
 	// Wait for each module to be initialized, and to have its current workspace
 	// set (should be "default")
 	waitFor(t, tm, func(s string) bool {
-		return strings.Count(s, "default") == 3
+		return matchPattern(t, `modules/a.*default`, s) &&
+			matchPattern(t, `modules/b.*default`, s) &&
+			matchPattern(t, `modules/c.*default`, s)
 	})
 
 	// Clear selection
 	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlBackslash})
 
-	// Go to global workspaces page
+	// Go to global workspaces listing
 	tm.Type("W")
 
-	// Create run on first workspace
+	// Wait for modules/a's default workspace to be listed. This should be the
+	// first workspace listed.
+	waitFor(t, tm, func(s string) bool {
+		return matchPattern(t, `modules/a.*default`, s)
+	})
+
+	// Create run on modules/a default
 	tm.Type("p")
 
 	// Expect to be taken to the run's page
@@ -84,9 +98,13 @@ func TestWorkspaceList_CreateRun(t *testing.T) {
 	// Return to global workspaces page
 	tm.Type("W")
 
-	// Wait for all four workspaces to be listed
+	// Wait for all four workspaces to be listed. The current run for the
+	// default workspace on modules/a should be in the planned state.
 	waitFor(t, tm, func(s string) bool {
-		return matchPattern(t, `(?s)WORKSPACE.*default.*dev.*default.*default`, s)
+		return matchPattern(t, `modules/a.*default.*planned`, s) &&
+			matchPattern(t, `modules/a.*dev`, s) &&
+			matchPattern(t, `modules/b.*default`, s) &&
+			matchPattern(t, `modules/c.*default`, s)
 	})
 
 	// Create run on all four workspaces
@@ -95,12 +113,17 @@ func TestWorkspaceList_CreateRun(t *testing.T) {
 
 	// Expect all four workspaces' current run to enter the planned state
 	waitFor(t, tm, func(s string) bool {
-		return strings.Count(s, "planned") == 4
+		return matchPattern(t, `modules/a.*default.*planned`, s) &&
+			matchPattern(t, `modules/a.*dev.*planned`, s) &&
+			matchPattern(t, `modules/b.*default.*planned`, s) &&
+			matchPattern(t, `modules/c.*default.*planned`, s)
 	})
 
 }
 
 func TestWorkspaceList_ApplyCurrentRun(t *testing.T) {
+	t.Parallel()
+
 	tm := setup(t, "./testdata/module_list")
 
 	// Expect message to inform user that modules have been loaded

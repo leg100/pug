@@ -79,6 +79,8 @@ type factory struct {
 	program   string
 	publisher resource.Publisher[*Task]
 	workdir   internal.Workdir
+	// Additional user-supplied environment variables.
+	userEnvs []string
 }
 
 type CreateOptions struct {
@@ -129,7 +131,7 @@ func (f *factory) newTask(opts CreateOptions) (*Task, error) {
 		Command:       opts.Command,
 		Path:          filepath.Join(f.workdir.String(), opts.Path),
 		Args:          opts.Args,
-		Env:           append(os.Environ(), opts.Env...),
+		Env:           append(append(f.userEnvs, opts.Env...), os.Environ()...),
 		JSON:          opts.JSON,
 		Blocking:      opts.Blocking,
 		exclusive:     opts.Exclusive,
@@ -234,7 +236,13 @@ func (t *Task) cancel() {
 }
 
 func (t *Task) start(ctx context.Context) (func(), error) {
+	// Use the provided context to kill the program if the context becomes done,
+	// but also to prevent the program from starting if the context becomes done.
 	cmd := exec.CommandContext(ctx, t.program, append(t.Command, t.Args...)...)
+	cmd.Cancel = func() error {
+		// Kill program gracefully
+		return cmd.Process.Signal(os.Interrupt)
+	}
 	cmd.Dir = t.Path
 	cmd.Stdout = t.buf
 	cmd.Stderr = t.buf

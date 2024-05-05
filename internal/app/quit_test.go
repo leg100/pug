@@ -10,6 +10,8 @@ import (
 )
 
 func TestQuit(t *testing.T) {
+	t.Parallel()
+
 	tm := setup(t, "./testdata/module_list")
 
 	tm.Send(tea.KeyMsg{

@@ -8,6 +8,8 @@ import (
 )
 
 func TestRun(t *testing.T) {
+	t.Parallel()
+
 	tm := setup(t, "./testdata/module_list")
 
 	// Initialize and apply run on modules/a
@@ -17,6 +19,8 @@ func TestRun(t *testing.T) {
 // TestRun_Stale tests that a planned run is placed into the 'stale' state when
 // a succeeding run is created.
 func TestRun_Stale(t *testing.T) {
+	t.Parallel()
+
 	tm := setup(t, "./testdata/module_list")
 
 	// Wait for module to be loaded
@@ -80,6 +84,8 @@ func TestRun_Stale(t *testing.T) {
 }
 
 func TestRun_WithVars(t *testing.T) {
+	t.Parallel()
+
 	tm := setup(t, "./testdata/run_with_vars")
 
 	// Wait for module to be loaded
@@ -106,12 +112,14 @@ func TestRun_WithVars(t *testing.T) {
 
 	// User should now be taken to the run page...
 
-	// Expect to see summary of changes
+	// Expect to see summary of changes, and the run should be in the planned
+	// state
 	waitFor(t, tm, func(s string) bool {
 		// Remove formatting
 		s = internal.StripAnsi(s)
 		return strings.Contains(s, "Changes to Outputs:") &&
-			strings.Contains(s, `+ foo = "override"`)
+			strings.Contains(s, `+ foo = "override"`) &&
+			strings.Contains(s, "planned")
 	})
 
 	// Apply plan and provide confirmation

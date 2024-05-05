@@ -23,6 +23,7 @@ type config struct {
 	DisableReloadAfterApply bool
 	WorkDir                 string
 	DataDir                 string
+	Envs                    []string
 
 	loggingOptions logging.Options
 	version        bool
@@ -44,6 +45,7 @@ func parse(stderr io.Writer, args []string) (config, error) {
 	fs.StringVar(&cfg.WorkDir, 'w', "workdir", ".", "The working directory containing modules.")
 	fs.IntVar(&cfg.MaxTasks, 't', "max-tasks", 2*runtime.NumCPU(), "The maximum number of parallel tasks.")
 	fs.StringVar(&cfg.DataDir, 0, "data-dir", defaultDataDir, "Directory in which to store plan files.")
+	fs.StringListVar(&cfg.Envs, 'e', "env", "Environment variable to pass to terraform process. Can set more than once.")
 	fs.StringEnumVar(&cfg.FirstPage, 'f', "first-page", "The first page to open on startup.", "modules", "workspaces", "runs", "tasks", "logs")
 	fs.BoolVar(&cfg.Debug, 'd', "debug", "Log bubbletea messages to messages.log")
 	fs.BoolVar(&cfg.version, 'v', "version", "Print version.")

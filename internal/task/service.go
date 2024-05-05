@@ -19,9 +19,10 @@ type Service struct {
 }
 
 type ServiceOptions struct {
-	Program string
-	Logger  logging.Interface
-	Workdir internal.Workdir
+	Program  string
+	Logger   logging.Interface
+	Workdir  internal.Workdir
+	UserEnvs []string
 }
 
 func NewService(opts ServiceOptions) *Service {
@@ -33,6 +34,7 @@ func NewService(opts ServiceOptions) *Service {
 		counter:   &counter,
 		program:   opts.Program,
 		workdir:   opts.Workdir,
+		userEnvs:  opts.UserEnvs,
 	}
 
 	svc := &Service{

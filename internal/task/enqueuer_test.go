@@ -9,6 +9,8 @@ import (
 )
 
 func TestEnqueuer(t *testing.T) {
+	t.Parallel()
+
 	mod1 := resource.New(resource.Module, resource.GlobalResource)
 	ws1 := resource.New(resource.Workspace, mod1)
 

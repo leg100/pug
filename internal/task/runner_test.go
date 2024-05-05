@@ -9,6 +9,8 @@ import (
 )
 
 func TestRunner_runnable(t *testing.T) {
+	t.Parallel()
+
 	mod1 := resource.New(resource.Module, resource.GlobalResource)
 
 	t1 := &Task{Resource: resource.New(resource.Task, mod1)}

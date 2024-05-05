@@ -2,9 +2,9 @@ package task
 
 import (
 	"context"
+	"sync"
 
 	"github.com/leg100/pug/internal/logging"
-	"golang.org/x/sync/errgroup"
 )
 
 // Runner is the global task Runner that provides a couple of invariants:
@@ -15,13 +15,15 @@ type runner struct {
 	tasks taskLister
 }
 
-func StartRunner(ctx context.Context, logger logging.Interface, tasks *Service, maxTasks int) func() error {
+// StartRunner starts the task runner and returns a function that waits for
+// running tasks to finish.
+func StartRunner(ctx context.Context, logger logging.Interface, tasks *Service, maxTasks int) func() {
 	sub := tasks.Subscribe()
 	r := &runner{
 		max:   maxTasks,
 		tasks: tasks,
 	}
-	g, ctx := errgroup.WithContext(ctx)
+	g := sync.WaitGroup{}
 
 	// On each task event, get a list of tasks to be run, start them, and wait
 	// for them to complete in the background.
@@ -33,10 +35,11 @@ func StartRunner(ctx context.Context, logger logging.Interface, tasks *Service, 
 					logger.Error("starting task", "error", err.Error(), "task", task)
 				} else {
 					logger.Debug("started task", "task", task)
-					g.Go(func() error {
+					g.Add(1)
+					go func() {
 						waitfn()
-						return nil
-					})
+						g.Done()
+					}()
 				}
 			}
 		}

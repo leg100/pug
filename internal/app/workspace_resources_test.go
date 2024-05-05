@@ -9,21 +9,31 @@ import (
 )
 
 func TestWorkspace_Resources(t *testing.T) {
-	tm := setup(t, "./testdata/module_list")
+	t.Parallel()
 
-	// Initialize and apply run on modules/a
-	initAndApplyModuleA(t, tm)
+	// Setup test with pre-existing state
+	tm := setup(t, "./testdata/workspace_resources")
+
+	// Wait for module to be loaded
+	waitFor(t, tm, func(s string) bool {
+		return strings.Contains(s, "modules/a")
+	})
+
+	// Initialize module
+	tm.Type("i")
+	waitFor(t, tm, func(s string) bool {
+		return strings.Contains(s, "Terraform has been successfully initialized!")
+	})
 
 	// Go to workspaces
 	tm.Type("W")
 
 	// Wait for workspace to be loaded
 	waitFor(t, tm, func(s string) bool {
-		return strings.Contains(s, "default")
+		return matchPattern(t, `modules/a.*default`, s)
 	})
 
-	// Select the default workspace (should be the first and only workspace
-	// listed)
+	// Go to workspace's page
 	tm.Send(tea.KeyMsg{Type: tea.KeyEnter})
 
 	// Expect resources tab title
@@ -80,11 +90,13 @@ func TestWorkspace_Resources(t *testing.T) {
 	})
 	tm.Type("y")
 
-	// Expect to no longer see first three pets listed
+	// Expect only 7 resources. Note we can't test that the three deleted
+	// resources are NOT listed because waitFor accumulates all the string
+	// output since it was called, which is likely to include resources from
+	// both before and after the deletion. So instead we check for the presence
+	// of a new total number of resources.
 	waitFor(t, tm, func(s string) bool {
-		return !strings.Contains(s, "random_pet.pet[0]") &&
-			!strings.Contains(s, "random_pet.pet[1]") &&
-			!strings.Contains(s, "random_pet.pet[2]")
+		return strings.Contains(s, "resources (7)")
 	})
 
 	// Select several resources and create targeted plan

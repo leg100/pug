@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"sync"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/leg100/pug/internal"
@@ -21,25 +22,8 @@ import (
 	"github.com/leg100/pug/internal/workspace"
 )
 
-type app struct {
-	modules    *module.Service
-	workspaces *workspace.Service
-	states     *state.Service
-	runs       *run.Service
-	tasks      *task.Service
-	logger     *logging.Logger
-	cfg        config
-}
-
-type sender interface {
-	Send(tea.Msg)
-}
-
 // Start the app.
 func Start(stdout, stderr io.Writer, args []string) error {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	// Parse configuration from env vars and flags
 	cfg, err := parse(stderr, args)
 	if err != nil {
@@ -51,10 +35,12 @@ func Start(stdout, stderr io.Writer, args []string) error {
 		return nil
 	}
 
-	app, model, err := newApp(ctx, cfg)
+	// Start daemons and create event subscriptions.
+	app, err := startApp(cfg, stdout)
 	if err != nil {
 		return err
 	}
+	defer app.cleanup()
 
 	// Log some info useful to the user
 	app.logger.Info("loaded config",
@@ -66,7 +52,7 @@ func Start(stdout, stderr io.Writer, args []string) error {
 	)
 
 	p := tea.NewProgram(
-		model,
+		app.model,
 		// Use the full size of the terminal with its "alternate screen buffer"
 		tea.WithAltScreen(),
 		// Enabling mouse cell motion removes the ability to "blackboard" text
@@ -77,20 +63,28 @@ func Start(stdout, stderr io.Writer, args []string) error {
 		// tea.WithMouseCellMotion(),
 	)
 
-	// Start daemons and relay events. When the app exits, use the returned func
-	// to wait for any running tasks to complete.
-	cleanup := app.start(ctx, stdout, p)
+	// Relay events to TUI
+	app.relay(p)
 
 	// Blocks until user quits
 	if _, err := p.Run(); err != nil {
 		return err
 	}
 
-	return cleanup()
+	return nil
 }
 
-// newApp constructs an instance of the app and the top-level TUI model.
-func newApp(ctx context.Context, cfg config) (*app, tea.Model, error) {
+type app struct {
+	model   tea.Model
+	ch      chan tea.Msg
+	logger  *logging.Logger
+	cleanup func()
+}
+
+// startApp starts the application, constructing services, starting daemons and
+// subscribing to events. The returned app is used for constructing the TUI and
+// relaying events. The app's cleanup function should be called when finished.
+func startApp(cfg config, stdout io.Writer) (*app, error) {
 	// Setup logging
 	logger := logging.NewLogger(cfg.loggingOptions)
 
@@ -98,14 +92,15 @@ func newApp(ctx context.Context, cfg config) (*app, tea.Model, error) {
 	// defined types.
 	workdir, err := internal.NewWorkdir(cfg.WorkDir)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	// Instantiate services
 	tasks := task.NewService(task.ServiceOptions{
-		Program: cfg.Program,
-		Logger:  logger,
-		Workdir: workdir,
+		Program:  cfg.Program,
+		Logger:   logger,
+		Workdir:  workdir,
+		UserEnvs: cfg.Envs,
 	})
 	modules := module.NewService(module.ServiceOptions{
 		TaskService: tasks,
@@ -118,8 +113,7 @@ func newApp(ctx context.Context, cfg config) (*app, tea.Model, error) {
 		ModuleService: modules,
 		Logger:        logger,
 	})
-	// TODO: separate auto-state pull code
-	states := state.NewService(ctx, state.ServiceOptions{
+	states := state.NewService(state.ServiceOptions{
 		ModuleService:    modules,
 		WorkspaceService: workspaces,
 		TaskService:      tasks,
@@ -135,17 +129,6 @@ func newApp(ctx context.Context, cfg config) (*app, tea.Model, error) {
 		Logger:                  logger,
 	})
 
-	// Shutdown services once context is done.
-	go func() {
-		<-ctx.Done()
-		logger.Shutdown()
-		tasks.Shutdown()
-		modules.Shutdown()
-		workspaces.Shutdown()
-		states.Shutdown()
-		runs.Shutdown()
-	}()
-
 	// Construct top-level TUI model.
 	model, err := top.New(top.Options{
 		TaskService:      tasks,
@@ -160,86 +143,123 @@ func newApp(ctx context.Context, cfg config) (*app, tea.Model, error) {
 		Debug:            cfg.Debug,
 	})
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
-	app := &app{
-		modules:    modules,
-		workspaces: workspaces,
-		runs:       runs,
-		states:     states,
-		tasks:      tasks,
-		cfg:        cfg,
-		logger:     logger,
-	}
-	return app, model, nil
-}
+	ctx, cancel := context.WithCancel(context.Background())
 
-// start starts the app daemons and relays events to the TUI, returning a func
-// to wait for running tasks to complete.
-func (a *app) start(ctx context.Context, stdout io.Writer, s sender) func() error {
 	// Start daemons
-	task.StartEnqueuer(a.tasks)
-	run.StartScheduler(a.runs, a.workspaces)
-	waitfn := task.StartRunner(ctx, a.logger, a.tasks, a.cfg.MaxTasks)
+	task.StartEnqueuer(tasks)
+	run.StartScheduler(runs, workspaces)
+	waitTasks := task.StartRunner(ctx, logger, tasks, cfg.MaxTasks)
 
 	// Automatically load workspaces whenever modules are loaded.
-	a.workspaces.LoadWorkspacesUponModuleLoad(a.modules)
+	workspaces.LoadWorkspacesUponModuleLoad(modules)
 
 	// Relay resource events to TUI. Deliberately set up subscriptions *before*
 	// any events are triggered, to ensure the TUI receives all messages.
-	logEvents := a.logger.Subscribe()
+	ch := make(chan tea.Msg)
+	wg := sync.WaitGroup{} // sync closure of subscriptions
+
+	logEvents := logger.Subscribe()
+	wg.Add(1)
 	go func() {
 		for ev := range logEvents {
-			s.Send(ev)
+			ch <- ev
 		}
-	}()
-	modEvents := a.modules.Subscribe()
-	go func() {
-		for ev := range modEvents {
-			s.Send(ev)
-		}
-	}()
-	wsEvents := a.workspaces.Subscribe()
-	go func() {
-		for ev := range wsEvents {
-			s.Send(ev)
-		}
-	}()
-	stateEvents := a.states.Subscribe()
-	go func() {
-		for ev := range stateEvents {
-			s.Send(ev)
-		}
-	}()
-	runEvents := a.runs.Subscribe()
-	go func() {
-		for ev := range runEvents {
-			s.Send(ev)
-		}
-	}()
-	taskEvents := a.tasks.Subscribe()
-	go func() {
-		for ev := range taskEvents {
-			s.Send(ev)
-		}
+		wg.Done()
 	}()
 
-	// Return cleanup function to be invoked when app is terminated.
-	return func() error {
-		// Cancel any running processes
-		running := a.tasks.List(task.ListOptions{Status: []task.Status{task.Running}})
-		if len(running) > 0 {
-			fmt.Fprintf(stdout, "terminating %d terraform processes\n", len(running))
+	modEvents := modules.Subscribe()
+	wg.Add(1)
+	go func() {
+		for ev := range modEvents {
+			ch <- ev
 		}
-		for _, task := range running {
-			a.tasks.Cancel(task.ID)
+		wg.Done()
+	}()
+
+	wsEvents := workspaces.Subscribe()
+	wg.Add(1)
+	go func() {
+		for ev := range wsEvents {
+			ch <- ev
 		}
+		wg.Done()
+	}()
+
+	stateEvents := states.Subscribe()
+	wg.Add(1)
+	go func() {
+		for ev := range stateEvents {
+			ch <- ev
+		}
+		wg.Done()
+	}()
+
+	runEvents := runs.Subscribe()
+	wg.Add(1)
+	go func() {
+		for ev := range runEvents {
+			ch <- ev
+		}
+		wg.Done()
+	}()
+
+	taskEvents := tasks.Subscribe()
+	wg.Add(1)
+	go func() {
+		for ev := range taskEvents {
+			ch <- ev
+		}
+		wg.Done()
+	}()
+
+	// cleanup function to be invoked when app is terminated.
+	cleanup := func() {
+		// Cancel context
+		cancel()
+
+		// Close subscriptions
+		logger.Shutdown()
+		tasks.Shutdown()
+		modules.Shutdown()
+		workspaces.Shutdown()
+		states.Shutdown()
+		runs.Shutdown()
+
+		// Wait for relays to finish before closing channel, to avoid sends
+		// to a closed channel, which would result in a panic.
+		wg.Wait()
+		close(ch)
+
 		// Remove all run artefacts (plan files etc,...)
-		for _, run := range a.runs.List(run.ListOptions{}) {
+		for _, run := range runs.List(run.ListOptions{}) {
 			_ = os.RemoveAll(run.ArtefactsPath())
 		}
-		// Wait for canceled tasks to terminate.
-		return waitfn()
+
+		// Wait for running tasks to terminate. Canceling the context (above)
+		// sends each task a termination signal so each task's process should
+		// shut itself down.
+		waitTasks()
 	}
+	return &app{
+		model:   model,
+		ch:      ch,
+		cleanup: cleanup,
+		logger:  logger,
+	}, nil
+}
+
+type tui interface {
+	Send(tea.Msg)
+}
+
+// relay events to TUI.
+func (a *app) relay(s tui) {
+	go func() {
+		for msg := range a.ch {
+			s.Send(msg)
+		}
+	}()
 }
