@@ -64,8 +64,8 @@ func (b *Broker[T]) Publish(t resource.EventType, payload T) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 
-	b.wg.Add(len(b.subs))
 	for sub := range b.subs {
+		b.wg.Add(1)
 		go func() {
 			sub <- resource.Event[T]{Type: t, Payload: payload}
 			b.wg.Done()
