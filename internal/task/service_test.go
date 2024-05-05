@@ -8,6 +8,8 @@ import (
 )
 
 func TestService_List(t *testing.T) {
+	t.Parallel()
+
 	mod1 := resource.New(resource.Module, resource.GlobalResource)
 
 	pending := &Task{Resource: resource.New(resource.Task, mod1), State: Pending}

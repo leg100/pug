@@ -13,6 +13,8 @@ import (
 )
 
 func TestTask_stdout(t *testing.T) {
+	t.Parallel()
+
 	f := factory{
 		counter:   internal.Int(0),
 		program:   "./testdata/task",
@@ -42,6 +44,8 @@ func TestTask_stdout(t *testing.T) {
 }
 
 func TestTask_cancel(t *testing.T) {
+	t.Parallel()
+
 	f := factory{
 		counter:   internal.Int(0),
 		program:   "./testdata/killme",

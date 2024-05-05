@@ -10,6 +10,8 @@ import (
 )
 
 func TestBuffer_singleRead(t *testing.T) {
+	t.Parallel()
+
 	buf := newBuffer()
 	r := &reader{buf: buf}
 	_, err := buf.Write([]byte("hello world"))
@@ -22,6 +24,8 @@ func TestBuffer_singleRead(t *testing.T) {
 }
 
 func TestBuffer_multiRead(t *testing.T) {
+	t.Parallel()
+
 	buf := newBuffer()
 	r := &reader{buf: buf}
 	_, err := buf.Write([]byte("hello world"))
@@ -50,6 +54,8 @@ func TestBuffer_multiRead(t *testing.T) {
 }
 
 func TestBuffer_multiWrite(t *testing.T) {
+	t.Parallel()
+
 	buf := newBuffer()
 	r := &reader{buf: buf}
 	_, err := buf.Write([]byte("hello"))
@@ -69,6 +75,8 @@ func TestBuffer_multiWrite(t *testing.T) {
 }
 
 func TestBuffer_blockRead(t *testing.T) {
+	t.Parallel()
+
 	buf := newBuffer()
 	r := &reader{buf: buf}
 
