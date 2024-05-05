@@ -82,7 +82,7 @@ func TestRunList_Multiple(t *testing.T) {
 
 	// Expect message to inform user that modules have been loaded
 	waitFor(t, tm, func(s string) bool {
-		return strings.Contains(s, "loaded 3 modules")
+		return matchPattern(t, "(?s)modules/a.*modules/b.*modules/c", s)
 	})
 
 	// Select all modules and init

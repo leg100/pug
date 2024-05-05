@@ -8,7 +8,7 @@ import (
 	"github.com/leg100/pug/internal"
 )
 
-func TestModule(t *testing.T) {
+func TestModule_Init(t *testing.T) {
 	t.Parallel()
 
 	tm := setup(t, "./testdata/module_list")
@@ -131,7 +131,6 @@ func TestModule_Destroy(t *testing.T) {
 
 	// Expect umpteen resources to be proposed for deletion
 	waitFor(t, tm, func(s string) bool {
-		t.Log(s)
 		s = internal.StripAnsi(s)
 		return strings.Contains(s, "+0~0-10")
 	})

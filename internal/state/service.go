@@ -1,7 +1,6 @@
 package state
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"slices"
@@ -33,7 +32,7 @@ type ServiceOptions struct {
 	Logger           logging.Interface
 }
 
-func NewService(ctx context.Context, opts ServiceOptions) *Service {
+func NewService(opts ServiceOptions) *Service {
 	broker := pubsub.NewBroker[*State](opts.Logger)
 	svc := &Service{
 		modules:    opts.ModuleService,

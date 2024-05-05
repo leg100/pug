@@ -1,7 +1,6 @@
 package app
 
 import (
-	"context"
 	"io"
 
 	cp "github.com/otiai10/copy"
@@ -15,7 +14,6 @@ import (
 	"github.com/charmbracelet/x/exp/teatest"
 	"github.com/leg100/pug/internal"
 	"github.com/leg100/pug/internal/logging"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -48,18 +46,13 @@ func setup(t *testing.T, workdir string, sopts ...setupOption) *teatest.TestMode
 	require.NoError(t, err)
 	workdir = target
 
-	// Cancel context once test finishes.
-	ctx, cancel := context.WithCancel(context.Background())
-	t.Cleanup(cancel)
-
 	// Get absolute path to terraform cli config. The config sets up terraform
 	// to use a provider filesystem mirror, which ensures tests avoid any
 	// network roundtrips to retrieve or query providers.
 	mirrorConfigPath, err := filepath.Abs("../../mirror/mirror.tfrc")
 	require.NoError(t, err)
 
-	app, m, err := newApp(
-		ctx,
+	app, err := startApp(
 		config{
 			FirstPage: "modules",
 			Program:   "terraform",
@@ -74,21 +67,24 @@ func setup(t *testing.T, workdir string, sopts ...setupOption) *teatest.TestMode
 				},
 			},
 		},
+		io.Discard,
 	)
 	require.NoError(t, err)
+	t.Cleanup(app.cleanup)
 
 	tm := teatest.NewTestModel(
 		t,
-		m,
+		app.model,
 		teatest.WithInitialTermSize(100, 50),
 	)
-	cleanup := app.start(ctx, io.Discard, tm)
 	t.Cleanup(func() {
-		err := cleanup()
-		assert.NoError(t, err, "cleaning up app resources")
+		tm.Quit()
 	})
-	return tm
 
+	// Relay events to TUI
+	app.relay(tm)
+
+	return tm
 }
 
 // testLogger relays pug log records to the go test logger

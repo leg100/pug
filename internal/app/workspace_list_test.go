@@ -56,9 +56,11 @@ func TestWorkspaceList_CreateRun(t *testing.T) {
 
 	tm := setup(t, "./testdata/module_list")
 
-	// Expect message to inform user that modules have been loaded
+	// Expect all four modules to be listed
 	waitFor(t, tm, func(s string) bool {
-		return strings.Contains(s, "loaded 3 modules")
+		return matchPattern(t, `modules/a`, s) &&
+			matchPattern(t, `modules/b`, s) &&
+			matchPattern(t, `modules/c`, s)
 	})
 
 	// Select all modules and init
@@ -68,7 +70,9 @@ func TestWorkspaceList_CreateRun(t *testing.T) {
 	// Wait for each module to be initialized, and to have its current workspace
 	// set (should be "default")
 	waitFor(t, tm, func(s string) bool {
-		return strings.Count(s, "default") == 3
+		return matchPattern(t, `modules/a.*default`, s) &&
+			matchPattern(t, `modules/b.*default`, s) &&
+			matchPattern(t, `modules/c.*default`, s)
 	})
 
 	// Clear selection

@@ -112,12 +112,14 @@ func TestRun_WithVars(t *testing.T) {
 
 	// User should now be taken to the run page...
 
-	// Expect to see summary of changes
+	// Expect to see summary of changes, and the run should be in the planned
+	// state
 	waitFor(t, tm, func(s string) bool {
 		// Remove formatting
 		s = internal.StripAnsi(s)
 		return strings.Contains(s, "Changes to Outputs:") &&
-			strings.Contains(s, `+ foo = "override"`)
+			strings.Contains(s, `+ foo = "override"`) &&
+			strings.Contains(s, "planned")
 	})
 
 	// Apply plan and provide confirmation
