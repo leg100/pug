@@ -84,9 +84,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// General actions
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
-		if m.tabs.ActiveTabFilterFocused() {
-			break
-		}
 		switch {
 		case key.Matches(msg, keys.Common.Init):
 			// 'i' creates a terraform init task and sends the user to the tasks

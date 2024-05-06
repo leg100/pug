@@ -5,17 +5,17 @@ import (
 )
 
 type filter struct {
-	Exit  key.Binding
-	Clear key.Binding
+	Blur  key.Binding
+	Close key.Binding
 }
 
 // Filter is a key map of keys available in filter mode.
 var Filter = filter{
-	Exit: key.NewBinding(
+	Blur: key.NewBinding(
 		key.WithKeys("enter"),
 		key.WithHelp("enter", "exit filter"),
 	),
-	Clear: key.NewBinding(
+	Close: key.NewBinding(
 		key.WithKeys("esc"),
 		key.WithHelp("esc", "clear filter"),
 	),

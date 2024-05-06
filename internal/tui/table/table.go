@@ -146,10 +146,6 @@ func (m Model[K, V]) WithSortFunc(sortFunc func(V, V) int) Model[K, V] {
 	return m
 }
 
-func (m *Model[K, V]) FilterFocused() bool {
-	return m.filter.Focused()
-}
-
 func (m *Model[K, V]) filterVisible() bool {
 	// Filter is visible if it's either in focus, or it has a non-empty value.
 	return m.filter.Focused() || m.filter.Value() != ""
@@ -188,9 +184,6 @@ func (m Model[K, V]) Update(msg tea.Msg) (Model[K, V], tea.Cmd) {
 
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
-		if m.filter.Focused() {
-			break
-		}
 		switch {
 		case key.Matches(msg, keys.Navigation.LineUp):
 			m.MoveUp(1)
@@ -216,13 +209,6 @@ func (m Model[K, V]) Update(msg tea.Msg) (Model[K, V], tea.Cmd) {
 			m.DeselectAll()
 		case key.Matches(msg, keys.Global.SelectRange):
 			m.SelectRange()
-		case key.Matches(msg, keys.Global.Filter):
-			blinkCmd := m.filter.Focus()
-			m.setDimensions(m.width, m.height)
-			return m, tea.Batch(
-				tui.CmdHandler(EnableFilterMsg{}),
-				blinkCmd,
-			)
 		}
 	case tea.WindowSizeMsg:
 		m.setDimensions(msg.Width, msg.Height)
@@ -230,30 +216,41 @@ func (m Model[K, V]) Update(msg tea.Msg) (Model[K, V], tea.Cmd) {
 		// Rows can contain spinners, so we re-render them whenever a tick is
 		// received.
 		m.UpdateViewport()
-	}
-
-	if m.filter.Focused() {
-		switch msg := msg.(type) {
-		case tea.KeyMsg:
-			switch {
-			case key.Matches(msg, keys.Global.Back):
-				// <esc> key clears filter and unfocuses filter
-				m.filter.SetValue("")
-				// Unfilter table items
-				m.SetItems(m.items)
-				fallthrough
-			case key.Matches(msg, keys.Global.Enter):
-				// <enter> key unfocuses filter
-				m.filter.Blur()
-				return m, tui.CmdHandler(ExitFilterMsg{})
-			}
-		}
-		// Any other msg is sent to the filter
+	case tui.FilterFocusReqMsg:
+		// Focus the filter widget
+		blink := m.filter.Focus()
+		// Resize the viewport to accommodate the filter widget
+		m.setDimensions(m.width, m.height)
+		// Acknowledge the request, and start blinking the cursor.
+		return m, tea.Batch(tui.CmdHandler(tui.FilterFocusAckMsg{}), blink)
+	case tui.FilterBlurMsg:
+		// Blur the filter widget
+		m.filter.Blur()
+		return m, nil
+	case tui.FilterCloseMsg:
+		// Close the filter widget
+		m.filter.Blur()
+		m.filter.SetValue("")
+		// Unfilter table items
+		m.SetItems(m.items)
+		// Resize the viewport to take up the space now unoccupied
+		m.setDimensions(m.width, m.height)
+		return m, nil
+	case tui.FilterKeyMsg:
+		// unwrap key and send to filter widget
+		kmsg := tea.KeyMsg(msg)
 		var cmd tea.Cmd
-		m.filter, cmd = m.filter.Update(msg)
+		m.filter, cmd = m.filter.Update(kmsg)
 		// Filter table items
 		m.SetItems(m.items)
 		return m, cmd
+	default:
+		// Send any other messages to the filter if it is focused.
+		if m.filter.Focused() {
+			var cmd tea.Cmd
+			m.filter, cmd = m.filter.Update(msg)
+			return m, cmd
+		}
 	}
 
 	return m, nil
