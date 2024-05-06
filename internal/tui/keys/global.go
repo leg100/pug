@@ -16,6 +16,7 @@ type global struct {
 	SelectAll   key.Binding
 	SelectClear key.Binding
 	SelectRange key.Binding
+	Filter      key.Binding
 	Quit        key.Binding
 	Help        key.Binding
 }
@@ -64,6 +65,10 @@ var Global = global{
 	SelectRange: key.NewBinding(
 		key.WithKeys(`ctrl+@`),
 		key.WithHelp(`ctrl+<space>`, "select range"),
+	),
+	Filter: key.NewBinding(
+		key.WithKeys("/"),
+		key.WithHelp(`/`, "filter"),
 	),
 	Quit: key.NewBinding(
 		key.WithKeys("ctrl+c"),

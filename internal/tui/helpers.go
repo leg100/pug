@@ -222,10 +222,10 @@ func (h *Helpers) Breadcrumbs(title string, parent resource.Resource) string {
 	return fmt.Sprintf("%s%s", TitleStyle.Render(title), strings.Join(crumbs, ""))
 }
 
-func GlobalBreadcrumb(title string) string {
+func GlobalBreadcrumb(title, total string) string {
 	title = TitleStyle.Render(title)
 	all := Regular.Copy().Foreground(globalColor).Render("all")
-	return fmt.Sprintf("%s(%s)", title, all)
+	return fmt.Sprintf("%s(%s)[%s]", title, all, total)
 }
 
 // RemoveDuplicateBindings removes duplicate bindings from a list of bindings. A

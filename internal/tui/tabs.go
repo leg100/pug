@@ -149,12 +149,32 @@ func (m *TabSet) setActive(tabIndex int) {
 	m.active = tabIndex
 }
 
+type filterable interface {
+	FilterFocused() bool
+}
+
+// ActiveTabFilterFocused returns true if a filter is focused on the active tab.
+func (m TabSet) ActiveTabFilterFocused() bool {
+	ok, active := m.Active()
+	if !ok {
+		return false
+	}
+	filterable, ok := active.Model.(filterable)
+	if !ok {
+		return false
+	}
+	return filterable.FilterFocused()
+}
+
 func (m TabSet) Update(msg tea.Msg) (TabSet, tea.Cmd) {
 	var cmds []tea.Cmd
 
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch {
+		case m.ActiveTabFilterFocused():
+			// filter is focused on the active tab - ignore cycle tab actions
+			// and let the active tab handle the key
 		case key.Matches(msg, keys.Navigation.TabNext):
 			// Cycle tabs, going back to the first tab after the last tab
 			m.setActive(m.active + 1)

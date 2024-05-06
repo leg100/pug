@@ -63,6 +63,7 @@ type CompletedTasksMsg struct {
 	CreateErrs []error
 }
 
+// ConfirmPromptMsg enables the confirmation prompt.
 type ConfirmPromptMsg struct {
 	Prompt string
 	Action tea.Cmd

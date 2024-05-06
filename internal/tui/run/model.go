@@ -79,6 +79,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
+		if m.tabs.ActiveTabFilterFocused() {
+			break
+		}
 		switch {
 		case key.Matches(msg, keys.Common.Apply):
 			// Only run an apply if run is in the planned state

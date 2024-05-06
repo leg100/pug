@@ -134,6 +134,9 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Update current run status and changes
 		m.table.UpdateViewport()
 	case tea.KeyMsg:
+		if m.table.FilterFocused() {
+			break
+		}
 		switch {
 		case key.Matches(msg, localKeys.ReloadModules):
 			return m, ReloadModules(false, m.ModuleService)
@@ -216,7 +219,11 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m list) Title() string {
-	return tui.GlobalBreadcrumb("Modules")
+	return tui.GlobalBreadcrumb("Modules", m.table.TotalString())
+}
+
+func (m list) FilterFocused() bool {
+	return m.table.FilterFocused()
 }
 
 func (m list) View() string {

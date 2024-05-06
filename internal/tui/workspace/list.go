@@ -116,6 +116,9 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Update resource counts
 		m.table.UpdateViewport()
 	case tea.KeyMsg:
+		if m.table.FilterFocused() {
+			break
+		}
 		switch {
 		case key.Matches(msg, keys.Global.Enter):
 			if row, highlighted := m.table.Highlighted(); highlighted {
@@ -176,7 +179,11 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m list) Title() string {
-	return tui.GlobalBreadcrumb("Workspaces")
+	return tui.GlobalBreadcrumb("Workspaces", m.table.TotalString())
+}
+
+func (m list) FilterFocused() bool {
+	return m.table.FilterFocused()
 }
 
 func (m list) View() string {

@@ -1,10 +1,13 @@
 package table
 
 import (
+	"fmt"
 	"slices"
+	"strings"
 
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/spinner"
+	"github.com/charmbracelet/bubbles/textinput"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -15,8 +18,12 @@ import (
 	"golang.org/x/exp/maps"
 )
 
-// Height of the table header
-const headerHeight = 1
+const (
+	// Height of the table header
+	headerHeight = 1
+	// Height of filter widget
+	filterHeight = 2
+)
 
 // Model defines a state for the table widget.
 type Model[K comparable, V any] struct {
@@ -34,12 +41,15 @@ type Model[K comparable, V any] struct {
 	selectable bool
 	selectAll  bool
 
+	filter textinput.Model
+
 	viewport viewport.Model
 	start    int
 	end      int
 
 	// dimensions calcs
-	width int
+	width  int
+	height int
 }
 
 // Column defines the table structure.
@@ -95,6 +105,9 @@ func (m *Model[K, V]) SetStyles(s Styles) {
 
 // New creates a new model for the table widget.
 func New[K comparable, V any](columns []Column, fn RowRenderer[V], width, height int) Model[K, V] {
+	filter := textinput.New()
+	filter.Prompt = "Filter: "
+
 	m := Model[K, V]{
 		cursor:      0,
 		viewport:    viewport.New(0, 0),
@@ -104,6 +117,7 @@ func New[K comparable, V any](columns []Column, fn RowRenderer[V], width, height
 		Selected:    make(map[K]V),
 		selectable:  true,
 		focus:       true,
+		filter:      filter,
 	}
 	// Deliberately use range to copy column structs onto receiver, because the
 	// caller may be using columns in multiple tables and columns are modified
@@ -132,36 +146,37 @@ func (m Model[K, V]) WithSortFunc(sortFunc func(V, V) int) Model[K, V] {
 	return m
 }
 
-func (m *Model[K, V]) setDimensions(width, height int) {
+func (m *Model[K, V]) FilterFocused() bool {
+	return m.filter.Focused()
+}
 
+func (m *Model[K, V]) filterVisible() bool {
+	// Filter is visible if it's either in focus, or it has a non-empty value.
+	return m.filter.Focused() || m.filter.Value() != ""
+}
+
+func (m *Model[K, V]) setDimensions(width, height int) {
 	// Accommodate height of table header
 	m.viewport.Height = height - headerHeight
+	if m.filterVisible() {
+		// Accommodate height of filter widget
+		m.viewport.Height -= filterHeight
+	}
+	m.height = height
+
 	// Set available width for table to expand into, whilst respecting a
 	// minimum width of 80.
 	m.width = max(80, width)
 	m.viewport.Width = m.width
-
 	m.recalculateWidth()
 
-	// TODO: should this be called?
+	// TODO: should this always be called?
 	m.UpdateViewport()
-}
-
-// WithFocused sets the focus state of the table.
-func (m Model[K, V]) WithFocused(f bool) Model[K, V] {
-	m.focus = f
-	return m
 }
 
 // WithSelectable sets whether rows are selectable.
 func (m Model[K, V]) WithSelectable(s bool) Model[K, V] {
 	m.selectable = s
-	return m
-}
-
-// WithStyles sets the table styles.
-func (m Model[K, V]) WithStyles(s Styles) Model[K, V] {
-	m.styles = s
 	return m
 }
 
@@ -173,6 +188,9 @@ func (m Model[K, V]) Update(msg tea.Msg) (Model[K, V], tea.Cmd) {
 
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
+		if m.filter.Focused() {
+			break
+		}
 		switch {
 		case key.Matches(msg, keys.Navigation.LineUp):
 			m.MoveUp(1)
@@ -198,6 +216,13 @@ func (m Model[K, V]) Update(msg tea.Msg) (Model[K, V], tea.Cmd) {
 			m.DeselectAll()
 		case key.Matches(msg, keys.Global.SelectRange):
 			m.SelectRange()
+		case key.Matches(msg, keys.Global.Filter):
+			blinkCmd := m.filter.Focus()
+			m.setDimensions(m.width, m.height)
+			return m, tea.Batch(
+				tui.CmdHandler(EnableFilterMsg{}),
+				blinkCmd,
+			)
 		}
 	case tea.WindowSizeMsg:
 		m.setDimensions(msg.Width, msg.Height)
@@ -205,6 +230,30 @@ func (m Model[K, V]) Update(msg tea.Msg) (Model[K, V], tea.Cmd) {
 		// Rows can contain spinners, so we re-render them whenever a tick is
 		// received.
 		m.UpdateViewport()
+	}
+
+	if m.filter.Focused() {
+		switch msg := msg.(type) {
+		case tea.KeyMsg:
+			switch {
+			case key.Matches(msg, keys.Global.Back):
+				// <esc> key clears filter and unfocuses filter
+				m.filter.SetValue("")
+				// Unfilter table items
+				m.SetItems(m.items)
+				fallthrough
+			case key.Matches(msg, keys.Global.Enter):
+				// <enter> key unfocuses filter
+				m.filter.Blur()
+				return m, tui.CmdHandler(ExitFilterMsg{})
+			}
+		}
+		// Any other msg is sent to the filter
+		var cmd tea.Cmd
+		m.filter, cmd = m.filter.Update(msg)
+		// Filter table items
+		m.SetItems(m.items)
+		return m, cmd
 	}
 
 	return m, nil
@@ -230,7 +279,14 @@ func (m *Model[K, V]) Blur() {
 
 // View renders the component.
 func (m Model[K, V]) View() string {
-	return m.headersView() + "\n" + m.viewport.View()
+	components := make([]string, 0, 3)
+	if m.filterVisible() {
+		components = append(components, tui.Regular.Margin(0, 1).Render(m.filter.View()))
+		components = append(components, strings.Repeat("─", m.width))
+	}
+	components = append(components, m.headersView())
+	components = append(components, m.viewport.View())
+	return lipgloss.JoinVertical(lipgloss.Top, components...)
 }
 
 // UpdateViewport updates the list content based on the previously defined
@@ -420,9 +476,21 @@ func (m *Model[K, V]) SelectRange() {
 	m.UpdateViewport()
 }
 
-// Items returns the current items.
+// Items returns the current items. Note this is the number of items prior to
+// any filtering.
 func (m Model[K, V]) Items() map[K]V {
 	return m.items
+}
+
+// TotalString returns a stringified representation of the total number of items
+// in the table. If the table is filtered it is further broken down into number
+// of filtered items as well as total items, formatted as
+// "<filtered>/<total>".
+func (m Model[K, V]) TotalString() string {
+	if m.filterVisible() {
+		return fmt.Sprintf("%d/%d", len(m.rows), len(m.items))
+	}
+	return fmt.Sprintf("%d", len(m.items))
 }
 
 // SetItems sets new items on the table, overwriting existing items.
@@ -437,13 +505,36 @@ func (m *Model[K, V]) SetItems(items map[K]V) {
 	m.rows = make([]Row[K, V], 0, len(items))
 	// Convert items into rows, and carry across matching selections
 	for id, it := range items {
+		if m.filter.Value() != "" {
+			// Filter rows using row renderer. If the filter value is a
+			// substring of one of the rendered cells then add row. Otherwise,
+			// skip row.
+			//
+			// NOTE: it is highly inefficient to render every row, every time
+			// the user edits the filter value, particularly as the row renderer
+			// can make data lookups on each invocation. But there is no obvious
+			// alternative at present.
+			filterMatch := func(v V) bool {
+				for _, v := range m.rowRenderer(it) {
+					// Remove ANSI escapes code before filtering
+					v = internal.StripAnsi(v)
+					if strings.Contains(v, m.filter.Value()) {
+						return true
+					}
+				}
+				return false
+			}
+			if !filterMatch(it) {
+				// Skip item not matching filter
+				continue
+			}
+		}
 		m.rows = append(m.rows, Row[K, V]{Key: id, Value: it})
 		if m.selectable {
 			if _, ok := m.Selected[id]; ok {
 				selections[id] = it
 			}
 		}
-		m.items[id] = it
 	}
 
 	// Sort rows in-place

@@ -21,7 +21,18 @@ import (
 	"github.com/leg100/pug/internal/tui/keys"
 	"github.com/leg100/pug/internal/tui/module"
 	tuirun "github.com/leg100/pug/internal/tui/run"
+	"github.com/leg100/pug/internal/tui/table"
 	"github.com/leg100/pug/internal/version"
+)
+
+// pug is in one of several modes, which alter how all messages are handled.
+type mode int
+
+const (
+	normalMode  mode = iota // default
+	helpMode                // help is visible
+	confirmMode             // confirm prompt is visible and taking input
+	filterMode              // filter is visible and taking input
 )
 
 type model struct {
@@ -32,9 +43,8 @@ type model struct {
 	width  int
 	height int
 
-	showHelp bool
+	mode mode
 
-	showConfirmPrompt   bool
 	confirmPrompt       textinput.Model
 	confirmPromptAction tea.Cmd
 
@@ -137,31 +147,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 
-	if m.showConfirmPrompt {
-		switch msg := msg.(type) {
-		case tea.KeyMsg:
-			// any key closes the prompt and sends message to current model to
-			// resize itself to expand back into space occupied by prompt.
-			m.showConfirmPrompt = false
-			_ = m.updateCurrent(tea.WindowSizeMsg{
-				Height: m.viewHeight(),
-				Width:  m.viewWidth(),
-			})
-			switch {
-			case key.Matches(msg, localKeys.Yes):
-				// 'y' carries out the action
-				return m, m.confirmPromptAction
-			default:
-				// any other key cancels the action
-				m.info = "chosen not to proceed"
-			}
-		default:
-			m.confirmPrompt, cmd = m.confirmPrompt.Update(msg)
-			return m, cmd
-		}
-		return m, cmd
-	}
-
 	if wsm, ok := msg.(tea.WindowSizeMsg); ok {
 		m.width = wsm.Width
 		m.height = wsm.Height
@@ -179,8 +164,12 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	switch msg := msg.(type) {
+	case table.EnableFilterMsg:
+		m.mode = filterMode
+	case table.ExitFilterMsg:
+		m.mode = normalMode
 	case tui.ConfirmPromptMsg:
-		m.showConfirmPrompt = true
+		m.mode = confirmMode
 		m.confirmPrompt = textinput.New()
 		m.confirmPromptAction = msg.Action
 		m.confirmPrompt.Prompt = msg.Prompt
@@ -194,6 +183,48 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		})
 		return m, tea.Batch(cmd, textinput.Blink)
 	case tea.KeyMsg:
+		switch m.mode {
+		case helpMode:
+			switch {
+			case key.Matches(msg, keys.Global.Quit):
+				// Let quit key handler below handle this
+				break
+			case key.Matches(msg, keys.Global.Help, keys.Global.Back):
+				// Exit help mode
+				m.mode = normalMode
+				return m, nil
+			default:
+				// Any other key has no action in help mode
+				return m, nil
+			}
+		case confirmMode:
+			// any key closes the prompt and sends message to current model to
+			// resize itself to expand back into space occupied by prompt.
+			m.mode = normalMode
+			_ = m.updateCurrent(tea.WindowSizeMsg{
+				Height: m.viewHeight(),
+				Width:  m.viewWidth(),
+			})
+			switch {
+			case key.Matches(msg, localKeys.Yes):
+				// 'y' carries out the action
+				return m, m.confirmPromptAction
+			default:
+				// any other key cancels the action
+				m.info = "chosen not to proceed"
+			}
+		case filterMode:
+			switch {
+			case key.Matches(msg, keys.Global.Quit):
+				// Let quit key handler below handle this
+				break
+			default:
+				// forward any other key to current model
+				cmd = m.updateCurrent(msg)
+				return m, cmd
+			}
+		}
+
 		// Pressing any key makes any info/error message in the footer disappear
 		m.info = ""
 		m.err = nil
@@ -202,20 +233,13 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, keys.Global.Quit):
 			// ctrl-c quits the app, but not before prompting the user for
 			// comfirmation.
-			return m, tui.RequestConfirmation(
-				"Quit pug",
-				tea.Quit,
-			)
+			return m, tui.RequestConfirmation("Quit pug", tea.Quit)
 		case key.Matches(msg, keys.Global.Back):
-			// <esc> closes help or goes back to last page
-			if m.showHelp {
-				m.showHelp = false
-			} else {
-				m.goBack()
-			}
+			// <esc> goes back to last page
+			m.goBack()
 		case key.Matches(msg, keys.Global.Help):
-			// '?' toggles help
-			m.showHelp = !m.showHelp
+			// '?' enables help mode
+			m.mode = helpMode
 		case key.Matches(msg, keys.Global.Logs):
 			// 'l' shows logs
 			return m, tui.NavigateTo(tui.LogsKind)
@@ -311,7 +335,8 @@ func (m model) View() string {
 		currentHelpBindings = tui.RemoveDuplicateBindings(currentHelpBindings)
 	}
 
-	if m.showHelp {
+	switch m.mode {
+	case helpMode:
 		content = lipgloss.NewStyle().
 			Margin(1).
 			Render(
@@ -327,7 +352,10 @@ func (m model) View() string {
 				key.WithHelp("?", "close help"),
 			),
 		}
-	} else {
+	case filterMode:
+		content = m.currentModel().View()
+		shortHelpBindings = keys.KeyMapToSlice(keys.Filter)
+	default:
 		content = m.currentModel().View()
 		shortHelpBindings = append(
 			currentHelpBindings,
@@ -426,7 +454,7 @@ func (m model) View() string {
 		strings.Repeat("─", m.width),
 	}
 
-	if m.showConfirmPrompt {
+	if m.mode == confirmMode {
 		components = append(components,
 			tui.Regular.Margin(0, 1).Render(m.confirmPrompt.View()),
 			// horizontal rule
@@ -464,7 +492,7 @@ const promptHeight = 2
 // the top model).
 func (m model) viewHeight() int {
 	vh := m.height - headerHeight - breadcrumbsHeight - 2*horizontalRuleHeight - messageFooterHeight
-	if m.showConfirmPrompt {
+	if m.mode == confirmMode {
 		vh -= promptHeight
 	}
 	return vh
