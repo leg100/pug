@@ -186,9 +186,9 @@ func (m model) ID() string {
 }
 
 const (
-	// paginationWidth is the width of the pagination section to the right of
-	// the viewport
-	paginationWidth = 10
+	// scrollPercentWidth is the width of the scroll percentage section to the
+	// right of the viewport
+	scrollPercentWidth = 10
 	// viewportMarginsWidth is the total width of the margins to the left and
 	// right of the viewport
 	viewportMarginsWidth = 2
@@ -196,7 +196,7 @@ const (
 
 func (m *model) setViewportDimensions(width, height int) {
 	// minusWidth is the width to subtract from that available to the viewport
-	minusWidth := paginationWidth - viewportMarginsWidth
+	minusWidth := scrollPercentWidth - viewportMarginsWidth
 
 	// width is the available to the viewport
 	width = max(0, width-minusWidth)
@@ -216,22 +216,22 @@ func (m model) View() string {
 		MaxWidth(m.viewport.Width).
 		Render(m.viewport.View())
 
-	// pagination info container occupies a fixed width section to the right of
+	// scroll percent container occupies a fixed width section to the right of
 	// the viewport.
 	scrollPercent := tui.Regular.Copy().
 		Background(tui.ScrollPercentageBackground).
 		Padding(0, 1).
 		Render(fmt.Sprintf("%3.f%%", m.viewport.ScrollPercent()*100))
-	pagination := tui.Regular.Copy().
+	scrollPercentContainer := tui.Regular.Copy().
 		Margin(0, 1).
 		Height(m.height).
-		Width(paginationWidth - 2).
+		Width(scrollPercentWidth - 2).
 		AlignVertical(lipgloss.Bottom).
 		Render(scrollPercent)
 
 	return lipgloss.JoinHorizontal(lipgloss.Left,
 		viewport,
-		pagination,
+		scrollPercentContainer,
 	)
 }
 

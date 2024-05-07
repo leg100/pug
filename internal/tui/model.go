@@ -16,6 +16,9 @@ type Page struct {
 	// The model kind
 	Kind Kind
 	// The model's parent resource
+	//
+	// TODO: rename: it's sometimes a parent (in the case of listings), and
+	// sometimes *the* resource.
 	Parent resource.Resource
 }
 

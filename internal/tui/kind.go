@@ -14,5 +14,6 @@ const (
 	TaskListKind
 	TaskKind
 	TaskDetailsKind
-	LogsKind
+	LogListKind
+	LogKind
 )

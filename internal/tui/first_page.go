@@ -11,7 +11,7 @@ var firstPages = map[string]Kind{
 	"workspaces": WorkspaceListKind,
 	"runs":       RunListKind,
 	"tasks":      TaskListKind,
-	"logs":       LogsKind,
+	"logs":       LogListKind,
 }
 
 // FirstPageKind retrieves the model corresponding to the user requested first

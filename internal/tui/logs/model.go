@@ -2,126 +2,101 @@ package logs
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 	"github.com/leg100/pug/internal/logging"
 	"github.com/leg100/pug/internal/resource"
 	"github.com/leg100/pug/internal/tui"
 	"github.com/leg100/pug/internal/tui/table"
 )
 
-const timeFormat = "2006-01-02T15:04:05.000"
-
 var (
-	timeColumn = table.Column{
-		Key:   "time",
-		Title: "TIME",
-		Width: len(timeFormat),
+	keyColumn = table.Column{
+		Key:   "key",
+		Title: "KEY",
+		Width: 30,
 	}
-	levelColumn = table.Column{
-		Key:   "level",
-		Title: "LEVEL",
-		Width: len("ERROR"),
-	}
-	msgColumn = table.Column{
-		Key:        "message",
-		Title:      "MESSAGE",
+	valueColumn = table.Column{
+		Key:        "value",
+		Title:      "VALUE",
 		FlexFactor: 1,
 	}
+)
+
+const (
+	timeAttrKey    = "time"
+	levelAttrKey   = "level"
+	messageAttrKey = "message"
 )
 
 type Maker struct {
 	Logger *logging.Logger
 }
 
-func (mm *Maker) Make(_ resource.Resource, width, height int) (tea.Model, error) {
-	columns := []table.Column{
-		timeColumn,
-		levelColumn,
-		msgColumn,
+func (mm *Maker) Make(r resource.Resource, width, height int) (tea.Model, error) {
+	msg, err := mm.Logger.Get(r.ID)
+	if err != nil {
+		return model{}, err
 	}
-	renderer := func(msg logging.Message) table.RenderedRow {
-		var levelColor lipgloss.TerminalColor
-		switch msg.Level {
-		case "ERROR":
-			levelColor = tui.ErrorLogLevel
-		case "WARN":
-			levelColor = tui.WarnLogLevel
-		case "DEBUG":
-			levelColor = tui.DebugLogLevel
-		case "INFO":
-			levelColor = tui.InfoLogLevel
-		}
-
-		// combine message and attributes, separated by spaces, with each
-		// attribute key/value joined with a '='
-		var b strings.Builder
-		b.WriteString(msg.Message)
-		b.WriteRune(' ')
-		for _, attr := range msg.Attributes {
-			b.WriteString(tui.Regular.Copy().Faint(true).Render(attr.Key + "="))
-			b.WriteString(tui.Regular.Copy().Render(attr.Value + " "))
-		}
-
+	columns := []table.Column{keyColumn, valueColumn}
+	renderer := func(attr logging.Attr) table.RenderedRow {
 		return table.RenderedRow{
-			timeColumn.Key:  msg.Time.Format(timeFormat),
-			levelColumn.Key: tui.Bold.Copy().Foreground(levelColor).Render(msg.Level),
-			msgColumn.Key:   tui.Regular.Copy().Render(b.String()),
+			keyColumn.Key:   attr.Key,
+			valueColumn.Key: attr.Value,
 		}
 	}
-	table := table.New[uint](columns, renderer, width, height).
-		WithSortFunc(logging.BySerialDesc).
-		WithSelectable(false)
+	items := map[string]logging.Attr{
+		timeAttrKey: {
+			Key:   timeAttrKey,
+			Value: msg.Time.Format(timeFormat),
+		},
+		messageAttrKey: {
+			Key:   messageAttrKey,
+			Value: msg.Message,
+		},
+		levelAttrKey: {
+			Key:   levelAttrKey,
+			Value: coloredLogLevel(msg.Level),
+		},
+	}
+	for _, attr := range msg.Attributes {
+		items[attr.Key] = attr
+	}
+	table := table.New[string](columns, renderer, width, height).
+		WithSortFunc(byAttribute)
+	table.SetItems(items)
 
-	return model{logger: mm.Logger, table: table}, nil
+	return model{
+		msg:    msg,
+		table:  table,
+		width:  width,
+		height: height,
+	}, nil
 }
 
 type model struct {
-	logger *logging.Logger
-	table  table.Model[uint, logging.Message]
+	msg    logging.Message
+	table  table.Model[string, logging.Attr]
+	width  int
+	height int
 }
 
 func (m model) Init() tea.Cmd {
-	return func() tea.Msg {
-		return table.BulkInsertMsg[logging.Message](m.logger.Messages())
-	}
+	return nil
 }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	var (
-		cmd  tea.Cmd
-		cmds []tea.Cmd
-	)
-
-	switch msg := msg.(type) {
-	case table.BulkInsertMsg[logging.Message]:
-		existing := m.table.Items()
-		for _, m := range msg {
-			existing[m.Serial] = m
-		}
-		m.table.SetItems(existing)
-	case resource.Event[logging.Message]:
-		switch msg.Type {
-		case resource.CreatedEvent:
-			existing := m.table.Items()
-			existing[msg.Payload.Serial] = msg.Payload
-			m.table.SetItems(existing)
-		}
-	}
-
 	// Handle keyboard and mouse events in the table widget
+	var cmd tea.Cmd
 	m.table, cmd = m.table.Update(msg)
-	cmds = append(cmds, cmd)
-
-	return m, tea.Batch(cmds...)
+	return m, cmd
 }
 
 func (m model) Title() string {
-	title := tui.TitleStyle.Render("Logs")
-	s := fmt.Sprintf("%s[%s]", title, m.table.TotalString())
+	title := tui.TitleStyle.Render("LogMessage")
+	id := tui.Regular.Copy().Foreground(tui.Pink).Render(fmt.Sprintf("#%d", m.msg.Serial))
+	s := fmt.Sprintf("%s(%s)", title, id)
 	return tui.Bold.Render(s)
 }
 
@@ -131,4 +106,30 @@ func (m model) View() string {
 
 func (m model) HelpBindings() (bindings []key.Binding) {
 	return nil
+}
+
+// byAttribute sorts the attributes of an individual message for display in the
+// logs model.
+func byAttribute(i, j logging.Attr) int {
+	switch i.Key {
+	case timeAttrKey:
+		// time comes first
+		return -1
+	case levelAttrKey:
+		switch j.Key {
+		case timeAttrKey:
+			return 1
+		}
+		// then level
+		return -1
+	case messageAttrKey:
+		switch j.Key {
+		case timeAttrKey, levelAttrKey:
+			return 1
+		}
+		// then message
+		return -1
+	}
+	// then everything else, in any order
+	return 1
 }

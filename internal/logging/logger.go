@@ -5,6 +5,7 @@ import (
 	"log/slog"
 
 	"github.com/leg100/pug/internal/pubsub"
+	"github.com/leg100/pug/internal/resource"
 )
 
 var levels = map[string]slog.Level{
@@ -18,7 +19,7 @@ var levels = map[string]slog.Level{
 func NewLogger(opts Options) *Logger {
 	logger := &Logger{}
 	broker := pubsub.NewBroker[Message](logger)
-	writer := &writer{broker: broker}
+	writer := &writer{table: resource.NewTable(broker)}
 
 	handler := slog.NewTextHandler(
 		io.MultiWriter(append(opts.AdditionalWriters, writer)...),
@@ -68,7 +69,12 @@ func (l *Logger) Error(msg string, args ...any) {
 	l.logger.Error(msg, l.enrich(args...)...)
 }
 
-// Messages provides the log messages received thus far.
-func (l *Logger) Messages() []Message {
-	return l.writer.Messages
+// List lists the log messages received thus far.
+func (l *Logger) List() []Message {
+	return l.writer.table.List()
+}
+
+// Get retrieves a log message by ID.
+func (l *Logger) Get(id resource.ID) (Message, error) {
+	return l.writer.table.Get(id)
 }

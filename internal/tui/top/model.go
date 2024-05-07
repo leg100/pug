@@ -244,7 +244,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, cmd
 		case key.Matches(msg, keys.Global.Logs):
 			// 'l' shows logs
-			return m, tui.NavigateTo(tui.LogsKind)
+			return m, tui.NavigateTo(tui.LogListKind)
 		case key.Matches(msg, keys.Global.Modules):
 			// 'm' lists all modules
 			return m, tui.NavigateTo(tui.ModuleListKind)
