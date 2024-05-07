@@ -1,5 +1,25 @@
 # Changelog
 
+## [0.1.9](https://github.com/leg100/pug/compare/v0.1.8...v0.1.9) (2024-05-07)
+
+
+### Features
+
+* add keybinding &lt;shift&gt;+<tab> to go back ([7bb8c2b](https://github.com/leg100/pug/commit/7bb8c2b6f8181361c5f51831788b189a783b4806))
+* drill down into log message ([#56](https://github.com/leg100/pug/issues/56)) ([ceb5559](https://github.com/leg100/pug/commit/ceb55590f0914a08ac5be828e446d8f999ffa224))
+* filter table rows ([#55](https://github.com/leg100/pug/issues/55)) ([7b89b70](https://github.com/leg100/pug/commit/7b89b70769264cc33a6156cfe25c626d95c22ff7))
+
+
+### Bug Fixes
+
+* make help bindings consistent ([d06d8e0](https://github.com/leg100/pug/commit/d06d8e01ad42f750c183f2898238d37e80afc2b4))
+* prevent broker deadlock upon shutdown ([ebcb4d2](https://github.com/leg100/pug/commit/ebcb4d28a339448b473e7085099e6c65c3a01c17))
+
+
+### Miscellaneous
+
+* parallelize tests ([#54](https://github.com/leg100/pug/issues/54)) ([5ca1dd3](https://github.com/leg100/pug/commit/5ca1dd3b40df41f564d953f4bfee7b8a4a745e00))
+
 ## [0.1.8](https://github.com/leg100/pug/compare/v0.1.7...v0.1.8) (2024-05-03)
 
 
