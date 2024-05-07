@@ -6,7 +6,6 @@ import (
 
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 	"github.com/leg100/pug/internal/logging"
 	"github.com/leg100/pug/internal/resource"
 	"github.com/leg100/pug/internal/tui"
@@ -45,18 +44,6 @@ func (m *ListMaker) Make(_ resource.Resource, width, height int) (tea.Model, err
 		msgColumn,
 	}
 	renderer := func(msg logging.Message) table.RenderedRow {
-		var levelColor lipgloss.TerminalColor
-		switch msg.Level {
-		case "ERROR":
-			levelColor = tui.ErrorLogLevel
-		case "WARN":
-			levelColor = tui.WarnLogLevel
-		case "DEBUG":
-			levelColor = tui.DebugLogLevel
-		case "INFO":
-			levelColor = tui.InfoLogLevel
-		}
-
 		// combine message and attributes, separated by spaces, with each
 		// attribute key/value joined with a '='
 		var b strings.Builder
@@ -69,7 +56,7 @@ func (m *ListMaker) Make(_ resource.Resource, width, height int) (tea.Model, err
 
 		return table.RenderedRow{
 			timeColumn.Key:  msg.Time.Format(timeFormat),
-			levelColumn.Key: tui.Bold.Copy().Foreground(levelColor).Render(msg.Level),
+			levelColumn.Key: coloredLogLevel(msg.Level),
 			msgColumn.Key:   tui.Regular.Copy().Render(b.String()),
 		}
 	}

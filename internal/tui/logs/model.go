@@ -5,7 +5,6 @@ import (
 
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 	"github.com/leg100/pug/internal/logging"
 	"github.com/leg100/pug/internal/resource"
 	"github.com/leg100/pug/internal/tui"
@@ -42,60 +41,30 @@ func (mm *Maker) Make(r resource.Resource, width, height int) (tea.Model, error)
 	}
 	columns := []table.Column{keyColumn, valueColumn}
 	renderer := func(attr logging.Attr) table.RenderedRow {
-		var value string
-		switch attr.Key {
-		case "level":
-			var levelColor lipgloss.TerminalColor
-			switch attr.Value {
-			case "ERROR":
-				levelColor = tui.ErrorLogLevel
-			case "WARN":
-				levelColor = tui.WarnLogLevel
-			case "DEBUG":
-				levelColor = tui.DebugLogLevel
-			case "INFO":
-				levelColor = tui.InfoLogLevel
-			}
-			value = tui.Bold.Copy().Foreground(levelColor).Render(attr.Value)
-		default:
-			value = attr.Value
-		}
 		return table.RenderedRow{
 			keyColumn.Key:   attr.Key,
-			valueColumn.Key: value,
+			valueColumn.Key: attr.Value,
 		}
 	}
-	table := table.New[string](columns, renderer, width, height).
-		WithSortFunc(byAttribute)
-
-	items := make(map[string]logging.Attr)
-
-	var levelColor lipgloss.TerminalColor
-	switch msg.Level {
-	case "ERROR":
-		levelColor = tui.ErrorLogLevel
-	case "WARN":
-		levelColor = tui.WarnLogLevel
-	case "DEBUG":
-		levelColor = tui.DebugLogLevel
-	case "INFO":
-		levelColor = tui.InfoLogLevel
-	}
-	items[timeAttrKey] = logging.Attr{
-		Key:   timeAttrKey,
-		Value: msg.Time.Format(timeFormat),
-	}
-	items[messageAttrKey] = logging.Attr{
-		Key:   messageAttrKey,
-		Value: msg.Message,
-	}
-	items[levelAttrKey] = logging.Attr{
-		Key:   levelAttrKey,
-		Value: tui.Bold.Copy().Foreground(levelColor).Render(msg.Level),
+	items := map[string]logging.Attr{
+		timeAttrKey: {
+			Key:   timeAttrKey,
+			Value: msg.Time.Format(timeFormat),
+		},
+		messageAttrKey: {
+			Key:   messageAttrKey,
+			Value: msg.Message,
+		},
+		levelAttrKey: {
+			Key:   levelAttrKey,
+			Value: coloredLogLevel(msg.Level),
+		},
 	}
 	for _, attr := range msg.Attributes {
 		items[attr.Key] = attr
 	}
+	table := table.New[string](columns, renderer, width, height).
+		WithSortFunc(byAttribute)
 	table.SetItems(items)
 
 	return model{
@@ -138,15 +107,6 @@ func (m model) View() string {
 func (m model) HelpBindings() (bindings []key.Binding) {
 	return nil
 }
-
-const (
-	// scrollPercentWidth is the width of the scroll percentage section to the
-	// right of the viewport
-	scrollPercentWidth = 10
-	// viewportMarginsWidth is the total width of the margins to the left and
-	// right of the viewport
-	viewportMarginsWidth = 2
-)
 
 // byAttribute sorts the attributes of an individual message for display in the
 // logs model.

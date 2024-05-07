@@ -121,11 +121,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		spew.Fdump(m.dump, msg)
 	}
 
-	switch msg := msg.(type) {
-	case resource.Event[logging.Message]:
-		cmds = append(cmds, tui.NavigateTo(tui.LogKind, tui.WithParent(msg.Payload.Resource)))
-	}
-
 	// Keep shared spinner spinning as long as there are tasks running.
 	switch msg := msg.(type) {
 	case resource.Event[*task.Task]:
