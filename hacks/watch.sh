@@ -2,5 +2,5 @@
 
 # in foreground, continously run app
 while true; do
-    ./pug -w ./demos
+    ./pug -w ./demos/workspaces
 done

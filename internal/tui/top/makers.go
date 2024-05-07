@@ -82,7 +82,10 @@ func makeMakers(opts Options, spinner *spinner.Model) map[tui.Kind]tui.Maker {
 			TaskService: opts.TaskService,
 			Helpers:     helpers,
 		},
-		tui.LogsKind: &logs.Maker{
+		tui.LogListKind: &logs.ListMaker{
+			Logger: opts.Logger,
+		},
+		tui.LogKind: &logs.Maker{
 			Logger: opts.Logger,
 		},
 	}

@@ -6,41 +6,23 @@ import (
 	"time"
 
 	"github.com/go-logfmt/logfmt"
-	"github.com/leg100/pug/internal/pubsub"
 	"github.com/leg100/pug/internal/resource"
 )
-
-// Message is the event payload for a log message
-type Message struct {
-	Time       time.Time
-	Level      string
-	Message    string `json:"msg"`
-	Attributes []Attr
-
-	// Serial uniquely identifies the message (within the scope of the logger it
-	// was emitted from). The higher the Serial number the newer the message.
-	Serial uint
-}
-
-type Attr struct {
-	Key   string
-	Value string
-}
 
 // writer is a slog TextHandler writer that both keeps the log records in
 // memory and emits and them as pug events.
 type writer struct {
-	Messages []Message
-
-	broker *pubsub.Broker[Message]
+	table  *resource.Table[Message]
 	serial uint
 }
 
-func (b *writer) Write(p []byte) (int, error) {
-	msgs := make([]Message, 0, 1)
+func (w *writer) Write(p []byte) (int, error) {
 	d := logfmt.NewDecoder(bytes.NewReader(p))
 	for d.ScanRecord() {
-		msg := Message{Serial: b.serial}
+		msg := Message{
+			Serial:   w.serial,
+			Resource: resource.New(resource.Log, resource.GlobalResource),
+		}
 		for d.ScanKeyval() {
 			switch string(d.Key()) {
 			case "time":
@@ -60,13 +42,11 @@ func (b *writer) Write(p []byte) (int, error) {
 				})
 			}
 		}
-		msgs = append(msgs, msg)
-		b.broker.Publish(resource.CreatedEvent, msg)
-		b.serial++
+		w.table.Add(msg.ID, msg)
+		w.serial++
 	}
 	if d.Err() != nil {
 		return 0, d.Err()
 	}
-	b.Messages = append(b.Messages, msgs...)
 	return len(p), nil
 }

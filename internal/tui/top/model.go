@@ -121,6 +121,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		spew.Fdump(m.dump, msg)
 	}
 
+	switch msg := msg.(type) {
+	case resource.Event[logging.Message]:
+		cmds = append(cmds, tui.NavigateTo(tui.LogKind, tui.WithParent(msg.Payload.Resource)))
+	}
+
 	// Keep shared spinner spinning as long as there are tasks running.
 	switch msg := msg.(type) {
 	case resource.Event[*task.Task]:
@@ -244,7 +249,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, cmd
 		case key.Matches(msg, keys.Global.Logs):
 			// 'l' shows logs
-			return m, tui.NavigateTo(tui.LogsKind)
+			return m, tui.NavigateTo(tui.LogListKind)
 		case key.Matches(msg, keys.Global.Modules):
 			// 'm' lists all modules
 			return m, tui.NavigateTo(tui.ModuleListKind)
