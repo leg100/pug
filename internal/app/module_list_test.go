@@ -252,9 +252,12 @@ func TestModuleList_Filter(t *testing.T) {
 
 	tm := setup(t, "./testdata/module_list")
 
-	// Expect title to show total of 3 modules
+	// Expect title to show total of 3 modules, and to list the three modules
 	waitFor(t, tm, func(s string) bool {
-		return strings.Contains(s, "Modules(all)[3]")
+		return strings.Contains(s, "Modules(all)[3]") &&
+			strings.Contains(s, `modules/a`) &&
+			strings.Contains(s, `modules/b`) &&
+			strings.Contains(s, `modules/c`)
 	})
 
 	// Focus filter widget
