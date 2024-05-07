@@ -139,7 +139,7 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m list) Title() string {
-	return tui.GlobalBreadcrumb("Tasks")
+	return tui.GlobalBreadcrumb("Tasks", m.table.TotalString())
 }
 
 func (m list) View() string {
@@ -147,7 +147,7 @@ func (m list) View() string {
 }
 
 func (m list) TabStatus() string {
-	return fmt.Sprintf("(%d)", len(m.table.Items()))
+	return fmt.Sprintf("(%s)", m.table.TotalString())
 }
 
 func (m list) HelpBindings() (bindings []key.Binding) {

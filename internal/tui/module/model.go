@@ -105,24 +105,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	cmds = append(cmds, cmd)
 	m.tabs = updated
 
-	// Tab-specific actions to be taken after action has been sent to tab.
-	switch m.tabs.ActiveTitle() {
-	case workspacesTabTitle:
-		switch msg := msg.(type) {
-		case tea.KeyMsg:
-			switch {
-			case key.Matches(msg, keys.Common.Plan):
-				// The workspaces tab model takes care of listening to this key
-				// press and creating the actual run, and only once that's done
-				// do we then send the user to the runs tab.
-				//
-				// TODO: change this behaviour: instead send user directly to
-				// the run's page.
-				m.tabs.SetActiveTab(runsTabTitle)
-			}
-		}
-	}
-
 	return m, tea.Batch(cmds...)
 }
 

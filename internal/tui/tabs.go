@@ -162,13 +162,15 @@ func (m TabSet) Update(msg tea.Msg) (TabSet, tea.Cmd) {
 			// Cycle back thru tabs, going to the last tab after the first tab.
 			m.setActive(m.active - 1)
 		}
-		// Send other keys to active tab if there is one
-		if len(m.Tabs) > 0 {
-			cmd := m.updateTab(m.active, msg)
-			return m, cmd
-		}
+		// Send other keys to active tab
+		cmd := m.updateActive(msg)
+		return m, cmd
 	case SetActiveTabMsg:
 		m.SetActiveTab(string(msg))
+	case FilterFocusReqMsg, FilterCloseMsg, FilterKeyMsg:
+		// Send filter messages to the active tab only.
+		cmd := m.updateActive(msg)
+		return m, cmd
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
@@ -199,6 +201,14 @@ func (m *TabSet) updateTab(tabIndex int, msg tea.Msg) tea.Cmd {
 	updated, cmd := m.Tabs[tabIndex].Update(msg)
 	m.Tabs[tabIndex].Model = updated
 	return cmd
+}
+
+func (m *TabSet) updateActive(msg tea.Msg) tea.Cmd {
+	if ok, _ := m.Active(); ok {
+		cmd := m.updateTab(m.active, msg)
+		return cmd
+	}
+	return nil
 }
 
 var (

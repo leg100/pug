@@ -184,3 +184,59 @@ func TestWorkspaceList_ApplyCurrentRun(t *testing.T) {
 			matchPattern(t, `modules/c.*default.*applied`, s)
 	})
 }
+
+func TestWorkspaceList_Reload(t *testing.T) {
+	t.Parallel()
+
+	tm := setup(t, "./testdata/module_list")
+
+	// Expect all four modules to be listed
+	waitFor(t, tm, func(s string) bool {
+		return matchPattern(t, `modules/a`, s) &&
+			matchPattern(t, `modules/b`, s) &&
+			matchPattern(t, `modules/c`, s)
+	})
+
+	// Select all modules and init
+	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlA})
+	tm.Type("i")
+
+	// Wait for each module to be initialized, and to have its current workspace
+	// set (should be "default")
+	waitFor(t, tm, func(s string) bool {
+		return matchPattern(t, `modules/a.*default`, s) &&
+			matchPattern(t, `modules/b.*default`, s) &&
+			matchPattern(t, `modules/c.*default`, s)
+	})
+
+	// Clear selection
+	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlBackslash})
+
+	// Go to global workspaces listing
+	tm.Type("W")
+
+	// Wait for all four workspaces to be listed. The current run for the
+	// default workspace on modules/a should be in the planned state.
+	waitFor(t, tm, func(s string) bool {
+		return matchPattern(t, `modules/a.*default`, s) &&
+			matchPattern(t, `modules/a.*dev`, s) &&
+			matchPattern(t, `modules/b.*default`, s) &&
+			matchPattern(t, `modules/c.*default`, s)
+	})
+
+	// Focus filter widget
+	tm.Type("/")
+
+	// Expect filter prompt
+	waitFor(t, tm, func(s string) bool {
+		return strings.Contains(s, "Filter:")
+	})
+
+	// Filter to only show modules/a
+	tm.Type("modules/a")
+
+	// Expect title to show 2 workspaces filtered out of a total 4.
+	waitFor(t, tm, func(s string) bool {
+		return strings.Contains(s, "Workspaces(all)[2/4]")
+	})
+}

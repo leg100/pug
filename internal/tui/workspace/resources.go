@@ -164,7 +164,7 @@ func (m resources) View() string {
 }
 
 func (m resources) TabStatus() string {
-	return fmt.Sprintf("(%d)", len(m.table.Items()))
+	return fmt.Sprintf("(%s)", m.table.TotalString())
 }
 
 func (m resources) HelpBindings() []key.Binding {

@@ -216,7 +216,7 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m list) Title() string {
-	return tui.GlobalBreadcrumb("Modules")
+	return tui.GlobalBreadcrumb("Modules", m.table.TotalString())
 }
 
 func (m list) View() string {

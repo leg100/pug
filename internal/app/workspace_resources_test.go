@@ -5,45 +5,14 @@ import (
 	"testing"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/x/exp/teatest"
 	"github.com/leg100/pug/internal"
 )
 
 func TestWorkspace_Resources(t *testing.T) {
 	t.Parallel()
 
-	// Setup test with pre-existing state
-	tm := setup(t, "./testdata/workspace_resources")
-
-	// Wait for module to be loaded
-	waitFor(t, tm, func(s string) bool {
-		return strings.Contains(s, "modules/a")
-	})
-
-	// Initialize module
-	tm.Type("i")
-	waitFor(t, tm, func(s string) bool {
-		return strings.Contains(s, "Terraform has been successfully initialized!")
-	})
-
-	// Go to workspaces
-	tm.Type("W")
-
-	// Wait for workspace to be loaded
-	waitFor(t, tm, func(s string) bool {
-		return matchPattern(t, `modules/a.*default`, s)
-	})
-
-	// Go to workspace's page
-	tm.Send(tea.KeyMsg{Type: tea.KeyEnter})
-
-	// Expect resources tab title
-	waitFor(t, tm, func(s string) bool {
-		return strings.Contains(s, "resources (10)")
-	})
-
-	// Select resources tab (two tabs to the right).
-	tm.Send(tea.KeyMsg{Type: tea.KeyTab})
-	tm.Send(tea.KeyMsg{Type: tea.KeyTab})
+	tm := setupResourcesTab(t)
 
 	// Expect to see several resources listed
 	waitFor(t, tm, func(s string) bool {
@@ -115,4 +84,71 @@ func TestWorkspace_Resources(t *testing.T) {
 		return strings.Contains(s, "plan ✓") &&
 			strings.Contains(s, "Warning: Resource targeting is in effect")
 	})
+}
+
+func TestWorkspace_Resources_Filter(t *testing.T) {
+	t.Parallel()
+
+	tm := setupResourcesTab(t)
+
+	// Expect to see several resources listed
+	waitFor(t, tm, func(s string) bool {
+		return strings.Contains(s, "random_pet.pet[0]") &&
+			strings.Contains(s, "random_pet.pet[1]") &&
+			strings.Contains(s, "random_pet.pet[2]")
+	})
+
+	// Focus filter widget
+	tm.Type("/")
+
+	// Expect filter prompt
+	waitFor(t, tm, func(s string) bool {
+		return strings.Contains(s, "Filter:")
+	})
+
+	// Filter to only show pet[1]
+	tm.Type("pet[1]")
+
+	// Expect resources tab to show 1 resources filtered out of a total 10.
+	waitFor(t, tm, func(s string) bool {
+		return strings.Contains(s, "resources (1/10)")
+	})
+}
+
+func setupResourcesTab(t *testing.T) *teatest.TestModel {
+	// Setup test with pre-existing state
+	tm := setup(t, "./testdata/workspace_resources")
+
+	// Wait for module to be loaded
+	waitFor(t, tm, func(s string) bool {
+		return strings.Contains(s, "modules/a")
+	})
+
+	// Initialize module
+	tm.Type("i")
+	waitFor(t, tm, func(s string) bool {
+		return strings.Contains(s, "Terraform has been successfully initialized!")
+	})
+
+	// Go to workspaces
+	tm.Type("W")
+
+	// Wait for workspace to be loaded
+	waitFor(t, tm, func(s string) bool {
+		return matchPattern(t, `modules/a.*default`, s)
+	})
+
+	// Go to workspace's page
+	tm.Send(tea.KeyMsg{Type: tea.KeyEnter})
+
+	// Expect resources tab title
+	waitFor(t, tm, func(s string) bool {
+		return strings.Contains(s, "resources (10)")
+	})
+
+	// Select resources tab (two tabs to the right).
+	tm.Send(tea.KeyMsg{Type: tea.KeyTab})
+	tm.Send(tea.KeyMsg{Type: tea.KeyTab})
+
+	return tm
 }

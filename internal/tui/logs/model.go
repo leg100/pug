@@ -1,6 +1,7 @@
 package logs
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/key"
@@ -119,7 +120,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m model) Title() string {
-	return tui.Bold.Render("Logs")
+	title := tui.TitleStyle.Render("Logs")
+	s := fmt.Sprintf("%s[%s]", title, m.table.TotalString())
+	return tui.Bold.Render(s)
 }
 
 func (m model) View() string {

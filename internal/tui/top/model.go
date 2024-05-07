@@ -6,7 +6,6 @@ import (
 	"os"
 	"strings"
 
-	"github.com/charmbracelet/bubbles/cursor"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/textinput"
@@ -24,6 +23,16 @@ import (
 	"github.com/leg100/pug/internal/version"
 )
 
+// pug is in one of several modes, which alter how all messages are handled.
+type mode int
+
+const (
+	normalMode mode = iota // default
+	helpMode               // help is visible
+	promptMode             // confirm prompt is visible and taking input
+	filterMode             // filter is visible and taking input
+)
+
 type model struct {
 	ModuleService tui.ModuleService
 
@@ -32,11 +41,10 @@ type model struct {
 	width  int
 	height int
 
-	showHelp bool
+	mode mode
 
-	showConfirmPrompt   bool
-	confirmPrompt       textinput.Model
-	confirmPromptAction tea.Cmd
+	prompt       textinput.Model
+	promptAction tea.Cmd
 
 	// Either an error or an informational message is rendered in the footer.
 	err  error
@@ -137,12 +145,47 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 
-	if m.showConfirmPrompt {
-		switch msg := msg.(type) {
-		case tea.KeyMsg:
+	switch msg := msg.(type) {
+	case tui.FilterFocusAckMsg:
+		// The filter widget has acknowledged the focus request, so we can now
+		// enable filter mode.
+		m.mode = filterMode
+	case tui.EnablePromptMsg:
+		m.mode = promptMode
+		m.prompt = textinput.New()
+		m.promptAction = msg.Action
+		m.prompt.Prompt = msg.Prompt
+		blink := m.prompt.Focus()
+		// Send out message to current model to resize itself to make room for
+		// the prompt above it.
+		cmd := m.updateCurrent(tea.WindowSizeMsg{
+			Height: m.viewHeight(),
+			Width:  m.viewWidth(),
+		})
+		return m, tea.Batch(cmd, blink)
+	case tea.KeyMsg:
+		// Pressing any key makes any info/error message in the footer disappear
+		m.info = ""
+		m.err = nil
+
+		switch m.mode {
+		case helpMode:
+			switch {
+			case key.Matches(msg, keys.Global.Quit):
+				// Let quit key handler below handle this
+				break
+			case key.Matches(msg, keys.Global.Help, keys.Global.Back):
+				// Exit help
+				m.mode = normalMode
+				return m, nil
+			default:
+				// Any other key is ignored
+				return m, nil
+			}
+		case promptMode:
 			// any key closes the prompt and sends message to current model to
 			// resize itself to expand back into space occupied by prompt.
-			m.showConfirmPrompt = false
+			m.mode = normalMode
 			_ = m.updateCurrent(tea.WindowSizeMsg{
 				Height: m.viewHeight(),
 				Width:  m.viewWidth(),
@@ -150,72 +193,55 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			switch {
 			case key.Matches(msg, localKeys.Yes):
 				// 'y' carries out the action
-				return m, m.confirmPromptAction
+				return m, m.promptAction
 			default:
 				// any other key cancels the action
 				m.info = "chosen not to proceed"
 			}
-		default:
-			m.confirmPrompt, cmd = m.confirmPrompt.Update(msg)
-			return m, cmd
+		case filterMode:
+			switch {
+			case key.Matches(msg, keys.Global.Quit):
+				// Allow user to quit app whilst in filter mode. In this case,
+				// switch back to normal mode, blur the filter widget, and let
+				// the key handler below handle the quit action.
+				m.mode = normalMode
+				_ = m.updateCurrent(tui.FilterBlurMsg{})
+			case key.Matches(msg, keys.Filter.Blur):
+				// Switch back to normal mode, and send message to current model
+				// to blur the filter widget
+				m.mode = normalMode
+				_ = m.updateCurrent(tui.FilterBlurMsg{})
+				return m, nil
+			case key.Matches(msg, keys.Filter.Close):
+				// Switch back to normal mode, and send message to current model
+				// to close the filter widget
+				m.mode = normalMode
+				_ = m.updateCurrent(tui.FilterCloseMsg{})
+				return m, nil
+			default:
+				// Wrap key message in a filter key message and send to current
+				// model.
+				cmd = m.updateCurrent(tui.FilterKeyMsg(msg))
+				return m, cmd
+			}
 		}
-		return m, cmd
-	}
-
-	if wsm, ok := msg.(tea.WindowSizeMsg); ok {
-		m.width = wsm.Width
-		m.height = wsm.Height
-
-		// Inform navigator of new dimenisions for when it builds new models
-		m.navigator.width = m.viewWidth()
-		m.navigator.height = m.viewHeight()
-
-		// amend msg to account for header etc, and forward below to all cached
-		// models.
-		msg = tea.WindowSizeMsg{
-			Height: m.viewHeight(),
-			Width:  m.viewWidth(),
-		}
-	}
-
-	switch msg := msg.(type) {
-	case tui.ConfirmPromptMsg:
-		m.showConfirmPrompt = true
-		m.confirmPrompt = textinput.New()
-		m.confirmPromptAction = msg.Action
-		m.confirmPrompt.Prompt = msg.Prompt
-		m.confirmPrompt.Cursor = cursor.New()
-		m.confirmPrompt.Focus()
-		// Send out message to current model to resize itself to make room for
-		// the prompt above it.
-		cmd := m.updateCurrent(tea.WindowSizeMsg{
-			Height: m.viewHeight(),
-			Width:  m.viewWidth(),
-		})
-		return m, tea.Batch(cmd, textinput.Blink)
-	case tea.KeyMsg:
-		// Pressing any key makes any info/error message in the footer disappear
-		m.info = ""
-		m.err = nil
 
 		switch {
 		case key.Matches(msg, keys.Global.Quit):
 			// ctrl-c quits the app, but not before prompting the user for
-			// comfirmation.
-			return m, tui.RequestConfirmation(
-				"Quit pug",
-				tea.Quit,
-			)
+			// confirmation.
+			return m, tui.RequestConfirmation("Quit pug", tea.Quit)
 		case key.Matches(msg, keys.Global.Back):
-			// <esc> closes help or goes back to last page
-			if m.showHelp {
-				m.showHelp = false
-			} else {
-				m.goBack()
-			}
+			// <esc> goes back to last page
+			m.goBack()
 		case key.Matches(msg, keys.Global.Help):
-			// '?' toggles help
-			m.showHelp = !m.showHelp
+			// '?' enables help mode
+			m.mode = helpMode
+		case key.Matches(msg, keys.Global.Filter):
+			// '/' enables filter mode, but only if the current model
+			// acknowledges the message.
+			cmd = m.updateCurrent(tui.FilterFocusReqMsg{})
+			return m, cmd
 		case key.Matches(msg, keys.Global.Logs):
 			// 'l' shows logs
 			return m, tui.NavigateTo(tui.LogsKind)
@@ -263,9 +289,31 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	case tui.InfoMsg:
 		m.info = string(msg)
+	case tea.WindowSizeMsg:
+		m.width = msg.Width
+		m.height = msg.Height
+
+		// Inform navigator of new dimensions for when it builds new models
+		m.navigator.width = m.viewWidth()
+		m.navigator.height = m.viewHeight()
+
+		// amend msg to account for header etc, and forward to all cached
+		// models.
+		_ = m.cache.updateAll(tea.WindowSizeMsg{
+			Height: m.viewHeight(),
+			Width:  m.viewWidth(),
+		})
 	default:
 		// Send remaining msg types to all cached models
 		cmds = append(cmds, m.cache.updateAll(msg)...)
+
+		// Send message to the prompt too if in prompt mode (most likely a
+		// blink message)
+		if m.mode == promptMode {
+			var cmd tea.Cmd
+			m.prompt, cmd = m.prompt.Update(msg)
+			cmds = append(cmds, cmd)
+		}
 	}
 	return m, tea.Batch(cmds...)
 }
@@ -311,7 +359,8 @@ func (m model) View() string {
 		currentHelpBindings = tui.RemoveDuplicateBindings(currentHelpBindings)
 	}
 
-	if m.showHelp {
+	switch m.mode {
+	case helpMode:
 		content = lipgloss.NewStyle().
 			Margin(1).
 			Render(
@@ -327,7 +376,10 @@ func (m model) View() string {
 				key.WithHelp("?", "close help"),
 			),
 		}
-	} else {
+	case filterMode:
+		content = m.currentModel().View()
+		shortHelpBindings = keys.KeyMapToSlice(keys.Filter)
+	default:
 		content = m.currentModel().View()
 		shortHelpBindings = append(
 			currentHelpBindings,
@@ -426,9 +478,9 @@ func (m model) View() string {
 		strings.Repeat("─", m.width),
 	}
 
-	if m.showConfirmPrompt {
+	if m.mode == promptMode {
 		components = append(components,
-			tui.Regular.Margin(0, 1).Render(m.confirmPrompt.View()),
+			tui.Regular.Margin(0, 1).Render(m.prompt.View()),
 			// horizontal rule
 			strings.Repeat("─", m.width),
 		)
@@ -464,7 +516,7 @@ const promptHeight = 2
 // the top model).
 func (m model) viewHeight() int {
 	vh := m.height - headerHeight - breadcrumbsHeight - 2*horizontalRuleHeight - messageFooterHeight
-	if m.showConfirmPrompt {
+	if m.mode == promptMode {
 		vh -= promptHeight
 	}
 	return vh

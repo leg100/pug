@@ -246,3 +246,33 @@ func TestModuleList_ApplyCurrentRun(t *testing.T) {
 		return strings.Count(s, "applied") == 2
 	})
 }
+
+func TestModuleList_Filter(t *testing.T) {
+	t.Parallel()
+
+	tm := setup(t, "./testdata/module_list")
+
+	// Expect title to show total of 3 modules, and to list the three modules
+	waitFor(t, tm, func(s string) bool {
+		return strings.Contains(s, "Modules(all)[3]") &&
+			strings.Contains(s, `modules/a`) &&
+			strings.Contains(s, `modules/b`) &&
+			strings.Contains(s, `modules/c`)
+	})
+
+	// Focus filter widget
+	tm.Type("/")
+
+	// Expect filter prompt
+	waitFor(t, tm, func(s string) bool {
+		return strings.Contains(s, "Filter:")
+	})
+
+	// Filter to only show modules/a
+	tm.Type("modules/a")
+
+	// Expect title to show 1 module filtered out of a total 3.
+	waitFor(t, tm, func(s string) bool {
+		return strings.Contains(s, "Modules(all)[1/3]")
+	})
+}
