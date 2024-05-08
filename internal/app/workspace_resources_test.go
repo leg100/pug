@@ -9,7 +9,7 @@ import (
 	"github.com/leg100/pug/internal"
 )
 
-func TestWorkspace_Resources(t *testing.T) {
+func TestWorkspace_Resources_Taint(t *testing.T) {
 	t.Parallel()
 
 	tm := setupResourcesTab(t)
@@ -44,6 +44,55 @@ func TestWorkspace_Resources(t *testing.T) {
 	waitFor(t, tm, func(s string) bool {
 		return strings.Count(s, "tainted") == 0
 	})
+}
+
+func TestWorkspace_Resources_Move(t *testing.T) {
+	t.Parallel()
+
+	tm := setupResourcesTab(t)
+
+	// Expect to see several resources listed
+	waitFor(t, tm, func(s string) bool {
+		return strings.Contains(s, "random_pet.pet[0]") &&
+			strings.Contains(s, "random_pet.pet[1]") &&
+			strings.Contains(s, "random_pet.pet[2]")
+	})
+
+	// Move resource random_pet.pet[0]
+	tm.Send(tea.KeyMsg{Type: tea.KeyRunes, Alt: true, Runes: []rune{'m'}})
+
+	// Expect to see prompt prompting to enter a destination address
+	waitFor(t, tm, func(s string) bool {
+		return strings.Contains(s, "Enter destination address: random_pet.pet[0]")
+	})
+
+	// Delete resource name pet[0] and replace with giraffe[99]
+	tm.Send(tea.KeyMsg{Type: tea.KeyBackspace})
+	tm.Send(tea.KeyMsg{Type: tea.KeyBackspace})
+	tm.Send(tea.KeyMsg{Type: tea.KeyBackspace})
+	tm.Send(tea.KeyMsg{Type: tea.KeyBackspace})
+	tm.Send(tea.KeyMsg{Type: tea.KeyBackspace})
+	tm.Send(tea.KeyMsg{Type: tea.KeyBackspace})
+	tm.Type("giraffe[99]")
+	tm.Send(tea.KeyMsg{Type: tea.KeyEnter})
+
+	// Expect to see new resource listed
+	waitFor(t, tm, func(s string) bool {
+		return strings.Contains(s, "random_pet.giraffe[99]")
+	})
+}
+
+func TestWorkspace_Resources_Delete(t *testing.T) {
+	t.Parallel()
+
+	tm := setupResourcesTab(t)
+
+	// Expect to see several resources listed
+	waitFor(t, tm, func(s string) bool {
+		return strings.Contains(s, "random_pet.pet[0]") &&
+			strings.Contains(s, "random_pet.pet[1]") &&
+			strings.Contains(s, "random_pet.pet[2]")
+	})
 
 	// Select several resources and delete them
 	tm.Type("s")
@@ -55,7 +104,7 @@ func TestWorkspace_Resources(t *testing.T) {
 
 	// Confirm deletion
 	waitFor(t, tm, func(s string) bool {
-		return strings.Contains(s, "Delete 3 resource(s) (y/N)?")
+		return strings.Contains(s, "Delete 3 resource(s)? (y/N):")
 	})
 	tm.Type("y")
 
@@ -66,6 +115,19 @@ func TestWorkspace_Resources(t *testing.T) {
 	// of a new total number of resources.
 	waitFor(t, tm, func(s string) bool {
 		return strings.Contains(s, "resources (7)")
+	})
+}
+
+func TestWorkspace_Resources_TargetedPlan(t *testing.T) {
+	t.Parallel()
+
+	tm := setupResourcesTab(t)
+
+	// Expect to see several resources listed
+	waitFor(t, tm, func(s string) bool {
+		return strings.Contains(s, "random_pet.pet[0]") &&
+			strings.Contains(s, "random_pet.pet[1]") &&
+			strings.Contains(s, "random_pet.pet[2]")
 	})
 
 	// Select several resources and create targeted plan

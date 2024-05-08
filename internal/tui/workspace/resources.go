@@ -100,8 +100,8 @@ func (m resources) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			fn := func(workspaceID resource.ID) (*task.Task, error) {
 				return m.states.Delete(workspaceID, addrs...)
 			}
-			return m, tui.RequestConfirmation(
-				fmt.Sprintf("Delete %d resource(s)", len(addrs)),
+			return m, tui.YesNoPrompt(
+				fmt.Sprintf("Delete %d resource(s)?", len(addrs)),
 				tui.CreateTasks("state-rm", fn, m.workspace.ID),
 			)
 		case key.Matches(msg, resourcesKeys.Taint):
@@ -110,6 +110,24 @@ func (m resources) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, resourcesKeys.Untaint):
 			addrs := m.table.HighlightedOrSelectedKeys()
 			return m, m.createStateCommand("untaint", m.states.Untaint, addrs...)
+		case key.Matches(msg, resourcesKeys.Move):
+			if row, highlighted := m.table.Highlighted(); highlighted {
+				return m, tui.CmdHandler(tui.PromptMsg{
+					Prompt:       "Enter destination address: ",
+					InitialValue: string(row.Key),
+					Action: func(v string) tea.Cmd {
+						if v == "" {
+							return nil
+						}
+						fn := func(workspaceID resource.ID) (*task.Task, error) {
+							return m.states.Move(workspaceID, row.Key, state.ResourceAddress(v))
+						}
+						return tui.CreateTasks("state-mv", fn, m.workspace.ID)
+					},
+					Key:    key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", "confirm")),
+					Cancel: key.NewBinding(key.WithKeys("esc"), key.WithHelp("esc", "cancel")),
+				})
+			}
 		case key.Matches(msg, keys.Common.Destroy):
 			createRunOptions.Destroy = true
 			fallthrough
@@ -172,6 +190,7 @@ func (m resources) HelpBindings() []key.Binding {
 		keys.Common.Plan,
 		keys.Common.Destroy,
 		keys.Common.Delete,
+		resourcesKeys.Move,
 		resourcesKeys.Taint,
 		resourcesKeys.Untaint,
 		resourcesKeys.Reload,
@@ -197,6 +216,7 @@ func (m resources) createStateCommand(name string, fn stateFunc, addrs ...state.
 type resourcesKeyMap struct {
 	Taint   key.Binding
 	Untaint key.Binding
+	Move    key.Binding
 	Reload  key.Binding
 }
 
@@ -208,6 +228,10 @@ var resourcesKeys = resourcesKeyMap{
 	Untaint: key.NewBinding(
 		key.WithKeys("u"),
 		key.WithHelp("u", "untaint"),
+	),
+	Move: key.NewBinding(
+		key.WithKeys("alt+m"),
+		key.WithHelp("alt+m", "move"),
 	),
 	Reload: key.NewBinding(
 		key.WithKeys("ctrl+r"),

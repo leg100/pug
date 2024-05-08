@@ -63,12 +63,6 @@ type CompletedTasksMsg struct {
 	CreateErrs []error
 }
 
-// EnablePromptMsg enables the confirmation prompt.
-type EnablePromptMsg struct {
-	Prompt string
-	Action tea.Cmd
-}
-
 // FilterFocusReqMsg is a request to focus the filter widget. FilterFocusAckMsg
 // should be sent in response to ackowledge the request.
 type FilterFocusReqMsg struct{}

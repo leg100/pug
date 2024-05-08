@@ -58,12 +58,3 @@ func OpenVim(path string) tea.Cmd {
 		return NewErrorMsg(err, "opening vim")
 	})
 }
-
-func RequestConfirmation(prompt string, action tea.Cmd) tea.Cmd {
-	return func() tea.Msg {
-		return EnablePromptMsg{
-			Prompt: fmt.Sprintf("%s (y/N)? ", prompt),
-			Action: action,
-		}
-	}
-}

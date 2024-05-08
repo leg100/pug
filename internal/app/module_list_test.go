@@ -60,7 +60,7 @@ func TestModuleList(t *testing.T) {
 
 	// Confirm apply
 	waitFor(t, tm, func(s string) bool {
-		return strings.Contains(s, "Apply 3 runs (y/N)?")
+		return strings.Contains(s, "Apply 3 runs? (y/N):")
 	})
 	tm.Type("y")
 
@@ -237,7 +237,7 @@ func TestModuleList_ApplyCurrentRun(t *testing.T) {
 	// Expect one module ("C") to have been de-selected, and the apply to be
 	// invoked only on two modules ("A", and "B")
 	waitFor(t, tm, func(s string) bool {
-		return strings.Contains(s, "Apply 2 runs (y/N)?")
+		return strings.Contains(s, "Apply 2 runs? (y/N):")
 	})
 	tm.Type("y")
 

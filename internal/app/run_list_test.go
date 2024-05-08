@@ -56,7 +56,7 @@ func TestRunList_Single(t *testing.T) {
 	// Apply run and provide confirmation
 	tm.Type("a")
 	waitFor(t, tm, func(s string) bool {
-		return strings.Contains(s, "Proceed with apply (y/N)?")
+		return strings.Contains(s, "Proceed with apply? (y/N):")
 	})
 	tm.Type("y")
 
@@ -128,7 +128,7 @@ func TestRunList_Multiple(t *testing.T) {
 	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlA})
 	tm.Type("a")
 	waitFor(t, tm, func(s string) bool {
-		return strings.Contains(s, "Apply 4 runs (y/N)?")
+		return strings.Contains(s, "Apply 4 runs? (y/N):")
 	})
 	tm.Type("y")
 

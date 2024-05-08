@@ -85,15 +85,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.run.Status != run.Planned {
 				return m, nil
 			}
-			return m, tui.RequestConfirmation(
-				"Proceed with apply",
-				func() tea.Msg {
-					if _, err := m.svc.Apply(m.run.ID); err != nil {
-						return tui.NewErrorMsg(err, "applying run")
-					}
-					return nil
-				},
-			)
+			return m, ApplyCommand(m.svc, m.run.ID)
 		case key.Matches(msg, keys.Common.Module):
 			return m, tui.NavigateTo(tui.ModuleKind, tui.WithParent(*m.run.Module()))
 		case key.Matches(msg, keys.Common.Workspace):

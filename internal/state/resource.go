@@ -22,4 +22,7 @@ const (
 	Tainted ResourceStatus = "tainted"
 	// Untainting means the resource is in the process of being untainted.
 	Untainting ResourceStatus = "untainting"
+	// Moving means the resource is in the process of being moved to a different
+	// address.
+	Moving ResourceStatus = "moving"
 )

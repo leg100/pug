@@ -125,7 +125,7 @@ func TestRun_WithVars(t *testing.T) {
 	// Apply plan and provide confirmation
 	tm.Type("a")
 	waitFor(t, tm, func(s string) bool {
-		return strings.Contains(s, "Proceed with apply (y/N)?")
+		return strings.Contains(s, "Proceed with apply? (y/N):")
 	})
 	tm.Type("y")
 

@@ -126,8 +126,8 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if len(workspaceIDs) == 0 {
 				return m, nil
 			}
-			return m, tui.RequestConfirmation(
-				fmt.Sprintf("Delete %d workspace(s)", len(workspaceIDs)),
+			return m, tui.YesNoPrompt(
+				fmt.Sprintf("Delete %d workspace(s)?", len(workspaceIDs)),
 				tui.CreateTasks("delete-workspace", m.svc.Delete, workspaceIDs...),
 			)
 		case key.Matches(msg, keys.Common.Init):
