@@ -45,7 +45,7 @@ Manage state resources. Move, delete, taint and untaint resources. Select resour
 
 All invocations of terraform are represented as a task.
 
-![Tasks demo](EOF)
+![Tasks demo](https://vhs.charm.sh/vhs-25VtcZBEUC6ULcmfcnxFG4.gif)
 
 ## Install instructions
 
