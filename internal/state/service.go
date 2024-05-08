@@ -167,7 +167,7 @@ func (s *Service) Taint(workspaceID resource.ID, addr ResourceAddress) (*task.Ta
 		},
 		AfterError: func(t *task.Task) {
 			s.updateResourceStatus(workspaceID, Idle, addr)
-			s.logger.Error("tainting resources", "error", t.Err, "resources", addr)
+			s.logger.Error("tainting resource", "error", t.Err, "resource", addr)
 		},
 		AfterCanceled: func(t *task.Task) {
 			s.updateResourceStatus(workspaceID, Idle, addr)
@@ -188,13 +188,39 @@ func (s *Service) Untaint(workspaceID resource.ID, addr ResourceAddress) (*task.
 		},
 		AfterError: func(t *task.Task) {
 			s.updateResourceStatus(workspaceID, Idle, addr)
-			s.logger.Error("untainting resources", "error", t.Err, "resources", addr)
+			s.logger.Error("untainting resource", "error", t.Err, "resource", addr)
 		},
 		AfterCanceled: func(t *task.Task) {
 			s.updateResourceStatus(workspaceID, Tainted, addr)
 		},
 		AfterExited: func(t *task.Task) {
 			s.updateResourceStatus(workspaceID, "", addr)
+		},
+	})
+}
+
+func (s *Service) Move(workspaceID resource.ID, src, dest ResourceAddress) (*task.Task, error) {
+	return s.createTask(workspaceID, task.CreateOptions{
+		Blocking: true,
+		Command:  []string{"state", "mv"},
+		Args:     []string{string(src), string(dest)},
+		AfterCreate: func(t *task.Task) {
+			s.updateResourceStatus(workspaceID, Moving, src)
+		},
+		AfterError: func(t *task.Task) {
+			s.updateResourceStatus(workspaceID, Idle, src)
+			s.logger.Error("moving resource", "error", t.Err, "resources", src)
+		},
+		AfterCanceled: func(t *task.Task) {
+			s.updateResourceStatus(workspaceID, Idle, src)
+		},
+		AfterExited: func(t *task.Task) {
+			// Upon success, move the resource in the cache itself.
+			s.cache.Update(workspaceID, func(state *State) error {
+				delete(state.Resources, src)
+				state.Resources[dest] = &Resource{Address: dest}
+				return nil
+			})
 		},
 	})
 }

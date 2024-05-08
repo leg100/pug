@@ -33,6 +33,7 @@ type StateService interface {
 	Delete(workspaceID resource.ID, addrs ...state.ResourceAddress) (*task.Task, error)
 	Taint(workspaceID resource.ID, addr state.ResourceAddress) (*task.Task, error)
 	Untaint(workspaceID resource.ID, addr state.ResourceAddress) (*task.Task, error)
+	Move(workspaceID resource.ID, src, dest state.ResourceAddress) (*task.Task, error)
 }
 
 type RunService interface {

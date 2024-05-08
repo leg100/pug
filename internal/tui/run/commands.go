@@ -40,23 +40,20 @@ func ApplyCommand(runs tui.RunService, runIDs ...resource.ID) tea.Cmd {
 	case 0:
 		return tui.ReportError(errors.New("no applyable runs found"), "")
 	case 1:
-		return tui.RequestConfirmation(
-			"Proceed with apply",
-			func() tea.Msg {
-				run, err := runs.Get(runIDs[0])
-				if err != nil {
-					return tui.NewErrorMsg(err, "applying run")
-				}
-				if _, err := runs.Apply(runIDs[0]); err != nil {
-					return tui.NewErrorMsg(err, "applying run")
-				}
-				// When one apply is triggered, the user is sent to the run page.
-				return tui.NewNavigationMsg(tui.RunKind, tui.WithParent(run.Resource))
-			},
-		)
+		return tui.YesNoPrompt("Proceed with apply?", func() tea.Msg {
+			run, err := runs.Get(runIDs[0])
+			if err != nil {
+				return tui.NewErrorMsg(err, "applying run")
+			}
+			if _, err := runs.Apply(runIDs[0]); err != nil {
+				return tui.NewErrorMsg(err, "applying run")
+			}
+			// When one apply is triggered, the user is sent to the run page.
+			return tui.NewNavigationMsg(tui.RunKind, tui.WithParent(run.Resource))
+		})
 	default:
-		return tui.RequestConfirmation(
-			fmt.Sprintf("Apply %d runs", len(runIDs)),
+		return tui.YesNoPrompt(
+			fmt.Sprintf("Apply %d runs (y/N)? ", len(runIDs)),
 			tui.CreateTasks("apply", runs.Apply, runIDs...),
 		)
 	}

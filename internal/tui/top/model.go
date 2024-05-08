@@ -8,7 +8,6 @@ import (
 
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/spinner"
-	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/davecgh/go-spew/spew"
@@ -43,8 +42,7 @@ type model struct {
 
 	mode mode
 
-	prompt       textinput.Model
-	promptAction tea.Cmd
+	prompt *tui.Prompt
 
 	// Either an error or an informational message is rendered in the footer.
 	err  error
@@ -150,12 +148,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// The filter widget has acknowledged the focus request, so we can now
 		// enable filter mode.
 		m.mode = filterMode
-	case tui.EnablePromptMsg:
+	case tui.PromptMsg:
+		// Enable prompt widget
 		m.mode = promptMode
-		m.prompt = textinput.New()
-		m.promptAction = msg.Action
-		m.prompt.Prompt = msg.Prompt
-		blink := m.prompt.Focus()
+		var blink tea.Cmd
+		m.prompt, blink = tui.NewPrompt(msg)
 		// Send out message to current model to resize itself to make room for
 		// the prompt above it.
 		cmd := m.updateCurrent(tea.WindowSizeMsg{
@@ -183,21 +180,17 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			}
 		case promptMode:
-			// any key closes the prompt and sends message to current model to
-			// resize itself to expand back into space occupied by prompt.
-			m.mode = normalMode
-			_ = m.updateCurrent(tea.WindowSizeMsg{
-				Height: m.viewHeight(),
-				Width:  m.viewWidth(),
-			})
-			switch {
-			case key.Matches(msg, localKeys.Yes):
-				// 'y' carries out the action
-				return m, m.promptAction
-			default:
-				// any other key cancels the action
-				m.info = "chosen not to proceed"
+			closePrompt, cmd := m.prompt.HandleKey(msg)
+			if closePrompt {
+				// Send message to current model to resize itself to expand back
+				// into space occupied by prompt.
+				m.mode = normalMode
+				_ = m.updateCurrent(tea.WindowSizeMsg{
+					Height: m.viewHeight(),
+					Width:  m.viewWidth(),
+				})
 			}
+			return m, cmd
 		case filterMode:
 			switch {
 			case key.Matches(msg, keys.Global.Quit):
@@ -230,7 +223,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, keys.Global.Quit):
 			// ctrl-c quits the app, but not before prompting the user for
 			// confirmation.
-			return m, tui.RequestConfirmation("Quit pug", tea.Quit)
+			return m, tui.YesNoPrompt("Quit pug?", tea.Quit)
 		case key.Matches(msg, keys.Global.Back):
 			// <esc> goes back to last page
 			m.goBack()
@@ -310,9 +303,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Send message to the prompt too if in prompt mode (most likely a
 		// blink message)
 		if m.mode == promptMode {
-			var cmd tea.Cmd
-			m.prompt, cmd = m.prompt.Update(msg)
-			cmds = append(cmds, cmd)
+			cmds = append(cmds, m.prompt.HandleBlink(msg))
 		}
 	}
 	return m, tea.Batch(cmds...)
@@ -376,6 +367,9 @@ func (m model) View() string {
 				key.WithHelp("?", "close help"),
 			),
 		}
+	case promptMode:
+		content = m.currentModel().View()
+		shortHelpBindings = m.prompt.HelpBindings()
 	case filterMode:
 		content = m.currentModel().View()
 		shortHelpBindings = keys.KeyMapToSlice(keys.Filter)
