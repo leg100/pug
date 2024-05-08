@@ -101,7 +101,7 @@ func (m resources) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m.states.Delete(workspaceID, addrs...)
 			}
 			return m, tui.YesNoPrompt(
-				fmt.Sprintf("Delete %d resource(s)? (y/N): ", len(addrs)),
+				fmt.Sprintf("Delete %d resource(s)?", len(addrs)),
 				tui.CreateTasks("state-rm", fn, m.workspace.ID),
 			)
 		case key.Matches(msg, resourcesKeys.Taint):

@@ -25,7 +25,7 @@ Show
 Sleep 1s Enter Sleep 0.5s Tab Sleep 0.5s Tab Sleep 1s
 
 # move first resource
-Alt+M Sleep 2s Backspace 6 Sleep 0.5s Type "giraffe[99]" Sleep 0.5s Enter Sleep 2s
+Sleep 1s Alt+M Sleep 2s Backspace 6 Sleep 0.5s Type "giraffe[99]" Sleep 1s Enter Sleep 2s
 
 # select first three resources
 Type "s" Sleep 0.5s
@@ -39,7 +39,7 @@ Type "t" Sleep 2s
 Type "u" Sleep 2s
 
 # delete selected resources
-Type "D" Sleep 1s Type "y" Sleep 2s
+Type "D" Sleep 2s Type "y" Sleep 2s
 
 # select three more resources
 Type "s"
