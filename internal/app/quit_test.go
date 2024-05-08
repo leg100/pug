@@ -19,13 +19,10 @@ func TestQuit(t *testing.T) {
 	})
 
 	waitFor(t, tm, func(s string) bool {
-		return strings.Contains(s, "Quit pug (y/N)? ")
+		return strings.Contains(s, "Quit pug? (y/N): ")
 	})
 
-	tm.Send(tea.KeyMsg{
-		Type:  tea.KeyRunes,
-		Runes: []rune{'y'},
-	})
+	tm.Type("y")
 
 	tm.WaitFinished(t, teatest.WithFinalTimeout(time.Second))
 }

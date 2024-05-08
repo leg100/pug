@@ -37,9 +37,9 @@ View the output of plans and applies.
 
 ### State management
 
-Manage state resources. Taint, untaint and delete multiple resources. Select resources for targeted plans.
+Manage state resources. Move, delete, taint and untaint resources. Select resources for targeted plans.
 
-![State demo](https://vhs.charm.sh/vhs-6RGORT0x7MGjjFrCdW0u3Q.gif)
+![State demo](https://vhs.charm.sh/vhs-19rclUiEgcT9fOCidLqJl.gif)
 
 ### Tasks
 

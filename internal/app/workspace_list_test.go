@@ -172,7 +172,7 @@ func TestWorkspaceList_ApplyCurrentRun(t *testing.T) {
 	// Apply all four workspaces
 	tm.Type("a")
 	waitFor(t, tm, func(s string) bool {
-		return strings.Contains(s, "Apply 4 runs (y/N)?")
+		return strings.Contains(s, "Apply 4 runs? (y/N):")
 	})
 	tm.Type("y")
 

@@ -53,7 +53,7 @@ func ApplyCommand(runs tui.RunService, runIDs ...resource.ID) tea.Cmd {
 		})
 	default:
 		return tui.YesNoPrompt(
-			fmt.Sprintf("Apply %d runs (y/N)? ", len(runIDs)),
+			fmt.Sprintf("Apply %d runs?", len(runIDs)),
 			tui.CreateTasks("apply", runs.Apply, runIDs...),
 		)
 	}

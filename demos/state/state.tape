@@ -24,6 +24,9 @@ Show
 
 Sleep 1s Enter Sleep 0.5s Tab Sleep 0.5s Tab Sleep 1s
 
+# move first resource
+Alt+M Sleep 2s Backspace 6 Sleep 0.5s Type "giraffe[99]" Sleep 0.5s Enter Sleep 2s
+
 # select first three resources
 Type "s" Sleep 0.5s
 Down Type "s" Sleep 0.5s
