@@ -104,7 +104,7 @@ func TestModule_Destroy(t *testing.T) {
 	t.Parallel()
 
 	// Setup test with pre-existing state
-	tm := setup(t, "./testdata/module_destroy", keepState())
+	tm := setup(t, "./testdata/module_destroy")
 
 	// Wait for module to be loaded
 	waitFor(t, tm, func(s string) bool {

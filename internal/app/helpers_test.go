@@ -17,25 +17,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-type setupOption func(*setupOptions)
-
-type setupOptions struct {
-	keepState bool
-}
-
-func keepState() setupOption {
-	return func(opts *setupOptions) {
-		opts.keepState = true
-	}
-}
-
-func setup(t *testing.T, workdir string, sopts ...setupOption) *teatest.TestModel {
+func setup(t *testing.T, workdir string) *teatest.TestModel {
 	t.Helper()
-
-	var opts setupOptions
-	for _, fn := range sopts {
-		fn(&opts)
-	}
 
 	// Copy workdir to a dedicated directory for this test, to ensure any
 	// artefacts created in workdir are done so in isolation from other
