@@ -29,7 +29,7 @@ func EmptyState(workspaceID resource.ID) *State {
 	}
 }
 
-func NewState(workspaceID resource.ID, file StateFile) *State {
+func newState(workspaceID resource.ID, file StateFile) *State {
 	return &State{
 		WorkspaceID: workspaceID,
 		Resources:   getResourcesFromFile(file),

@@ -91,7 +91,11 @@ func (s *Service) Reload(workspaceID resource.ID) (*task.Task, error) {
 		Args:    []string{"-json"},
 		JSON:    true,
 		AfterError: func(t *task.Task) {
+			revertIdle()
 			s.logger.Error("reloading state", "error", t.Err, "workspace", ws)
+		},
+		AfterCanceled: func(t *task.Task) {
+			revertIdle()
 		},
 		AfterExited: func(t *task.Task) {
 			var file StateFile
@@ -99,7 +103,7 @@ func (s *Service) Reload(workspaceID resource.ID) (*task.Task, error) {
 				s.logger.Error("reloading state", "error", err, "workspace", ws)
 				return
 			}
-			current := NewState(workspaceID, file)
+			current := newState(workspaceID, file)
 			// For each current resource, check if it previously existed in the
 			// cache, and if so, copy across its status.
 			if previous, err := s.cache.Get(workspaceID); err == nil {
@@ -112,9 +116,6 @@ func (s *Service) Reload(workspaceID resource.ID) (*task.Task, error) {
 			// Add/replace state in cache.
 			s.cache.Add(workspaceID, current)
 			s.logger.Info("reloaded state", "workspace", ws, "resources", len(current.Resources))
-		},
-		AfterFinish: func(t *task.Task) {
-			revertIdle()
 		},
 	})
 	if err != nil {
