@@ -54,6 +54,7 @@ func (m *ListMaker) Make(_ resource.Resource, width, height int) (tea.Model, err
 	columns := []table.Column{
 		table.ModuleColumn,
 		currentWorkspace,
+		table.ResourceCountColumn,
 		table.RunStatusColumn,
 		table.RunChangesColumn,
 		initColumn,
@@ -76,13 +77,14 @@ func (m *ListMaker) Make(_ resource.Resource, width, height int) (tea.Model, err
 
 	renderer := func(mod *module.Module) table.RenderedRow {
 		return table.RenderedRow{
-			table.ModuleColumn.Key:     mod.Path,
-			initColumn.Key:             boolToUnicode(mod.InitInProgress, mod.Initialized),
-			formatColumn.Key:           boolToUnicode(mod.FormatInProgress, mod.Formatted),
-			validColumn.Key:            boolToUnicode(mod.ValidationInProgress, mod.Valid),
-			currentWorkspace.Key:       m.Helpers.CurrentWorkspaceName(mod.CurrentWorkspaceID),
-			table.RunStatusColumn.Key:  m.Helpers.ModuleCurrentRunStatus(mod),
-			table.RunChangesColumn.Key: m.Helpers.ModuleCurrentRunChanges(mod),
+			table.ModuleColumn.Key:        mod.Path,
+			initColumn.Key:                boolToUnicode(mod.InitInProgress, mod.Initialized),
+			formatColumn.Key:              boolToUnicode(mod.FormatInProgress, mod.Formatted),
+			validColumn.Key:               boolToUnicode(mod.ValidationInProgress, mod.Valid),
+			currentWorkspace.Key:          m.Helpers.CurrentWorkspaceName(mod.CurrentWorkspaceID),
+			table.RunStatusColumn.Key:     m.Helpers.ModuleCurrentRunStatus(mod),
+			table.RunChangesColumn.Key:    m.Helpers.ModuleCurrentRunChanges(mod),
+			table.ResourceCountColumn.Key: m.Helpers.ModuleCurrentResourceCount(mod),
 		}
 	}
 	table := table.NewResource(table.ResourceOptions[*module.Module]{

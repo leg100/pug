@@ -24,13 +24,6 @@ var currentColumn = table.Column{
 	FlexFactor: 1,
 }
 
-var resourceCountColumn = table.Column{
-	Key:        "resource_count",
-	Title:      "RESOURCES",
-	Width:      len("RESOURCES"),
-	FlexFactor: 1,
-}
-
 type ListMaker struct {
 	ModuleService    tui.ModuleService
 	WorkspaceService tui.WorkspaceService
@@ -47,19 +40,19 @@ func (m *ListMaker) Make(parent resource.Resource, width, height int) (tea.Model
 	columns = append(columns,
 		table.WorkspaceColumn,
 		currentColumn,
-		resourceCountColumn,
+		table.ResourceCountColumn,
 		table.RunStatusColumn,
 		table.RunChangesColumn,
 	)
 
 	rowRenderer := func(ws *workspace.Workspace) table.RenderedRow {
 		return table.RenderedRow{
-			table.ModuleColumn.Key:     m.Helpers.ModulePath(ws.Resource),
-			table.WorkspaceColumn.Key:  ws.Name,
-			table.RunStatusColumn.Key:  m.Helpers.WorkspaceCurrentRunStatus(ws),
-			table.RunChangesColumn.Key: m.Helpers.WorkspaceCurrentRunChanges(ws),
-			resourceCountColumn.Key:    m.Helpers.WorkspaceResourceCount(ws),
-			currentColumn.Key:          m.Helpers.WorkspaceCurrentCheckmark(ws),
+			table.ModuleColumn.Key:        m.Helpers.ModulePath(ws.Resource),
+			table.WorkspaceColumn.Key:     ws.Name,
+			table.RunStatusColumn.Key:     m.Helpers.WorkspaceCurrentRunStatus(ws),
+			table.RunChangesColumn.Key:    m.Helpers.WorkspaceCurrentRunChanges(ws),
+			table.ResourceCountColumn.Key: m.Helpers.WorkspaceResourceCount(ws),
+			currentColumn.Key:             m.Helpers.WorkspaceCurrentCheckmark(ws),
 		}
 	}
 

@@ -68,6 +68,18 @@ func (h *Helpers) CurrentWorkspaceName(workspaceID *resource.ID) string {
 	return ws.Name
 }
 
+func (h *Helpers) ModuleCurrentResourceCount(mod *module.Module) string {
+	if mod.CurrentWorkspaceID == nil {
+		return ""
+	}
+	ws, err := h.WorkspaceService.Get(*mod.CurrentWorkspaceID)
+	if err != nil {
+		h.Logger.Error("rendering module current workspace resource count", "error", err)
+		return ""
+	}
+	return h.WorkspaceResourceCount(ws)
+}
+
 func (h *Helpers) ModuleCurrentRunStatus(mod *module.Module) string {
 	if mod.CurrentWorkspaceID == nil {
 		return ""
