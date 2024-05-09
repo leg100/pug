@@ -1,12 +1,14 @@
 package app
 
 import (
+	"os/exec"
+	"path/filepath"
 	"strings"
 	"testing"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/x/exp/teatest"
 	"github.com/leg100/pug/internal"
+	"github.com/stretchr/testify/require"
 )
 
 func TestWorkspace_Resources_Taint(t *testing.T) {
@@ -177,7 +179,27 @@ func TestWorkspace_Resources_Filter(t *testing.T) {
 	})
 }
 
-func setupResourcesTab(t *testing.T) *teatest.TestModel {
+func TestWorkspace_Resources_Reload(t *testing.T) {
+	t.Parallel()
+
+	tm := setupResourcesTab(t)
+
+	// Remove several resource using a tool outside of pug.
+	rm := exec.Command("terraform", "state", "rm", "random_pet.pet[0]", "random_pet.pet[1]")
+	rm.Dir = filepath.Join(tm.workdir, "modules/a")
+	err := rm.Run()
+	require.NoError(t, err)
+
+	// Reload state
+	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlR})
+
+	// Expect reduced number of resources
+	waitFor(t, tm, func(s string) bool {
+		return strings.Contains(s, "resources (8)")
+	})
+}
+
+func setupResourcesTab(t *testing.T) *testModel {
 	// Setup test with pre-existing state
 	tm := setup(t, "./testdata/workspace_resources")
 

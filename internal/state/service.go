@@ -102,16 +102,14 @@ func (s *Service) Reload(workspaceID resource.ID) (*task.Task, error) {
 			current := NewState(workspaceID, file)
 			// For each current resource, check if it previously existed in the
 			// cache, and if so, copy across its status.
-			s.cache.Update(workspaceID, func(previous *State) error {
+			if previous, err := s.cache.Get(workspaceID); err == nil {
 				for currentAddress := range current.Resources {
 					if previousResource, ok := previous.Resources[currentAddress]; ok {
 						current.Resources[currentAddress].Status = previousResource.Status
 					}
 				}
-				return nil
-			})
-			// table.Add replaces state if it exists already, which is what we
-			// want.
+			}
+			// Add/replace state in cache.
 			s.cache.Add(workspaceID, current)
 			s.logger.Info("reloaded state", "workspace", ws, "resources", len(current.Resources))
 		},

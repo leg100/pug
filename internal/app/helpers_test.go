@@ -17,7 +17,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func setup(t *testing.T, workdir string) *teatest.TestModel {
+func setup(t *testing.T, workdir string) *testModel {
 	t.Helper()
 
 	// Copy workdir to a dedicated directory for this test, to ensure any
@@ -67,7 +67,16 @@ func setup(t *testing.T, workdir string) *teatest.TestModel {
 	// Relay events to TUI
 	app.relay(tm)
 
-	return tm
+	return &testModel{
+		TestModel: tm,
+		workdir:   workdir,
+	}
+}
+
+type testModel struct {
+	*teatest.TestModel
+
+	workdir string
 }
 
 // testLogger relays pug log records to the go test logger
@@ -82,7 +91,7 @@ func (l *testLogger) Write(b []byte) (int, error) {
 	return len(b), nil
 }
 
-func waitFor(t *testing.T, tm *teatest.TestModel, cond func(s string) bool) {
+func waitFor(t *testing.T, tm *testModel, cond func(s string) bool) {
 	t.Helper()
 
 	teatest.WaitFor(
@@ -96,7 +105,7 @@ func waitFor(t *testing.T, tm *teatest.TestModel, cond func(s string) bool) {
 	)
 }
 
-func initAndApplyModuleA(t *testing.T, tm *teatest.TestModel) {
+func initAndApplyModuleA(t *testing.T, tm *testModel) {
 	// Wait for module to be loaded
 	waitFor(t, tm, func(s string) bool {
 		return strings.Contains(s, "modules/a")
