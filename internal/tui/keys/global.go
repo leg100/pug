@@ -43,8 +43,8 @@ var Global = global{
 		key.WithHelp("l", "logs"),
 	),
 	Back: key.NewBinding(
-		key.WithKeys("esc", "`", "shift+tab"),
-		key.WithHelp("esc/`/shift+tab", "back"),
+		key.WithKeys("esc", "shift+tab"),
+		key.WithHelp("esc/shift+tab", "back"),
 	),
 	Enter: key.NewBinding(
 		key.WithKeys("enter"),
