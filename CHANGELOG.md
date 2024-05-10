@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.1.10](https://github.com/leg100/pug/compare/v0.1.9...v0.1.10) (2024-05-10)
+
+
+### Features
+
+* add ability to move state resources ([#57](https://github.com/leg100/pug/issues/57)) ([0945bb8](https://github.com/leg100/pug/commit/0945bb81a14b80a1915ae307964cb23fba336a8c))
+* add resource count to module listing ([b1bf226](https://github.com/leg100/pug/commit/b1bf226ee4126a4ecf5f3adabf6ff53cb0efd66d))
+
+
+### Bug Fixes
+
+* make select range behave like k9 ([6e38d37](https://github.com/leg100/pug/commit/6e38d37468b4ebdf759c4b17e6add990287b91a3))
+* state reload not always visible ([942943b](https://github.com/leg100/pug/commit/942943bd0b3d5c0207c510c7626de167ec9e1be6))
+
+
+### Miscellaneous
+
+* remove ` as back key ([1deaec1](https://github.com/leg100/pug/commit/1deaec1180b663e60a52a7e89aae492c0e0410f7))
+* remove unnecessary test setup options ([b3fb7be](https://github.com/leg100/pug/commit/b3fb7bebbd512ce101340243715835c805c8ae0e))
+* remove unnecessary update in reload ([9ae18cf](https://github.com/leg100/pug/commit/9ae18cf651d1401f72afa57e9dce2b2df824e395))
+
 ## [0.1.9](https://github.com/leg100/pug/compare/v0.1.8...v0.1.9) (2024-05-07)
 
 
