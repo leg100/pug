@@ -445,30 +445,31 @@ func (m *Model[K, V]) SelectRange() {
 	if len(m.Selected) == 0 {
 		return
 	}
-	// Get position of first and last selected row.
-	var first, last int
+	// Determine the first row to select, and the number of rows to select.
+	first := -1
+	n := 0
 	for i, row := range m.rows {
+		if i == m.cursor && first > -1 && first < m.cursor {
+			// Select rows before and including cursor
+			n = m.cursor - first + 1
+			break
+		}
 		if _, ok := m.Selected[row.Key]; !ok {
 			// Ignore unselected rows
 			continue
 		}
-		if first == 0 {
-			first = i
+		if i > m.cursor {
+			// Select rows including cursor and all rows up to but not including
+			// next selected row
+			first = m.cursor
+			n = i - m.cursor
+			break
 		}
-		if i > last {
-			last = i
-		}
+		// Start selecting rows after this currently selected row.
+		first = i + 1
 	}
-	if m.cursor > last {
-		for i := range m.cursor - last {
-			row := m.rows[last+i+1]
-			m.Selected[row.Key] = row.Value
-		}
-	} else if m.cursor < first {
-		for i := range first - m.cursor {
-			row := m.rows[m.cursor+i]
-			m.Selected[row.Key] = row.Value
-		}
+	for _, row := range m.rows[first : first+n] {
+		m.Selected[row.Key] = row.Value
 	}
 	m.UpdateViewport()
 }
