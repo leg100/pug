@@ -15,7 +15,7 @@ import (
 	"github.com/leg100/pug/internal/task"
 	"github.com/leg100/pug/internal/tui"
 	"github.com/leg100/pug/internal/tui/keys"
-	"github.com/muesli/reflow/wordwrap"
+	"github.com/leg100/reflow/wordwrap"
 )
 
 type Maker struct {

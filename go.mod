@@ -21,9 +21,11 @@ require (
 	github.com/davecgh/go-spew v1.1.1
 	github.com/go-logfmt/logfmt v0.6.0
 	github.com/hokaccha/go-prettyjson v0.0.0-20211117102719-0474bc63780f
-	github.com/mattn/go-runewidth v0.0.15
+	github.com/leg100/go-runewidth v0.0.16-0.20240513191656-9e28d2bebd46
+	github.com/leg100/reflow v0.0.0-20240513191534-e77d7e432a72
 	github.com/mitchellh/iochan v1.0.0
-	github.com/muesli/reflow v0.3.0
+	github.com/muesli/termenv v0.15.2
+	github.com/otiai10/copy v1.14.0
 	github.com/peterbourgon/ff/v4 v4.0.0-alpha.4
 	github.com/stretchr/testify v1.9.0
 	golang.org/x/exp v0.0.0-20240119083558-1b970713d09a
@@ -54,12 +56,12 @@ require (
 	github.com/mattn/go-colorable v0.1.4 // indirect
 	github.com/mattn/go-isatty v0.0.19 // indirect
 	github.com/mattn/go-localereader v0.0.1 // indirect
+	github.com/mattn/go-runewidth v0.0.15 // indirect
 	github.com/mitchellh/go-wordwrap v1.0.0 // indirect
 	github.com/mitchellh/panicwrap v1.0.0 // indirect
 	github.com/muesli/ansi v0.0.0-20230316100256-276c6243b2f6 // indirect
 	github.com/muesli/cancelreader v0.2.2 // indirect
-	github.com/muesli/termenv v0.15.2 // indirect
-	github.com/otiai10/copy v1.14.0 // indirect
+	github.com/muesli/reflow v0.3.0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/rivo/uniseg v0.4.6 // indirect
 	github.com/zclconf/go-cty v1.13.0 // indirect
@@ -75,7 +77,3 @@ require (
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
-
-replace github.com/mattn/go-runewidth => github.com/leg100/go-runewidth v0.0.16-0.20240317085039-79cdd3ecf674
-
-replace github.com/muesli/reflow => github.com/leg100/reflow v0.0.0-20240405105338-95fe252ec5c2
