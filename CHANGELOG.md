@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.1.11](https://github.com/leg100/pug/compare/v0.1.10...v0.1.11) (2024-05-13)
+
+
+### Features
+
+* consistent navigation following task/run creation ([#60](https://github.com/leg100/pug/issues/60)) ([bbf97cd](https://github.com/leg100/pug/commit/bbf97cdd14c52bc6981cddabfb5aea1dbd681924))
+
+
+### Bug Fixes
+
+* go install does not like replace directives ([#63](https://github.com/leg100/pug/issues/63)) ([55ab62a](https://github.com/leg100/pug/commit/55ab62a4eebb2c7f43a37448aab55c08644b6338))
+* show version when using go install ([eb27209](https://github.com/leg100/pug/commit/eb27209f7d0660504693961587aa44c74becbb0c))
+
 ## [0.1.10](https://github.com/leg100/pug/compare/v0.1.9...v0.1.10) (2024-05-10)
 
 
