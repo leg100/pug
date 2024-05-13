@@ -1,8 +1,8 @@
 package table
 
 import (
-	"github.com/mattn/go-runewidth"
-	"github.com/muesli/reflow/truncate"
+	"github.com/leg100/go-runewidth"
+	"github.com/leg100/reflow/truncate"
 )
 
 var defaultTruncationFunc = TruncateRight
