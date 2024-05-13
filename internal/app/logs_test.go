@@ -24,7 +24,6 @@ func TestLogs(t *testing.T) {
 
 	// Expect a table of keys and values
 	waitFor(t, tm, func(s string) bool {
-		t.Log(s)
 		return matchPattern(t, `level\s+INFO`, s) &&
 			matchPattern(t, `message\s+reloaded modules`, s) &&
 			matchPattern(t, `added\s+\[modules/[a-c] modules/[a-c] modules/[a-c]\]`, s) &&

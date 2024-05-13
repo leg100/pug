@@ -75,9 +75,6 @@ func TestWorkspaceList_CreateRun(t *testing.T) {
 			matchPattern(t, `modules/c.*default`, s)
 	})
 
-	// Clear selection
-	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlBackslash})
-
 	// Go to global workspaces listing
 	tm.Type("W")
 
@@ -87,7 +84,7 @@ func TestWorkspaceList_CreateRun(t *testing.T) {
 		return matchPattern(t, `modules/a.*default`, s)
 	})
 
-	// Create run on modules/a default
+	// Create run on modules/a's default workspace
 	tm.Type("p")
 
 	// Expect to be taken to the run's page
@@ -134,15 +131,9 @@ func TestWorkspaceList_ApplyCurrentRun(t *testing.T) {
 	// Select all modules and init
 	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlA})
 	tm.Type("i")
-
-	// Wait for each module to be initialized, and to have its current workspace
-	// set (should be "default")
 	waitFor(t, tm, func(s string) bool {
-		return strings.Count(s, "default") == 3
+		return strings.Contains(s, `completed init tasks: (3 successful; 0 errored; 0 canceled; 0 uncreated)`)
 	})
-
-	// Clear selection
-	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlBackslash})
 
 	// Go to global workspaces page
 	tm.Type("W")
@@ -164,10 +155,17 @@ func TestWorkspaceList_ApplyCurrentRun(t *testing.T) {
 	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlA})
 	tm.Type("p")
 
-	// Expect all four workspaces' current run to enter the planned state
+	// Wait for all four runs to be listed and in a planned state.
 	waitFor(t, tm, func(s string) bool {
-		return strings.Count(s, "planned") == 4
+		return strings.Contains(s, "Runs(all)[4]") &&
+			matchPattern(t, `modules/a.*default.*planned`, s) &&
+			matchPattern(t, `modules/a.*dev.*planned`, s) &&
+			matchPattern(t, `modules/b.*default.*planned`, s) &&
+			matchPattern(t, `modules/c.*default.*planned`, s)
 	})
+
+	// Go back to workspace listing
+	tm.Send(tea.KeyMsg{Type: tea.KeyEsc})
 
 	// Apply all four workspaces
 	tm.Type("a")
@@ -185,38 +183,29 @@ func TestWorkspaceList_ApplyCurrentRun(t *testing.T) {
 	})
 }
 
-func TestWorkspaceList_Reload(t *testing.T) {
+func TestWorkspaceList_Filter(t *testing.T) {
 	t.Parallel()
 
 	tm := setup(t, "./testdata/module_list")
 
-	// Expect all four modules to be listed
+	// Expect all three modules to be listed
 	waitFor(t, tm, func(s string) bool {
-		return matchPattern(t, `modules/a`, s) &&
-			matchPattern(t, `modules/b`, s) &&
-			matchPattern(t, `modules/c`, s)
+		return strings.Contains(s, `modules/a`) &&
+			strings.Contains(s, `modules/b`) &&
+			strings.Contains(s, `modules/c`)
 	})
 
 	// Select all modules and init
 	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlA})
 	tm.Type("i")
-
-	// Wait for each module to be initialized, and to have its current workspace
-	// set (should be "default")
 	waitFor(t, tm, func(s string) bool {
-		return matchPattern(t, `modules/a.*default`, s) &&
-			matchPattern(t, `modules/b.*default`, s) &&
-			matchPattern(t, `modules/c.*default`, s)
+		return strings.Contains(s, "completed init tasks: (3 successful; 0 errored; 0 canceled; 0 uncreated)")
 	})
-
-	// Clear selection
-	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlBackslash})
 
 	// Go to global workspaces listing
 	tm.Type("W")
 
-	// Wait for all four workspaces to be listed. The current run for the
-	// default workspace on modules/a should be in the planned state.
+	// Wait for all four workspaces to be listed.
 	waitFor(t, tm, func(s string) bool {
 		return matchPattern(t, `modules/a.*default`, s) &&
 			matchPattern(t, `modules/a.*dev`, s) &&

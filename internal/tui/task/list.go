@@ -128,7 +128,7 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		case key.Matches(msg, keys.Common.Cancel):
 			taskIDs := m.table.HighlightedOrSelectedKeys()
-			return m, tui.CreateTasks("cancel", m.svc.Cancel, taskIDs...)
+			return m, CreateTasks("cancel", m.parent, m.svc.Cancel, taskIDs...)
 		}
 	}
 	// Handle keyboard and mouse events in the table widget

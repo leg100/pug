@@ -33,9 +33,11 @@ func (c *cache) put(page tui.Page, model tea.Model) {
 }
 
 func (c *cache) updateAll(msg tea.Msg) []tea.Cmd {
-	var cmds []tea.Cmd
+	cmds := make([]tea.Cmd, len(c.cache))
+	var i int
 	for k := range c.cache {
-		cmds = append(cmds, c.update(k, msg))
+		cmds[i] = c.update(k, msg)
+		i++
 	}
 	return cmds
 }

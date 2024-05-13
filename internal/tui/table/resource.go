@@ -41,17 +41,6 @@ func NewResource[K resource.ID, V ResourceValue](opts ResourceOptions[V]) Resour
 	}
 }
 
-// SetItems populates the table with the given items. Each item must be a
-// descendent of the table's parent resource.
-func (m *Resource[K, V]) SetItems(items map[K]V) {
-	for k, v := range items {
-		if !v.HasAncestor(m.parent.ID) {
-			delete(items, k)
-		}
-	}
-	m.Model.SetItems(items)
-}
-
 func (m Resource[K, V]) Update(msg tea.Msg) (Resource[K, V], tea.Cmd) {
 	switch msg := msg.(type) {
 	case BulkInsertMsg[V]:
@@ -59,23 +48,34 @@ func (m Resource[K, V]) Update(msg tea.Msg) (Resource[K, V], tea.Cmd) {
 		for _, ws := range msg {
 			existing[K(ws.RowKey())] = ws
 		}
-		m.SetItems(existing)
+		m.setItems(existing)
 	case resource.Event[V]:
 		switch msg.Type {
 		case resource.CreatedEvent, resource.UpdatedEvent:
 			existing := m.Items()
 			existing[K(msg.Payload.RowKey())] = msg.Payload
-			m.SetItems(existing)
+			m.setItems(existing)
 		case resource.DeletedEvent:
 			existing := m.Items()
 			delete(existing, K(msg.Payload.RowKey()))
-			m.SetItems(existing)
+			m.setItems(existing)
 		}
 	}
 
 	var cmd tea.Cmd
 	m.Model, cmd = m.Model.Update(msg)
 	return m, cmd
+}
+
+// setItems populates the table with the given items. Items that are not a
+// descendent of the table's parent resource are skipped.
+func (m *Resource[K, V]) setItems(items map[K]V) {
+	for k, v := range items {
+		if !v.HasAncestor(m.parent.ID) {
+			delete(items, k)
+		}
+	}
+	m.Model.SetItems(items)
 }
 
 // Prune passes each value from the selected rows (or if there are no

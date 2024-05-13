@@ -1,22 +1,21 @@
-package top
+package task
 
 import (
 	"errors"
 	"testing"
 
 	"github.com/leg100/pug/internal/task"
-	"github.com/leg100/pug/internal/tui"
 	"github.com/stretchr/testify/assert"
 )
 
 func Test_handleCompletedTasksMsg(t *testing.T) {
 	tests := []struct {
-		msg     tui.CompletedTasksMsg
+		msg     CompletedTasksMsg
 		want    string
 		wantErr string
 	}{
 		{
-			tui.CompletedTasksMsg{
+			CompletedTasksMsg{
 				Command: "init",
 				Tasks:   task.Multi{&task.Task{State: task.Exited}},
 			},
@@ -24,7 +23,7 @@ func Test_handleCompletedTasksMsg(t *testing.T) {
 			"",
 		},
 		{
-			tui.CompletedTasksMsg{
+			CompletedTasksMsg{
 				Command: "init",
 				Tasks: task.Multi{
 					&task.Task{State: task.Canceled},
@@ -34,7 +33,7 @@ func Test_handleCompletedTasksMsg(t *testing.T) {
 			"",
 		},
 		{
-			tui.CompletedTasksMsg{
+			CompletedTasksMsg{
 				Command: "init",
 				Tasks: task.Multi{
 					&task.Task{State: task.Errored, Err: errors.New("exit code 1")},
@@ -44,7 +43,7 @@ func Test_handleCompletedTasksMsg(t *testing.T) {
 			"completed init task unsuccessfully: exit code 1",
 		},
 		{
-			tui.CompletedTasksMsg{
+			CompletedTasksMsg{
 				Command: "init",
 				Tasks: task.Multi{
 					&task.Task{State: task.Exited},
@@ -56,7 +55,7 @@ func Test_handleCompletedTasksMsg(t *testing.T) {
 			"",
 		},
 		{
-			tui.CompletedTasksMsg{
+			CompletedTasksMsg{
 				Command: "init",
 				Tasks: task.Multi{
 					&task.Task{State: task.Exited},
@@ -68,7 +67,7 @@ func Test_handleCompletedTasksMsg(t *testing.T) {
 			"completed init tasks: (2 successful; 1 errored; 0 canceled; 0 uncreated)",
 		},
 		{
-			tui.CompletedTasksMsg{
+			CompletedTasksMsg{
 				Command: "init",
 				Tasks: task.Multi{
 					&task.Task{State: task.Exited},
@@ -80,7 +79,7 @@ func Test_handleCompletedTasksMsg(t *testing.T) {
 			"completed init tasks: (1 successful; 1 errored; 1 canceled; 0 uncreated)",
 		},
 		{
-			tui.CompletedTasksMsg{
+			CompletedTasksMsg{
 				Command: "init",
 				Tasks: task.Multi{
 					&task.Task{State: task.Exited},
@@ -100,7 +99,7 @@ func Test_handleCompletedTasksMsg(t *testing.T) {
 			name = tt.wantErr
 		}
 		t.Run(name, func(t *testing.T) {
-			got, gotErr := handleCompletedTasksMsg(tt.msg)
+			got, gotErr := HandleCompletedTasks(tt.msg)
 			assert.Equal(t, tt.want, got)
 
 			// If test expects an error then check error string matches.

@@ -11,7 +11,12 @@ import (
 	"github.com/leg100/pug/internal/tui/keys"
 )
 
-const tabHeaderHeight = 2
+const (
+	TasksTabTitle = "tasks"
+	RunsTabTitle  = "runs"
+
+	tabHeaderHeight = 2
+)
 
 // models implementing tabStatus can report a status that'll be rendered
 // alongside the title in the tab header.

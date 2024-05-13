@@ -14,6 +14,7 @@ import (
 	"github.com/leg100/pug/internal/tui"
 	"github.com/leg100/pug/internal/tui/keys"
 	"github.com/leg100/pug/internal/tui/table"
+	tuitask "github.com/leg100/pug/internal/tui/task"
 )
 
 var resourceColumn = table.Column{
@@ -90,7 +91,7 @@ func (m resources) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, resourcesKeys.Reload):
-			return m, tui.CreateTasks("reload state", m.states.Reload, m.workspace.ID)
+			return m, tuitask.CreateTasks(tuitask.ReloadStateCommand, m.workspace, m.states.Reload, m.workspace.ID)
 		case key.Matches(msg, keys.Common.Delete):
 			addrs := m.table.HighlightedOrSelectedKeys()
 			if len(addrs) == 0 {
@@ -102,7 +103,7 @@ func (m resources) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return m, tui.YesNoPrompt(
 				fmt.Sprintf("Delete %d resource(s)?", len(addrs)),
-				tui.CreateTasks("state-rm", fn, m.workspace.ID),
+				tuitask.CreateTasks("state-rm", m.workspace, fn, m.workspace.ID),
 			)
 		case key.Matches(msg, resourcesKeys.Taint):
 			addrs := m.table.HighlightedOrSelectedKeys()
@@ -122,7 +123,7 @@ func (m resources) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						fn := func(workspaceID resource.ID) (*task.Task, error) {
 							return m.states.Move(workspaceID, row.Key, state.ResourceAddress(v))
 						}
-						return tui.CreateTasks("state-mv", fn, m.workspace.ID)
+						return tuitask.CreateTasks("state-mv", m.workspace, fn, m.workspace.ID)
 					},
 					Key:    key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", "confirm")),
 					Cancel: key.NewBinding(key.WithKeys("esc"), key.WithHelp("esc", "cancel")),
@@ -201,7 +202,7 @@ type stateFunc func(workspaceID resource.ID, addr state.ResourceAddress) (*task.
 
 func (m resources) createStateCommand(name string, fn stateFunc, addrs ...state.ResourceAddress) tea.Cmd {
 	return func() tea.Msg {
-		msg := tui.CreatedTasksMsg{Command: name}
+		msg := tuitask.CreatedTasksMsg{Command: name, Issuer: m.workspace}
 		for _, addr := range addrs {
 			task, err := fn(m.workspace.ID, addr)
 			if err != nil {

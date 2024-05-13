@@ -115,7 +115,7 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if err != nil {
 				return m, tui.ReportError(err, "")
 			}
-			return m, ApplyCommand(m.svc, runIDs...)
+			return m, ApplyCommand(m.svc, m.parent, runIDs...)
 		}
 	}
 

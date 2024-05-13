@@ -23,24 +23,57 @@ func TestWorkspace_Resources_Taint(t *testing.T) {
 			strings.Contains(s, "random_pet.pet[2]")
 	})
 
-	// Taint several resources
+	// Taint several resources. Press 't' on a resource, which then takes user
+	// to its task page, which provides the output from the command. Then go
+	// back and repeat for two further resources.
 	tm.Type("t")
+	waitFor(t, tm, func(s string) bool {
+		return strings.Contains(s, "Resource instance random_pet.pet[0] has been marked as tainted.")
+	})
+	tm.Send(tea.KeyMsg{Type: tea.KeyEsc})
+
 	tm.Send(tea.KeyMsg{Type: tea.KeyDown})
 	tm.Type("t")
+	waitFor(t, tm, func(s string) bool {
+		return strings.Contains(s, "Resource instance random_pet.pet[1] has been marked as tainted.")
+	})
+	tm.Send(tea.KeyMsg{Type: tea.KeyEsc})
+
 	tm.Send(tea.KeyMsg{Type: tea.KeyDown})
 	tm.Type("t")
+	waitFor(t, tm, func(s string) bool {
+		return strings.Contains(s, "Resource instance random_pet.pet[2] has been marked as tainted.")
+	})
+	tm.Send(tea.KeyMsg{Type: tea.KeyEsc})
 
 	// Expect to see several resources tainted
 	waitFor(t, tm, func(s string) bool {
 		return strings.Count(s, "tainted") == 3
 	})
 
-	// Untaint several resources
+	// Untaint several resources. Press 'u' on a resource, which then takes user
+	// to the untaint task page, which provides the output from the command. Then go
+	// back and repeat for two further resources.
+
 	tm.Type("u")
+	waitFor(t, tm, func(s string) bool {
+		return strings.Contains(s, "Resource instance random_pet.pet[2] has been successfully untainted.")
+	})
+	tm.Send(tea.KeyMsg{Type: tea.KeyEsc})
+
 	tm.Send(tea.KeyMsg{Type: tea.KeyUp})
 	tm.Type("u")
+	waitFor(t, tm, func(s string) bool {
+		return strings.Contains(s, "Resource instance random_pet.pet[1] has been successfully untainted.")
+	})
+	tm.Send(tea.KeyMsg{Type: tea.KeyEsc})
+
 	tm.Send(tea.KeyMsg{Type: tea.KeyUp})
 	tm.Type("u")
+	waitFor(t, tm, func(s string) bool {
+		return strings.Contains(s, "Resource instance random_pet.pet[0] has been successfully untainted.")
+	})
+	tm.Send(tea.KeyMsg{Type: tea.KeyEsc})
 
 	// Expect to see no resources tainted
 	waitFor(t, tm, func(s string) bool {
@@ -110,11 +143,19 @@ func TestWorkspace_Resources_Delete(t *testing.T) {
 	})
 	tm.Type("y")
 
-	// Expect only 7 resources. Note we can't test that the three deleted
-	// resources are NOT listed because waitFor accumulates all the string
-	// output since it was called, which is likely to include resources from
-	// both before and after the deletion. So instead we check for the presence
-	// of a new total number of resources.
+	// User is taken to its task page, which should provide the output from the
+	// command.
+	waitFor(t, tm, func(s string) bool {
+		return strings.Contains(s, "Removed random_pet.pet[0]") &&
+			strings.Contains(s, "Removed random_pet.pet[1]") &&
+			strings.Contains(s, "Removed random_pet.pet[2]") &&
+			strings.Contains(s, "Successfully removed 3 resource instance(s).")
+	})
+
+	// Go back to workspace resources tab
+	tm.Send(tea.KeyMsg{Type: tea.KeyEsc})
+
+	// Expect only 7 resources.
 	waitFor(t, tm, func(s string) bool {
 		return strings.Contains(s, "resources (7)")
 	})

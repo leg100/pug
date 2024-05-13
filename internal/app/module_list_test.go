@@ -34,19 +34,23 @@ func TestModuleList(t *testing.T) {
 		return strings.Contains(s, "completed init tasks: (3 successful; 0 errored; 0 canceled; 0 uncreated)")
 	})
 
-	// Format all modules
+	// Go back to module listing and format all modules
+	tm.Send(tea.KeyMsg{Type: tea.KeyEsc})
 	tm.Type("f")
 	waitFor(t, tm, func(s string) bool {
 		return strings.Contains(s, "completed format tasks: (3 successful; 0 errored; 0 canceled; 0 uncreated)")
 	})
 
-	// Validate all modules
+	// Go back to module listing and validate all modules
+	tm.Send(tea.KeyMsg{Type: tea.KeyEsc})
 	tm.Type("v")
 	waitFor(t, tm, func(s string) bool {
 		return strings.Contains(s, "completed validate tasks: (3 successful; 0 errored; 0 canceled; 0 uncreated)")
 	})
 
-	// Create plan on the current workspace of each module.
+	// Go back to module listing, and create plan on the current workspace of
+	// each module.
+	tm.Send(tea.KeyMsg{Type: tea.KeyEsc})
 	tm.Type("p")
 	// Expect all 3 modules to be in planned state
 	waitFor(t, tm, func(s string) bool {
@@ -55,7 +59,8 @@ func TestModuleList(t *testing.T) {
 			matchPattern(t, `modules/c.*default.*planned`, s)
 	})
 
-	// Apply current run of each module.
+	// Go back to module listing, and apply the plan for each module.
+	tm.Send(tea.KeyMsg{Type: tea.KeyEsc})
 	tm.Type("a")
 
 	// Confirm apply
@@ -95,22 +100,32 @@ func TestModuleList_ReloadWorkspaces(t *testing.T) {
 
 	tm := setup(t, "./testdata/module_list")
 
-	// Expect message to inform user that three modules have been loaded
+	// Expect all three modules to be listed
 	waitFor(t, tm, func(s string) bool {
-		return strings.Contains(s, "loaded 3 modules")
+		return strings.Contains(s, `modules/a`) &&
+			strings.Contains(s, `modules/b`) &&
+			strings.Contains(s, `modules/c`)
 	})
 
 	// Select all modules and init
 	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlA})
 	tm.Type("i")
-
-	// Wait for each module to be initialized, and to have its current workspace
-	// set (should be "default")
 	waitFor(t, tm, func(s string) bool {
-		return strings.Count(s, "default") == 3
+		return strings.Contains(s, "completed init tasks: (3 successful; 0 errored; 0 canceled; 0 uncreated)")
+	})
+
+	// Go back to module listing
+	tm.Send(tea.KeyMsg{Type: tea.KeyEsc})
+
+	// Each module should now have its current workspace set to default.
+	waitFor(t, tm, func(s string) bool {
+		return matchPattern(t, "modules/a.*default", s) &&
+			matchPattern(t, "modules/b.*default", s) &&
+			matchPattern(t, "modules/c.*default", s)
 	})
 
 	// Reload workspaces for each and every module
+	tm.Send(tea.KeyMsg{Type: tea.KeyEsc})
 	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlW})
 
 	// Expect message to inform user that all three reloads have completed
@@ -144,11 +159,18 @@ func TestModuleList_CreateRun(t *testing.T) {
 	// Select all modules and init
 	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlA})
 	tm.Type("i")
-
-	// Wait for each module to be initialized, and to have its current workspace
-	// set (should be "default")
 	waitFor(t, tm, func(s string) bool {
-		return strings.Count(s, "default") == 3
+		return strings.Contains(s, `completed init tasks: (3 successful; 0 errored; 0 canceled; 0 uncreated)`)
+	})
+
+	// Go back to module listing
+	tm.Send(tea.KeyMsg{Type: tea.KeyEsc})
+
+	// Each module should now have its current workspace set to default.
+	waitFor(t, tm, func(s string) bool {
+		return matchPattern(t, "modules/a.*default", s) &&
+			matchPattern(t, "modules/b.*default", s) &&
+			matchPattern(t, "modules/c.*default", s)
 	})
 
 	// Clear selection
@@ -160,7 +182,9 @@ func TestModuleList_CreateRun(t *testing.T) {
 	tm.Type("s")
 	tm.Type("p")
 	waitFor(t, tm, func(s string) bool {
-		return strings.Count(s, "planned") == 2
+		return strings.Contains(s, "Runs(all)[2]") &&
+			matchPattern(t, "modules/a.*default.*planned", s) &&
+			matchPattern(t, "modules/b.*default.*planned", s)
 	})
 
 }
@@ -190,11 +214,19 @@ func TestModuleList_ApplyCurrentRun(t *testing.T) {
 	// Select all modules and init
 	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlA})
 	tm.Type("i")
+	waitFor(t, tm, func(s string) bool {
+		return strings.Contains(s, `completed init tasks: (3 successful; 0 errored; 0 canceled; 0 uncreated)`)
+	})
+
+	// Go back to module listing
+	tm.Send(tea.KeyMsg{Type: tea.KeyEsc})
 
 	// Wait for each module to be initialized, and to have its current workspace
 	// set (should be "default")
 	waitFor(t, tm, func(s string) bool {
-		return strings.Count(s, "default") == 3
+		return matchPattern(t, "modules/a.*default", s) &&
+			matchPattern(t, "modules/b.*default", s) &&
+			matchPattern(t, "modules/c.*default", s)
 	})
 
 	// Clear selection
@@ -208,12 +240,8 @@ func TestModuleList_ApplyCurrentRun(t *testing.T) {
 		return matchPattern(t, "Error:.*module does not have a current run", s)
 	})
 
-	// Attempt to apply multiple modules but none have a plan
-	tm.Type("s")
-	tm.Send(tea.KeyMsg{Type: tea.KeyDown})
-	tm.Type("s")
-	tm.Send(tea.KeyMsg{Type: tea.KeyDown})
-	tm.Type("s")
+	// Attempt to apply all modules but none have a plan
+	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlA})
 	tm.Type("a")
 
 	// Expect error message
@@ -221,14 +249,25 @@ func TestModuleList_ApplyCurrentRun(t *testing.T) {
 		return matchPattern(t, "Error:.*no rows are applicable to the given action", s)
 	})
 
+	// Clear selection
+	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlBackslash})
+
 	// Create a plan on two modules, but not on the last one ("c")
 	tm.Type("s")
-	tm.Send(tea.KeyMsg{Type: tea.KeyUp})
+	tm.Send(tea.KeyMsg{Type: tea.KeyDown})
 	tm.Type("s")
 	tm.Type("p")
 	waitFor(t, tm, func(s string) bool {
-		return strings.Count(s, "planned") == 2
+		return strings.Contains(s, "Runs(all)[2]") &&
+			matchPattern(t, "modules/a.*default.*planned", s) &&
+			matchPattern(t, "modules/b.*default.*planned", s)
 	})
+
+	// Go back to module listing
+	tm.Send(tea.KeyMsg{Type: tea.KeyEsc})
+
+	// Clear selection
+	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlBackslash})
 
 	// Attempt to apply all modules
 	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlA})
