@@ -78,13 +78,14 @@ func (s *Service) Create(opts CreateOptions) (*Task, error) {
 
 // Enqueue moves the task onto the global queue for processing.
 func (s *Service) Enqueue(taskID resource.ID) (*Task, error) {
-	task, err := s.table.Get(taskID)
+	task, err := s.table.Update(taskID, func(existing *Task) error {
+		existing.updateState(Queued)
+		return nil
+	})
 	if err != nil {
 		s.logger.Error("enqueuing task", "error", err)
 		return nil, err
 	}
-
-	task.updateState(Queued)
 	s.logger.Debug("enqueued task", "task", task)
 	return task, nil
 }

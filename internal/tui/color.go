@@ -39,9 +39,9 @@ var (
 
 	HighlightBackground              = Grey
 	HighlightForeground              = White
-	SelectedBackground               = lipgloss.Color("#a19518")
+	SelectedBackground               = lipgloss.Color("#fcbbf0")
 	SelectedForeground               = Black
-	HighlightedAndSelectedBackground = lipgloss.Color("#635c0e")
+	HighlightedAndSelectedBackground = lipgloss.Color("#c997c0")
 	HighlightedAndSelectedForeground = White
 
 	TitleColor = lipgloss.AdaptiveColor{

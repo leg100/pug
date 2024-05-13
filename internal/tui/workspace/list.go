@@ -14,6 +14,7 @@ import (
 	"github.com/leg100/pug/internal/tui/keys"
 	tuirun "github.com/leg100/pug/internal/tui/run"
 	"github.com/leg100/pug/internal/tui/table"
+	tuitask "github.com/leg100/pug/internal/tui/task"
 	"github.com/leg100/pug/internal/workspace"
 )
 
@@ -70,7 +71,7 @@ func (m *ListMaker) Make(parent resource.Resource, width, height int) (tea.Model
 		svc:     m.WorkspaceService,
 		modules: m.ModuleService,
 		runs:    m.RunService,
-		parent:  parent.ID,
+		parent:  parent,
 	}, nil
 }
 
@@ -79,13 +80,13 @@ type list struct {
 	svc     tui.WorkspaceService
 	modules tui.ModuleService
 	runs    tui.RunService
-	parent  resource.ID
+	parent  resource.Resource
 }
 
 func (m list) Init() tea.Cmd {
 	return func() tea.Msg {
 		workspaces := m.svc.List(workspace.ListOptions{
-			ModuleID: m.parent,
+			ModuleID: m.parent.ID,
 		})
 		return table.BulkInsertMsg[*workspace.Workspace](workspaces)
 	}
@@ -121,16 +122,16 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return m, tui.YesNoPrompt(
 				fmt.Sprintf("Delete %d workspace(s)?", len(workspaceIDs)),
-				tui.CreateTasks("delete-workspace", m.svc.Delete, workspaceIDs...),
+				tuitask.CreateTasks("delete-workspace", m.parent, m.svc.Delete, workspaceIDs...),
 			)
 		case key.Matches(msg, keys.Common.Init):
-			cmd := tui.CreateTasks("init", m.modules.Init, m.highlightedOrSelectedModuleIDs()...)
+			cmd := tuitask.CreateTasks("init", m.parent, m.modules.Init, m.highlightedOrSelectedModuleIDs()...)
 			return m, cmd
 		case key.Matches(msg, keys.Common.Format):
-			cmd := tui.CreateTasks("format", m.modules.Format, m.highlightedOrSelectedModuleIDs()...)
+			cmd := tuitask.CreateTasks("format", m.parent, m.modules.Format, m.highlightedOrSelectedModuleIDs()...)
 			return m, cmd
 		case key.Matches(msg, keys.Common.Validate):
-			cmd := tui.CreateTasks("validate", m.modules.Validate, m.highlightedOrSelectedModuleIDs()...)
+			cmd := tuitask.CreateTasks("validate", m.parent, m.modules.Validate, m.highlightedOrSelectedModuleIDs()...)
 			return m, cmd
 		case key.Matches(msg, localKeys.SetCurrent):
 			if row, highlighted := m.table.Highlighted(); highlighted {
@@ -146,7 +147,7 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			fallthrough
 		case key.Matches(msg, keys.Common.Plan):
 			workspaceIDs := m.table.HighlightedOrSelectedKeys()
-			return m, tuirun.CreateRuns(m.runs, createRunOptions, workspaceIDs...)
+			return m, tuirun.CreateRuns(m.runs, m.parent, createRunOptions, workspaceIDs...)
 		case key.Matches(msg, keys.Common.Apply):
 			runIDs, err := m.table.Prune(func(ws *workspace.Workspace) (resource.ID, error) {
 				if runID := ws.CurrentRunID; runID != nil {
@@ -157,7 +158,7 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if err != nil {
 				return m, tui.ReportError(err, "")
 			}
-			return m, tuirun.ApplyCommand(m.runs, runIDs...)
+			return m, tuirun.ApplyCommand(m.runs, m.parent, runIDs...)
 		}
 	}
 

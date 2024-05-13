@@ -11,7 +11,7 @@ import (
 	"github.com/leg100/pug/internal/tui"
 	"github.com/leg100/pug/internal/tui/keys"
 	tuirun "github.com/leg100/pug/internal/tui/run"
-	tasktui "github.com/leg100/pug/internal/tui/task"
+	tuitask "github.com/leg100/pug/internal/tui/task"
 	"github.com/leg100/pug/internal/workspace"
 )
 
@@ -30,7 +30,7 @@ type Maker struct {
 	TaskService      tui.TaskService
 
 	RunListMaker  *tuirun.ListMaker
-	TaskListMaker *tasktui.ListMaker
+	TaskListMaker *tuitask.ListMaker
 
 	Spinner *spinner.Model
 	Helpers *tui.Helpers
@@ -101,7 +101,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.tabs.ActiveTitle() == resourcesTabTitle {
 				break
 			}
-			return m, tuirun.CreateRuns(m.runs, createRunOptions, m.workspace.ID)
+			return m, tuirun.CreateRuns(m.runs, m.workspace.Resource, createRunOptions, m.workspace.ID)
 		case key.Matches(msg, keys.Common.Init):
 			// create init task and switch user to its task page
 			return m, func() tea.Msg {
@@ -112,9 +112,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return tui.NewNavigationMsg(tui.TaskKind, tui.WithParent(task.Resource))
 			}
 		case key.Matches(msg, keys.Common.Validate):
-			return m, tui.CreateTasks("validate", m.modules.Validate, m.workspace.ModuleID())
+			return m, tuitask.CreateTasks("validate", m.workspace.Resource, m.modules.Validate, m.workspace.ModuleID())
 		case key.Matches(msg, keys.Common.Format):
-			return m, tui.CreateTasks("format", m.modules.Format, m.workspace.ModuleID())
+			return m, tuitask.CreateTasks("format", m.workspace.Resource, m.modules.Format, m.workspace.ModuleID())
 		case key.Matches(msg, keys.Common.Module):
 			return m, tui.NavigateTo(tui.ModuleKind, tui.WithParent(*m.workspace.Module()))
 		}

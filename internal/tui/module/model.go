@@ -9,9 +9,9 @@ import (
 	"github.com/leg100/pug/internal/resource"
 	"github.com/leg100/pug/internal/tui"
 	"github.com/leg100/pug/internal/tui/keys"
-	runtui "github.com/leg100/pug/internal/tui/run"
-	tasktui "github.com/leg100/pug/internal/tui/task"
-	workspacetui "github.com/leg100/pug/internal/tui/workspace"
+	tuirun "github.com/leg100/pug/internal/tui/run"
+	tuitask "github.com/leg100/pug/internal/tui/task"
+	tuiworkspace "github.com/leg100/pug/internal/tui/workspace"
 )
 
 const (
@@ -26,9 +26,9 @@ type Maker struct {
 	WorkspaceService tui.WorkspaceService
 	RunService       tui.RunService
 
-	WorkspaceListMaker *workspacetui.ListMaker
-	RunListMaker       *runtui.ListMaker
-	TaskListMaker      *tasktui.ListMaker
+	WorkspaceListMaker *tuiworkspace.ListMaker
+	RunListMaker       *tuirun.ListMaker
+	TaskListMaker      *tuitask.ListMaker
 
 	Helpers *tui.Helpers
 }
@@ -86,14 +86,17 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, keys.Common.Init):
-			// 'i' creates a terraform init task and sends the user to the tasks
-			// tab.
-			m.tabs.SetActiveTab(tasksTabTitle)
-			return m, tui.CreateTasks("init", m.ModuleService.Init, m.module.ID)
+			return m, tuitask.CreateTasks("init", resource.GlobalResource, m.ModuleService.Init, m.module.ID)
+		case key.Matches(msg, keys.Common.Format):
+			cmd := tuitask.CreateTasks("format", resource.GlobalResource, m.ModuleService.Format, m.module.ID)
+			return m, cmd
+		case key.Matches(msg, keys.Common.Validate):
+			cmd := tuitask.CreateTasks("validate", resource.GlobalResource, m.ModuleService.Validate, m.module.ID)
+			return m, cmd
 		case key.Matches(msg, keys.Common.Edit):
 			return m, tui.OpenVim(m.module.Path)
 		case key.Matches(msg, localKeys.ReloadWorkspaces):
-			return m, tui.CreateTasks("reload-workspaces", m.WorkspaceService.Reload, m.module.ID)
+			return m, tuitask.CreateTasks("reload-workspaces", resource.GlobalResource, m.WorkspaceService.Reload, m.module.ID)
 		}
 	case resource.Event[*module.Module]:
 		if msg.Payload.ID == m.module.ID {

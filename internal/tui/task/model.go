@@ -88,16 +88,12 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch {
+		// TODO: add keybinding to apply if task is a plan.
 		case key.Matches(msg, localKeys.Info):
 			// 'i' toggles showing task info
 			m.showInfo = !m.showInfo
 		case key.Matches(msg, keys.Common.Cancel):
-			return m, tui.CreateTasks("cancel", m.svc.Cancel, m.task.ID)
-			// TODO: retry
-		case key.Matches(msg, keys.Common.Apply):
-
-			return m, tui.CreateTasks("cancel", m.svc.Cancel, m.task.ID)
-			// TODO: retry
+			return m, CreateTasks("cancel", m.task.Resource, m.svc.Cancel, m.task.ID)
 		case key.Matches(msg, keys.Common.Module):
 			// 'm' takes the user to the task's module, but only if the task
 			// belongs to a module.

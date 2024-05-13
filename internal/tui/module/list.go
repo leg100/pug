@@ -14,6 +14,7 @@ import (
 	"github.com/leg100/pug/internal/tui/keys"
 	tuirun "github.com/leg100/pug/internal/tui/run"
 	"github.com/leg100/pug/internal/tui/table"
+	tuitask "github.com/leg100/pug/internal/tui/task"
 	"github.com/leg100/pug/internal/workspace"
 )
 
@@ -163,17 +164,17 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			default:
 				// create init tasks, and keep user on current page.
-				cmd := tui.CreateTasks("init", m.ModuleService.Init, m.table.HighlightedOrSelectedKeys()...)
+				cmd := tuitask.CreateTasks("init", resource.GlobalResource, m.ModuleService.Init, m.table.HighlightedOrSelectedKeys()...)
 				return m, cmd
 			}
 		case key.Matches(msg, keys.Common.Validate):
-			cmd := tui.CreateTasks("validate", m.ModuleService.Validate, m.table.HighlightedOrSelectedKeys()...)
+			cmd := tuitask.CreateTasks("validate", resource.GlobalResource, m.ModuleService.Validate, m.table.HighlightedOrSelectedKeys()...)
 			return m, cmd
 		case key.Matches(msg, keys.Common.Format):
-			cmd := tui.CreateTasks("format", m.ModuleService.Format, m.table.HighlightedOrSelectedKeys()...)
+			cmd := tuitask.CreateTasks("format", resource.GlobalResource, m.ModuleService.Format, m.table.HighlightedOrSelectedKeys()...)
 			return m, cmd
 		case key.Matches(msg, localKeys.ReloadWorkspaces):
-			cmd := tui.CreateTasks("reload-workspace", m.WorkspaceService.Reload, m.table.HighlightedOrSelectedKeys()...)
+			cmd := tuitask.CreateTasks("reload-workspace", resource.GlobalResource, m.WorkspaceService.Reload, m.table.HighlightedOrSelectedKeys()...)
 			return m, cmd
 		case key.Matches(msg, keys.Common.Destroy):
 			createRunOptions.Destroy = true
@@ -188,7 +189,7 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if err != nil {
 				return m, tui.ReportError(err, "")
 			}
-			return m, tuirun.CreateRuns(m.RunService, createRunOptions, workspaceIDs...)
+			return m, tuirun.CreateRuns(m.RunService, resource.GlobalResource, createRunOptions, workspaceIDs...)
 		case key.Matches(msg, keys.Common.Apply):
 			runIDs, err := m.table.Prune(func(mod *module.Module) (resource.ID, error) {
 				curr, err := m.currentRun(mod)
@@ -201,14 +202,14 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if curr.Status != run.Planned {
 					return resource.ID{}, fmt.Errorf("run not in unapplyable state: %s", string(curr.Status))
 				}
-				// module has current run and it is applyable, so do not
+				// Module has a current run and it is applyable, so do not
 				// prune
 				return curr.ID, nil
 			})
 			if err != nil {
 				return m, tui.ReportError(err, "")
 			}
-			return m, tuirun.ApplyCommand(m.RunService, runIDs...)
+			return m, tuirun.ApplyCommand(m.RunService, resource.GlobalResource, runIDs...)
 		}
 	}
 

@@ -3,12 +3,12 @@ package tui
 import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/leg100/pug/internal/resource"
-	"github.com/leg100/pug/internal/task"
 )
 
 // NavigationMsg is an instruction to navigate to a page.
 type NavigationMsg struct {
 	Page Page
+	Tab  string
 }
 
 func NewNavigationMsg(kind Kind, opts ...NavigateOption) NavigationMsg {
@@ -24,6 +24,12 @@ type NavigateOption func(msg *NavigationMsg)
 func WithParent(parent resource.Resource) NavigateOption {
 	return func(msg *NavigationMsg) {
 		msg.Page.Parent = parent
+	}
+}
+
+func WithTab(tab string) NavigateOption {
+	return func(msg *NavigationMsg) {
+		msg.Tab = tab
 	}
 }
 
@@ -43,24 +49,6 @@ func NewErrorMsg(err error, msg string, args ...any) ErrorMsg {
 		Message: msg,
 		Args:    args,
 	}
-}
-
-type CreatedTasksMsg struct {
-	// The command of the completed tasks (all tasks are assumed to be running
-	// the same command).
-	Command string
-	Tasks   task.Multi
-	// Errors from creating tasks
-	CreateErrs []error
-}
-
-type CompletedTasksMsg struct {
-	// The command of the completed tasks (all tasks are assumed to be running
-	// the same command).
-	Command string
-	Tasks   task.Multi
-	// Errors from originally creating tasks
-	CreateErrs []error
 }
 
 // FilterFocusReqMsg is a request to focus the filter widget. FilterFocusAckMsg

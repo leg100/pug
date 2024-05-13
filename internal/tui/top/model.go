@@ -19,6 +19,7 @@ import (
 	"github.com/leg100/pug/internal/tui/keys"
 	"github.com/leg100/pug/internal/tui/module"
 	tuirun "github.com/leg100/pug/internal/tui/run"
+	tuitask "github.com/leg100/pug/internal/tui/task"
 	"github.com/leg100/pug/internal/version"
 )
 
@@ -263,14 +264,17 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if created {
 			cmds = append(cmds, m.currentModel().Init())
 		}
+		if msg.Tab != "" {
+			cmds = append(cmds, m.updateCurrent(tui.SetActiveTabMsg(msg.Tab)))
+		}
 	case tuirun.CreatedRunsMsg:
-		cmd, m.info, m.err = handleCreatedRunsMsg(msg)
+		cmd, m.info, m.err = tuirun.HandleCreatedRuns(msg)
 		cmds = append(cmds, cmd)
-	case tui.CreatedTasksMsg:
-		cmd, m.info, m.err = handleCreatedTasksMsg(msg)
+	case tuitask.CreatedTasksMsg:
+		cmd, m.info, m.err = tuitask.HandleCreatedTasks(msg)
 		cmds = append(cmds, cmd)
-	case tui.CompletedTasksMsg:
-		m.info, m.err = handleCompletedTasksMsg(msg)
+	case tuitask.CompletedTasksMsg:
+		m.info, m.err = tuitask.HandleCompletedTasks(msg)
 	case tui.ErrorMsg:
 		if msg.Error != nil {
 			err := msg.Error

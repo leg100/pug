@@ -88,37 +88,31 @@ func TestRunList_Multiple(t *testing.T) {
 	// Select all modules and init
 	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlA})
 	tm.Type("i")
-
-	// Wait for each module to be initialized, and to have its current workspace
-	// set (should be "default")
 	waitFor(t, tm, func(s string) bool {
-		return strings.Count(s, "default") == 3
+		return strings.Contains(s, `completed init tasks: (3 successful; 0 errored; 0 canceled; 0 uncreated)`)
 	})
-
-	// Clear selection
-	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlBackslash})
 
 	// Go to global workspaces page
 	tm.Type("W")
 
 	// Wait for all four workspaces to be listed
 	waitFor(t, tm, func(s string) bool {
-		return matchPattern(t, `(?s)WORKSPACE.*default.*dev.*default.*default`, s)
+		return strings.Contains(s, "Workspaces(all)[4]") &&
+			matchPattern(t, `modules/a.*default`, s) &&
+			matchPattern(t, `modules/a.*dev`, s) &&
+			matchPattern(t, `modules/b.*default`, s) &&
+			matchPattern(t, `modules/c.*default`, s)
 	})
 
-	// Create run on all four workspaces
+	// Create run on all four workspaces, which should send the user to the
+	// global run listing.
 	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlA})
 	tm.Type("p")
 
-	// Clear selection
-	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlBackslash})
-
-	// Go to global runs page
-	tm.Type("R")
-
 	// Expect all four runs to enter the planned state.
 	waitFor(t, tm, func(s string) bool {
-		return matchPattern(t, `modules/a.*default.*planned`, s) &&
+		return strings.Contains(s, "Runs(all)[4]") &&
+			matchPattern(t, `modules/a.*default.*planned`, s) &&
 			matchPattern(t, `modules/a.*dev.*planned`, s) &&
 			matchPattern(t, `modules/b.*default.*planned`, s) &&
 			matchPattern(t, `modules/c.*default.*planned`, s)
