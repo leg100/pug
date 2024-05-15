@@ -21,7 +21,7 @@ func (w *writer) Write(p []byte) (int, error) {
 	for d.ScanRecord() {
 		msg := Message{
 			Serial: w.serial,
-			Mixin:  resource.New(resource.Log, resource.GlobalResource),
+			Common: resource.New(resource.Log, resource.GlobalResource),
 		}
 		for d.ScanKeyval() {
 			switch string(d.Key()) {

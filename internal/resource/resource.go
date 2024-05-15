@@ -1,5 +1,9 @@
 package resource
 
+// GlobalResource is an abstract top-level pug resource from which all other pug
+// resources are ultimately spawned.
+var GlobalResource Resource = Common{}
+
 // Resource is a unique pug entity spawned from another entity.
 type Resource interface {
 	// GetID retrieves the unique identifier for the resource.
@@ -21,7 +25,7 @@ type Resource interface {
 	// not have a module ancestor.
 	Module() Resource
 	// Workspace retrieves the resource's workspcae. Returns nil if the resource does
-	// not have a workspcae ancestor.
+	// not have a workspace ancestor.
 	Workspace() Resource
 	// Run retrieves the resource's run. Returns nil if the resource does
 	// not have a run ancestor.

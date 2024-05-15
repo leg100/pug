@@ -1,28 +1,23 @@
 package resource
 
-// GlobalResource is an abstract top-level pug resource from which all other pug
-// resources are spawned.
-var GlobalResource Resource = Mixin{}
-
-// Mixin is incorporated into pug resources to provide functionality common to
-// all resources.
-type Mixin struct {
+// Common provides functionality common to all resources.
+type Common struct {
 	ID
 	Parent Resource
 }
 
-func New(kind Kind, parent Resource) Mixin {
-	return Mixin{
+func New(kind Kind, parent Resource) Common {
+	return Common{
 		ID:     NewID(kind),
 		Parent: parent,
 	}
 }
 
-func (r Mixin) GetParent() Resource {
+func (r Common) GetParent() Resource {
 	return r.Parent
 }
 
-func (r Mixin) HasAncestor(id ID) bool {
+func (r Common) HasAncestor(id ID) bool {
 	// Every entity is considered an ancestor of the nil ID (equivalent to the
 	// ID of the "global" entity).
 	if id == GlobalID {
@@ -40,7 +35,7 @@ func (r Mixin) HasAncestor(id ID) bool {
 }
 
 // Ancestors provides a list of successive parents, starting with the direct parents.
-func (r Mixin) Ancestors() (ancestors []Resource) {
+func (r Common) Ancestors() (ancestors []Resource) {
 	if r.Parent == nil {
 		return
 	}
@@ -48,7 +43,7 @@ func (r Mixin) Ancestors() (ancestors []Resource) {
 	return append(ancestors, r.Parent.Ancestors()...)
 }
 
-func (r Mixin) getAncestorKind(k Kind) Resource {
+func (r Common) getAncestorKind(k Kind) Resource {
 	for _, parent := range r.Ancestors() {
 		if parent.GetKind() == k {
 			return parent
@@ -57,14 +52,14 @@ func (r Mixin) getAncestorKind(k Kind) Resource {
 	return nil
 }
 
-func (r Mixin) Module() Resource {
+func (r Common) Module() Resource {
 	return r.getAncestorKind(Module)
 }
 
-func (r Mixin) Workspace() Resource {
+func (r Common) Workspace() Resource {
 	return r.getAncestorKind(Workspace)
 }
 
-func (r Mixin) Run() Resource {
+func (r Common) Run() Resource {
 	return r.getAncestorKind(Run)
 }

@@ -23,7 +23,7 @@ type Message struct {
 	//
 	// TODO: consider making resource an interface rather than a struct. A log
 	// message doesn't need a UUID, and the serial above is sufficient.
-	resource.Mixin
+	resource.Common
 }
 
 type Attr struct {

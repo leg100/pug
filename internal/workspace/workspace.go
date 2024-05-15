@@ -10,7 +10,7 @@ import (
 )
 
 type Workspace struct {
-	resource.Mixin
+	resource.Common
 
 	Name string
 
@@ -25,8 +25,8 @@ func New(mod *module.Module, name string) (*Workspace, error) {
 		return nil, fmt.Errorf("invalid workspace name: %s", name)
 	}
 	return &Workspace{
-		Mixin: resource.New(resource.Workspace, mod),
-		Name:  name,
+		Common: resource.New(resource.Workspace, mod),
+		Name:   name,
 	}, nil
 }
 

@@ -11,7 +11,7 @@ type logEnricher struct {
 
 // moduleResource is a resource that belongs to a module
 type moduleResource interface {
-	Module() *resource.Mixin
+	Module() *resource.Common
 }
 
 func (e *logEnricher) EnrichLogRecord(args ...any) []any {

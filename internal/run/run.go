@@ -34,7 +34,7 @@ const (
 )
 
 type Run struct {
-	resource.Mixin
+	resource.Common
 
 	Created time.Time
 	Updated time.Time
@@ -73,7 +73,7 @@ type CreateOptions struct {
 
 func newRun(mod *module.Module, ws *workspace.Workspace, opts CreateOptions) (*Run, error) {
 	run := &Run{
-		Mixin:       resource.New(resource.Run, ws),
+		Common:      resource.New(resource.Run, ws),
 		Status:      Pending,
 		AutoApply:   ws.AutoApply,
 		TargetAddrs: opts.TargetAddrs,

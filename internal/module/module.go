@@ -16,7 +16,7 @@ import (
 
 // Module is a terraform root module.
 type Module struct {
-	resource.Mixin
+	resource.Common
 
 	// Pug working directory
 	Workdir internal.Workdir
@@ -47,7 +47,7 @@ type Module struct {
 // the module path relative to the working directory.
 func New(workdir internal.Workdir, path string) *Module {
 	mod := &Module{
-		Mixin:   resource.New(resource.Module, resource.GlobalResource),
+		Common:  resource.New(resource.Module, resource.GlobalResource),
 		Path:    path,
 		Workdir: workdir,
 	}

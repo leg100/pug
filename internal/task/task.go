@@ -19,7 +19,7 @@ import (
 
 // Task is an execution of a CLI program.
 type Task struct {
-	resource.Mixin
+	resource.Common
 
 	Command   []string
 	Args      []string
@@ -121,7 +121,7 @@ type CreateOptions struct {
 
 func (f *factory) newTask(opts CreateOptions) (*Task, error) {
 	return &Task{
-		Mixin:         resource.New(resource.Task, opts.Parent),
+		Common:        resource.New(resource.Task, opts.Parent),
 		State:         Pending,
 		Created:       time.Now(),
 		Updated:       time.Now(),
