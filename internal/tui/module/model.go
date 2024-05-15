@@ -34,7 +34,7 @@ type Maker struct {
 }
 
 func (mm *Maker) Make(mr resource.Resource, width, height int) (tea.Model, error) {
-	mod, err := mm.ModuleService.Get(mr.ID)
+	mod, err := mm.ModuleService.Get(mr.GetID())
 	if err != nil {
 		return model{}, err
 	}
@@ -112,7 +112,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m model) Title() string {
-	return m.helpers.Breadcrumbs("Module", m.module.Resource)
+	return m.helpers.Breadcrumbs("Module", m.module)
 }
 
 func (m model) View() string {

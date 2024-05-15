@@ -34,7 +34,7 @@ type ListMaker struct {
 
 func (m *ListMaker) Make(parent resource.Resource, width, height int) (tea.Model, error) {
 	var columns []table.Column
-	if parent.Kind == resource.Global {
+	if parent.GetKind() == resource.Global {
 		// Show module column in global workspaces table
 		columns = append(columns, table.ModuleColumn)
 	}
@@ -48,7 +48,7 @@ func (m *ListMaker) Make(parent resource.Resource, width, height int) (tea.Model
 
 	rowRenderer := func(ws *workspace.Workspace) table.RenderedRow {
 		return table.RenderedRow{
-			table.ModuleColumn.Key:        m.Helpers.ModulePath(ws.Resource),
+			table.ModuleColumn.Key:        ws.ModulePath(),
 			table.WorkspaceColumn.Key:     ws.Name,
 			table.RunStatusColumn.Key:     m.Helpers.WorkspaceCurrentRunStatus(ws),
 			table.RunChangesColumn.Key:    m.Helpers.WorkspaceCurrentRunChanges(ws),
@@ -86,7 +86,7 @@ type list struct {
 func (m list) Init() tea.Cmd {
 	return func() tea.Msg {
 		workspaces := m.svc.List(workspace.ListOptions{
-			ModuleID: m.parent.ID,
+			ModuleID: m.parent.GetID(),
 		})
 		return table.BulkInsertMsg[*workspace.Workspace](workspaces)
 	}
@@ -113,7 +113,7 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch {
 		case key.Matches(msg, keys.Global.Enter):
 			if row, highlighted := m.table.Highlighted(); highlighted {
-				return m, tui.NavigateTo(tui.WorkspaceKind, tui.WithParent(row.Value.Resource))
+				return m, tui.NavigateTo(tui.WorkspaceKind, tui.WithParent(row.Value))
 			}
 		case key.Matches(msg, keys.Common.Delete):
 			workspaceIDs := m.table.HighlightedOrSelectedKeys()

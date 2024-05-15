@@ -1,6 +1,7 @@
 package task
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"strings"
@@ -29,10 +30,10 @@ type Maker struct {
 	Helpers *tui.Helpers
 }
 
-func (mm *Maker) Make(tr resource.Resource, width, height int) (tea.Model, error) {
-	task, err := mm.TaskService.Get(tr.ID)
-	if err != nil {
-		return model{}, err
+func (mm *Maker) Make(res resource.Resource, width, height int) (tea.Model, error) {
+	task, ok := res.(*task.Task)
+	if !ok {
+		return model{}, errors.New("fatal: cannot make task model with non-task resource")
 	}
 
 	m := model{
@@ -93,24 +94,24 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// 'i' toggles showing task info
 			m.showInfo = !m.showInfo
 		case key.Matches(msg, keys.Common.Cancel):
-			return m, CreateTasks("cancel", m.task.Resource, m.svc.Cancel, m.task.ID)
+			return m, CreateTasks("cancel", m.task, m.svc.Cancel, m.task.ID)
 		case key.Matches(msg, keys.Common.Module):
 			// 'm' takes the user to the task's module, but only if the task
 			// belongs to a module.
 			if mod := m.task.Module(); mod != nil {
-				return m, tui.NavigateTo(tui.ModuleKind, tui.WithParent(*mod))
+				return m, tui.NavigateTo(tui.ModuleKind, tui.WithParent(mod))
 			}
 		case key.Matches(msg, keys.Common.Workspace):
 			// 'w' takes the user to the task's workspace, but only if the task
 			// belongs to a workspace.
 			if ws := m.task.Workspace(); ws != nil {
-				return m, tui.NavigateTo(tui.WorkspaceKind, tui.WithParent(*ws))
+				return m, tui.NavigateTo(tui.WorkspaceKind, tui.WithParent(ws))
 			}
 		case key.Matches(msg, keys.Common.Run):
 			// 'r' takes the user to the task's run, but only if the task
 			// belongs to a run.
 			if run := m.task.Run(); run != nil {
-				return m, tui.NavigateTo(tui.RunKind, tui.WithParent(*run))
+				return m, tui.NavigateTo(tui.RunKind, tui.WithParent(run))
 			}
 		}
 	case outputMsg:
@@ -171,10 +172,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m model) Title() string {
-	heading := tui.TitleStyle.Render("Task")
-	cmd := tui.Regular.Copy().Foreground(tui.Green).Render(m.task.CommandString())
-	crumbs := m.helpers.Breadcrumbs("", *m.task.Parent)
-	return fmt.Sprintf("%s{%s}%s", heading, cmd, crumbs)
+	return m.helpers.Breadcrumbs("Task", m.task)
 }
 
 func (m model) ID() string {

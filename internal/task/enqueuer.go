@@ -34,7 +34,7 @@ func (e *enqueuer) enqueuable() []*Task {
 	blocked := make(map[resource.ID]struct{}, len(active))
 	for _, ab := range active {
 		if ab.Blocking {
-			blocked[ab.Parent.ID] = struct{}{}
+			blocked[ab.Parent.GetID()] = struct{}{}
 		}
 	}
 
@@ -49,13 +49,13 @@ func (e *enqueuer) enqueuable() []*Task {
 		// Recursively walk task's ancestors and check if they are currently
 		// blocked; if so then task cannot be enqueued. The exception to this
 		// rule is an immediate task, which is always enqueuable
-		if !t.Immediate && hasBlockedAncestor(blocked, *t.Parent) {
+		if !t.Immediate && hasBlockedAncestor(blocked, t.GetParent()) {
 			// Not enqueuable
 			continue
 		} else if t.Blocking {
 			// Found blocking task in pending queue; no further tasks shall be
 			// enqueued for resources belonging to the task's parent resource
-			blocked[t.Parent.ID] = struct{}{}
+			blocked[t.Parent.GetID()] = struct{}{}
 		}
 		// Enqueueable
 		pending[i] = t
@@ -66,11 +66,11 @@ func (e *enqueuer) enqueuable() []*Task {
 }
 
 func hasBlockedAncestor(blocked map[resource.ID]struct{}, parent resource.Resource) bool {
-	if _, ok := blocked[parent.ID]; ok {
+	if _, ok := blocked[parent.GetID()]; ok {
 		return true
 	}
-	if parent.Parent != nil {
-		return hasBlockedAncestor(blocked, *parent.Parent)
+	if parent.GetParent() != nil {
+		return hasBlockedAncestor(blocked, parent.GetParent())
 	}
 	return false
 }

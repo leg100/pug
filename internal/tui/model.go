@@ -13,13 +13,12 @@ type Maker interface {
 
 // Page identifies an instance of a model
 type Page struct {
-	// The model kind
+	// The model kind. Identifies the model maker to construct the page.
 	Kind Kind
-	// The model's parent resource
-	//
-	// TODO: rename: it's sometimes a parent (in the case of listings), and
-	// sometimes *the* resource.
-	Parent resource.Resource
+	// The model's resource. In the case of global listings, this is the global
+	// resource. For all other listings, this is the parent resource of the
+	// listed resources.
+	Resource resource.Resource
 }
 
 // ModelID is implemented by models that are able to provide a unique

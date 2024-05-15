@@ -46,7 +46,7 @@ func HandleCreatedRuns(msg CreatedRunsMsg) (navigate tea.Cmd, info string, err e
 		// No runs created, don't send user anywhere.
 	case 1:
 		// Send user directly to runs's page.
-		navigate = tui.NavigateTo(tui.RunKind, tui.WithParent(msg.Runs[0].Resource))
+		navigate = tui.NavigateTo(tui.RunKind, tui.WithParent(msg.Runs[0]))
 	default:
 		// Multiple tasks. Send the user to the appropriate listing for the model kind that
 		// issued the request to create tasks.
@@ -54,7 +54,7 @@ func HandleCreatedRuns(msg CreatedRunsMsg) (navigate tea.Cmd, info string, err e
 			opts = []tui.NavigateOption{tui.WithParent(msg.Issuer)}
 			kind tui.Kind
 		)
-		switch msg.Issuer.Kind {
+		switch msg.Issuer.GetKind() {
 		case resource.Workspace:
 			// Send user to the runs tab on the workspace page
 			kind = tui.WorkspaceKind
@@ -106,7 +106,7 @@ func ApplyCommand(runs tui.RunService, issuer resource.Resource, runIDs ...resou
 				return tui.NewErrorMsg(err, "applying run")
 			}
 			// When one apply is triggered, the user is sent to the run page.
-			return tui.NewNavigationMsg(tui.RunKind, tui.WithParent(run.Resource))
+			return tui.NewNavigationMsg(tui.RunKind, tui.WithParent(run))
 		})
 	default:
 		return tui.YesNoPrompt(

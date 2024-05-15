@@ -45,7 +45,7 @@ type ListMaker struct {
 func (m *ListMaker) Make(parent resource.Resource, width, height int) (tea.Model, error) {
 	var columns []table.Column
 	// Add further columns depending upon the kind of parent
-	switch parent.Kind {
+	switch parent.GetKind() {
 	case resource.Global:
 		// Show module and workspace columns in global tasks table
 		columns = append(columns, table.ModuleColumn)
@@ -71,8 +71,8 @@ func (m *ListMaker) Make(parent resource.Resource, width, height int) (tea.Model
 		}
 
 		return table.RenderedRow{
-			table.ModuleColumn.Key:    m.Helpers.ModulePath(t.Resource),
-			table.WorkspaceColumn.Key: m.Helpers.WorkspaceName(t.Resource),
+			table.ModuleColumn.Key:    m.Helpers.ModulePath(t),
+			table.WorkspaceColumn.Key: m.Helpers.WorkspaceName(t),
 			commandColumn.Key:         t.CommandString(),
 			ageColumn.Key:             tui.Ago(time.Now(), t.Updated),
 			table.IDColumn.Key:        t.String(),
@@ -107,7 +107,7 @@ type list struct {
 func (m list) Init() tea.Cmd {
 	return func() tea.Msg {
 		tasks := m.svc.List(task.ListOptions{
-			Ancestor: m.parent.ID,
+			Ancestor: m.parent.GetID(),
 		})
 		return table.BulkInsertMsg[*task.Task](tasks)
 	}
@@ -124,7 +124,7 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch {
 		case key.Matches(msg, keys.Global.Enter):
 			if row, highlighted := m.table.Highlighted(); highlighted {
-				return m, tui.NavigateTo(tui.TaskKind, tui.WithParent(row.Value.Resource))
+				return m, tui.NavigateTo(tui.TaskKind, tui.WithParent(row.Value))
 			}
 		case key.Matches(msg, keys.Common.Cancel):
 			taskIDs := m.table.HighlightedOrSelectedKeys()

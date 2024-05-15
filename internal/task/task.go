@@ -19,7 +19,7 @@ import (
 
 // Task is an execution of a CLI program.
 type Task struct {
-	resource.Resource
+	resource.Mixin
 
 	Command   []string
 	Args      []string
@@ -121,7 +121,7 @@ type CreateOptions struct {
 
 func (f *factory) newTask(opts CreateOptions) (*Task, error) {
 	return &Task{
-		Resource:      resource.New(resource.Task, opts.Parent),
+		Mixin:         resource.New(resource.Task, opts.Parent),
 		State:         Pending,
 		Created:       time.Now(),
 		Updated:       time.Now(),
@@ -159,6 +159,10 @@ func (f *factory) newTask(opts CreateOptions) (*Task, error) {
 
 func (t *Task) CommandString() string {
 	return strings.Join(t.Command, " ")
+}
+
+func (t *Task) String() string {
+	return t.CommandString()
 }
 
 // NewReader provides a reader from which to read the task output from start to

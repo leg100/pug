@@ -142,7 +142,7 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, ReloadModules(false, m.ModuleService)
 		case key.Matches(msg, keys.Global.Enter):
 			if row, highlighted := m.table.Highlighted(); highlighted {
-				return m, tui.NavigateTo(tui.ModuleKind, tui.WithParent(row.Value.Resource))
+				return m, tui.NavigateTo(tui.ModuleKind, tui.WithParent(row.Value))
 			}
 		case key.Matches(msg, keys.Common.Edit):
 			if row, highlighted := m.table.Highlighted(); highlighted {
@@ -160,7 +160,7 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					if err != nil {
 						return tui.NewErrorMsg(err, "creating init task")
 					}
-					return tui.NewNavigationMsg(tui.TaskKind, tui.WithParent(task.Resource))
+					return tui.NewNavigationMsg(tui.TaskKind, tui.WithParent(task))
 				}
 			default:
 				// create init tasks, and keep user on current page.

@@ -69,7 +69,7 @@ func HandleCreatedTasks(msg CreatedTasksMsg) (cmd tea.Cmd, info string, err erro
 		if msg.Command == ReloadStateCommand {
 			break
 		}
-		cmds = append(cmds, tui.NavigateTo(tui.TaskKind, tui.WithParent(msg.Tasks[0].Resource)))
+		cmds = append(cmds, tui.NavigateTo(tui.TaskKind, tui.WithParent(msg.Tasks[0])))
 	default:
 		// Multiple tasks. Send the user to the appropriate listing for the model kind that
 		// issued the request to create tasks.
@@ -77,7 +77,7 @@ func HandleCreatedTasks(msg CreatedTasksMsg) (cmd tea.Cmd, info string, err erro
 			opts = []tui.NavigateOption{tui.WithParent(msg.Issuer)}
 			kind tui.Kind
 		)
-		switch msg.Issuer.Kind {
+		switch msg.Issuer.GetKind() {
 		case resource.Workspace:
 			kind = tui.WorkspaceKind
 			if msg.Command == ApplyCommand {

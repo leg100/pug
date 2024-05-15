@@ -16,7 +16,7 @@ import (
 
 // Module is a terraform root module.
 type Module struct {
-	resource.Resource
+	resource.Mixin
 
 	// Pug working directory
 	Workdir internal.Workdir
@@ -47,9 +47,9 @@ type Module struct {
 // the module path relative to the working directory.
 func New(workdir internal.Workdir, path string) *Module {
 	mod := &Module{
-		Resource: resource.New(resource.Module, resource.GlobalResource),
-		Path:     path,
-		Workdir:  workdir,
+		Mixin:   resource.New(resource.Module, resource.GlobalResource),
+		Path:    path,
+		Workdir: workdir,
 	}
 	// We can say, with certitude, that the absence of a .terraform directory
 	// means the module has not been initialized (but we cannot make the
@@ -60,6 +60,10 @@ func New(workdir internal.Workdir, path string) *Module {
 		mod.Initialized = internal.Bool(false)
 	}
 	return mod
+}
+
+func (m *Module) String() string {
+	return m.Path
 }
 
 // FullPath returns the absolute path to the module.

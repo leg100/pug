@@ -20,8 +20,8 @@ func (w *writer) Write(p []byte) (int, error) {
 	d := logfmt.NewDecoder(bytes.NewReader(p))
 	for d.ScanRecord() {
 		msg := Message{
-			Serial:   w.serial,
-			Resource: resource.New(resource.Log, resource.GlobalResource),
+			Serial: w.serial,
+			Mixin:  resource.New(resource.Log, resource.GlobalResource),
 		}
 		for d.ScanKeyval() {
 			switch string(d.Key()) {

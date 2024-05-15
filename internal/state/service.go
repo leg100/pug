@@ -224,12 +224,13 @@ func (s *Service) Move(workspaceID resource.ID, src, dest ResourceAddress) (*tas
 	})
 }
 
+// TODO: move this logic into task.Create
 func (s *Service) createTask(workspaceID resource.ID, opts task.CreateOptions) (*task.Task, error) {
 	ws, err := s.workspaces.Get(workspaceID)
 	if err != nil {
 		return nil, err
 	}
-	opts.Parent = ws.Resource
+	opts.Parent = ws
 	opts.Env = []string{ws.TerraformEnv()}
 
 	mod, err := s.modules.Get(ws.ModuleID())

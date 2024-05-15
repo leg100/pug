@@ -102,7 +102,7 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch {
 		case key.Matches(msg, keys.Global.Enter):
 			if row, highlighted := m.table.Highlighted(); highlighted {
-				return m, tui.NavigateTo(tui.LogKind, tui.WithParent(row.Value.Resource))
+				return m, tui.NavigateTo(tui.LogKind, tui.WithParent(row.Value))
 			}
 		}
 	}

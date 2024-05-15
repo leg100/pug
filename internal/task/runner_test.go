@@ -13,12 +13,12 @@ func TestRunner_runnable(t *testing.T) {
 
 	mod1 := resource.New(resource.Module, resource.GlobalResource)
 
-	t1 := &Task{Resource: resource.New(resource.Task, mod1)}
-	t2 := &Task{Resource: resource.New(resource.Task, mod1)}
-	t3 := &Task{Resource: resource.New(resource.Task, mod1)}
-	ex1 := &Task{Resource: resource.New(resource.Task, mod1), exclusive: true}
-	ex2 := &Task{Resource: resource.New(resource.Task, mod1), exclusive: true}
-	immediate := &Task{Resource: resource.New(resource.Task, mod1), Immediate: true}
+	t1 := &Task{Mixin: resource.New(resource.Task, mod1)}
+	t2 := &Task{Mixin: resource.New(resource.Task, mod1)}
+	t3 := &Task{Mixin: resource.New(resource.Task, mod1)}
+	ex1 := &Task{Mixin: resource.New(resource.Task, mod1), exclusive: true}
+	ex2 := &Task{Mixin: resource.New(resource.Task, mod1), exclusive: true}
+	immediate := &Task{Mixin: resource.New(resource.Task, mod1), Immediate: true}
 
 	tests := []struct {
 		name string

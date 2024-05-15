@@ -26,8 +26,8 @@ func TestResource(t *testing.T) {
 	})
 
 	t.Run("get ancestor of specific kind", func(t *testing.T) {
-		assert.Equal(t, &mod, task.Module())
-		assert.Equal(t, &ws, task.Workspace())
-		assert.Equal(t, &run, task.Run())
+		assert.Equal(t, mod, task.Module())
+		assert.Equal(t, ws, task.Workspace())
+		assert.Equal(t, run, task.Run())
 	})
 }

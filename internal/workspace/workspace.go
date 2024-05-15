@@ -10,7 +10,7 @@ import (
 )
 
 type Workspace struct {
-	resource.Resource
+	resource.Mixin
 
 	Name string
 
@@ -25,13 +25,21 @@ func New(mod *module.Module, name string) (*Workspace, error) {
 		return nil, fmt.Errorf("invalid workspace name: %s", name)
 	}
 	return &Workspace{
-		Resource: resource.New(resource.Workspace, mod.Resource),
-		Name:     name,
+		Mixin: resource.New(resource.Workspace, mod),
+		Name:  name,
 	}, nil
 }
 
+func (ws *Workspace) String() string {
+	return ws.Name
+}
+
 func (ws *Workspace) ModuleID() resource.ID {
-	return ws.Parent.ID
+	return ws.Parent.GetID()
+}
+
+func (ws *Workspace) ModulePath() string {
+	return ws.Parent.String()
 }
 
 func (ws *Workspace) TerraformEnv() string {

@@ -9,13 +9,13 @@ import (
 
 // Resource is a wrapper of table.Model specifically for use with pug
 // resources.
-type Resource[K resource.ID, V ResourceValue] struct {
+type Resource[K resource.ID, V resource.Resource] struct {
 	Model[K, V]
 
 	parent resource.Resource
 }
 
-type ResourceOptions[V ResourceValue] struct {
+type ResourceOptions[V resource.Resource] struct {
 	Columns       []Column
 	Renderer      RowRenderer[V]
 	Width, Height int
@@ -23,13 +23,8 @@ type ResourceOptions[V ResourceValue] struct {
 	SortFunc      SortFunc[V]
 }
 
-type ResourceValue interface {
-	HasAncestor(id resource.ID) bool
-	RowKey() resource.ID
-}
-
 // NewResource creates a new resource table
-func NewResource[K resource.ID, V ResourceValue](opts ResourceOptions[V]) Resource[K, V] {
+func NewResource[K resource.ID, V resource.Resource](opts ResourceOptions[V]) Resource[K, V] {
 	table := New[K](opts.Columns, opts.Renderer, opts.Width, opts.Height)
 	if opts.SortFunc != nil {
 		table = table.WithSortFunc(opts.SortFunc)
@@ -46,18 +41,18 @@ func (m Resource[K, V]) Update(msg tea.Msg) (Resource[K, V], tea.Cmd) {
 	case BulkInsertMsg[V]:
 		existing := m.Items()
 		for _, ws := range msg {
-			existing[K(ws.RowKey())] = ws
+			existing[K(ws.GetID())] = ws
 		}
 		m.setItems(existing)
 	case resource.Event[V]:
 		switch msg.Type {
 		case resource.CreatedEvent, resource.UpdatedEvent:
 			existing := m.Items()
-			existing[K(msg.Payload.RowKey())] = msg.Payload
+			existing[K(msg.Payload.GetID())] = msg.Payload
 			m.setItems(existing)
 		case resource.DeletedEvent:
 			existing := m.Items()
-			delete(existing, K(msg.Payload.RowKey()))
+			delete(existing, K(msg.Payload.GetID()))
 			m.setItems(existing)
 		}
 	}
@@ -71,7 +66,7 @@ func (m Resource[K, V]) Update(msg tea.Msg) (Resource[K, V], tea.Cmd) {
 // descendent of the table's parent resource are skipped.
 func (m *Resource[K, V]) setItems(items map[K]V) {
 	for k, v := range items {
-		if !v.HasAncestor(m.parent.ID) {
+		if m.parent != nil && !v.HasAncestor(m.parent.GetID()) {
 			delete(items, k)
 		}
 	}

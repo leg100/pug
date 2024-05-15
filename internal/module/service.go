@@ -205,8 +205,9 @@ func (s *Service) Validate(moduleID resource.ID) (*task.Task, error) {
 	})
 }
 
+// TODO: move this logic into task.Create
 func (s *Service) CreateTask(mod *Module, opts task.CreateOptions) (*task.Task, error) {
-	opts.Parent = mod.Resource
+	opts.Parent = mod
 	opts.Path = mod.Path
 	return s.tasks.Create(opts)
 }

@@ -337,8 +337,9 @@ func (s *Service) Delete(id resource.ID) (*task.Task, error) {
 	})
 }
 
+// TODO: move this logic into task.Create
 func (s *Service) createTask(ws *Workspace, opts task.CreateOptions) (*task.Task, error) {
-	opts.Parent = ws.Resource
+	opts.Parent = ws
 
 	mod, err := s.modules.Get(ws.ModuleID())
 	if err != nil {
