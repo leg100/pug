@@ -282,7 +282,9 @@ func TestModuleList_ApplyCurrentRun(t *testing.T) {
 
 	// Expect two modules to be applied
 	waitFor(t, tm, func(s string) bool {
-		return strings.Count(s, "applied") == 2
+		return strings.Contains(s, "Runs(all)[2]") &&
+			matchPattern(t, "modules/a.*default.*applied", s) &&
+			matchPattern(t, "modules/b.*default.*applied", s)
 	})
 }
 
