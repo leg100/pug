@@ -36,11 +36,7 @@ type Maker struct {
 	Helpers *tui.Helpers
 }
 
-func (mm *Maker) Make(workspace resource.Resource, width, height int) (tea.Model, error) {
-	ws, err := mm.WorkspaceService.Get(workspace.ID)
-	if err != nil {
-		return model{}, err
-	}
+func (mm *Maker) Make(ws resource.Resource, width, height int) (tea.Model, error) {
 	rlm := &resourceListMaker{
 		StateService: mm.StateService,
 		RunService:   mm.RunService,
@@ -48,15 +44,15 @@ func (mm *Maker) Make(workspace resource.Resource, width, height int) (tea.Model
 	}
 
 	tabs := tui.NewTabSet(width, height)
-	_, err = tabs.AddTab(mm.RunListMaker, workspace, runsTabTitle)
+	_, err := tabs.AddTab(mm.RunListMaker, ws, runsTabTitle)
 	if err != nil {
 		return nil, fmt.Errorf("adding runs tab: %w", err)
 	}
-	_, err = tabs.AddTab(mm.TaskListMaker, workspace, tasksTabTitle)
+	_, err = tabs.AddTab(mm.TaskListMaker, ws, tasksTabTitle)
 	if err != nil {
 		return nil, fmt.Errorf("adding tasks tab: %w", err)
 	}
-	_, err = tabs.AddTab(rlm, workspace, resourcesTabTitle)
+	_, err = tabs.AddTab(rlm, ws, resourcesTabTitle)
 	if err != nil {
 		return nil, fmt.Errorf("adding resources tab: %w", err)
 	}
@@ -74,7 +70,7 @@ func (mm *Maker) Make(workspace resource.Resource, width, height int) (tea.Model
 type model struct {
 	modules   tui.ModuleService
 	runs      tui.RunService
-	workspace *workspace.Workspace
+	workspace resource.Resource
 	tabs      tui.TabSet
 	helpers   *tui.Helpers
 }
@@ -101,25 +97,25 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.tabs.ActiveTitle() == resourcesTabTitle {
 				break
 			}
-			return m, tuirun.CreateRuns(m.runs, m.workspace.Resource, createRunOptions, m.workspace.ID)
+			return m, tuirun.CreateRuns(m.runs, m.workspace, createRunOptions, m.workspace.GetID())
 		case key.Matches(msg, keys.Common.Init):
 			// create init task and switch user to its task page
 			return m, func() tea.Msg {
-				task, err := m.modules.Init(m.workspace.ModuleID())
+				task, err := m.modules.Init(m.workspace.Module().GetID())
 				if err != nil {
 					return tui.NewErrorMsg(err, "creating init task")
 				}
-				return tui.NewNavigationMsg(tui.TaskKind, tui.WithParent(task.Resource))
+				return tui.NewNavigationMsg(tui.TaskKind, tui.WithParent(task))
 			}
 		case key.Matches(msg, keys.Common.Validate):
-			return m, tuitask.CreateTasks("validate", m.workspace.Resource, m.modules.Validate, m.workspace.ModuleID())
+			return m, tuitask.CreateTasks("validate", m.workspace, m.modules.Validate, m.workspace.Module().GetID())
 		case key.Matches(msg, keys.Common.Format):
-			return m, tuitask.CreateTasks("format", m.workspace.Resource, m.modules.Format, m.workspace.ModuleID())
+			return m, tuitask.CreateTasks("format", m.workspace, m.modules.Format, m.workspace.Module().GetID())
 		case key.Matches(msg, keys.Common.Module):
-			return m, tui.NavigateTo(tui.ModuleKind, tui.WithParent(*m.workspace.Module()))
+			return m, tui.NavigateTo(tui.ModuleKind, tui.WithParent(m.workspace.Module()))
 		}
 	case resource.Event[*workspace.Workspace]:
-		if msg.Payload.ID == m.workspace.ID {
+		if msg.Payload.ID == m.workspace.GetID() {
 			m.workspace = msg.Payload
 		}
 	}
@@ -132,7 +128,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m model) Title() string {
-	return m.helpers.Breadcrumbs("Workspace", m.workspace.Resource)
+	return m.helpers.Breadcrumbs("Workspace", m.workspace)
 }
 
 func (m model) View() string {

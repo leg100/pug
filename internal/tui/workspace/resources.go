@@ -72,7 +72,7 @@ type initState *state.State
 
 func (m resources) Init() tea.Cmd {
 	return func() tea.Msg {
-		state, err := m.states.Get(m.workspace.ID)
+		state, err := m.states.Get(m.workspace.GetID())
 		if err != nil {
 			return tui.ReportError(err, "loading resources tab")
 		}
@@ -91,7 +91,7 @@ func (m resources) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, resourcesKeys.Reload):
-			return m, tuitask.CreateTasks(tuitask.ReloadStateCommand, m.workspace, m.states.Reload, m.workspace.ID)
+			return m, tuitask.CreateTasks(tuitask.ReloadStateCommand, m.workspace, m.states.Reload, m.workspace.GetID())
 		case key.Matches(msg, keys.Common.Delete):
 			addrs := m.table.HighlightedOrSelectedKeys()
 			if len(addrs) == 0 {
@@ -103,7 +103,7 @@ func (m resources) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return m, tui.YesNoPrompt(
 				fmt.Sprintf("Delete %d resource(s)?", len(addrs)),
-				tuitask.CreateTasks("state-rm", m.workspace, fn, m.workspace.ID),
+				tuitask.CreateTasks("state-rm", m.workspace, fn, m.workspace.GetID()),
 			)
 		case key.Matches(msg, resourcesKeys.Taint):
 			addrs := m.table.HighlightedOrSelectedKeys()
@@ -123,7 +123,7 @@ func (m resources) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						fn := func(workspaceID resource.ID) (*task.Task, error) {
 							return m.states.Move(workspaceID, row.Key, state.ResourceAddress(v))
 						}
-						return tuitask.CreateTasks("state-mv", m.workspace, fn, m.workspace.ID)
+						return tuitask.CreateTasks("state-mv", m.workspace, fn, m.workspace.GetID())
 					},
 					Key:    key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", "confirm")),
 					Cancel: key.NewBinding(key.WithKeys("esc"), key.WithHelp("esc", "cancel")),
@@ -138,18 +138,18 @@ func (m resources) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// NOTE: even if the user hasn't selected any rows, we still proceed
 			// to create a run without targeted resources.
 			return m, func() tea.Msg {
-				run, err := m.runs.Create(m.workspace.ID, createRunOptions)
+				run, err := m.runs.Create(m.workspace.GetID(), createRunOptions)
 				if err != nil {
 					return tui.NewErrorMsg(err, "creating targeted run")
 				}
-				return tui.NewNavigationMsg(tui.RunKind, tui.WithParent(run.Resource))
+				return tui.NewNavigationMsg(tui.RunKind, tui.WithParent(run))
 			}
 		}
 	case initState:
 		m.state = (*state.State)(msg)
 		m.table.SetItems(m.state.Resources)
 	case resource.Event[*state.State]:
-		if msg.Payload.WorkspaceID != m.workspace.ID {
+		if msg.Payload.WorkspaceID != m.workspace.GetID() {
 			return m, nil
 		}
 		switch msg.Type {
@@ -204,7 +204,7 @@ func (m resources) createStateCommand(name string, fn stateFunc, addrs ...state.
 	return func() tea.Msg {
 		msg := tuitask.CreatedTasksMsg{Command: name, Issuer: m.workspace}
 		for _, addr := range addrs {
-			task, err := fn(m.workspace.ID, addr)
+			task, err := fn(m.workspace.GetID(), addr)
 			if err != nil {
 				msg.CreateErrs = append(msg.CreateErrs, err)
 			}

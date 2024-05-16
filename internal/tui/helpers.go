@@ -31,29 +31,17 @@ type Helpers struct {
 }
 
 func (h *Helpers) ModulePath(res resource.Resource) string {
-	modResource := res.Module()
-	if modResource == nil {
-		return ""
+	if mod := res.Module(); mod != nil {
+		return mod.String()
 	}
-	mod, err := h.ModuleService.Get(modResource.ID)
-	if err != nil {
-		h.Logger.Error("rendering module path", "error", err)
-		return ""
-	}
-	return mod.Path
+	return ""
 }
 
 func (h *Helpers) WorkspaceName(res resource.Resource) string {
-	wsResource := res.Workspace()
-	if wsResource == nil {
-		return ""
+	if ws := res.Workspace(); ws != nil {
+		return ws.String()
 	}
-	ws, err := h.WorkspaceService.Get(wsResource.ID)
-	if err != nil {
-		h.Logger.Error("rendering workspace name", "error", err)
-		return ""
-	}
-	return ws.Name
+	return ""
 }
 
 func (h *Helpers) CurrentWorkspaceName(workspaceID *resource.ID) string {
@@ -199,37 +187,21 @@ func (h *Helpers) RunReport(report run.Report) string {
 	return fmt.Sprintf("%s%s%s", additions, changes, destructions)
 }
 
-func (h *Helpers) Breadcrumbs(title string, parent resource.Resource) string {
-	// format: title[workspace name](module path)
-	var crumbs []string
-	switch parent.Kind {
+func (h *Helpers) Breadcrumbs(title string, res resource.Resource, crumbs ...string) string {
+	// format: title{task command}[workspace name](module path)
+	switch res.GetKind() {
+	case resource.Task:
+		cmd := Regular.Copy().Foreground(Green).Render(res.String())
+		crumb := fmt.Sprintf("{%s}", cmd)
+		return h.Breadcrumbs(title, res.GetParent(), crumb)
 	case resource.Run:
-		// get parent workspace
-		parent = *parent.Parent
-		fallthrough
+		return h.Breadcrumbs(title, res.GetParent())
 	case resource.Workspace:
-		ws, err := h.WorkspaceService.Get(parent.ID)
-		if err != nil {
-			h.Logger.Error("rendering workspace name", "error", err)
-			break
-		}
-		name := Regular.Copy().Foreground(Red).Render(ws.Name)
-		crumbs = append(crumbs, fmt.Sprintf("[%s]", name))
-		// now get parent of workspace which is module
-		parent = *parent.Parent
-		fallthrough
+		crumb := fmt.Sprintf("[%s]", Regular.Copy().Foreground(Red).Render(res.String()))
+		return h.Breadcrumbs(title, res.GetParent(), crumb)
 	case resource.Module:
-		mod, err := h.ModuleService.Get(parent.ID)
-		if err != nil {
-			h.Logger.Error("rendering module path", "error", err)
-			break
-		}
-		path := Regular.Copy().Foreground(modulePathColor).Render(mod.Path)
+		path := Regular.Copy().Foreground(modulePathColor).Render(res.String())
 		crumbs = append(crumbs, fmt.Sprintf("(%s)", path))
-	case resource.Global:
-		// if parented by global, then state it is global
-		global := Regular.Copy().Foreground(globalColor).Render("all")
-		crumbs = append(crumbs, fmt.Sprintf("(%s)", global))
 	}
 	return fmt.Sprintf("%s%s", TitleStyle.Render(title), strings.Join(crumbs, ""))
 }

@@ -34,7 +34,7 @@ const (
 )
 
 type Run struct {
-	resource.Resource
+	resource.Common
 
 	Created time.Time
 	Updated time.Time
@@ -73,7 +73,7 @@ type CreateOptions struct {
 
 func newRun(mod *module.Module, ws *workspace.Workspace, opts CreateOptions) (*Run, error) {
 	run := &Run{
-		Resource:    resource.New(resource.Run, ws.Resource),
+		Common:      resource.New(resource.Run, ws),
 		Status:      Pending,
 		AutoApply:   ws.AutoApply,
 		TargetAddrs: opts.TargetAddrs,
@@ -101,7 +101,15 @@ func newRun(mod *module.Module, ws *workspace.Workspace, opts CreateOptions) (*R
 }
 
 func (r *Run) WorkspaceID() resource.ID {
-	return r.Parent.ID
+	return r.Parent.GetID()
+}
+
+func (r *Run) WorkspaceName() string {
+	return r.Parent.String()
+}
+
+func (r *Run) ModulePath() string {
+	return r.Parent.GetParent().String()
 }
 
 // PlanPath is the path to the run's plan file, relative to the module's

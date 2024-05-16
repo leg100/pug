@@ -1,62 +1,33 @@
 package resource
 
-var GlobalResource = Resource{}
+// GlobalResource is an abstract top-level pug resource from which all other pug
+// resources are ultimately spawned.
+var GlobalResource Resource = Common{}
 
-type Resource struct {
-	ID
-	Parent *Resource
-}
-
-func New(kind Kind, parent Resource) Resource {
-	return Resource{
-		ID:     NewID(kind),
-		Parent: &parent,
-	}
-}
-
-func (r Resource) HasAncestor(id ID) bool {
-	// Every entity is considered an ancestor of the nil ID (equivalent to the
-	// ID of the "global" entity).
-	if id == GlobalID {
-		return true
-	}
-	if r.Parent == nil {
-		// Parent has no parents, so go no further
-		return false
-	}
-	if r.Parent.ID == id {
-		return true
-	}
-	// Check parents of parent
-	return r.Parent.HasAncestor(id)
-}
-
-// Ancestors provides a list of successive parents, starting with the direct parents.
-func (r Resource) Ancestors() (ancestors []Resource) {
-	if r.Parent == nil {
-		return
-	}
-	ancestors = append(ancestors, *r.Parent)
-	return append(ancestors, r.Parent.Ancestors()...)
-}
-
-func (r Resource) getAncestorKind(k Kind) *Resource {
-	for _, par := range r.Ancestors() {
-		if par.Kind == k {
-			return &par
-		}
-	}
-	return nil
-}
-
-func (r Resource) Module() *Resource {
-	return r.getAncestorKind(Module)
-}
-
-func (r Resource) Workspace() *Resource {
-	return r.getAncestorKind(Workspace)
-}
-
-func (r Resource) Run() *Resource {
-	return r.getAncestorKind(Run)
+// Resource is a unique pug entity spawned from another entity.
+type Resource interface {
+	// GetID retrieves the unique identifier for the resource.
+	GetID() ID
+	// GetKind retrieves the kind of resource.
+	GetKind() Kind
+	// GetParent retrieves the resource's parent, the resource from which the
+	// resource was spawned.
+	GetParent() Resource
+	// HasAncestor determines whether the resource has an ancestor with the
+	// given ID.
+	HasAncestor(ID) bool
+	// Ancestors retrieves a list of the resource's ancestors, nearest first.
+	Ancestors() []Resource
+	// String is a human-readable identifier for the resource. Not necessarily
+	// unique across pug.
+	String() string
+	// Module retrieves the resource's module. Returns nil if the resource does
+	// not have a module ancestor.
+	Module() Resource
+	// Workspace retrieves the resource's workspcae. Returns nil if the resource does
+	// not have a workspace ancestor.
+	Workspace() Resource
+	// Run retrieves the resource's run. Returns nil if the resource does
+	// not have a run ancestor.
+	Run() Resource
 }

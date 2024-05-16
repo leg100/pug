@@ -288,8 +288,9 @@ func (s *Service) delete(id resource.ID) error {
 	return nil
 }
 
+// TODO: move this logic into task.Create
 func (s *Service) createTask(run *Run, opts task.CreateOptions) (*task.Task, error) {
-	opts.Parent = run.Resource
+	opts.Parent = run
 
 	ws, err := s.workspaces.Get(run.WorkspaceID())
 	if err != nil {

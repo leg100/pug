@@ -23,7 +23,7 @@ type Maker struct {
 }
 
 func (mm *Maker) Make(rr resource.Resource, width, height int) (tea.Model, error) {
-	run, err := mm.RunService.Get(rr.ID)
+	run, err := mm.RunService.Get(rr.GetID())
 	if err != nil {
 		return model{}, err
 	}
@@ -45,12 +45,12 @@ func (mm *Maker) Make(rr resource.Resource, width, height int) (tea.Model, error
 
 	// Add tabs for existing tasks
 	tasks := mm.TaskService.List(task.ListOptions{
-		Ancestor: rr.ID,
+		Ancestor: rr.GetID(),
 		// Ensures the plan tab is rendered first
 		Oldest: true,
 	})
 	for _, t := range tasks {
-		_, err := m.tabs.AddTab(taskMaker, t.Resource, t.CommandString())
+		_, err := m.tabs.AddTab(taskMaker, t, t.CommandString())
 		if err != nil {
 			return nil, err
 		}
@@ -85,11 +85,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.run.Status != run.Planned {
 				return m, nil
 			}
-			return m, ApplyCommand(m.svc, m.run.Resource, m.run.ID)
+			return m, ApplyCommand(m.svc, m.run, m.run.ID)
 		case key.Matches(msg, keys.Common.Module):
-			return m, tui.NavigateTo(tui.ModuleKind, tui.WithParent(*m.run.Module()))
+			return m, tui.NavigateTo(tui.ModuleKind, tui.WithParent(m.run.Module()))
 		case key.Matches(msg, keys.Common.Workspace):
-			return m, tui.NavigateTo(tui.WorkspaceKind, tui.WithParent(*m.run.Workspace()))
+			return m, tui.NavigateTo(tui.WorkspaceKind, tui.WithParent(m.run.Workspace()))
 		}
 	case resource.Event[*run.Run]:
 		if msg.Payload.ID == m.run.ID {
@@ -119,7 +119,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m model) Title() string {
-	return m.helpers.Breadcrumbs("Run", *m.run.Parent)
+	return m.helpers.Breadcrumbs("Run", m.run)
 }
 
 func (m model) Status() string {
@@ -132,7 +132,7 @@ func (m model) ID() string {
 
 func (m *model) addTab(t *task.Task) (tea.Cmd, error) {
 	title := t.CommandString()
-	cmd, err := m.tabs.AddTab(m.taskMaker, t.Resource, title)
+	cmd, err := m.tabs.AddTab(m.taskMaker, t, title)
 	if err != nil {
 		// Silently ignore attempts to add duplicate tabs: this can happen when
 		// a task is received in both a created event as well as in the initial

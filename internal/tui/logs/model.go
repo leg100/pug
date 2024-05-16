@@ -35,7 +35,7 @@ type Maker struct {
 }
 
 func (mm *Maker) Make(r resource.Resource, width, height int) (tea.Model, error) {
-	msg, err := mm.Logger.Get(r.ID)
+	msg, err := mm.Logger.Get(r.GetID())
 	if err != nil {
 		return model{}, err
 	}

@@ -33,7 +33,7 @@ type ListMaker struct {
 func (m *ListMaker) Make(parent resource.Resource, width, height int) (tea.Model, error) {
 	var columns []table.Column
 	// Add further columns depending upon the kind of parent
-	switch parent.Kind {
+	switch parent.GetKind() {
 	case resource.Global:
 		// Show module and workspace columns in global runs table
 		columns = append(columns, table.ModuleColumn)
@@ -51,8 +51,8 @@ func (m *ListMaker) Make(parent resource.Resource, width, height int) (tea.Model
 
 	renderer := func(r *run.Run) table.RenderedRow {
 		return table.RenderedRow{
-			table.ModuleColumn.Key:     m.Helpers.ModulePath(r.Resource),
-			table.WorkspaceColumn.Key:  m.Helpers.WorkspaceName(r.Resource),
+			table.ModuleColumn.Key:     r.ModulePath(),
+			table.WorkspaceColumn.Key:  r.WorkspaceName(),
 			table.RunStatusColumn.Key:  m.Helpers.RunStatus(r),
 			table.RunChangesColumn.Key: m.Helpers.LatestRunReport(r),
 			ageColumn.Key:              tui.Ago(time.Now(), r.Updated),
@@ -86,7 +86,7 @@ type list struct {
 func (m list) Init() tea.Cmd {
 	return func() tea.Msg {
 		runs := m.svc.List(run.ListOptions{
-			AncestorID: m.parent.ID,
+			AncestorID: m.parent.GetID(),
 		})
 		return table.BulkInsertMsg[*run.Run](runs)
 	}
@@ -103,7 +103,7 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch {
 		case key.Matches(msg, keys.Global.Enter):
 			if row, highlighted := m.table.Highlighted(); highlighted {
-				return m, tui.NavigateTo(tui.RunKind, tui.WithParent(row.Value.Resource))
+				return m, tui.NavigateTo(tui.RunKind, tui.WithParent(row.Value))
 			}
 		case key.Matches(msg, keys.Common.Apply):
 			runIDs, err := m.table.Prune(func(row *run.Run) (resource.ID, error) {
@@ -165,6 +165,6 @@ func (m list) navigateLatestTask(runID resource.ID) tea.Cmd {
 		if latest == nil {
 			return tui.NewErrorMsg(errors.New("no plan or apply task found for run"), "")
 		}
-		return tui.NewNavigationMsg(tui.TaskKind, tui.WithParent(latest.Resource))
+		return tui.NewNavigationMsg(tui.TaskKind, tui.WithParent(latest))
 	}
 }

@@ -32,7 +32,12 @@ func (id ID) String() string {
 	return fmt.Sprintf("%s-%s", id.Kind.String(), base58.Encode(id.id[:]))
 }
 
-// RowKey implements tui/table.ResourceValue
-func (id ID) RowKey() ID {
+// GetID allows ID to be accessed via an interface value.
+func (id ID) GetID() ID {
 	return id
+}
+
+// GetKind allows Kind to be accessed via an interface value.
+func (id ID) GetKind() Kind {
+	return id.Kind
 }
