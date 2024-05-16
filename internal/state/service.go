@@ -232,12 +232,7 @@ func (s *Service) createTask(workspaceID resource.ID, opts task.CreateOptions) (
 	}
 	opts.Parent = ws
 	opts.Env = []string{ws.TerraformEnv()}
-
-	mod, err := s.modules.Get(ws.ModuleID())
-	if err != nil {
-		return nil, err
-	}
-	opts.Path = mod.Path
+	opts.Path = ws.ModulePath()
 
 	return s.tasks.Create(opts)
 }
