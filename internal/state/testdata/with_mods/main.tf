@@ -11,6 +11,8 @@ resource "random_integer" "suffix" {
 }
 
 resource "random_pet" "pet" {
+  count = 10
+
   keepers = {
     now = timestamp()
   }
@@ -25,7 +27,7 @@ module "child2" {
 }
 
 output "pet1" {
-  value = random_pet.pet.id
+  value = random_pet.pet[1].id
 }
 
 output "child_pet1" {

@@ -236,6 +236,7 @@ func TestWorkspace_Resources_Reload(t *testing.T) {
 
 	// Expect reduced number of resources
 	waitFor(t, tm, func(s string) bool {
+		t.Log(s)
 		return strings.Contains(s, "resources (8)")
 	})
 }

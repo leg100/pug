@@ -1,8 +1,6 @@
 package state
 
 import (
-	"encoding/json"
-	"errors"
 	"slices"
 
 	"github.com/leg100/pug/internal/logging"
@@ -57,69 +55,35 @@ func NewService(opts ServiceOptions) *Service {
 
 // Get retrieves the state for a workspace.
 func (s *Service) Get(workspaceID resource.ID) (*State, error) {
-	state, err := s.cache.Get(workspaceID)
-	if errors.Is(err, resource.ErrNotFound) {
-		return EmptyState(workspaceID), nil
-	}
-	return state, err
+	return s.cache.Get(workspaceID)
 }
 
 // Reload creates a task to repopulate the local cache of the state of the given
 // workspace.
 func (s *Service) Reload(workspaceID resource.ID) (*task.Task, error) {
-	err := s.updateStateStatus(workspaceID, func(existing *State) error {
-		return existing.startReload()
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	revertIdle := func() {
-		s.updateStateStatus(workspaceID, func(existing *State) error {
-			existing.State = IdleState
-			return nil
-		})
-	}
-
 	ws, err := s.workspaces.Get(workspaceID)
 	if err != nil {
 		return nil, err
 	}
 
 	task, err := s.createTask(workspaceID, task.CreateOptions{
-		Command: []string{"show"},
-		Args:    []string{"-json"},
+		Command: []string{"state", "pull"},
 		JSON:    true,
 		AfterError: func(t *task.Task) {
-			revertIdle()
 			s.logger.Error("reloading state", "error", t.Err, "workspace", ws)
 		},
-		AfterCanceled: func(t *task.Task) {
-			revertIdle()
-		},
 		AfterExited: func(t *task.Task) {
-			var file StateFile
-			if err := json.NewDecoder(t.NewReader()).Decode(&file); err != nil {
+			state, err := newState(ws, t.NewReader())
+			if err != nil {
 				s.logger.Error("reloading state", "error", err, "workspace", ws)
 				return
 			}
-			current := newState(workspaceID, file)
-			// For each current resource, check if it previously existed in the
-			// cache, and if so, copy across its status.
-			if previous, err := s.cache.Get(workspaceID); err == nil {
-				for currentAddress := range current.Resources {
-					if previousResource, ok := previous.Resources[currentAddress]; ok {
-						current.Resources[currentAddress].Status = previousResource.Status
-					}
-				}
-			}
 			// Add/replace state in cache.
-			s.cache.Add(workspaceID, current)
-			s.logger.Info("reloaded state", "workspace", ws, "resources", len(current.Resources))
+			s.cache.Add(workspaceID, state)
+			s.logger.Info("reloaded state", "workspace", ws, "resources", len(state.Resources))
 		},
 	})
 	if err != nil {
-		revertIdle()
 		return nil, err
 	}
 	return task, nil
@@ -199,6 +163,10 @@ func (s *Service) Untaint(workspaceID resource.ID, addr ResourceAddress) (*task.
 }
 
 func (s *Service) Move(workspaceID resource.ID, src, dest ResourceAddress) (*task.Task, error) {
+	ws, err := s.workspaces.Get(workspaceID)
+	if err != nil {
+		return nil, err
+	}
 	return s.createTask(workspaceID, task.CreateOptions{
 		Blocking: true,
 		Command:  []string{"state", "mv"},
@@ -217,7 +185,7 @@ func (s *Service) Move(workspaceID resource.ID, src, dest ResourceAddress) (*tas
 			// Upon success, move the resource in the cache itself.
 			s.cache.Update(workspaceID, func(state *State) error {
 				delete(state.Resources, src)
-				state.Resources[dest] = &Resource{Address: dest}
+				state.Resources[dest] = newResource(ws, dest)
 				return nil
 			})
 		},
@@ -235,17 +203,6 @@ func (s *Service) createTask(workspaceID resource.ID, opts task.CreateOptions) (
 	opts.Path = ws.ModulePath()
 
 	return s.tasks.Create(opts)
-}
-
-func (s *Service) updateStateStatus(workspaceID resource.ID, fn func(*State) error) error {
-	var err error
-	s.cache.Update(workspaceID, func(existing *State) error {
-		if updateErr := fn(existing); updateErr != nil {
-			err = updateErr
-		}
-		return nil
-	})
-	return err
 }
 
 func (s *Service) updateResourceStatus(workspaceID resource.ID, state ResourceStatus, addrs ...ResourceAddress) {
