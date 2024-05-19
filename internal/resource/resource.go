@@ -1,5 +1,7 @@
 package resource
 
+import "time"
+
 // GlobalResource is an abstract top-level pug resource from which all other pug
 // resources are ultimately spawned.
 var GlobalResource Resource = Common{}
@@ -30,4 +32,6 @@ type Resource interface {
 	// Run retrieves the resource's run. Returns nil if the resource does
 	// not have a run ancestor.
 	Run() Resource
+	// CreatedAt returns the time at which the resource was created.
+	CreatedAt() time.Time
 }

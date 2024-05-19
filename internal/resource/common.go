@@ -1,16 +1,25 @@
 package resource
 
+import "time"
+
 // Common provides functionality common to all resources.
 type Common struct {
 	ID
 	Parent Resource
+
+	createdAt time.Time
 }
 
 func New(kind Kind, parent Resource) Common {
 	return Common{
-		ID:     NewID(kind),
-		Parent: parent,
+		ID:        NewID(kind),
+		Parent:    parent,
+		createdAt: time.Now(),
 	}
+}
+
+func (r Common) CreatedAt() time.Time {
+	return r.createdAt
 }
 
 func (r Common) GetParent() Resource {
