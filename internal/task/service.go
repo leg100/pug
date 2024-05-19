@@ -68,7 +68,7 @@ func (s *Service) Create(opts CreateOptions) (*Task, error) {
 
 	go func() {
 		if err := task.Wait(); err != nil {
-			s.logger.Debug("failed task", "error", err, "task", task)
+			s.logger.Error("task failed", "error", err, "task", task)
 			return
 		}
 		s.logger.Debug("completed task", "task", task)

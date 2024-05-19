@@ -210,7 +210,7 @@ func (t *Task) Wait() error {
 
 func (t *Task) LogValue() slog.Value {
 	return slog.GroupValue(
-		slog.String("id", t.String()),
+		slog.String("id", t.ID.String()),
 		slog.Any("command", t.Command),
 		slog.Any("args", t.Args),
 	)

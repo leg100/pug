@@ -11,7 +11,7 @@ type logEnricher struct {
 
 // moduleResource is a resource that belongs to a module
 type moduleResource interface {
-	Module() *resource.Common
+	Module() resource.Resource
 }
 
 func (e *logEnricher) EnrichLogRecord(args ...any) []any {
@@ -34,7 +34,7 @@ func (e *logEnricher) addModulePath(args ...any) []any {
 			// can belong to a module but not in this instance
 			continue
 		}
-		mod, err := e.table.Get(modResource.ID)
+		mod, err := e.table.Get(modResource.GetID())
 		if err != nil {
 			// module with id does not exist
 			continue

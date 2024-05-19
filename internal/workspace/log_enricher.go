@@ -11,7 +11,7 @@ type logEnricher struct {
 
 // workspaceResource is a resource that belongs to a workspace
 type workspaceResource interface {
-	Workspace() *resource.Common
+	Workspace() resource.Resource
 }
 
 func (e *logEnricher) EnrichLogRecord(args ...any) []any {
@@ -32,7 +32,7 @@ func (e *logEnricher) addWorkspaceName(args ...any) []any {
 		if wsResource == nil {
 			continue
 		}
-		ws, err := e.table.Get(wsResource.ID)
+		ws, err := e.table.Get(wsResource.GetID())
 		if err != nil {
 			continue
 		}
