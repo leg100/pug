@@ -40,14 +40,9 @@ func (m *resourceListMaker) Make(ws resource.Resource, width, height int) (tea.M
 		}
 		return table.RenderedRow{resourceColumn.Key: addr}
 	}
-	table := table.NewResource(table.ResourceOptions[*state.Resource]{
-		Columns:  columns,
-		Renderer: renderer,
-		Height:   height - metadataHeight,
-		Width:    width,
-		Parent:   ws,
-		SortFunc: state.Sort,
-	})
+	table := table.New(columns, renderer, width, height-metadataHeight).
+		WithSortFunc(state.Sort).
+		WithParent(ws)
 	return resources{
 		table:     table,
 		states:    m.StateService,
@@ -59,7 +54,7 @@ func (m *resourceListMaker) Make(ws resource.Resource, width, height int) (tea.M
 }
 
 type resources struct {
-	table     table.Resource[resource.ID, *state.Resource]
+	table     table.Model[resource.ID, *state.Resource]
 	states    tui.StateService
 	runs      tui.RunService
 	workspace resource.Resource

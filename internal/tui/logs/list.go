@@ -60,7 +60,7 @@ func (m *ListMaker) Make(_ resource.Resource, width, height int) (tea.Model, err
 			msgColumn.Key:   tui.Regular.Copy().Render(b.String()),
 		}
 	}
-	table := table.New[uint](columns, renderer, width, height).
+	table := table.New(columns, renderer, width, height).
 		WithSortFunc(logging.BySerialDesc).
 		WithSelectable(false)
 
@@ -69,7 +69,7 @@ func (m *ListMaker) Make(_ resource.Resource, width, height int) (tea.Model, err
 
 type list struct {
 	logger *logging.Logger
-	table  table.Model[uint, logging.Message]
+	table  table.Model[resource.ID, logging.Message]
 }
 
 func (m list) Init() tea.Cmd {
@@ -85,19 +85,6 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	)
 
 	switch msg := msg.(type) {
-	case table.BulkInsertMsg[logging.Message]:
-		existing := m.table.Items()
-		for _, m := range msg {
-			existing[m.Serial] = m
-		}
-		m.table.SetItems(existing)
-	case resource.Event[logging.Message]:
-		switch msg.Type {
-		case resource.CreatedEvent:
-			existing := m.table.Items()
-			existing[msg.Payload.Serial] = msg.Payload
-			m.table.SetItems(existing)
-		}
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, keys.Global.Enter):

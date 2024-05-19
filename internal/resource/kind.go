@@ -9,6 +9,7 @@ const (
 	Run
 	Task
 	Log
+	LogAttr
 	StateResource
 )
 
@@ -20,6 +21,7 @@ func (k Kind) String() string {
 		"run",
 		"task",
 		"log",
+		"attr",
 		"res",
 	}[k]
 }

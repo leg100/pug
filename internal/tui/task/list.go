@@ -80,14 +80,9 @@ func (m *ListMaker) Make(parent resource.Resource, width, height int) (tea.Model
 		}
 	}
 
-	table := table.NewResource(table.ResourceOptions[*task.Task]{
-		Columns:  columns,
-		Renderer: renderer,
-		Width:    width,
-		Height:   height,
-		Parent:   parent,
-		SortFunc: task.ByState,
-	})
+	table := table.New(columns, renderer, width, height).
+		WithSortFunc(task.ByState).
+		WithParent(parent)
 
 	return list{
 		table:  table,
@@ -98,7 +93,7 @@ func (m *ListMaker) Make(parent resource.Resource, width, height int) (tea.Model
 }
 
 type list struct {
-	table  table.Resource[resource.ID, *task.Task]
+	table  table.Model[resource.ID, *task.Task]
 	svc    tui.TaskService
 	parent resource.Resource
 	max    int

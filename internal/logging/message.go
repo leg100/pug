@@ -20,13 +20,15 @@ type Message struct {
 	// A message is a pug resource, but only insofar as it makes it easier to
 	// handle consistently alongside all other resources (modules, workspaces,
 	// etc) in the TUI.
-	//
-	// TODO: consider making resource an interface rather than a struct. A log
-	// message doesn't need a UUID, and the serial above is sufficient.
 	resource.Common
 }
 
 type Attr struct {
 	Key   string
 	Value string
+
+	// An attribute is a pug resource, but only insofar as it makes it easier to
+	// handle consistently alongside all other resources (modules, workspaces,
+	// etc) in the TUI.
+	resource.Common
 }
