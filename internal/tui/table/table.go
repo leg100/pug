@@ -222,21 +222,18 @@ func (m Model[K, V]) Update(msg tea.Msg) (Model[K, V], tea.Cmd) {
 			m.SelectRange()
 		}
 	case BulkInsertMsg[V]:
-		existing := m.Items()
 		for _, ws := range msg {
-			existing[K(ws.GetID())] = ws
+			m.items[K(ws.GetID())] = ws
 		}
-		m.SetItems(existing)
+		m.SetItems(m.items)
 	case resource.Event[V]:
 		switch msg.Type {
 		case resource.CreatedEvent, resource.UpdatedEvent:
-			existing := m.Items()
-			existing[K(msg.Payload.GetID())] = msg.Payload
-			m.SetItems(existing)
+			m.items[K(msg.Payload.GetID())] = msg.Payload
+			m.SetItems(m.items)
 		case resource.DeletedEvent:
-			existing := m.Items()
-			delete(existing, K(msg.Payload.GetID()))
-			m.SetItems(existing)
+			delete(m.items, K(msg.Payload.GetID()))
+			m.SetItems(m.items)
 		}
 	case tea.WindowSizeMsg:
 		m.setDimensions(msg.Width, msg.Height)
@@ -500,12 +497,6 @@ func (m *Model[K, V]) SelectRange() {
 		m.Selected[row.Key] = row.Value
 	}
 	m.UpdateViewport()
-}
-
-// Items returns the current items. Note this is the number of items prior to
-// any filtering.
-func (m Model[K, V]) Items() map[K]V {
-	return m.items
 }
 
 // TotalString returns a stringified representation of the total number of items
