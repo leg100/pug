@@ -1,7 +1,9 @@
 package app
 
 import (
+	"fmt"
 	"io"
+	"os"
 
 	cp "github.com/otiai10/copy"
 
@@ -15,23 +17,29 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+const mirrorConfigPath = "../../mirror/mirror.tfrc"
+
 func setup(t *testing.T, workdir string) *testModel {
 	t.Helper()
+
+	if _, err := os.Stat(mirrorConfigPath); err != nil {
+		t.Skip("integration tests require mirror to be setup with ./hacks/setup_mirror.sh")
+	}
+
+	// Get absolute path to terraform cli config. The config sets up terraform
+	// to use a provider filesystem mirror, which ensures tests avoid any
+	// network roundtrips to retrieve or query providers.
+	mirrorConfigPath, err := filepath.Abs(mirrorConfigPath)
+	require.NoError(t, err)
 
 	// Copy workdir to a dedicated directory for this test, to ensure any
 	// artefacts created in workdir are done so in isolation from other
 	// tests that are run in parallel, and to ensure artefacts don't persist to
 	// future invocations of this test.
 	target := t.TempDir()
-	err := cp.Copy(workdir, target)
+	err = cp.Copy(workdir, target)
 	require.NoError(t, err)
 	workdir = target
-
-	// Get absolute path to terraform cli config. The config sets up terraform
-	// to use a provider filesystem mirror, which ensures tests avoid any
-	// network roundtrips to retrieve or query providers.
-	mirrorConfigPath, err := filepath.Abs("../../mirror/mirror.tfrc")
-	require.NoError(t, err)
 
 	app, err := startApp(
 		config{
@@ -40,7 +48,7 @@ func setup(t *testing.T, workdir string) *testModel {
 			WorkDir:   workdir,
 			MaxTasks:  3,
 			DataDir:   t.TempDir(),
-			Envs:      []string{"TF_CLI_CONFIG_FILE", mirrorConfigPath},
+			Envs:      []string{fmt.Sprintf("TF_CLI_CONFIG_FILE=%s", mirrorConfigPath)},
 			loggingOptions: logging.Options{
 				Level: "debug",
 				AdditionalWriters: []io.Writer{

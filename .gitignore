@@ -1,3 +1,5 @@
+# generated terraform config for int tests
+/mirror/mirror.tfrc
 # ignore vhs animated gifs - they are published to imgur or somewhere
 demos/**/*.gif
 # asdf/mise
