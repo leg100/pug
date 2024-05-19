@@ -46,7 +46,7 @@ func (m *ListMaker) Make(parent resource.Resource, width, height int) (tea.Model
 		table.RunChangesColumn,
 	)
 
-	rowRenderer := func(ws *workspace.Workspace) table.RenderedRow {
+	renderer := func(ws *workspace.Workspace) table.RenderedRow {
 		return table.RenderedRow{
 			table.ModuleColumn.Key:        ws.ModulePath(),
 			table.WorkspaceColumn.Key:     ws.Name,
@@ -57,14 +57,9 @@ func (m *ListMaker) Make(parent resource.Resource, width, height int) (tea.Model
 		}
 	}
 
-	table := table.NewResource(table.ResourceOptions[*workspace.Workspace]{
-		Columns:  columns,
-		Renderer: rowRenderer,
-		Width:    width,
-		Height:   height,
-		Parent:   parent,
-		SortFunc: workspace.Sort(m.ModuleService),
-	})
+	table := table.New(columns, renderer, width, height).
+		WithSortFunc(workspace.Sort(m.ModuleService)).
+		WithParent(parent)
 
 	return list{
 		table:   table,
@@ -76,7 +71,7 @@ func (m *ListMaker) Make(parent resource.Resource, width, height int) (tea.Model
 }
 
 type list struct {
-	table   table.Resource[resource.ID, *workspace.Workspace]
+	table   table.Model[resource.ID, *workspace.Workspace]
 	svc     tui.WorkspaceService
 	modules tui.ModuleService
 	runs    tui.RunService

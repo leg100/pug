@@ -88,13 +88,7 @@ func (m *ListMaker) Make(_ resource.Resource, width, height int) (tea.Model, err
 			table.ResourceCountColumn.Key: m.Helpers.ModuleCurrentResourceCount(mod),
 		}
 	}
-	table := table.NewResource(table.ResourceOptions[*module.Module]{
-		Columns:  columns,
-		Renderer: renderer,
-		Height:   height,
-		Width:    width,
-		SortFunc: module.ByPath,
-	})
+	table := table.New(columns, renderer, width, height).WithSortFunc(module.ByPath)
 
 	return list{
 		table:            table,
@@ -111,7 +105,7 @@ type list struct {
 	WorkspaceService tui.WorkspaceService
 	RunService       tui.RunService
 
-	table   table.Resource[resource.ID, *module.Module]
+	table   table.Model[resource.ID, *module.Module]
 	spinner *spinner.Model
 	workdir string
 }

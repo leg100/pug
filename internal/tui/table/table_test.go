@@ -4,31 +4,49 @@ import (
 	"slices"
 	"testing"
 
+	"github.com/leg100/pug/internal/resource"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/exp/maps"
 )
 
+var (
+	resource0 = testResource{n: 0, Common: resource.New(resource.Workspace, resource.GlobalResource)}
+	resource1 = testResource{n: 1, Common: resource.New(resource.Workspace, resource.GlobalResource)}
+	resource2 = testResource{n: 2, Common: resource.New(resource.Workspace, resource.GlobalResource)}
+	resource3 = testResource{n: 3, Common: resource.New(resource.Workspace, resource.GlobalResource)}
+	resource4 = testResource{n: 4, Common: resource.New(resource.Workspace, resource.GlobalResource)}
+	resource5 = testResource{n: 5, Common: resource.New(resource.Workspace, resource.GlobalResource)}
+
+	testItems = map[resource.ID]testResource{
+		resource0.ID: resource0,
+		resource1.ID: resource1,
+		resource2.ID: resource2,
+		resource3.ID: resource3,
+		resource4.ID: resource4,
+		resource5.ID: resource5,
+	}
+)
+
+type testResource struct {
+	resource.Common
+
+	n int
+}
+
 // setupTest sets up a table test with several rows. Each row is keyed with an
 // int, and the row item is an int corresponding to the key, for ease of
 // testing. The rows are sorted from lowest int to highest int.
-func setupTest() Model[int, int] {
-	renderer := func(v int) RenderedRow { return nil }
-	tbl := New[int, int](nil, renderer, 0, 0).
-		WithSortFunc(func(i, j int) int {
-			if i < j {
+func setupTest() Model[resource.ID, testResource] {
+	renderer := func(v testResource) RenderedRow { return nil }
+	tbl := New[resource.ID, testResource](nil, renderer, 0, 0).
+		WithSortFunc(func(i, j testResource) int {
+			if i.n < j.n {
 				return -1
 			}
 			return 1
 		})
-	tbl.SetItems(map[int]int{
-		0: 0,
-		1: 1,
-		2: 2,
-		3: 3,
-		4: 4,
-		5: 5,
-	})
+	tbl.SetItems(testItems)
 	return tbl
 }
 
@@ -38,7 +56,7 @@ func TestTable_Highlighted(t *testing.T) {
 	got, ok := tbl.Highlighted()
 	require.True(t, ok)
 
-	assert.Equal(t, 0, got.Value)
+	assert.Equal(t, resource0, got.Value)
 }
 
 func TestTable_ToggleSelection(t *testing.T) {
@@ -47,54 +65,54 @@ func TestTable_ToggleSelection(t *testing.T) {
 	tbl.ToggleSelection()
 
 	assert.Len(t, tbl.Selected, 1)
-	assert.Equal(t, 0, tbl.Selected[1])
+	assert.Equal(t, resource0, tbl.Selected[resource0.ID])
 }
 
 func TestTable_SelectRange(t *testing.T) {
 	tests := []struct {
 		name     string
-		selected []int
+		selected []resource.ID
 		cursor   int
-		want     []int
+		want     []resource.ID
 	}{
 		{
 			name:     "select no range when nothing is selected, and cursor is on first row",
-			selected: []int{},
-			want:     []int{},
+			selected: []resource.ID{},
+			want:     []resource.ID{},
 		},
 		{
 			name:     "select no range when nothing is selected, and cursor is on last row",
-			selected: []int{},
-			want:     []int{},
+			selected: []resource.ID{},
+			want:     []resource.ID{},
 		},
 		{
 			name:     "select no range when cursor is on the only selected row",
-			selected: []int{0},
-			want:     []int{0},
+			selected: []resource.ID{resource0.ID},
+			want:     []resource.ID{resource0.ID},
 		},
 		{
 			name:     "select all rows between selected top row and cursor on last row",
-			selected: []int{0}, // first row
-			cursor:   5,        // last row
-			want:     []int{0, 1, 2, 3, 4, 5},
+			selected: []resource.ID{resource0.ID}, // first row
+			cursor:   5,                           // last row
+			want:     []resource.ID{resource0.ID, resource1.ID, resource2.ID, resource3.ID, resource4.ID, resource5.ID},
 		},
 		{
 			name:     "select rows between selected top row and cursor in third row",
-			selected: []int{0}, // first row
-			cursor:   2,        // third row
-			want:     []int{0, 1, 2},
+			selected: []resource.ID{resource0.ID}, // first row
+			cursor:   2,                           // third row
+			want:     []resource.ID{resource0.ID, resource1.ID, resource2.ID},
 		},
 		{
 			name:     "select rows between selected top row and cursor in third row, ignoring selected last row",
-			selected: []int{0, 5}, // first and last row
-			cursor:   2,           // third row
-			want:     []int{0, 1, 2, 5},
+			selected: []resource.ID{resource0.ID, resource5.ID}, // first and last row
+			cursor:   2,                                         // third row
+			want:     []resource.ID{resource0.ID, resource1.ID, resource2.ID, resource5.ID},
 		},
 		{
 			name:     "select rows between cursor in third row and selected last row",
-			selected: []int{5}, // last row
-			cursor:   2,        // third row
-			want:     []int{2, 3, 4, 5},
+			selected: []resource.ID{resource5.ID}, // last row
+			cursor:   2,                           // third row
+			want:     []resource.ID{resource2.ID, resource3.ID, resource4.ID, resource5.ID},
 		},
 	}
 	for _, tt := range tests {
@@ -108,8 +126,16 @@ func TestTable_SelectRange(t *testing.T) {
 			tbl.SelectRange()
 
 			got := maps.Keys(tbl.Selected)
-			slices.Sort(got)
+			slices.SortFunc(got, sortStrings)
+			slices.SortFunc(tt.want, sortStrings)
 			assert.Equal(t, tt.want, got)
 		})
 	}
+}
+
+func sortStrings(i, j resource.ID) int {
+	if i.String() < j.String() {
+		return -1
+	}
+	return 1
 }

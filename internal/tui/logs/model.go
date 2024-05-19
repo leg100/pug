@@ -46,25 +46,26 @@ func (mm *Maker) Make(r resource.Resource, width, height int) (tea.Model, error)
 			valueColumn.Key: attr.Value,
 		}
 	}
-	items := map[string]logging.Attr{
-		timeAttrKey: {
+	items := map[resource.ID]logging.Attr{
+		resource.NewID(resource.LogAttr): {
 			Key:   timeAttrKey,
 			Value: msg.Time.Format(timeFormat),
 		},
-		messageAttrKey: {
+		resource.NewID(resource.LogAttr): {
 			Key:   messageAttrKey,
 			Value: msg.Message,
 		},
-		levelAttrKey: {
+		resource.NewID(resource.LogAttr): {
 			Key:   levelAttrKey,
 			Value: coloredLogLevel(msg.Level),
 		},
 	}
 	for _, attr := range msg.Attributes {
-		items[attr.Key] = attr
+		items[resource.NewID(resource.LogAttr)] = attr
 	}
-	table := table.New[string](columns, renderer, width, height).
-		WithSortFunc(byAttribute)
+	table := table.New(columns, renderer, width, height).
+		WithSortFunc(byAttribute).
+		WithSelectable(false)
 	table.SetItems(items)
 
 	return model{
@@ -77,7 +78,7 @@ func (mm *Maker) Make(r resource.Resource, width, height int) (tea.Model, error)
 
 type model struct {
 	msg    logging.Message
-	table  table.Model[string, logging.Attr]
+	table  table.Model[resource.ID, logging.Attr]
 	width  int
 	height int
 }

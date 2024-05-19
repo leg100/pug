@@ -1,6 +1,7 @@
 package table
 
 import (
+	"errors"
 	"fmt"
 	"slices"
 	"strings"
@@ -13,6 +14,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/leg100/go-runewidth"
 	"github.com/leg100/pug/internal"
+	"github.com/leg100/pug/internal/resource"
 	"github.com/leg100/pug/internal/tui"
 	"github.com/leg100/pug/internal/tui/keys"
 	"golang.org/x/exp/maps"
@@ -26,7 +28,7 @@ const (
 )
 
 // Model defines a state for the table widget.
-type Model[K comparable, V any] struct {
+type Model[K resource.ID, V resource.Resource] struct {
 	cols        []Column
 	rows        []Row[K, V]
 	rowRenderer RowRenderer[V]
@@ -50,6 +52,8 @@ type Model[K comparable, V any] struct {
 	// dimensions calcs
 	width  int
 	height int
+
+	parent resource.Resource
 }
 
 // Column defines the table structure.
@@ -64,7 +68,7 @@ type Column struct {
 
 type ColumnKey string
 
-type Row[K comparable, V any] struct {
+type Row[K resource.ID, V any] struct {
 	Key   K
 	Value V
 }
@@ -104,7 +108,7 @@ func (m *Model[K, V]) SetStyles(s Styles) {
 }
 
 // New creates a new model for the table widget.
-func New[K comparable, V any](columns []Column, fn RowRenderer[V], width, height int) Model[K, V] {
+func New[K resource.ID, V resource.Resource](columns []Column, fn RowRenderer[V], width, height int) Model[K, V] {
 	filter := textinput.New()
 	filter.Prompt = "Filter: "
 
@@ -176,6 +180,13 @@ func (m Model[K, V]) WithSelectable(s bool) Model[K, V] {
 	return m
 }
 
+// WithParent sets a parent resource on the table, which precludes items from
+// being set on table that are not a descendent of the parent.
+func (m Model[K, V]) WithParent(parent resource.Resource) Model[K, V] {
+	m.parent = parent
+	return m
+}
+
 // Update is the Bubble Tea update loop.
 func (m Model[K, V]) Update(msg tea.Msg) (Model[K, V], tea.Cmd) {
 	if !m.focus {
@@ -209,6 +220,23 @@ func (m Model[K, V]) Update(msg tea.Msg) (Model[K, V], tea.Cmd) {
 			m.DeselectAll()
 		case key.Matches(msg, keys.Global.SelectRange):
 			m.SelectRange()
+		}
+	case BulkInsertMsg[V]:
+		existing := m.Items()
+		for _, ws := range msg {
+			existing[K(ws.GetID())] = ws
+		}
+		m.SetItems(existing)
+	case resource.Event[V]:
+		switch msg.Type {
+		case resource.CreatedEvent, resource.UpdatedEvent:
+			existing := m.Items()
+			existing[K(msg.Payload.GetID())] = msg.Payload
+			m.SetItems(existing)
+		case resource.DeletedEvent:
+			existing := m.Items()
+			delete(existing, K(msg.Payload.GetID()))
+			m.SetItems(existing)
 		}
 	case tea.WindowSizeMsg:
 		m.setDimensions(msg.Width, msg.Height)
@@ -491,8 +519,19 @@ func (m Model[K, V]) TotalString() string {
 	return fmt.Sprintf("%d", len(m.items))
 }
 
-// SetItems sets new items on the table, overwriting existing items.
+// SetItems sets new items on the table, overwriting existing items. If the
+// table has a parent resource, then items that are not a descendent of that
+// resource are skipped.
 func (m *Model[K, V]) SetItems(items map[K]V) {
+	// Skip non-descendent items
+	if m.parent != nil {
+		for k, v := range items {
+			if !v.HasAncestor(m.parent.GetID()) {
+				delete(items, k)
+			}
+		}
+	}
+
 	// Overwrite existing items
 	m.items = items
 
@@ -702,6 +741,45 @@ func (m *Model[K, V]) renderRow(rowIdx int) string {
 			Render(renderedRow)
 	}
 	return renderedRow
+}
+
+// Prune passes each value from the selected rows (or if there are no
+// selections, from the highlighted row) to the provided func. If the func
+// returns an error the row is de-selected (or if there are no selections, then
+// an error is returned). The resulting IDs from the provided func are returned.
+// If all selections are de-selected then an error is returned.
+func (m *Model[K, V]) Prune(fn func(value V) (resource.ID, error)) ([]resource.ID, error) {
+	rows := m.HighlightedOrSelected()
+	switch len(rows) {
+	case 0:
+		return nil, errors.New("no rows in table")
+	case 1:
+		// highlighted, no selections
+		id, err := fn(rows[0].Value)
+		if err != nil {
+			// the single highlighted value is to be pruned, so report this as an
+			// error
+			return nil, err
+		}
+		return []resource.ID{id}, nil
+	default:
+		// one or more selections: iterate thru and prune accordingly.
+		var ids []resource.ID
+		for k, v := range m.Selected {
+			id, err := fn(v)
+			if err != nil {
+				// De-select
+				m.ToggleSelectionByKey(k)
+				continue
+			}
+			ids = append(ids, id)
+		}
+		if len(ids) == 0 {
+			// no rows survived pruning, so report error
+			return nil, errors.New("no rows are applicable to the given action")
+		}
+		return ids, nil
+	}
 }
 
 func clamp(v, low, high int) int {

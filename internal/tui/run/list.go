@@ -59,14 +59,9 @@ func (m *ListMaker) Make(parent resource.Resource, width, height int) (tea.Model
 			table.IDColumn.Key:         r.String(),
 		}
 	}
-	table := table.NewResource(table.ResourceOptions[*run.Run]{
-		Columns:  columns,
-		Renderer: renderer,
-		Width:    width,
-		Height:   height,
-		Parent:   parent,
-		SortFunc: run.ByStatus,
-	})
+	table := table.New(columns, renderer, width, height).
+		WithSortFunc(run.ByStatus).
+		WithParent(parent)
 
 	return list{
 		table:  table,
@@ -77,7 +72,7 @@ func (m *ListMaker) Make(parent resource.Resource, width, height int) (tea.Model
 }
 
 type list struct {
-	table  table.Resource[resource.ID, *run.Run]
+	table  table.Model[resource.ID, *run.Run]
 	svc    tui.RunService
 	tasks  tui.TaskService
 	parent resource.Resource
