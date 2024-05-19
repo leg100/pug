@@ -1,6 +1,7 @@
 package state
 
 import (
+	"bytes"
 	"os"
 	"testing"
 
@@ -11,11 +12,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func Test_getResourcesFromFile(t *testing.T) {
+func Test_newState(t *testing.T) {
 	mod := module.New(internal.NewTestWorkdir(t), "a/b/c")
 	ws, err := workspace.New(mod, "dev")
 	require.NoError(t, err)
 
+	// Mimic response from terraform state pull
 	f, err := os.Open("./testdata/with_mods/terraform.tfstate.d/dev/terraform.tfstate")
 	require.NoError(t, err)
 	t.Cleanup(func() {
@@ -36,4 +38,18 @@ func Test_getResourcesFromFile(t *testing.T) {
 	assert.Contains(t, got.Resources, ResourceAddress("module.child2.module.child3.random_pet.pet"))
 
 	assert.True(t, got.Resources["random_pet.pet[3]"].Tainted)
+}
+
+func Test_newState_empty(t *testing.T) {
+	mod := module.New(internal.NewTestWorkdir(t), "a/b/c")
+	ws, err := workspace.New(mod, "dev")
+	require.NoError(t, err)
+
+	// Mimic empty response from terraform state pull
+	f := new(bytes.Buffer)
+
+	got, err := newState(ws, f)
+	require.NoError(t, err)
+
+	assert.Len(t, got.Resources, 0)
 }

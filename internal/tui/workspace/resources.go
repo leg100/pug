@@ -206,6 +206,11 @@ const (
 )
 
 func (m resources) View() string {
+	if m.state == nil || m.state.Serial < 0 {
+		return tui.Regular.Copy().
+			Margin(0, 1).
+			Render("No state found")
+	}
 	metadata := fmt.Sprintf("Serial: %d | Terraform Version: %s | Lineage: %s", m.state.Serial, m.state.TerraformVersion, m.state.Lineage)
 	return lipgloss.JoinVertical(lipgloss.Left,
 		m.table.View(),

@@ -2,6 +2,8 @@ package state
 
 import (
 	"encoding/json"
+	"errors"
+	"fmt"
 	"io"
 	"strconv"
 	"strings"
@@ -18,10 +20,22 @@ type State struct {
 }
 
 func newState(ws resource.Resource, r io.Reader) (*State, error) {
+	// Default to a serial of -1 to indicate that there is no state yet.
+	state := &State{WorkspaceID: ws.GetID(), Serial: -1}
+
 	var file StateFile
 	if err := json.NewDecoder(r).Decode(&file); err != nil {
-		return nil, err
+		if errors.Is(err, io.EOF) {
+			// No state, serial defaults to -1
+			return state, nil
+		}
+		return nil, fmt.Errorf("parsing state: %w", err)
 	}
+
+	state.Serial = file.Serial
+	state.TerraformVersion = file.TerraformVersion
+	state.Lineage = file.Lineage
+
 	m := make(map[ResourceAddress]*Resource)
 	for _, res := range file.Resources {
 		for _, instance := range res.Instances {
@@ -47,11 +61,7 @@ func newState(ws resource.Resource, r io.Reader) (*State, error) {
 			}
 		}
 	}
-	return &State{
-		WorkspaceID:      ws.GetID(),
-		Resources:        m,
-		Serial:           file.Serial,
-		TerraformVersion: file.TerraformVersion,
-		Lineage:          file.Lineage,
-	}, nil
+	state.Resources = m
+
+	return state, nil
 }

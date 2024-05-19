@@ -240,6 +240,49 @@ func TestWorkspace_Resources_Reload(t *testing.T) {
 	})
 }
 
+func TestWorkspace_Resources_NoState(t *testing.T) {
+	t.Parallel()
+
+	tm := setup(t, "./testdata/workspace_resources_empty")
+
+	// Wait for module to be loaded
+	waitFor(t, tm, func(s string) bool {
+		return strings.Contains(s, "modules/a")
+	})
+
+	// Initialize module
+	tm.Type("i")
+	waitFor(t, tm, func(s string) bool {
+		return strings.Contains(s, "Terraform has been successfully initialized!")
+	})
+
+	// Go to workspaces
+	tm.Type("W")
+
+	// Wait for workspace to be loaded
+	waitFor(t, tm, func(s string) bool {
+		return matchPattern(t, `modules/a.*default`, s)
+	})
+
+	// Go to workspace's page
+	tm.Send(tea.KeyMsg{Type: tea.KeyEnter})
+
+	// Expect resources tab title to reveal zero resources
+	waitFor(t, tm, func(s string) bool {
+		t.Log(s)
+		return strings.Contains(s, "resources (0)")
+	})
+
+	// Select resources tab (two tabs to the right).
+	tm.Send(tea.KeyMsg{Type: tea.KeyTab})
+	tm.Send(tea.KeyMsg{Type: tea.KeyTab})
+
+	// Expect message indiciating no state found
+	waitFor(t, tm, func(s string) bool {
+		return strings.Contains(s, "No state found")
+	})
+}
+
 func setupResourcesTab(t *testing.T) *testModel {
 	// Setup test with pre-existing state
 	tm := setup(t, "./testdata/workspace_resources")
