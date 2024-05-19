@@ -35,5 +35,5 @@ func Test_getResourcesFromFile(t *testing.T) {
 	assert.Contains(t, got.Resources, ResourceAddress("module.child2.module.child3.random_integer.suffix"))
 	assert.Contains(t, got.Resources, ResourceAddress("module.child2.module.child3.random_pet.pet"))
 
-	assert.Equal(t, Tainted, got.Resources["random_pet.pet[3]"].Status)
+	assert.True(t, got.Resources["random_pet.pet[3]"].Tainted)
 }

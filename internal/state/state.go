@@ -10,8 +10,11 @@ import (
 )
 
 type State struct {
-	WorkspaceID resource.ID
-	Resources   map[ResourceAddress]*Resource
+	WorkspaceID      resource.ID
+	Resources        map[ResourceAddress]*Resource
+	Serial           int64
+	TerraformVersion string
+	Lineage          string
 }
 
 func newState(ws resource.Resource, r io.Reader) (*State, error) {
@@ -40,12 +43,15 @@ func newState(ws resource.Resource, r io.Reader) (*State, error) {
 			addr := ResourceAddress(b.String())
 			m[addr] = newResource(ws, addr)
 			if instance.Status == StateFileResourceInstanceTainted {
-				m[addr].Status = Tainted
+				m[addr].Tainted = true
 			}
 		}
 	}
 	return &State{
-		WorkspaceID: ws.GetID(),
-		Resources:   m,
+		WorkspaceID:      ws.GetID(),
+		Resources:        m,
+		Serial:           file.Serial,
+		TerraformVersion: file.TerraformVersion,
+		Lineage:          file.Lineage,
 	}, nil
 }

@@ -3,10 +3,12 @@ package workspace
 import (
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/leg100/pug/internal/resource"
 	"github.com/leg100/pug/internal/run"
 	"github.com/leg100/pug/internal/state"
@@ -20,12 +22,6 @@ import (
 var resourceColumn = table.Column{
 	Key:        "resource",
 	Title:      "RESOURCE",
-	FlexFactor: 2,
-}
-
-var resourceStatusColumn = table.Column{
-	Key:        "resource_status",
-	Title:      "STATUS",
 	FlexFactor: 1,
 }
 
@@ -36,21 +32,19 @@ type resourceListMaker struct {
 }
 
 func (m *resourceListMaker) Make(ws resource.Resource, width, height int) (tea.Model, error) {
-	columns := []table.Column{
-		resourceColumn,
-		resourceStatusColumn,
-	}
+	columns := []table.Column{resourceColumn}
 	renderer := func(resource *state.Resource) table.RenderedRow {
-		return table.RenderedRow{
-			resourceColumn.Key:       string(resource.Address),
-			resourceStatusColumn.Key: string(resource.Status),
+		addr := string(resource.Address)
+		if resource.Tainted {
+			addr += " (tainted)"
 		}
+		return table.RenderedRow{resourceColumn.Key: addr}
 	}
 	table := table.NewResource(table.ResourceOptions[*state.Resource]{
 		Columns:  columns,
 		Renderer: renderer,
+		Height:   height - metadataHeight,
 		Width:    width,
-		Height:   height,
 		Parent:   ws,
 		SortFunc: state.Sort,
 	})
@@ -60,6 +54,7 @@ func (m *resourceListMaker) Make(ws resource.Resource, width, height int) (tea.M
 		runs:      m.RunService,
 		workspace: ws,
 		spinner:   m.Spinner,
+		width:     width,
 	}, nil
 }
 
@@ -68,7 +63,9 @@ type resources struct {
 	states    tui.StateService
 	runs      tui.RunService
 	workspace resource.Resource
+	state     *state.State
 	reloading bool
+	width     int
 
 	spinner *spinner.Model
 }
@@ -176,7 +173,8 @@ func (m resources) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 	case initState:
-		m.table.SetItems(toTableItems((*state.State)(msg)))
+		m.state = (*state.State)(msg)
+		m.table.SetItems(toTableItems(m.state))
 	case resource.Event[*state.State]:
 		if msg.Payload.WorkspaceID != m.workspace.GetID() {
 			return m, nil
@@ -186,23 +184,45 @@ func (m resources) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// Whenever state is created or updated, re-populate table with
 			// resources.
 			m.table.SetItems(toTableItems(msg.Payload))
+			m.state = msg.Payload
 		}
 	}
 
-	// Handle keyboard and mouse events in the table widget
-	m.table, cmd = m.table.Update(msg)
+	wsm, ok := msg.(tea.WindowSizeMsg)
+	if ok {
+		m.width = wsm.Width
+		// adjust height to accomodate metadata section before the message is
+		// relayed to the table model.
+		wsm.Height -= metadataHeight
+		m.table, cmd = m.table.Update(wsm)
+	} else {
+		// Handle keyboard and mouse events in the table widget
+		m.table, cmd = m.table.Update(msg)
+	}
 	cmds = append(cmds, cmd)
 
 	return m, tea.Batch(cmds...)
 }
 
-// Not used
-func (m resources) Title() string {
-	return ""
-}
+const (
+	// metadataHeight is the height of the metadata section beneath the table,
+	// including the horizontal rule divider.
+	metadataHeight = 2
+)
 
 func (m resources) View() string {
-	return m.table.View()
+	metadata := fmt.Sprintf("Serial: %d | Terraform Version: %s | Lineage: %s", m.state.Serial, m.state.TerraformVersion, m.state.Lineage)
+	return lipgloss.JoinVertical(lipgloss.Left,
+		m.table.View(),
+		strings.Repeat("─", m.width),
+		tui.Regular.Copy().
+			Margin(0, 1).
+			Render(
+				tui.Regular.Copy().
+					Inline(true).
+					Render(metadata),
+			),
+	)
 }
 
 func (m resources) TabStatus() string {
