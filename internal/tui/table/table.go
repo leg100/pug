@@ -566,9 +566,19 @@ func (m Model[K, V]) Height() int {
 	return m.viewport.Height
 }
 
+// SetHeight sets the viewport height of the table.
+func (m Model[K, V]) SetHeight(h int) {
+	m.viewport.Height = h
+}
+
 // Width returns the viewport width of the table.
 func (m Model[K, V]) Width() int {
 	return m.viewport.Width
+}
+
+// SetWidth sets the viewport width of the table.
+func (m Model[K, V]) SetWidth(w int) {
+	m.viewport.Width = w
 }
 
 // Cursor returns the index of the highlighted row.

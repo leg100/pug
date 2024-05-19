@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -132,7 +133,10 @@ func (h *Helpers) WorkspaceCurrentCheckmark(ws *workspace.Workspace) string {
 
 func (h *Helpers) WorkspaceResourceCount(ws *workspace.Workspace) string {
 	state, err := h.StateService.Get(ws.ID)
-	if err != nil {
+	if errors.Is(err, resource.ErrNotFound) {
+		// not found most likely means state not loaded yet
+		return ""
+	} else if err != nil {
 		h.Logger.Error("rendering workspace resource count", "error", err)
 		return ""
 	}

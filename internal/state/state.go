@@ -1,46 +1,57 @@
 package state
 
 import (
-	"errors"
+	"encoding/json"
+	"io"
+	"strconv"
+	"strings"
 
 	"github.com/leg100/pug/internal/resource"
 )
 
 type State struct {
-	WorkspaceID resource.ID
-	Resources   map[ResourceAddress]*Resource
-	State       StateStatus
+	WorkspaceID      resource.ID
+	Resources        map[ResourceAddress]*Resource
+	Serial           int64
+	TerraformVersion string
+	Lineage          string
 }
 
-type StateStatus string
-
-const (
-	// Idle indicates the resource is idle (no tasks are currently operating on
-	// it).
-	IdleState StateStatus = "idle"
-	// Removing indicates the resource is in the process of being removed.
-	ReloadingState = "reloading"
-)
-
-func EmptyState(workspaceID resource.ID) *State {
+func newState(ws resource.Resource, r io.Reader) (*State, error) {
+	var file StateFile
+	if err := json.NewDecoder(r).Decode(&file); err != nil {
+		return nil, err
+	}
+	m := make(map[ResourceAddress]*Resource)
+	for _, res := range file.Resources {
+		for _, instance := range res.Instances {
+			// Build resource address from type, name, and optionally an ordinal
+			// number if more than one instance.
+			var b strings.Builder
+			if res.Module != "" {
+				b.WriteString(res.Module)
+				b.WriteRune('.')
+			}
+			b.WriteString(res.Type)
+			b.WriteRune('.')
+			b.WriteString(res.Name)
+			if instance.IndexKey != nil {
+				b.WriteRune('[')
+				b.WriteString(strconv.Itoa(*instance.IndexKey))
+				b.WriteRune(']')
+			}
+			addr := ResourceAddress(b.String())
+			m[addr] = newResource(ws, addr)
+			if instance.Status == StateFileResourceInstanceTainted {
+				m[addr].Tainted = true
+			}
+		}
+	}
 	return &State{
-		WorkspaceID: workspaceID,
-		State:       ReloadingState,
-	}
-}
-
-func newState(workspaceID resource.ID, file StateFile) *State {
-	return &State{
-		WorkspaceID: workspaceID,
-		Resources:   getResourcesFromFile(file),
-		State:       IdleState,
-	}
-}
-
-func (s *State) startReload() error {
-	if s.State == ReloadingState {
-		return errors.New("state is already reloading")
-	}
-	s.State = ReloadingState
-	return nil
+		WorkspaceID:      ws.GetID(),
+		Resources:        m,
+		Serial:           file.Serial,
+		TerraformVersion: file.TerraformVersion,
+		Lineage:          file.Lineage,
+	}, nil
 }
