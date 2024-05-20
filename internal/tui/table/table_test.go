@@ -50,10 +50,10 @@ func setupTest() Model[resource.ID, testResource] {
 	return tbl
 }
 
-func TestTable_Highlighted(t *testing.T) {
+func TestTable_CurrentRow(t *testing.T) {
 	tbl := setupTest()
 
-	got, ok := tbl.Highlighted()
+	got, ok := tbl.CurrentRow()
 	require.True(t, ok)
 
 	assert.Equal(t, resource0, got.Value)

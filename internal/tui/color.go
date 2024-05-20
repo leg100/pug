@@ -37,12 +37,12 @@ var (
 	HelpKey  = Grey
 	HelpDesc = LightGrey
 
-	HighlightBackground              = Grey
-	HighlightForeground              = White
-	SelectedBackground               = lipgloss.Color("#fcbbf0")
-	SelectedForeground               = Black
-	HighlightedAndSelectedBackground = lipgloss.Color("#c997c0")
-	HighlightedAndSelectedForeground = White
+	CurrentBackground            = Grey
+	CurrentForeground            = White
+	SelectedBackground           = lipgloss.Color("#fcbbf0")
+	SelectedForeground           = Black
+	CurrentAndSelectedBackground = lipgloss.Color("#c997c0")
+	CurrentAndSelectedForeground = White
 
 	TitleColor = lipgloss.AdaptiveColor{
 		Dark:  "",

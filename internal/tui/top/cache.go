@@ -6,10 +6,10 @@ import (
 	"github.com/leg100/pug/internal/tui"
 )
 
-// page cache: not so much for performance but to retain memory of user
-// actions, e.g. a user may highlight a particular row in a table, navigate away
-// from the page and later return to the page, and they would expect the same
-// row still to be hightlighted.
+// page cache: not so much for performance but to retain memory of user actions,
+// e.g. a user may select a particular row in a table, navigate away from the
+// page and later return to the page, and they would expect the same row still
+// to be selected.
 type cache struct {
 	cache map[cacheKey]tea.Model
 }

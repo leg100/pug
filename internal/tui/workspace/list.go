@@ -107,11 +107,11 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, keys.Global.Enter):
-			if row, highlighted := m.table.Highlighted(); highlighted {
+			if row, ok := m.table.CurrentRow(); ok {
 				return m, tui.NavigateTo(tui.WorkspaceKind, tui.WithParent(row.Value))
 			}
 		case key.Matches(msg, keys.Common.Delete):
-			workspaceIDs := m.table.HighlightedOrSelectedKeys()
+			workspaceIDs := m.table.SelectedOrCurrentKeys()
 			if len(workspaceIDs) == 0 {
 				return m, nil
 			}
@@ -120,16 +120,16 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				tuitask.CreateTasks("delete-workspace", m.parent, m.svc.Delete, workspaceIDs...),
 			)
 		case key.Matches(msg, keys.Common.Init):
-			cmd := tuitask.CreateTasks("init", m.parent, m.modules.Init, m.highlightedOrSelectedModuleIDs()...)
+			cmd := tuitask.CreateTasks("init", m.parent, m.modules.Init, m.selectedOrCurrentModuleIDs()...)
 			return m, cmd
 		case key.Matches(msg, keys.Common.Format):
-			cmd := tuitask.CreateTasks("format", m.parent, m.modules.Format, m.highlightedOrSelectedModuleIDs()...)
+			cmd := tuitask.CreateTasks("format", m.parent, m.modules.Format, m.selectedOrCurrentModuleIDs()...)
 			return m, cmd
 		case key.Matches(msg, keys.Common.Validate):
-			cmd := tuitask.CreateTasks("validate", m.parent, m.modules.Validate, m.highlightedOrSelectedModuleIDs()...)
+			cmd := tuitask.CreateTasks("validate", m.parent, m.modules.Validate, m.selectedOrCurrentModuleIDs()...)
 			return m, cmd
 		case key.Matches(msg, localKeys.SetCurrent):
-			if row, highlighted := m.table.Highlighted(); highlighted {
+			if row, ok := m.table.CurrentRow(); ok {
 				return m, func() tea.Msg {
 					if err := m.svc.SelectWorkspace(row.Value.ModuleID(), row.Value.ID); err != nil {
 						return tui.NewErrorMsg(err, "setting current workspace")
@@ -141,7 +141,7 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			createRunOptions.Destroy = true
 			fallthrough
 		case key.Matches(msg, keys.Common.Plan):
-			workspaceIDs := m.table.HighlightedOrSelectedKeys()
+			workspaceIDs := m.table.SelectedOrCurrentKeys()
 			return m, tuirun.CreateRuns(m.runs, m.parent, createRunOptions, workspaceIDs...)
 		case key.Matches(msg, keys.Common.Apply):
 			runIDs, err := m.table.Prune(func(ws *workspace.Workspace) (resource.ID, error) {
@@ -188,10 +188,10 @@ func (m list) HelpBindings() []key.Binding {
 	}
 }
 
-// highlightedOrSelectedModuleIDs returns the IDs of the modules of the
-// highlighted/selected workspaces.
-func (m list) highlightedOrSelectedModuleIDs() []resource.ID {
-	selected := m.table.HighlightedOrSelected()
+// selectedOrCurrentModuleIDs returns the IDs of the modules of the
+// current or selected workspaces.
+func (m list) selectedOrCurrentModuleIDs() []resource.ID {
+	selected := m.table.SelectedOrCurrent()
 	moduleIDs := make([]resource.ID, len(selected))
 	for i, row := range selected {
 		moduleIDs[i] = row.Value.ModuleID()

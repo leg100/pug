@@ -114,7 +114,7 @@ func (m resources) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return msg
 			}
 		case key.Matches(msg, keys.Common.Delete):
-			addrs := m.highlightedOrSelectedAddresses()
+			addrs := m.selectedOrCurrentAddresses()
 			if len(addrs) == 0 {
 				// no rows; do nothing
 				return m, nil
@@ -127,13 +127,13 @@ func (m resources) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				tuitask.CreateTasks("state-rm", m.workspace, fn, m.workspace.GetID()),
 			)
 		case key.Matches(msg, resourcesKeys.Taint):
-			addrs := m.highlightedOrSelectedAddresses()
+			addrs := m.selectedOrCurrentAddresses()
 			return m, m.createStateCommand("taint", m.states.Taint, addrs...)
 		case key.Matches(msg, resourcesKeys.Untaint):
-			addrs := m.highlightedOrSelectedAddresses()
+			addrs := m.selectedOrCurrentAddresses()
 			return m, m.createStateCommand("untaint", m.states.Untaint, addrs...)
 		case key.Matches(msg, resourcesKeys.Move):
-			if row, highlighted := m.table.Highlighted(); highlighted {
+			if row, ok := m.table.CurrentRow(); ok {
 				from := row.Value.Address
 				return m, tui.CmdHandler(tui.PromptMsg{
 					Prompt:       "Enter destination address: ",
@@ -156,7 +156,7 @@ func (m resources) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			fallthrough
 		case key.Matches(msg, keys.Common.Plan):
 			// Create a targeted run.
-			createRunOptions.TargetAddrs = m.highlightedOrSelectedAddresses()
+			createRunOptions.TargetAddrs = m.selectedOrCurrentAddresses()
 			// NOTE: even if the user hasn't selected any rows, we still proceed
 			// to create a run without targeted resources.
 			return m, func() tea.Msg {
@@ -244,8 +244,8 @@ func (m resources) HelpBindings() []key.Binding {
 	}
 }
 
-func (m resources) highlightedOrSelectedAddresses() []state.ResourceAddress {
-	rows := m.table.HighlightedOrSelected()
+func (m resources) selectedOrCurrentAddresses() []state.ResourceAddress {
+	rows := m.table.SelectedOrCurrent()
 	addrs := make([]state.ResourceAddress, len(rows))
 	var i int
 	for _, v := range rows {

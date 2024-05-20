@@ -118,11 +118,11 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, keys.Global.Enter):
-			if row, highlighted := m.table.Highlighted(); highlighted {
+			if row, ok := m.table.CurrentRow(); ok {
 				return m, tui.NavigateTo(tui.TaskKind, tui.WithParent(row.Value))
 			}
 		case key.Matches(msg, keys.Common.Cancel):
-			taskIDs := m.table.HighlightedOrSelectedKeys()
+			taskIDs := m.table.SelectedOrCurrentKeys()
 			return m, CreateTasks("cancel", m.parent, m.svc.Cancel, taskIDs...)
 		}
 	}

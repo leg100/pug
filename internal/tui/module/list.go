@@ -135,15 +135,15 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, localKeys.ReloadModules):
 			return m, ReloadModules(false, m.ModuleService)
 		case key.Matches(msg, keys.Global.Enter):
-			if row, highlighted := m.table.Highlighted(); highlighted {
+			if row, ok := m.table.CurrentRow(); ok {
 				return m, tui.NavigateTo(tui.ModuleKind, tui.WithParent(row.Value))
 			}
 		case key.Matches(msg, keys.Common.Edit):
-			if row, highlighted := m.table.Highlighted(); highlighted {
+			if row, ok := m.table.CurrentRow(); ok {
 				return m, tui.OpenVim(row.Value.Path)
 			}
 		case key.Matches(msg, keys.Common.Init):
-			rows := m.table.HighlightedOrSelected()
+			rows := m.table.SelectedOrCurrent()
 			switch len(rows) {
 			case 0:
 				// no rows, do nothing
@@ -158,17 +158,17 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			default:
 				// create init tasks, and keep user on current page.
-				cmd := tuitask.CreateTasks("init", resource.GlobalResource, m.ModuleService.Init, m.table.HighlightedOrSelectedKeys()...)
+				cmd := tuitask.CreateTasks("init", resource.GlobalResource, m.ModuleService.Init, m.table.SelectedOrCurrentKeys()...)
 				return m, cmd
 			}
 		case key.Matches(msg, keys.Common.Validate):
-			cmd := tuitask.CreateTasks("validate", resource.GlobalResource, m.ModuleService.Validate, m.table.HighlightedOrSelectedKeys()...)
+			cmd := tuitask.CreateTasks("validate", resource.GlobalResource, m.ModuleService.Validate, m.table.SelectedOrCurrentKeys()...)
 			return m, cmd
 		case key.Matches(msg, keys.Common.Format):
-			cmd := tuitask.CreateTasks("format", resource.GlobalResource, m.ModuleService.Format, m.table.HighlightedOrSelectedKeys()...)
+			cmd := tuitask.CreateTasks("format", resource.GlobalResource, m.ModuleService.Format, m.table.SelectedOrCurrentKeys()...)
 			return m, cmd
 		case key.Matches(msg, localKeys.ReloadWorkspaces):
-			cmd := tuitask.CreateTasks("reload-workspace", resource.GlobalResource, m.WorkspaceService.Reload, m.table.HighlightedOrSelectedKeys()...)
+			cmd := tuitask.CreateTasks("reload-workspace", resource.GlobalResource, m.WorkspaceService.Reload, m.table.SelectedOrCurrentKeys()...)
 			return m, cmd
 		case key.Matches(msg, keys.Common.Destroy):
 			createRunOptions.Destroy = true
