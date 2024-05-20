@@ -11,12 +11,12 @@ import (
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/hokaccha/go-prettyjson"
 	"github.com/leg100/pug/internal/resource"
 	"github.com/leg100/pug/internal/task"
 	"github.com/leg100/pug/internal/tui"
 	"github.com/leg100/pug/internal/tui/keys"
 	"github.com/leg100/reflow/wordwrap"
+	"github.com/tidwall/pretty"
 )
 
 type Maker struct {
@@ -134,20 +134,12 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				// the task has finished and has produced complete and
 				// syntactically valid json object(s).
 				//
-				// Note: terraform commands such as `state -json` can produce
-				// json strings with embedded newlines, which is invalid json
-				// and breaks the pretty printer. So we escape the newlines.
-				//
 				// TODO: avoid casting to string and back, thereby avoiding
 				// unnecessary allocations.
-				m.content = strings.ReplaceAll(m.content, "\n", "\\n")
-				if b, err := prettyjson.Format([]byte(m.content)); err != nil {
-					cmds = append(cmds, tui.ReportError(err, "pretty printing task json output"))
-				} else {
-					m.content = string(b)
-					m.viewport.SetContent(string(b))
-					m.viewport.GotoBottom()
-				}
+				b := pretty.Color([]byte(m.content), nil)
+				m.content = string(b)
+				m.viewport.SetContent(string(b))
+				m.viewport.GotoBottom()
 			}
 		} else {
 			cmds = append(cmds, m.getOutput)
