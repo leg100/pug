@@ -16,6 +16,7 @@ import (
 	"github.com/leg100/pug/internal/task"
 	"github.com/leg100/pug/internal/tui"
 	"github.com/leg100/pug/internal/tui/keys"
+	"github.com/leg100/pug/internal/tui/navigator"
 	"github.com/leg100/reflow/wordwrap"
 )
 
@@ -96,22 +97,22 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, keys.Common.Cancel):
 			return m, CreateTasks("cancel", m.task, m.svc.Cancel, m.task.ID)
 		case key.Matches(msg, keys.Common.Module):
-			// 'm' takes the user to the task's module, but only if the task
+			// 'm' navigates to the module tasks page, but only if the task
 			// belongs to a module.
 			if mod := m.task.Module(); mod != nil {
-				return m, tui.NavigateTo(tui.ModuleKind, tui.WithParent(mod))
+				return m, navigator.Go(tui.TaskListKind, navigator.WithResource(mod))
 			}
 		case key.Matches(msg, keys.Common.Workspace):
-			// 'w' takes the user to the task's workspace, but only if the task
+			// 'w' navigates to the workspace tasks page, but only if the task
 			// belongs to a workspace.
 			if ws := m.task.Workspace(); ws != nil {
-				return m, tui.NavigateTo(tui.WorkspaceKind, tui.WithParent(ws))
+				return m, navigator.Go(tui.TaskListKind, navigator.WithResource(ws))
 			}
 		case key.Matches(msg, keys.Common.Run):
-			// 'r' takes the user to the task's run, but only if the task
+			// 'r' navigates to the run page for the task, but only if the task
 			// belongs to a run.
 			if run := m.task.Run(); run != nil {
-				return m, tui.NavigateTo(tui.RunKind, tui.WithParent(run))
+				return m, navigator.Go(tui.RunKind, navigator.WithResource(run))
 			}
 		}
 	case outputMsg:
@@ -172,7 +173,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m model) Title() string {
-	return m.helpers.Breadcrumbs("Task", m.task)
+	return tui.Breadcrumbs("Task", m.task, "")
 }
 
 func (m model) ID() string {

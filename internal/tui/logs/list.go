@@ -10,6 +10,7 @@ import (
 	"github.com/leg100/pug/internal/resource"
 	"github.com/leg100/pug/internal/tui"
 	"github.com/leg100/pug/internal/tui/keys"
+	"github.com/leg100/pug/internal/tui/navigator"
 	"github.com/leg100/pug/internal/tui/table"
 )
 
@@ -89,7 +90,7 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch {
 		case key.Matches(msg, keys.Global.Enter):
 			if row, ok := m.table.CurrentRow(); ok {
-				return m, tui.NavigateTo(tui.LogKind, tui.WithParent(row.Value))
+				return m, navigator.Go(tui.LogKind, navigator.WithResource(row.Value))
 			}
 		}
 	}

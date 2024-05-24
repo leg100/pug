@@ -6,6 +6,7 @@ import (
 	"github.com/leg100/pug/internal/tui/logs"
 	moduletui "github.com/leg100/pug/internal/tui/module"
 	runtui "github.com/leg100/pug/internal/tui/run"
+	statetui "github.com/leg100/pug/internal/tui/state"
 	tasktui "github.com/leg100/pug/internal/tui/task"
 	workspacetui "github.com/leg100/pug/internal/tui/workspace"
 )
@@ -41,7 +42,7 @@ func makeMakers(opts Options, spinner *spinner.Model) map[tui.Kind]tui.Maker {
 		Helpers:          helpers,
 	}
 
-	makers := map[tui.Kind]tui.Maker{
+	return map[tui.Kind]tui.Maker{
 		tui.ModuleListKind: &moduletui.ListMaker{
 			ModuleService:    opts.ModuleService,
 			WorkspaceService: opts.WorkspaceService,
@@ -50,26 +51,11 @@ func makeMakers(opts Options, spinner *spinner.Model) map[tui.Kind]tui.Maker {
 			Workdir:          opts.Workdir.PrettyString(),
 			Helpers:          helpers,
 		},
-		tui.ModuleKind: &moduletui.Maker{
-			ModuleService:      opts.ModuleService,
-			WorkspaceService:   opts.WorkspaceService,
-			RunService:         opts.RunService,
-			WorkspaceListMaker: workspaceListMaker,
-			RunListMaker:       runListMaker,
-			TaskListMaker:      taskListMaker,
-			Helpers:            helpers,
-		},
 		tui.WorkspaceListKind: workspaceListMaker,
-		tui.WorkspaceKind: &workspacetui.Maker{
-			ModuleService:    opts.ModuleService,
-			WorkspaceService: opts.WorkspaceService,
-			StateService:     opts.StateService,
-			RunService:       opts.RunService,
-			TaskService:      opts.TaskService,
-			RunListMaker:     runListMaker,
-			TaskListMaker:    taskListMaker,
-			Spinner:          spinner,
-			Helpers:          helpers,
+		tui.StateKind: &statetui.Maker{
+			StateService: opts.StateService,
+			RunService:   opts.RunService,
+			Spinner:      spinner,
 		},
 		tui.RunListKind: runListMaker,
 		tui.RunKind: &runtui.Maker{
@@ -90,5 +76,4 @@ func makeMakers(opts Options, spinner *spinner.Model) map[tui.Kind]tui.Maker {
 			Logger: opts.Logger,
 		},
 	}
-	return makers
 }

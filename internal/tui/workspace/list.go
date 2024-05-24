@@ -12,6 +12,7 @@ import (
 	"github.com/leg100/pug/internal/state"
 	"github.com/leg100/pug/internal/tui"
 	"github.com/leg100/pug/internal/tui/keys"
+	"github.com/leg100/pug/internal/tui/navigator"
 	tuirun "github.com/leg100/pug/internal/tui/run"
 	"github.com/leg100/pug/internal/tui/table"
 	tuitask "github.com/leg100/pug/internal/tui/task"
@@ -67,6 +68,7 @@ func (m *ListMaker) Make(parent resource.Resource, width, height int) (tea.Model
 		modules: m.ModuleService,
 		runs:    m.RunService,
 		parent:  parent,
+		helpers: m.Helpers,
 	}, nil
 }
 
@@ -76,6 +78,7 @@ type list struct {
 	modules tui.ModuleService
 	runs    tui.RunService
 	parent  resource.Resource
+	helpers *tui.Helpers
 }
 
 func (m list) Init() tea.Cmd {
@@ -106,9 +109,19 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.table.UpdateViewport()
 	case tea.KeyMsg:
 		switch {
+		case key.Matches(msg, keys.Common.Run):
+			fallthrough
 		case key.Matches(msg, keys.Global.Enter):
 			if row, ok := m.table.CurrentRow(); ok {
-				return m, tui.NavigateTo(tui.WorkspaceKind, tui.WithParent(row.Value))
+				return m, navigator.Go(tui.RunListKind, navigator.WithResource(row.Value))
+			}
+		case key.Matches(msg, keys.Common.State):
+			if row, ok := m.table.CurrentRow(); ok {
+				return m, navigator.Go(tui.StateKind, navigator.WithResource(row.Value))
+			}
+		case key.Matches(msg, keys.Common.Tasks):
+			if row, ok := m.table.CurrentRow(); ok {
+				return m, navigator.Go(tui.TaskListKind, navigator.WithResource(row.Value))
 			}
 		case key.Matches(msg, keys.Common.Delete):
 			workspaceIDs := m.table.SelectedOrCurrentKeys()
@@ -165,7 +178,7 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m list) Title() string {
-	return tui.GlobalBreadcrumb("Workspaces", m.table.TotalString())
+	return tui.Breadcrumbs("Workspaces", m.parent, m.table.TotalString())
 }
 
 func (m list) View() string {
@@ -184,6 +197,8 @@ func (m list) HelpBindings() []key.Binding {
 		keys.Common.Plan,
 		keys.Common.Apply,
 		keys.Common.Destroy,
+		keys.Common.State,
+		keys.Common.Tasks,
 		localKeys.SetCurrent,
 	}
 }

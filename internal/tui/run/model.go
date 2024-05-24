@@ -12,6 +12,8 @@ import (
 	"github.com/leg100/pug/internal/task"
 	"github.com/leg100/pug/internal/tui"
 	"github.com/leg100/pug/internal/tui/keys"
+	"github.com/leg100/pug/internal/tui/navigator"
+	"github.com/leg100/pug/internal/tui/tabs"
 	tasktui "github.com/leg100/pug/internal/tui/task"
 )
 
@@ -41,7 +43,7 @@ func (mm *Maker) Make(rr resource.Resource, width, height int) (tea.Model, error
 		taskMaker: taskMaker,
 		helpers:   mm.Helpers,
 	}
-	m.tabs = tui.NewTabSet(width, height).WithTabSetInfo(&m)
+	m.tabs = tabs.NewTabSet(width, height).WithTabSetInfo(&m)
 
 	// Add tabs for existing tasks
 	tasks := mm.TaskService.List(task.ListOptions{
@@ -50,13 +52,13 @@ func (mm *Maker) Make(rr resource.Resource, width, height int) (tea.Model, error
 		Oldest: true,
 	})
 	for _, t := range tasks {
-		_, err := m.tabs.AddTab(taskMaker, t, t.CommandString())
+		_, err := m.tabs.AddTab(taskMaker, t, tui.TabTitle(t.CommandString()))
 		if err != nil {
 			return nil, err
 		}
 	}
 	// If there is an apply task tab, then make that the active tab.
-	m.tabs.SetActiveTab("apply")
+	m.tabs.SetDefaultTab(tui.ApplyTab)
 
 	return m, nil
 }
@@ -65,7 +67,7 @@ type model struct {
 	svc       tui.RunService
 	tasks     tui.TaskService
 	run       *run.Run
-	tabs      tui.TabSet
+	tabs      tabs.TabSet
 	taskMaker tui.Maker
 	helpers   *tui.Helpers
 }
@@ -87,9 +89,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return m, ApplyCommand(m.svc, m.run, m.run.ID)
 		case key.Matches(msg, keys.Common.Module):
-			return m, tui.NavigateTo(tui.ModuleKind, tui.WithParent(m.run.Module()))
+			return m, navigator.Go(tui.RunListKind, navigator.WithResource(m.run.Module()))
 		case key.Matches(msg, keys.Common.Workspace):
-			return m, tui.NavigateTo(tui.WorkspaceKind, tui.WithParent(m.run.Workspace()))
+			return m, navigator.Go(tui.RunListKind, navigator.WithResource(m.run.Workspace()))
 		}
 	case resource.Event[*run.Run]:
 		if msg.Payload.ID == m.run.ID {
@@ -119,7 +121,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m model) Title() string {
-	return m.helpers.Breadcrumbs("Run", m.run)
+	return tui.Breadcrumbs("Run", m.run, "")
 }
 
 func (m model) Status() string {
@@ -131,26 +133,25 @@ func (m model) ID() string {
 }
 
 func (m *model) addTab(t *task.Task) (tea.Cmd, error) {
-	title := t.CommandString()
-	cmd, err := m.tabs.AddTab(m.taskMaker, t, title)
+	title := tui.TabTitle(t.CommandString())
+	init, err := m.tabs.AddTab(m.taskMaker, t, title)
 	if err != nil {
 		// Silently ignore attempts to add duplicate tabs: this can happen when
 		// a task is received in both a created event as well as in the initial
 		// listing of existing tasks, which is not unlikely.
-		if errors.Is(err, tui.ErrDuplicateTab) {
+		if errors.Is(err, tabs.ErrDuplicateTab) {
 			return nil, nil
 		}
 		return nil, fmt.Errorf("adding %s tab: %w", title, err)
 	}
-	// Make the newly added tab the active tab.
-	m.tabs.SetActiveTab(title)
-	return cmd, nil
+	// Init tab's model
+	return init, nil
 }
 func (m model) View() string {
 	return m.tabs.View()
 }
 
-func (m model) TabSetInfo(activeTabTitle string) string {
+func (m model) TabSetInfo(activeTabTitle tui.TabTitle) string {
 	switch activeTabTitle {
 	case "plan":
 		return m.helpers.RunReport(m.run.PlanReport)

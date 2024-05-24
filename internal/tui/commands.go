@@ -7,12 +7,6 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 )
 
-// NavigateTo sends an instruction to navigate to a page with the given model
-// kind, and optionally parent resource.
-func NavigateTo(kind Kind, opts ...NavigateOption) tea.Cmd {
-	return CmdHandler(NewNavigationMsg(kind, opts...))
-}
-
 func ReportError(err error, msg string, args ...any) tea.Cmd {
 	return CmdHandler(NewErrorMsg(err, msg, args...))
 }

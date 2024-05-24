@@ -2,38 +2,7 @@ package tui
 
 import (
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/leg100/pug/internal/resource"
 )
-
-// NavigationMsg is an instruction to navigate to a page.
-type NavigationMsg struct {
-	Page Page
-	Tab  string
-}
-
-func NewNavigationMsg(kind Kind, opts ...NavigateOption) NavigationMsg {
-	msg := NavigationMsg{Page: Page{Kind: kind, Resource: resource.GlobalResource}}
-	for _, fn := range opts {
-		fn(&msg)
-	}
-	return msg
-}
-
-type NavigateOption func(msg *NavigationMsg)
-
-func WithParent(parent resource.Resource) NavigateOption {
-	return func(msg *NavigationMsg) {
-		msg.Page.Resource = parent
-	}
-}
-
-func WithTab(tab string) NavigateOption {
-	return func(msg *NavigationMsg) {
-		msg.Tab = tab
-	}
-}
-
-type SetActiveTabMsg string
 
 type InfoMsg string
 

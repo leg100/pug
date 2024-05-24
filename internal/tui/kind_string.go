@@ -9,21 +9,19 @@ func _() {
 	// Re-run the stringer command to generate them again.
 	var x [1]struct{}
 	_ = x[ModuleListKind-0]
-	_ = x[ModuleKind-1]
-	_ = x[WorkspaceListKind-2]
-	_ = x[WorkspaceKind-3]
-	_ = x[RunListKind-4]
-	_ = x[RunKind-5]
-	_ = x[TaskListKind-6]
-	_ = x[TaskKind-7]
-	_ = x[TaskDetailsKind-8]
-	_ = x[LogListKind-9]
-	_ = x[LogKind-10]
+	_ = x[WorkspaceListKind-1]
+	_ = x[StateKind-2]
+	_ = x[RunListKind-3]
+	_ = x[RunKind-4]
+	_ = x[TaskListKind-5]
+	_ = x[TaskKind-6]
+	_ = x[LogListKind-7]
+	_ = x[LogKind-8]
 }
 
-const _Kind_name = "ModuleListKindModuleKindWorkspaceListKindWorkspaceKindRunListKindRunKindTaskListKindTaskKindTaskDetailsKindLogListKindLogKind"
+const _Kind_name = "ModuleListKindWorkspaceListKindStateKindRunListKindRunKindTaskListKindTaskKindLogListKindLogKind"
 
-var _Kind_index = [...]uint8{0, 14, 24, 41, 54, 65, 72, 84, 92, 107, 118, 125}
+var _Kind_index = [...]uint8{0, 14, 31, 40, 51, 58, 70, 78, 89, 96}
 
 func (i Kind) String() string {
 	if i < 0 || i >= Kind(len(_Kind_index)-1) {

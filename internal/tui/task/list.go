@@ -12,6 +12,7 @@ import (
 	"github.com/leg100/pug/internal/task"
 	"github.com/leg100/pug/internal/tui"
 	"github.com/leg100/pug/internal/tui/keys"
+	"github.com/leg100/pug/internal/tui/navigator"
 	"github.com/leg100/pug/internal/tui/table"
 )
 
@@ -85,18 +86,20 @@ func (m *ListMaker) Make(parent resource.Resource, width, height int) (tea.Model
 		WithParent(parent)
 
 	return list{
-		table:  table,
-		svc:    m.TaskService,
-		parent: parent,
-		max:    m.MaxTasks,
+		table:   table,
+		svc:     m.TaskService,
+		parent:  parent,
+		max:     m.MaxTasks,
+		helpers: m.Helpers,
 	}, nil
 }
 
 type list struct {
-	table  table.Model[resource.ID, *task.Task]
-	svc    tui.TaskService
-	parent resource.Resource
-	max    int
+	table   table.Model[resource.ID, *task.Task]
+	svc     tui.TaskService
+	parent  resource.Resource
+	max     int
+	helpers *tui.Helpers
 }
 
 func (m list) Init() tea.Cmd {
@@ -119,7 +122,11 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch {
 		case key.Matches(msg, keys.Global.Enter):
 			if row, ok := m.table.CurrentRow(); ok {
-				return m, tui.NavigateTo(tui.TaskKind, tui.WithParent(row.Value))
+				return m, navigator.Go(tui.TaskKind, navigator.WithResource(row.Value))
+			}
+		case key.Matches(msg, keys.Common.Module):
+			if row, ok := m.table.CurrentRow(); ok {
+				return m, navigator.Go(tui.TaskKind, navigator.WithResource(row.Value))
 			}
 		case key.Matches(msg, keys.Common.Cancel):
 			taskIDs := m.table.SelectedOrCurrentKeys()
@@ -134,7 +141,7 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m list) Title() string {
-	return tui.GlobalBreadcrumb("Tasks", m.table.TotalString())
+	return tui.Breadcrumbs("Tasks", m.parent, m.table.TotalString())
 }
 
 func (m list) View() string {

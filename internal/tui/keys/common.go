@@ -13,6 +13,8 @@ type common struct {
 	Reload    key.Binding
 	Module    key.Binding
 	Workspace key.Binding
+	State     key.Binding
+	Tasks     key.Binding
 	Run       key.Binding
 	Edit      key.Binding
 	Init      key.Binding
@@ -61,6 +63,14 @@ var Common = common{
 	Workspace: key.NewBinding(
 		key.WithKeys("w"),
 		key.WithHelp("w", "workspace"),
+	),
+	State: key.NewBinding(
+		key.WithKeys("s"),
+		key.WithHelp("s", "state"),
+	),
+	Tasks: key.NewBinding(
+		key.WithKeys("t"),
+		key.WithHelp("t", "tasks"),
 	),
 	Run: key.NewBinding(
 		key.WithKeys("r"),

@@ -452,9 +452,9 @@ func (m *Model[K, V]) SelectRange() {
 // "<filtered>/<total>".
 func (m Model[K, V]) TotalString() string {
 	if m.filterVisible() {
-		return fmt.Sprintf("%d/%d", len(m.rows), len(m.items))
+		return fmt.Sprintf("{%d/%d}", len(m.rows), len(m.items))
 	}
-	return fmt.Sprintf("%d", len(m.items))
+	return fmt.Sprintf("{%d}", len(m.items))
 }
 
 // SetItems sets new items on the table, overwriting existing items. If the

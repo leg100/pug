@@ -191,29 +191,29 @@ func (h *Helpers) RunReport(report run.Report) string {
 	return fmt.Sprintf("%s%s%s", additions, changes, destructions)
 }
 
-func (h *Helpers) Breadcrumbs(title string, res resource.Resource, crumbs ...string) string {
-	// format: title{task command}[workspace name](module path)
+func Breadcrumbs(title string, res resource.Resource, suffix string, crumbs ...string) string {
+	// format: title{task command}[workspace name](module path)suffix
 	switch res.GetKind() {
 	case resource.Task:
 		cmd := Regular.Copy().Foreground(Green).Render(res.String())
 		crumb := fmt.Sprintf("{%s}", cmd)
-		return h.Breadcrumbs(title, res.GetParent(), crumb)
+		return Breadcrumbs(title, res.GetParent(), suffix, crumb)
 	case resource.Run:
-		return h.Breadcrumbs(title, res.GetParent())
+		id := Regular.Copy().Foreground(Blue).Render(res.String())
+		crumbs = append(crumbs, fmt.Sprintf("{%s}", id))
+		return Breadcrumbs(title, res.GetParent(), suffix, crumbs...)
 	case resource.Workspace:
-		crumb := fmt.Sprintf("[%s]", Regular.Copy().Foreground(Red).Render(res.String()))
-		return h.Breadcrumbs(title, res.GetParent(), crumb)
+		name := Regular.Copy().Foreground(Red).Render(res.String())
+		crumbs = append(crumbs, fmt.Sprintf("[%s]", name))
+		return Breadcrumbs(title, res.GetParent(), suffix, crumbs...)
 	case resource.Module:
 		path := Regular.Copy().Foreground(modulePathColor).Render(res.String())
 		crumbs = append(crumbs, fmt.Sprintf("(%s)", path))
+	case resource.Global:
+		all := Regular.Copy().Foreground(globalColor).Render("all")
+		crumbs = []string{fmt.Sprintf("(%s)", all)}
 	}
-	return fmt.Sprintf("%s%s", TitleStyle.Render(title), strings.Join(crumbs, ""))
-}
-
-func GlobalBreadcrumb(title, total string) string {
-	title = TitleStyle.Render(title)
-	all := Regular.Copy().Foreground(globalColor).Render("all")
-	return fmt.Sprintf("%s(%s)[%s]", title, all, total)
+	return fmt.Sprintf("%s%s%s", TitleStyle.Render(title), strings.Join(crumbs, ""), suffix)
 }
 
 // RemoveDuplicateBindings removes duplicate bindings from a list of bindings. A

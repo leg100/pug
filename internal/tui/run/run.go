@@ -8,6 +8,7 @@ import (
 	"github.com/leg100/pug/internal/resource"
 	"github.com/leg100/pug/internal/run"
 	"github.com/leg100/pug/internal/tui"
+	"github.com/leg100/pug/internal/tui/navigator"
 	tuitask "github.com/leg100/pug/internal/tui/task"
 )
 
@@ -46,28 +47,11 @@ func HandleCreatedRuns(msg CreatedRunsMsg) (navigate tea.Cmd, info string, err e
 		// No runs created, don't send user anywhere.
 	case 1:
 		// Send user directly to runs's page.
-		navigate = tui.NavigateTo(tui.RunKind, tui.WithParent(msg.Runs[0]))
+		navigate = navigator.Go(tui.RunKind, navigator.WithResource(msg.Runs[0]))
 	default:
 		// Multiple tasks. Send the user to the appropriate listing for the model kind that
 		// issued the request to create tasks.
-		var (
-			opts = []tui.NavigateOption{tui.WithParent(msg.Issuer)}
-			kind tui.Kind
-		)
-		switch msg.Issuer.GetKind() {
-		case resource.Workspace:
-			// Send user to the runs tab on the workspace page
-			kind = tui.WorkspaceKind
-			opts = append(opts, tui.WithTab(tui.RunsTabTitle))
-		case resource.Module:
-			// Send user to the runs tab on the module page
-			kind = tui.ModuleKind
-			opts = append(opts, tui.WithTab(tui.RunsTabTitle))
-		default:
-			// Send user to global runs listing
-			kind = tui.RunListKind
-		}
-		navigate = tui.NavigateTo(kind, opts...)
+		navigate = navigator.Go(tui.RunListKind, navigator.WithResource(msg.Issuer))
 	}
 
 	if len(msg.Runs) == 1 {
@@ -97,17 +81,10 @@ func ApplyCommand(runs tui.RunService, issuer resource.Resource, runIDs ...resou
 	case 0:
 		return tui.ReportError(errors.New("no applyable runs found"), "")
 	case 1:
-		return tui.YesNoPrompt("Proceed with apply?", func() tea.Msg {
-			run, err := runs.Get(runIDs[0])
-			if err != nil {
-				return tui.NewErrorMsg(err, "applying run")
-			}
-			if _, err := runs.Apply(runIDs[0]); err != nil {
-				return tui.NewErrorMsg(err, "applying run")
-			}
-			// When one apply is triggered, the user is sent to the run page.
-			return tui.NewNavigationMsg(tui.RunKind, tui.WithParent(run))
-		})
+		return tui.YesNoPrompt(
+			"Proceed with apply?",
+			tuitask.CreateTasks(tuitask.ApplyCommand, issuer, runs.Apply, runIDs...),
+		)
 	default:
 		return tui.YesNoPrompt(
 			fmt.Sprintf("Apply %d runs?", len(runIDs)),

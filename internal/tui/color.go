@@ -59,11 +59,11 @@ var (
 		Light: string(Pink),
 	}
 
-	activeTabColor = lipgloss.AdaptiveColor{
+	ActiveTabColor = lipgloss.AdaptiveColor{
 		Dark:  string(LightBlue),
 		Light: string(Violet),
 	}
-	inactiveTabColor = lipgloss.AdaptiveColor{
+	InactiveTabColor = lipgloss.AdaptiveColor{
 		Dark:  string(DarkGrey),
 		Light: string(LighterGrey),
 	}

@@ -18,6 +18,7 @@ import (
 	"github.com/leg100/pug/internal/tui"
 	"github.com/leg100/pug/internal/tui/keys"
 	"github.com/leg100/pug/internal/tui/module"
+	"github.com/leg100/pug/internal/tui/navigator"
 	tuirun "github.com/leg100/pug/internal/tui/run"
 	tuitask "github.com/leg100/pug/internal/tui/task"
 	"github.com/leg100/pug/internal/version"
@@ -36,7 +37,7 @@ const (
 type model struct {
 	ModuleService tui.ModuleService
 
-	*navigator
+	*navigator.Navigator
 
 	width  int
 	height int
@@ -85,15 +86,16 @@ func New(opts Options) (model, error) {
 	}
 
 	spinner := spinner.New(spinner.WithSpinner(spinner.Line))
+	makers := makeMakers(opts, &spinner)
 
-	navigator, err := newNavigator(opts, &spinner)
+	navigator, err := navigator.New(opts.FirstPage, makers)
 	if err != nil {
 		return model{}, err
 	}
 
 	m := model{
 		ModuleService: opts.ModuleService,
-		navigator:     navigator,
+		Navigator:     navigator,
 		spinner:       &spinner,
 		tasks:         opts.TaskService,
 		maxTasks:      opts.MaxTasks,
@@ -105,7 +107,7 @@ func New(opts Options) (model, error) {
 
 func (m model) Init() tea.Cmd {
 	return tea.Batch(
-		m.currentModel().Init(),
+		m.CurrentModel().Init(),
 		module.ReloadModules(true, m.ModuleService),
 	)
 }
@@ -137,7 +139,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case spinner.TickMsg:
 		var cmd tea.Cmd
 		*m.spinner, cmd = m.spinner.Update(msg)
-		_ = m.updateCurrent(msg)
+		_ = m.UpdateCurrent(msg)
 		if m.spinning {
 			// Continue spinning spinner.
 			return m, cmd
@@ -156,7 +158,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.prompt, blink = tui.NewPrompt(msg)
 		// Send out message to current model to resize itself to make room for
 		// the prompt above it.
-		cmd := m.updateCurrent(tea.WindowSizeMsg{
+		cmd := m.UpdateCurrent(tea.WindowSizeMsg{
 			Height: m.viewHeight(),
 			Width:  m.viewWidth(),
 		})
@@ -186,7 +188,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				// Send message to current model to resize itself to expand back
 				// into space occupied by prompt.
 				m.mode = normalMode
-				_ = m.updateCurrent(tea.WindowSizeMsg{
+				_ = m.UpdateCurrent(tea.WindowSizeMsg{
 					Height: m.viewHeight(),
 					Width:  m.viewWidth(),
 				})
@@ -199,23 +201,23 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				// switch back to normal mode, blur the filter widget, and let
 				// the key handler below handle the quit action.
 				m.mode = normalMode
-				_ = m.updateCurrent(tui.FilterBlurMsg{})
+				_ = m.UpdateCurrent(tui.FilterBlurMsg{})
 			case key.Matches(msg, keys.Filter.Blur):
 				// Switch back to normal mode, and send message to current model
 				// to blur the filter widget
 				m.mode = normalMode
-				_ = m.updateCurrent(tui.FilterBlurMsg{})
+				_ = m.UpdateCurrent(tui.FilterBlurMsg{})
 				return m, nil
 			case key.Matches(msg, keys.Filter.Close):
 				// Switch back to normal mode, and send message to current model
 				// to close the filter widget
 				m.mode = normalMode
-				_ = m.updateCurrent(tui.FilterCloseMsg{})
+				_ = m.UpdateCurrent(tui.FilterCloseMsg{})
 				return m, nil
 			default:
 				// Wrap key message in a filter key message and send to current
 				// model.
-				cmd = m.updateCurrent(tui.FilterKeyMsg(msg))
+				cmd = m.UpdateCurrent(tui.FilterKeyMsg(msg))
 				return m, cmd
 			}
 		}
@@ -227,46 +229,38 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tui.YesNoPrompt("Quit pug?", tea.Quit)
 		case key.Matches(msg, keys.Global.Back):
 			// <esc> goes back to last page
-			m.goBack()
+			m.GoBack()
 		case key.Matches(msg, keys.Global.Help):
 			// '?' enables help mode
 			m.mode = helpMode
 		case key.Matches(msg, keys.Global.Filter):
 			// '/' enables filter mode, but only if the current model
 			// acknowledges the message.
-			cmd = m.updateCurrent(tui.FilterFocusReqMsg{})
+			cmd = m.UpdateCurrent(tui.FilterFocusReqMsg{})
 			return m, cmd
 		case key.Matches(msg, keys.Global.Logs):
 			// 'l' shows logs
-			return m, tui.NavigateTo(tui.LogListKind)
+			return m, navigator.Go(tui.LogListKind)
 		case key.Matches(msg, keys.Global.Modules):
 			// 'm' lists all modules
-			return m, tui.NavigateTo(tui.ModuleListKind)
+			return m, navigator.Go(tui.ModuleListKind)
 		case key.Matches(msg, keys.Global.Workspaces):
 			// 'W' lists all workspaces
-			return m, tui.NavigateTo(tui.WorkspaceListKind)
+			return m, navigator.Go(tui.WorkspaceListKind)
 		case key.Matches(msg, keys.Global.Runs):
 			// 'R' lists all runs
-			return m, tui.NavigateTo(tui.RunListKind)
+			return m, navigator.Go(tui.RunListKind)
 		case key.Matches(msg, keys.Global.Tasks):
 			// 'T' lists all tasks
-			return m, tui.NavigateTo(tui.TaskListKind)
+			return m, navigator.Go(tui.TaskListKind)
 		default:
 			// Send other keys to current model.
-			cmd := m.updateCurrent(msg)
+			cmd := m.UpdateCurrent(msg)
 			return m, cmd
 		}
-	case tui.NavigationMsg:
-		created, err := m.setCurrent(msg.Page)
-		if err != nil {
-			return m, tui.ReportError(err, "setting current page")
-		}
-		if created {
-			cmds = append(cmds, m.currentModel().Init())
-		}
-		if msg.Tab != "" {
-			cmds = append(cmds, m.updateCurrent(tui.SetActiveTabMsg(msg.Tab)))
-		}
+	case navigator.GoMsg, navigator.SwitchTabMsg:
+		cmd = m.Navigator.Update(msg)
+		cmds = append(cmds, cmd)
 	case tuirun.CreatedRunsMsg:
 		cmd, m.info, m.err = tuirun.HandleCreatedRuns(msg)
 		cmds = append(cmds, cmd)
@@ -291,18 +285,18 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.height = msg.Height
 
 		// Inform navigator of new dimensions for when it builds new models
-		m.navigator.width = m.viewWidth()
-		m.navigator.height = m.viewHeight()
+		m.Navigator.SetWidth(m.viewWidth())
+		m.Navigator.SetHeight(m.viewHeight())
 
 		// amend msg to account for header etc, and forward to all cached
 		// models.
-		_ = m.cache.updateAll(tea.WindowSizeMsg{
+		_ = m.UpdateAll(tea.WindowSizeMsg{
 			Height: m.viewHeight(),
 			Width:  m.viewWidth(),
 		})
 	default:
 		// Send remaining msg types to all cached models
-		cmds = append(cmds, m.cache.updateAll(msg)...)
+		cmds = append(cmds, m.UpdateAll(msg)...)
 
 		// Send message to the prompt too if in prompt mode (most likely a
 		// blink message)
@@ -349,7 +343,7 @@ func (m model) View() string {
 	)
 
 	var currentHelpBindings []key.Binding
-	if bindings, ok := m.currentModel().(tui.ModelHelpBindings); ok {
+	if bindings, ok := m.CurrentModel().(tui.ModelHelpBindings); ok {
 		currentHelpBindings = bindings.HelpBindings()
 		currentHelpBindings = tui.RemoveDuplicateBindings(currentHelpBindings)
 	}
@@ -372,13 +366,13 @@ func (m model) View() string {
 			),
 		}
 	case promptMode:
-		content = m.currentModel().View()
+		content = m.CurrentModel().View()
 		shortHelpBindings = m.prompt.HelpBindings()
 	case filterMode:
-		content = m.currentModel().View()
+		content = m.CurrentModel().View()
 		shortHelpBindings = keys.KeyMapToSlice(keys.Filter)
 	default:
-		content = m.currentModel().View()
+		content = m.CurrentModel().View()
 		shortHelpBindings = append(
 			currentHelpBindings,
 			keys.KeyMapToSlice(keys.Global)...,
@@ -403,30 +397,24 @@ func (m model) View() string {
 	// Render page title line
 	var (
 		pageTitle  string
-		pageID     string
 		pageStatus string
 	)
-	if titled, ok := m.currentModel().(tui.ModelTitle); ok {
+	if titled, ok := m.CurrentModel().(tui.ModelTitle); ok {
 		pageTitle = tui.Regular.Copy().Margin(0, 1).Render(titled.Title())
 	}
 
 	// Optionally render page id and/or status to the right side of title
-	pageIDAndStatusStyle := tui.Regular.
+	pageStatusStyle := tui.Regular.
 		Margin(0, 1).
+		Padding(0, 1).
 		Width(m.width - tui.Width(pageTitle) - 2).
 		Align(lipgloss.Right)
-	if identifiable, ok := m.currentModel().(tui.ModelID); ok {
-		pageID = tui.Regular.Copy().Padding(0, 0, 0, 0).Render(identifiable.ID())
+	if statusable, ok := m.CurrentModel().(tui.ModelStatus); ok {
+		pageStatus = pageStatusStyle.Render(statusable.Status())
 	}
-	if statusable, ok := m.currentModel().(tui.ModelStatus); ok {
-		pageStatus = tui.Padded.Copy().Render(statusable.Status())
-	}
-	pageIDAndStatus := pageIDAndStatusStyle.Render(
-		lipgloss.JoinHorizontal(lipgloss.Left, pageStatus, pageID),
-	)
 
 	// Stitch together page title line, and id and status to the right
-	pageTitleLine := lipgloss.JoinHorizontal(lipgloss.Left, pageTitle, pageIDAndStatus)
+	pageTitleLine := lipgloss.JoinHorizontal(lipgloss.Left, pageTitle, pageStatus)
 
 	// Global-level info goes in the bottom right corner in the footer.
 	metadata := tui.Padded.Copy().Render(

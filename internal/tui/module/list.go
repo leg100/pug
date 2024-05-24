@@ -12,6 +12,7 @@ import (
 	"github.com/leg100/pug/internal/run"
 	"github.com/leg100/pug/internal/tui"
 	"github.com/leg100/pug/internal/tui/keys"
+	"github.com/leg100/pug/internal/tui/navigator"
 	tuirun "github.com/leg100/pug/internal/tui/run"
 	"github.com/leg100/pug/internal/tui/table"
 	tuitask "github.com/leg100/pug/internal/tui/task"
@@ -97,6 +98,7 @@ func (m *ListMaker) Make(_ resource.Resource, width, height int) (tea.Model, err
 		WorkspaceService: m.WorkspaceService,
 		RunService:       m.RunService,
 		workdir:          m.Workdir,
+		helpers:          m.Helpers,
 	}, nil
 }
 
@@ -108,6 +110,7 @@ type list struct {
 	table   table.Model[resource.ID, *module.Module]
 	spinner *spinner.Model
 	workdir string
+	helpers *tui.Helpers
 }
 
 func (m list) Init() tea.Cmd {
@@ -134,33 +137,33 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch {
 		case key.Matches(msg, localKeys.ReloadModules):
 			return m, ReloadModules(false, m.ModuleService)
+		case key.Matches(msg, keys.Common.Workspace):
+			fallthrough
 		case key.Matches(msg, keys.Global.Enter):
 			if row, ok := m.table.CurrentRow(); ok {
-				return m, tui.NavigateTo(tui.ModuleKind, tui.WithParent(row.Value))
+				return m, navigator.Go(tui.WorkspaceListKind, navigator.WithResource(row.Value))
+			}
+		case key.Matches(msg, keys.Common.State):
+			if row, ok := m.table.CurrentRow(); ok {
+				if ws, err := m.currentWorkspace(row.Value); err != nil {
+					return m, tui.ReportError(err, "navigating to state")
+				} else if ws == nil {
+					return m, tui.ReportError(errors.New("module does not have a current workspace"), "")
+				} else {
+					return m, navigator.Go(tui.StateKind, navigator.WithResource(ws))
+				}
+			}
+		case key.Matches(msg, keys.Common.Tasks):
+			if row, ok := m.table.CurrentRow(); ok {
+				return m, navigator.Go(tui.TaskListKind, navigator.WithResource(row.Value))
 			}
 		case key.Matches(msg, keys.Common.Edit):
 			if row, ok := m.table.CurrentRow(); ok {
 				return m, tui.OpenVim(row.Value.Path)
 			}
 		case key.Matches(msg, keys.Common.Init):
-			rows := m.table.SelectedOrCurrent()
-			switch len(rows) {
-			case 0:
-				// no rows, do nothing
-			case 1:
-				// create init task and switch user to its task page
-				return m, func() tea.Msg {
-					task, err := m.ModuleService.Init(rows[0].Key)
-					if err != nil {
-						return tui.NewErrorMsg(err, "creating init task")
-					}
-					return tui.NewNavigationMsg(tui.TaskKind, tui.WithParent(task))
-				}
-			default:
-				// create init tasks, and keep user on current page.
-				cmd := tuitask.CreateTasks("init", resource.GlobalResource, m.ModuleService.Init, m.table.SelectedOrCurrentKeys()...)
-				return m, cmd
-			}
+			cmd := tuitask.CreateTasks("init", resource.GlobalResource, m.ModuleService.Init, m.table.SelectedOrCurrentKeys()...)
+			return m, cmd
 		case key.Matches(msg, keys.Common.Validate):
 			cmd := tuitask.CreateTasks("validate", resource.GlobalResource, m.ModuleService.Validate, m.table.SelectedOrCurrentKeys()...)
 			return m, cmd
@@ -213,7 +216,7 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m list) Title() string {
-	return tui.GlobalBreadcrumb("Modules", m.table.TotalString())
+	return tui.Breadcrumbs("Modules", resource.GlobalResource, m.table.TotalString())
 }
 
 func (m list) View() string {
@@ -229,23 +232,31 @@ func (m list) HelpBindings() (bindings []key.Binding) {
 		keys.Common.Apply,
 		keys.Common.Destroy,
 		keys.Common.Edit,
+		keys.Common.State,
+		keys.Common.Tasks,
 		localKeys.ReloadModules,
 		localKeys.ReloadWorkspaces,
 	}
 }
 
-// currentRun retrieves current run for a module. If there is no current run for
-// the module, then a nil run is returned.
-func (m list) currentRun(mod *module.Module) (*run.Run, error) {
+// currentWorkspace retrieves the current workspace for a module. If there is no
+// current workspace for the module, then nil is returned.
+func (m list) currentWorkspace(mod *module.Module) (*workspace.Workspace, error) {
 	currentWorkspaceID := mod.CurrentWorkspaceID
 	if currentWorkspaceID == nil {
 		return nil, nil
 	}
-	run, err := m.WorkspaceService.Get(*currentWorkspaceID)
+	return m.WorkspaceService.Get(*currentWorkspaceID)
+}
+
+// currentRun retrieves current run for a module. If there is no current run for
+// the module, then a nil run is returned.
+func (m list) currentRun(mod *module.Module) (*run.Run, error) {
+	ws, err := m.currentWorkspace(mod)
 	if err != nil {
 		return nil, err
 	}
-	currentRunID := run.CurrentRunID
+	currentRunID := ws.CurrentRunID
 	if currentRunID == nil {
 		return nil, nil
 	}

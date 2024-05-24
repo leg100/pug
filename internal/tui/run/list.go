@@ -3,16 +3,15 @@ package run
 import (
 	"errors"
 	"fmt"
-	"slices"
 	"time"
 
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/leg100/pug/internal/resource"
 	"github.com/leg100/pug/internal/run"
-	"github.com/leg100/pug/internal/task"
 	"github.com/leg100/pug/internal/tui"
 	"github.com/leg100/pug/internal/tui/keys"
+	"github.com/leg100/pug/internal/tui/navigator"
 	"github.com/leg100/pug/internal/tui/table"
 )
 
@@ -64,18 +63,20 @@ func (m *ListMaker) Make(parent resource.Resource, width, height int) (tea.Model
 		WithParent(parent)
 
 	return list{
-		table:  table,
-		svc:    m.RunService,
-		tasks:  m.TaskService,
-		parent: parent,
+		table:   table,
+		svc:     m.RunService,
+		tasks:   m.TaskService,
+		parent:  parent,
+		helpers: m.Helpers,
 	}, nil
 }
 
 type list struct {
-	table  table.Model[resource.ID, *run.Run]
-	svc    tui.RunService
-	tasks  tui.TaskService
-	parent resource.Resource
+	table   table.Model[resource.ID, *run.Run]
+	svc     tui.RunService
+	tasks   tui.TaskService
+	parent  resource.Resource
+	helpers *tui.Helpers
 }
 
 func (m list) Init() tea.Cmd {
@@ -98,7 +99,15 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch {
 		case key.Matches(msg, keys.Global.Enter):
 			if row, ok := m.table.CurrentRow(); ok {
-				return m, tui.NavigateTo(tui.RunKind, tui.WithParent(row.Value))
+				return m, navigator.Go(tui.RunKind, navigator.WithResource(row.Value))
+			}
+		case key.Matches(msg, keys.Common.Module):
+			if row, ok := m.table.CurrentRow(); ok {
+				return m, navigator.Go(tui.RunListKind, navigator.WithResource(row.Value.Module()))
+			}
+		case key.Matches(msg, keys.Common.Workspace):
+			if row, ok := m.table.CurrentRow(); ok {
+				return m, navigator.Go(tui.RunListKind, navigator.WithResource(row.Value.Workspace()))
 			}
 		case key.Matches(msg, keys.Common.Apply):
 			runIDs, err := m.table.Prune(func(row *run.Run) (resource.ID, error) {
@@ -122,7 +131,7 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m list) Title() string {
-	return tui.GlobalBreadcrumb("Runs", m.table.TotalString())
+	return tui.Breadcrumbs("Runs", m.parent, m.table.TotalString())
 }
 
 func (m list) View() string {
@@ -137,29 +146,5 @@ func (m list) HelpBindings() (bindings []key.Binding) {
 	return []key.Binding{
 		keys.Common.Apply,
 		keys.Common.Cancel,
-	}
-}
-
-//lint:ignore U1000 intend to use shortly
-func (m list) navigateLatestTask(runID resource.ID) tea.Cmd {
-	return func() tea.Msg {
-		tasks := m.tasks.List(task.ListOptions{
-			Ancestor: runID,
-		})
-		var latest *task.Task
-		for _, task := range tasks {
-			if slices.Equal(task.Command, []string{"apply"}) {
-				latest = task
-				// Apply task trumps a plan task.
-				break
-			}
-			if slices.Equal(task.Command, []string{"plan"}) {
-				latest = task
-			}
-		}
-		if latest == nil {
-			return tui.NewErrorMsg(errors.New("no plan or apply task found for run"), "")
-		}
-		return tui.NewNavigationMsg(tui.TaskKind, tui.WithParent(latest))
 	}
 }
