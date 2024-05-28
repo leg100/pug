@@ -166,21 +166,18 @@ func (h *Helpers) RunStatus(r *run.Run) string {
 		color = Green
 	case run.Errored:
 		color = Red
-	case run.Stale:
-		color = Orange
 	}
 	return Regular.Copy().Foreground(color).Render(string(r.Status))
 }
 
 func (h *Helpers) LatestRunReport(r *run.Run) string {
-	switch r.Status {
-	case run.Planned, run.NoChanges, run.Stale:
-		return h.RunReport(r.PlanReport)
-	case run.Applied:
-		return h.RunReport(r.ApplyReport)
-	default:
-		return "-"
+	if r.ApplyReport != nil {
+		return h.RunReport(*r.ApplyReport)
 	}
+	if r.PlanReport != nil {
+		return h.RunReport(*r.PlanReport)
+	}
+	return ""
 }
 
 func (h *Helpers) RunReport(report run.Report) string {
@@ -195,14 +192,15 @@ func (h *Helpers) Breadcrumbs(title string, res resource.Resource, crumbs ...str
 	// format: title{task command}[workspace name](module path)
 	switch res.GetKind() {
 	case resource.Task:
-		cmd := Regular.Copy().Foreground(Green).Render(res.String())
+		cmd := Regular.Copy().Foreground(Blue).Render(res.String())
 		crumb := fmt.Sprintf("{%s}", cmd)
 		return h.Breadcrumbs(title, res.GetParent(), crumb)
 	case resource.Run:
-		return h.Breadcrumbs(title, res.GetParent())
+		// Skip run info in breadcrumbs
+		return h.Breadcrumbs(title, res.GetParent(), crumbs...)
 	case resource.Workspace:
 		crumb := fmt.Sprintf("[%s]", Regular.Copy().Foreground(Red).Render(res.String()))
-		return h.Breadcrumbs(title, res.GetParent(), crumb)
+		return h.Breadcrumbs(title, res.GetParent(), append(crumbs, crumb)...)
 	case resource.Module:
 		path := Regular.Copy().Foreground(modulePathColor).Render(res.String())
 		crumbs = append(crumbs, fmt.Sprintf("(%s)", path))

@@ -10,12 +10,11 @@ import (
 	"github.com/leg100/pug/internal/module"
 	"github.com/leg100/pug/internal/resource"
 	"github.com/leg100/pug/internal/run"
+	"github.com/leg100/pug/internal/task"
 	"github.com/leg100/pug/internal/tui"
 	"github.com/leg100/pug/internal/tui/keys"
-	tuirun "github.com/leg100/pug/internal/tui/run"
 	"github.com/leg100/pug/internal/tui/table"
 	tuitask "github.com/leg100/pug/internal/tui/task"
-	"github.com/leg100/pug/internal/workspace"
 )
 
 var (
@@ -56,8 +55,6 @@ func (m *ListMaker) Make(_ resource.Resource, width, height int) (tea.Model, err
 		table.ModuleColumn,
 		currentWorkspace,
 		table.ResourceCountColumn,
-		table.RunStatusColumn,
-		table.RunChangesColumn,
 		initColumn,
 		formatColumn,
 		validColumn,
@@ -83,8 +80,6 @@ func (m *ListMaker) Make(_ resource.Resource, width, height int) (tea.Model, err
 			formatColumn.Key:              boolToUnicode(mod.FormatInProgress, mod.Formatted),
 			validColumn.Key:               boolToUnicode(mod.ValidationInProgress, mod.Valid),
 			currentWorkspace.Key:          m.Helpers.CurrentWorkspaceName(mod.CurrentWorkspaceID),
-			table.RunStatusColumn.Key:     m.Helpers.ModuleCurrentRunStatus(mod),
-			table.RunChangesColumn.Key:    m.Helpers.ModuleCurrentRunChanges(mod),
 			table.ResourceCountColumn.Key: m.Helpers.ModuleCurrentResourceCount(mod),
 		}
 	}
@@ -124,12 +119,6 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	)
 
 	switch msg := msg.(type) {
-	case resource.Event[*workspace.Workspace]:
-		// Update current workspace and current run
-		m.table.UpdateViewport()
-	case resource.Event[*run.Run]:
-		// Update current run status and changes
-		m.table.UpdateViewport()
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, localKeys.ReloadModules):
@@ -174,42 +163,45 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			createRunOptions.Destroy = true
 			fallthrough
 		case key.Matches(msg, keys.Common.Plan):
-			workspaceIDs, err := m.table.Prune(func(mod *module.Module) (resource.ID, error) {
-				if workspaceID := mod.CurrentWorkspaceID; workspaceID != nil {
-					return *workspaceID, nil
-				}
-				return resource.ID{}, errors.New("module does not have a current workspace")
-			})
+			workspaceIDs, err := m.pruneModulesWithoutCurrentWorkspace()
 			if err != nil {
 				return m, tui.ReportError(err, "")
 			}
-			return m, tuirun.CreateRuns(m.RunService, resource.GlobalResource, createRunOptions, workspaceIDs...)
+			fn := func(workspaceID resource.ID) (*task.Task, error) {
+				return m.RunService.Plan(workspaceID, createRunOptions)
+			}
+			return m, tuitask.CreateTasks("plan", resource.GlobalResource, fn, workspaceIDs...)
 		case key.Matches(msg, keys.Common.Apply):
-			runIDs, err := m.table.Prune(func(mod *module.Module) (resource.ID, error) {
-				curr, err := m.currentRun(mod)
-				if err != nil {
-					return resource.ID{}, err
-				}
-				if curr == nil {
-					return resource.ID{}, errors.New("module does not have a current run")
-				}
-				if curr.Status != run.Planned {
-					return resource.ID{}, fmt.Errorf("run not in unapplyable state: %s", string(curr.Status))
-				}
-				// Module has a current run and it is applyable, so do not
-				// prune
-				return curr.ID, nil
-			})
+			workspaceIDs, err := m.pruneModulesWithoutCurrentWorkspace()
 			if err != nil {
 				return m, tui.ReportError(err, "")
 			}
-			return m, tuirun.ApplyCommand(m.RunService, resource.GlobalResource, runIDs...)
+			fn := func(workspaceID resource.ID) (*task.Task, error) {
+				return m.RunService.ApplyOnly(workspaceID, createRunOptions)
+			}
+			return m, tui.YesNoPrompt(
+				fmt.Sprintf("Auto-apply %d modules?", len(workspaceIDs)),
+				tuitask.CreateTasks("apply", resource.GlobalResource, fn, workspaceIDs...),
+			)
 		}
 	}
 
 	m.table, cmd = m.table.Update(msg)
 	cmds = append(cmds, cmd)
 	return m, tea.Batch(cmds...)
+}
+
+func (m list) pruneModulesWithoutCurrentWorkspace() ([]resource.ID, error) {
+	workspaceIDs, err := m.table.Prune(func(mod *module.Module) (resource.ID, error) {
+		if workspaceID := mod.CurrentWorkspaceID; workspaceID != nil {
+			return *workspaceID, nil
+		}
+		return resource.ID{}, errors.New("module does not have a current workspace")
+	})
+	if err != nil {
+		return nil, err
+	}
+	return workspaceIDs, nil
 }
 
 func (m list) Title() string {
@@ -232,22 +224,4 @@ func (m list) HelpBindings() (bindings []key.Binding) {
 		localKeys.ReloadModules,
 		localKeys.ReloadWorkspaces,
 	}
-}
-
-// currentRun retrieves current run for a module. If there is no current run for
-// the module, then a nil run is returned.
-func (m list) currentRun(mod *module.Module) (*run.Run, error) {
-	currentWorkspaceID := mod.CurrentWorkspaceID
-	if currentWorkspaceID == nil {
-		return nil, nil
-	}
-	run, err := m.WorkspaceService.Get(*currentWorkspaceID)
-	if err != nil {
-		return nil, err
-	}
-	currentRunID := run.CurrentRunID
-	if currentRunID == nil {
-		return nil, nil
-	}
-	return m.RunService.Get(*currentRunID)
 }

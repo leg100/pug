@@ -13,6 +13,7 @@ import (
 	"github.com/leg100/pug/internal/tui"
 	"github.com/leg100/pug/internal/tui/keys"
 	tasktui "github.com/leg100/pug/internal/tui/task"
+	tuitask "github.com/leg100/pug/internal/tui/task"
 )
 
 type Maker struct {
@@ -81,11 +82,14 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, keys.Common.Apply):
-			// Only run an apply if run is in the planned state
+			// Only trigger an apply if run is in the planned state
 			if m.run.Status != run.Planned {
 				return m, nil
 			}
-			return m, ApplyCommand(m.svc, m.run, m.run.ID)
+			return m, tui.YesNoPrompt(
+				"Apply run?",
+				tuitask.CreateTasks("apply", m.run, m.svc.ApplyPlan, m.run.ID),
+			)
 		case key.Matches(msg, keys.Common.Module):
 			return m, tui.NavigateTo(tui.ModuleKind, tui.WithParent(m.run.Module()))
 		case key.Matches(msg, keys.Common.Workspace):
@@ -153,12 +157,15 @@ func (m model) View() string {
 func (m model) TabSetInfo(activeTabTitle string) string {
 	switch activeTabTitle {
 	case "plan":
-		return m.helpers.RunReport(m.run.PlanReport)
+		if m.run.PlanReport != nil {
+			return m.helpers.RunReport(*m.run.PlanReport)
+		}
 	case "apply":
-		return m.helpers.RunReport(m.run.ApplyReport)
-	default:
-		return ""
+		if m.run.ApplyReport != nil {
+			return m.helpers.RunReport(*m.run.ApplyReport)
+		}
 	}
+	return ""
 }
 
 func (m model) HelpBindings() (bindings []key.Binding) {

@@ -13,6 +13,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/hokaccha/go-prettyjson"
 	"github.com/leg100/pug/internal/resource"
+	"github.com/leg100/pug/internal/run"
 	"github.com/leg100/pug/internal/task"
 	"github.com/leg100/pug/internal/tui"
 	"github.com/leg100/pug/internal/tui/keys"
@@ -20,6 +21,7 @@ import (
 )
 
 type Maker struct {
+	RunService  tui.RunService
 	TaskService tui.TaskService
 	Spinner     *spinner.Model
 
@@ -38,6 +40,7 @@ func (mm *Maker) Make(res resource.Resource, width, height int) (tea.Model, erro
 
 	m := model{
 		svc:      mm.TaskService,
+		runs:     mm.RunService,
 		task:     task,
 		output:   task.NewReader(),
 		spinner:  mm.Spinner,
@@ -47,6 +50,10 @@ func (mm *Maker) Make(res resource.Resource, width, height int) (tea.Model, erro
 		width:   width,
 		height:  height,
 		helpers: mm.Helpers,
+	}
+
+	if rr := m.task.Run(); rr != nil {
+		m.run = rr.(*run.Run)
 	}
 
 	m.viewport = viewport.New(0, 0)
@@ -59,6 +66,8 @@ func (mm *Maker) Make(res resource.Resource, width, height int) (tea.Model, erro
 type model struct {
 	svc  tui.TaskService
 	task *task.Task
+	run  *run.Run
+	runs tui.RunService
 
 	output   io.Reader
 	buf      []byte
@@ -113,12 +122,23 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if run := m.task.Run(); run != nil {
 				return m, tui.NavigateTo(tui.RunKind, tui.WithParent(run))
 			}
+		case key.Matches(msg, keys.Common.Apply):
+			if m.run != nil {
+				// Only trigger an apply if run is in the planned state
+				if m.run.Status != run.Planned {
+					return m, nil
+				}
+				return m, tui.YesNoPrompt(
+					"Apply run?",
+					CreateTasks("apply", m.run, m.runs.ApplyPlan, m.run.ID),
+				)
+			}
 		}
 	case outputMsg:
 		if msg.taskID != m.task.ID {
 			return m, nil
 		}
-		// isChild is true when this msg is for a task model that is a child of a
+		// isRunTab is true when this msg is for a task model that is a child of a
 		// run model, i.e. a tab. Without this flag, output would be duplicated in
 		// both the tab and on the generic task view.
 		if msg.isRunTab != m.isRunTab {
@@ -169,14 +189,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	cmds = append(cmds, cmd)
 
 	return m, tea.Batch(cmds...)
-}
-
-func (m model) Title() string {
-	return m.helpers.Breadcrumbs("Task", m.task)
-}
-
-func (m model) ID() string {
-	return m.task.String()
 }
 
 const (
@@ -241,6 +253,10 @@ func (m model) TabStatus() string {
 	return "+"
 }
 
+func (m model) Title() string {
+	return m.helpers.Breadcrumbs("Task", m.task)
+}
+
 func (m model) Status() string {
 	var color lipgloss.Color
 
@@ -256,7 +272,16 @@ func (m model) Status() string {
 	case task.Errored:
 		color = tui.Red
 	}
-	return tui.Regular.Copy().Foreground(color).Render(string(m.task.State))
+	taskState := tui.Regular.Copy().Background(color).Foreground(tui.White).Padding(0, 1).Render(string(m.task.State))
+
+	if m.run != nil {
+		return lipgloss.JoinHorizontal(lipgloss.Top,
+			m.helpers.LatestRunReport(m.run),
+			" ",
+			m.helpers.RunStatus(m.run),
+		)
+	}
+	return taskState
 }
 
 func (m model) HelpBindings() []key.Binding {
@@ -269,8 +294,11 @@ func (m model) HelpBindings() []key.Binding {
 	if ws := m.task.Workspace(); ws != nil {
 		bindings = append(bindings, keys.Common.Workspace)
 	}
-	if run := m.task.Run(); run != nil {
+	if m.run != nil {
 		bindings = append(bindings, keys.Common.Run)
+		if m.run.Status == run.Planned {
+			bindings = append(bindings, keys.Common.Apply)
+		}
 	}
 	return bindings
 }

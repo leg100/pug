@@ -159,13 +159,10 @@ func (m resources) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			createRunOptions.TargetAddrs = m.selectedOrCurrentAddresses()
 			// NOTE: even if the user hasn't selected any rows, we still proceed
 			// to create a run without targeted resources.
-			return m, func() tea.Msg {
-				run, err := m.runs.Create(m.workspace.GetID(), createRunOptions)
-				if err != nil {
-					return tui.NewErrorMsg(err, "creating targeted run")
-				}
-				return tui.NewNavigationMsg(tui.RunKind, tui.WithParent(run))
+			fn := func(workspaceID resource.ID) (*task.Task, error) {
+				return m.runs.Plan(workspaceID, createRunOptions)
 			}
+			return m, tuitask.CreateTasks("plan", resource.GlobalResource, fn, m.workspace.GetID())
 		}
 	case initState:
 		m.state = (*state.State)(msg)

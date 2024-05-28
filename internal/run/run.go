@@ -2,22 +2,21 @@ package run
 
 import (
 	"fmt"
+	"io"
 	"log/slog"
 	"os"
 	"path/filepath"
 	"time"
 
-	"github.com/leg100/pug/internal/module"
+	"github.com/leg100/pug/internal/pubsub"
 	"github.com/leg100/pug/internal/resource"
 	"github.com/leg100/pug/internal/state"
-	"github.com/leg100/pug/internal/workspace"
 )
 
 type Status string
 
 const (
 	Pending     Status = "pending"
-	Scheduled   Status = "scheduled"
 	PlanQueued  Status = "plan queued"
 	Planning    Status = "planning"
 	Planned     Status = "planned"
@@ -25,7 +24,6 @@ const (
 	ApplyQueued Status = "apply queued"
 	Applying    Status = "applying"
 	Applied     Status = "applied"
-	Stale       Status = "stale"
 	Errored     Status = "errored"
 	Canceled    Status = "canceled"
 	Discarded   Status = "discarded"
@@ -39,26 +37,18 @@ type Run struct {
 	Created time.Time
 	Updated time.Time
 
-	Status      Status
-	AutoApply   bool
-	TargetAddrs []state.ResourceAddress
-	Destroy     bool
+	Status Status
 
-	PlanReport  Report
-	ApplyReport Report
+	PlanReport    *Report
+	ApplyReport   *Report
+	Changes       bool
+	ArtefactsPath string
 
-	// Error is non-nil when the run status is Errored
-	Error error
-
-	// Path to pug's data directory
-	dataDir string
+	applyOnly bool
+	runArgs   []string
 
 	// Call this function after every status update
 	afterUpdate func(run *Run)
-
-	// Name of tfvars file to pass to terraform plan. An empty string means
-	// there is no vars file.
-	varsFilename string
 }
 
 type CreateOptions struct {
@@ -66,35 +56,59 @@ type CreateOptions struct {
 	TargetAddrs []state.ResourceAddress
 	// Destroy creates a plan to destroy all resources.
 	Destroy bool
-
-	afterUpdate func(run *Run)
-	dataDir     string
+	// applyOnly skips the plan task and goes directly to creating an apply task
+	// without a plan file.
+	applyOnly bool
 }
 
-func newRun(mod *module.Module, ws *workspace.Workspace, opts CreateOptions) (*Run, error) {
-	run := &Run{
-		Common:      resource.New(resource.Run, ws),
-		Status:      Pending,
-		AutoApply:   ws.AutoApply,
-		TargetAddrs: opts.TargetAddrs,
-		Destroy:     opts.Destroy,
-		Created:     time.Now(),
-		Updated:     time.Now(),
-		afterUpdate: opts.afterUpdate,
-		dataDir:     opts.dataDir,
+type factory struct {
+	dataDir    string
+	modules    moduleGetter
+	workspaces workspaceGetter
+	broker     *pubsub.Broker[*Run]
+}
+
+func (f *factory) newRun(workspaceID resource.ID, opts CreateOptions) (*Run, error) {
+	ws, err := f.workspaces.Get(workspaceID)
+	if err != nil {
+		return nil, fmt.Errorf("retrieving workspace: %w", err)
+	}
+	mod, err := f.modules.Get(ws.ModuleID())
+	if err != nil {
+		return nil, fmt.Errorf("workspace module: %w", err)
 	}
 
-	// Create directory for run artefacts including plan file etc.
-	if err := os.MkdirAll(run.ArtefactsPath(), 0o755); err != nil {
-		return nil, fmt.Errorf("creating run artefacts directory: %w", err)
+	var args []string
+	if opts.Destroy {
+		args = append(args, "-destroy")
+	}
+	for _, addr := range opts.TargetAddrs {
+		args = append(args, fmt.Sprintf("-target=%s", addr))
 	}
 
 	// Check if a tfvars file exists for the workspace. If so then use it for
-	// the plan.
+	// the run.
 	varsFilename := fmt.Sprintf("%s.tfvars", ws.Name)
 	tfvars := filepath.Join(mod.FullPath(), varsFilename)
 	if _, err := os.Stat(tfvars); err == nil {
-		run.varsFilename = varsFilename
+		args = append(args, fmt.Sprintf("-var-file=%s", varsFilename))
+	}
+
+	run := &Run{
+		Common:    resource.New(resource.Run, ws),
+		Status:    Pending,
+		applyOnly: opts.applyOnly,
+		runArgs:   args,
+		afterUpdate: func(run *Run) {
+			f.broker.Publish(resource.UpdatedEvent, run)
+		},
+	}
+
+	if !opts.applyOnly {
+		run.ArtefactsPath = filepath.Join(f.dataDir, run.String())
+		if err := os.MkdirAll(run.ArtefactsPath, 0o755); err != nil {
+			return nil, fmt.Errorf("creating run artefacts directory: %w", err)
+		}
 	}
 
 	return run, nil
@@ -112,30 +126,9 @@ func (r *Run) ModulePath() string {
 	return r.Parent.GetParent().String()
 }
 
-// PlanPath is the path to the run's plan file, relative to the module's
-// directory.
-func (r *Run) PlanPath() string {
-	return filepath.Join(r.ArtefactsPath(), "plan")
-}
-
-// PlanArgs produces the arguments for terraform plan
-func (r *Run) PlanArgs() []string {
-	args := []string{"-input=false", "-out", r.PlanPath()}
-	for _, addr := range r.TargetAddrs {
-		args = append(args, fmt.Sprintf("-target=%s", addr))
-	}
-	if r.Destroy {
-		args = append(args, "-destroy")
-	}
-	if r.varsFilename != "" {
-		args = append(args, fmt.Sprintf("-var-file=%s", r.varsFilename))
-	}
-	return args
-}
-
 func (r *Run) IsFinished() bool {
 	switch r.Status {
-	case NoChanges, Applied, Errored, Canceled, Stale:
+	case NoChanges, Applied, Errored, Canceled:
 		return true
 	default:
 		return false
@@ -149,26 +142,91 @@ func (r *Run) LogValue() slog.Value {
 	)
 }
 
-// Run's dedicated directory for artefacts created during its lifetime.
-func (r *Run) ArtefactsPath() string {
-	return filepath.Join(r.dataDir, r.String())
-}
-
-func (r *Run) setErrored(err error) {
-	r.Error = err
-	r.updateStatus(Errored)
-}
-
 func (r *Run) updateStatus(status Status) {
 	r.Status = status
 	r.Updated = time.Now()
-	if r.afterUpdate != nil {
-		r.afterUpdate(r)
-	}
-	if r.IsFinished() {
-		slog.Info("completed run", "status", r.Status, "run", r)
+	r.afterUpdate(r)
+}
 
-		// Once a run is finished remove its artefacts
-		_ = os.RemoveAll(r.ArtefactsPath())
+func (r *Run) planPath() string {
+	return filepath.Join(r.ArtefactsPath, "plan")
+}
+
+func (r *Run) planArgs() []string {
+	args := append(r.runArgs, "-input=false")
+	if r.applyOnly {
+		return args
 	}
+	return append(args, "-out", r.planPath())
+}
+
+func (r *Run) finishPlan(reader io.Reader) (err error) {
+	defer func() {
+		if err != nil {
+			r.updateStatus(Errored)
+		}
+	}()
+
+	out, err := io.ReadAll(reader)
+	if err != nil {
+		return err
+	}
+	if err := r.parsePlanOutput(out); err != nil {
+		return err
+	}
+	if !r.Changes {
+		r.updateStatus(NoChanges)
+		return nil
+	}
+	r.updateStatus(Planned)
+	return nil
+}
+
+func (r *Run) parsePlanOutput(out []byte) error {
+	changes, report, err := parsePlanReport(string(out))
+	if err != nil {
+		return err
+	}
+	r.PlanReport = &report
+	r.Changes = changes
+	return nil
+}
+
+func (r *Run) applyArgs() []string {
+	noInput := "-input=false"
+	if r.applyOnly {
+		return append(r.runArgs, noInput, "-auto-approve")
+	}
+	return []string{noInput, r.planPath()}
+}
+
+func (r *Run) finishApply(reader io.Reader) (err error) {
+	defer func() {
+		if err != nil {
+			r.updateStatus(Errored)
+		}
+	}()
+
+	out, err := io.ReadAll(reader)
+	if err != nil {
+		return err
+	}
+
+	if r.applyOnly {
+		if err := r.parsePlanOutput(out); err != nil {
+			return err
+		}
+	} else {
+		// Plan file can be safely removed
+		_ = os.RemoveAll(r.ArtefactsPath)
+	}
+
+	report, err := parseApplyReport(string(out))
+	if err != nil {
+		return err
+	}
+	r.ApplyReport = &report
+	r.updateStatus(Applied)
+
+	return nil
 }

@@ -11,7 +11,6 @@ import (
 )
 
 const (
-	ApplyCommand       = "apply"
 	ReloadStateCommand = "reload state"
 )
 
@@ -64,11 +63,7 @@ func HandleCreatedTasks(msg CreatedTasksMsg) (cmd tea.Cmd, info string, err erro
 	case 0:
 		// No tasks created, don't send user anywhere.
 	case 1:
-		// Unless this is a task to reload state, send the user drectly to the
-		// task's page
-		if msg.Command == ReloadStateCommand {
-			break
-		}
+		// Send the user drectly to the task's page
 		cmds = append(cmds, tui.NavigateTo(tui.TaskKind, tui.WithParent(msg.Tasks[0])))
 	default:
 		// Multiple tasks. Send the user to the appropriate listing for the model kind that
@@ -80,30 +75,15 @@ func HandleCreatedTasks(msg CreatedTasksMsg) (cmd tea.Cmd, info string, err erro
 		switch msg.Issuer.GetKind() {
 		case resource.Workspace:
 			kind = tui.WorkspaceKind
-			if msg.Command == ApplyCommand {
-				// Send user to the runs tab on the workspace page
-				opts = append(opts, tui.WithTab(tui.RunsTabTitle))
-			} else {
-				// Send user to the tasks tab on the workspace page
-				opts = append(opts, tui.WithTab(tui.TasksTabTitle))
-			}
+			// Send user to the tasks tab on the workspace page
+			opts = append(opts, tui.WithTab(tui.TasksTabTitle))
 		case resource.Module:
 			kind = tui.ModuleKind
-			if msg.Command == ApplyCommand {
-				// Send user to the runs tab on the module page
-				opts = append(opts, tui.WithTab(tui.RunsTabTitle))
-			} else {
-				// Send user to the tasks tab on the module page
-				opts = append(opts, tui.WithTab(tui.TasksTabTitle))
-			}
+			// Send user to the tasks tab on the module page
+			opts = append(opts, tui.WithTab(tui.TasksTabTitle))
 		default:
-			if msg.Command == ApplyCommand {
-				// Send user to global runs listing
-				kind = tui.RunListKind
-			} else {
-				// Send user to global tasks listing
-				kind = tui.TaskListKind
-			}
+			// Send user to global tasks listing
+			kind = tui.TaskListKind
 		}
 		cmds = append(cmds, tui.NavigateTo(kind, opts...))
 

@@ -37,10 +37,11 @@ type StateService interface {
 }
 
 type RunService interface {
-	Create(workspaceID resource.ID, opts run.CreateOptions) (*run.Run, error)
 	Get(id resource.ID) (*run.Run, error)
 	List(opts run.ListOptions) []*run.Run
-	Apply(runID resource.ID) (*task.Task, error)
+	Plan(workspaceID resource.ID, opts run.CreateOptions) (*task.Task, error)
+	ApplyOnly(workspaceID resource.ID, opts run.CreateOptions) (*task.Task, error)
+	ApplyPlan(runID resource.ID) (*task.Task, error)
 }
 
 type TaskService interface {

@@ -1,6 +1,7 @@
 package task
 
 import (
+	"errors"
 	"fmt"
 	"time"
 
@@ -8,7 +9,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/leg100/pug/internal/resource"
-	"github.com/leg100/pug/internal/run"
+	runpkg "github.com/leg100/pug/internal/run"
 	"github.com/leg100/pug/internal/task"
 	"github.com/leg100/pug/internal/tui"
 	"github.com/leg100/pug/internal/tui/keys"
@@ -24,12 +25,17 @@ var (
 	statusColumn = table.Column{
 		Key:   "run_status",
 		Title: "STATUS",
-		Width: run.MaxStatusLen,
+		Width: runpkg.MaxStatusLen,
 	}
 	ageColumn = table.Column{
 		Key:   "age",
 		Title: "AGE",
 		Width: 10,
+	}
+	summaryColumn = table.Column{
+		Key:        "summary",
+		Title:      "SUMMARY",
+		FlexFactor: 1,
 	}
 )
 
@@ -56,6 +62,7 @@ func (m *ListMaker) Make(parent resource.Resource, width, height int) (tea.Model
 	}
 	columns = append(columns,
 		commandColumn,
+		summaryColumn,
 		statusColumn,
 		ageColumn,
 	)
@@ -70,7 +77,7 @@ func (m *ListMaker) Make(parent resource.Resource, width, height int) (tea.Model
 		default:
 		}
 
-		return table.RenderedRow{
+		row := table.RenderedRow{
 			table.ModuleColumn.Key:    m.Helpers.ModulePath(t),
 			table.WorkspaceColumn.Key: m.Helpers.WorkspaceName(t),
 			commandColumn.Key:         t.CommandString(),
@@ -78,6 +85,17 @@ func (m *ListMaker) Make(parent resource.Resource, width, height int) (tea.Model
 			table.IDColumn.Key:        t.String(),
 			statusColumn.Key:          stateStyle.Render(string(t.State)),
 		}
+
+		if rr := t.Run(); rr != nil {
+			run := rr.(*runpkg.Run)
+			if t.CommandString() == "plan" && run.PlanReport != nil {
+				row[summaryColumn.Key] = m.Helpers.RunReport(*run.PlanReport)
+			} else if t.CommandString() == "apply" && run.ApplyReport != nil {
+				row[summaryColumn.Key] = m.Helpers.RunReport(*run.ApplyReport)
+			}
+		}
+
+		return row
 	}
 
 	table := table.New(columns, renderer, width, height).
@@ -87,6 +105,7 @@ func (m *ListMaker) Make(parent resource.Resource, width, height int) (tea.Model
 	return list{
 		table:  table,
 		svc:    m.TaskService,
+		runs:   m.RunService,
 		parent: parent,
 		max:    m.MaxTasks,
 	}, nil
@@ -95,6 +114,7 @@ func (m *ListMaker) Make(parent resource.Resource, width, height int) (tea.Model
 type list struct {
 	table  table.Model[resource.ID, *task.Task]
 	svc    tui.TaskService
+	runs   tui.RunService
 	parent resource.Resource
 	max    int
 }
@@ -124,6 +144,15 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, keys.Common.Cancel):
 			taskIDs := m.table.SelectedOrCurrentKeys()
 			return m, CreateTasks("cancel", m.parent, m.svc.Cancel, taskIDs...)
+		case key.Matches(msg, keys.Common.Apply):
+			runIDs, err := m.pruneApplyableTasks()
+			if err != nil {
+				return m, tui.ReportError(err, "")
+			}
+			return m, tui.YesNoPrompt(
+				fmt.Sprintf("Apply %d plans?", len(runIDs)),
+				CreateTasks("apply", m.parent, m.runs.ApplyPlan, runIDs...),
+			)
 		}
 	}
 	// Handle keyboard and mouse events in the table widget
@@ -131,6 +160,27 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	cmds = append(cmds, cmd)
 
 	return m, tea.Batch(cmds...)
+}
+
+// pruneApplyableTasks removes from the selection any tasks that cannot be
+// applied, i.e all tasks other than those that are a plan and are in the
+// planned state. The run ID of each task after pruning is returned.
+func (m list) pruneApplyableTasks() ([]resource.ID, error) {
+	runIDs, err := m.table.Prune(func(task *task.Task) (resource.ID, error) {
+		rr := task.Run()
+		if rr == nil {
+			return resource.ID{}, errors.New("task is not applyable")
+		}
+		run := rr.(*runpkg.Run)
+		if run.Status != runpkg.Planned {
+			return resource.ID{}, errors.New("task run is not in the planned state")
+		}
+		return run.ID, nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return runIDs, nil
 }
 
 func (m list) Title() string {

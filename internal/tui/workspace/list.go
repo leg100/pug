@@ -1,7 +1,6 @@
 package workspace
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/charmbracelet/bubbles/key"
@@ -10,9 +9,9 @@ import (
 	"github.com/leg100/pug/internal/resource"
 	"github.com/leg100/pug/internal/run"
 	"github.com/leg100/pug/internal/state"
+	"github.com/leg100/pug/internal/task"
 	"github.com/leg100/pug/internal/tui"
 	"github.com/leg100/pug/internal/tui/keys"
-	tuirun "github.com/leg100/pug/internal/tui/run"
 	"github.com/leg100/pug/internal/tui/table"
 	tuitask "github.com/leg100/pug/internal/tui/task"
 	"github.com/leg100/pug/internal/workspace"
@@ -42,16 +41,12 @@ func (m *ListMaker) Make(parent resource.Resource, width, height int) (tea.Model
 		table.WorkspaceColumn,
 		currentColumn,
 		table.ResourceCountColumn,
-		table.RunStatusColumn,
-		table.RunChangesColumn,
 	)
 
 	renderer := func(ws *workspace.Workspace) table.RenderedRow {
 		return table.RenderedRow{
 			table.ModuleColumn.Key:        ws.ModulePath(),
 			table.WorkspaceColumn.Key:     ws.Name,
-			table.RunStatusColumn.Key:     m.Helpers.WorkspaceCurrentRunStatus(ws),
-			table.RunChangesColumn.Key:    m.Helpers.WorkspaceCurrentRunChanges(ws),
 			table.ResourceCountColumn.Key: m.Helpers.WorkspaceResourceCount(ws),
 			currentColumn.Key:             m.Helpers.WorkspaceCurrentCheckmark(ws),
 		}
@@ -98,9 +93,6 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case resource.Event[*module.Module]:
 		// Update changes to current workspace for a module
 		m.table.UpdateViewport()
-	case resource.Event[*run.Run]:
-		// Update current run status and changes
-		m.table.UpdateViewport()
 	case resource.Event[*state.State]:
 		// Update resource counts
 		m.table.UpdateViewport()
@@ -142,18 +134,19 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			fallthrough
 		case key.Matches(msg, keys.Common.Plan):
 			workspaceIDs := m.table.SelectedOrCurrentKeys()
-			return m, tuirun.CreateRuns(m.runs, m.parent, createRunOptions, workspaceIDs...)
-		case key.Matches(msg, keys.Common.Apply):
-			runIDs, err := m.table.Prune(func(ws *workspace.Workspace) (resource.ID, error) {
-				if runID := ws.CurrentRunID; runID != nil {
-					return *runID, nil
-				}
-				return resource.ID{}, errors.New("workspace does not have a current run")
-			})
-			if err != nil {
-				return m, tui.ReportError(err, "")
+			fn := func(workspaceID resource.ID) (*task.Task, error) {
+				return m.runs.Plan(workspaceID, createRunOptions)
 			}
-			return m, tuirun.ApplyCommand(m.runs, m.parent, runIDs...)
+			return m, tuitask.CreateTasks("plan", m.parent, fn, workspaceIDs...)
+		case key.Matches(msg, keys.Common.Apply):
+			workspaceIDs := m.table.SelectedOrCurrentKeys()
+			fn := func(workspaceID resource.ID) (*task.Task, error) {
+				return m.runs.ApplyOnly(workspaceID, createRunOptions)
+			}
+			return m, tui.YesNoPrompt(
+				fmt.Sprintf("Auto-apply %d workspaces?", len(workspaceIDs)),
+				tuitask.CreateTasks("apply", m.parent, fn, workspaceIDs...),
+			)
 		}
 	}
 

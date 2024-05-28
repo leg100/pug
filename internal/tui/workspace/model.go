@@ -8,6 +8,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/leg100/pug/internal/resource"
 	"github.com/leg100/pug/internal/run"
+	"github.com/leg100/pug/internal/task"
 	"github.com/leg100/pug/internal/tui"
 	"github.com/leg100/pug/internal/tui/keys"
 	tuirun "github.com/leg100/pug/internal/tui/run"
@@ -97,7 +98,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.tabs.ActiveTitle() == resourcesTabTitle {
 				break
 			}
-			return m, tuirun.CreateRuns(m.runs, m.workspace, createRunOptions, m.workspace.GetID())
+			fn := func(workspaceID resource.ID) (*task.Task, error) {
+				return m.runs.Plan(workspaceID, createRunOptions)
+			}
+			return m, tuitask.CreateTasks("plan", m.workspace, fn, m.workspace.GetID())
 		case key.Matches(msg, keys.Common.Init):
 			// create init task and switch user to its task page
 			return m, func() tea.Msg {

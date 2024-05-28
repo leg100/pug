@@ -14,6 +14,7 @@ import (
 	"github.com/leg100/pug/internal/tui"
 	"github.com/leg100/pug/internal/tui/keys"
 	"github.com/leg100/pug/internal/tui/table"
+	tuitask "github.com/leg100/pug/internal/tui/task"
 )
 
 var ageColumn = table.Column{
@@ -110,7 +111,10 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if err != nil {
 				return m, tui.ReportError(err, "")
 			}
-			return m, ApplyCommand(m.svc, m.parent, runIDs...)
+			return m, tui.YesNoPrompt(
+				fmt.Sprintf("Apply %d plans?", len(runIDs)),
+				tuitask.CreateTasks("apply", m.parent, m.svc.ApplyPlan, runIDs...),
+			)
 		}
 	}
 
