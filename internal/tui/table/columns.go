@@ -15,12 +15,12 @@ var (
 		Key:            "module",
 		Title:          "MODULE",
 		TruncationFunc: TruncateLeft,
-		FlexFactor:     3,
+		FlexFactor:     2,
 	}
 	WorkspaceColumn = Column{
 		Key:        "workspace",
 		Title:      "WORKSPACE",
-		FlexFactor: 2,
+		FlexFactor: 1,
 	}
 	RunColumn = Column{
 		Key:        "run",

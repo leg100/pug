@@ -258,22 +258,6 @@ func (m model) Title() string {
 }
 
 func (m model) Status() string {
-	var color lipgloss.Color
-
-	switch m.task.State {
-	case task.Pending:
-		color = tui.Grey
-	case task.Queued:
-		color = tui.Orange
-	case task.Running:
-		color = tui.Blue
-	case task.Exited:
-		color = tui.GreenBlue
-	case task.Errored:
-		color = tui.Red
-	}
-	taskState := tui.Regular.Copy().Background(color).Foreground(tui.White).Padding(0, 1).Render(string(m.task.State))
-
 	if m.run != nil {
 		return lipgloss.JoinHorizontal(lipgloss.Top,
 			m.helpers.LatestRunReport(m.run),
@@ -281,7 +265,7 @@ func (m model) Status() string {
 			m.helpers.RunStatus(m.run),
 		)
 	}
-	return taskState
+	return m.helpers.TaskStatus(m.task)
 }
 
 func (m model) HelpBindings() []key.Binding {

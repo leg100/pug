@@ -122,6 +122,7 @@ func (s *Service) ApplyOnly(workspaceID resource.ID, opts CreateOptions) (*task.
 		s.logger.Error("creating an apply task", "error", err)
 		return nil, err
 	}
+	s.table.Add(run.ID, run)
 	return task, nil
 }
 

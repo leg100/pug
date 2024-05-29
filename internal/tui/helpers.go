@@ -12,6 +12,7 @@ import (
 	"github.com/leg100/pug/internal/module"
 	"github.com/leg100/pug/internal/resource"
 	"github.com/leg100/pug/internal/run"
+	"github.com/leg100/pug/internal/task"
 	"github.com/leg100/pug/internal/workspace"
 )
 
@@ -141,6 +142,25 @@ func (h *Helpers) WorkspaceResourceCount(ws *workspace.Workspace) string {
 		return ""
 	}
 	return strconv.Itoa(len(state.Resources))
+}
+
+func (h *Helpers) TaskStatus(t *task.Task) string {
+	var color lipgloss.Color
+
+	switch t.State {
+	case task.Pending:
+		color = Grey
+	case task.Queued:
+		color = Orange
+	case task.Running:
+		color = Blue
+	case task.Exited:
+		color = GreenBlue
+	case task.Errored:
+		color = Red
+	}
+
+	return Regular.Copy().Foreground(color).Render(string(t.State))
 }
 
 func (h *Helpers) RunStatus(r *run.Run) string {

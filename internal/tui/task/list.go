@@ -7,7 +7,6 @@ import (
 
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 	"github.com/leg100/pug/internal/resource"
 	runpkg "github.com/leg100/pug/internal/run"
 	"github.com/leg100/pug/internal/task"
@@ -23,19 +22,24 @@ var (
 		FlexFactor: 1,
 	}
 	statusColumn = table.Column{
-		Key:   "run_status",
+		Key:   "task_status",
 		Title: "STATUS",
 		Width: runpkg.MaxStatusLen,
 	}
 	ageColumn = table.Column{
 		Key:   "age",
 		Title: "AGE",
-		Width: 10,
+		Width: 7,
 	}
-	summaryColumn = table.Column{
-		Key:        "summary",
-		Title:      "SUMMARY",
+	runChangesColumn = table.Column{
+		Key:        "run_changes",
+		Title:      "RUN CHANGES",
 		FlexFactor: 1,
+	}
+	runStatusColumn = table.Column{
+		Key:   "run_status",
+		Title: "RUN STATUS",
+		Width: runpkg.MaxStatusLen,
 	}
 )
 
@@ -62,37 +66,30 @@ func (m *ListMaker) Make(parent resource.Resource, width, height int) (tea.Model
 	}
 	columns = append(columns,
 		commandColumn,
-		summaryColumn,
 		statusColumn,
+		runStatusColumn,
+		runChangesColumn,
 		ageColumn,
 	)
 
 	renderer := func(t *task.Task) table.RenderedRow {
-		stateStyle := lipgloss.NewStyle()
-		switch t.State {
-		case task.Errored:
-			stateStyle = stateStyle.Foreground(tui.Red)
-		case task.Exited:
-			stateStyle = stateStyle.Foreground(lipgloss.Color("40"))
-		default:
-		}
-
 		row := table.RenderedRow{
 			table.ModuleColumn.Key:    m.Helpers.ModulePath(t),
 			table.WorkspaceColumn.Key: m.Helpers.WorkspaceName(t),
 			commandColumn.Key:         t.CommandString(),
 			ageColumn.Key:             tui.Ago(time.Now(), t.Updated),
 			table.IDColumn.Key:        t.String(),
-			statusColumn.Key:          stateStyle.Render(string(t.State)),
+			statusColumn.Key:          m.Helpers.TaskStatus(t),
 		}
 
 		if rr := t.Run(); rr != nil {
 			run := rr.(*runpkg.Run)
 			if t.CommandString() == "plan" && run.PlanReport != nil {
-				row[summaryColumn.Key] = m.Helpers.RunReport(*run.PlanReport)
+				row[runChangesColumn.Key] = m.Helpers.RunReport(*run.PlanReport)
 			} else if t.CommandString() == "apply" && run.ApplyReport != nil {
-				row[summaryColumn.Key] = m.Helpers.RunReport(*run.ApplyReport)
+				row[runChangesColumn.Key] = m.Helpers.RunReport(*run.ApplyReport)
 			}
+			row[runStatusColumn.Key] = m.Helpers.RunStatus(run)
 		}
 
 		return row
