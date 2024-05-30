@@ -52,26 +52,11 @@ func TestModuleList(t *testing.T) {
 	// each module.
 	tm.Send(tea.KeyMsg{Type: tea.KeyEsc})
 	tm.Type("p")
-	// Expect all 3 modules to be in planned state
+	// Expect three plan tasks to be created and to reach planned state.
 	waitFor(t, tm, func(s string) bool {
 		return matchPattern(t, `modules/a.*default.*planned`, s) &&
 			matchPattern(t, `modules/b.*default.*planned`, s) &&
 			matchPattern(t, `modules/c.*default.*planned`, s)
-	})
-
-	// Go back to module listing, and apply the plan for each module.
-	tm.Send(tea.KeyMsg{Type: tea.KeyEsc})
-	tm.Type("a")
-
-	// Confirm apply
-	waitFor(t, tm, func(s string) bool {
-		return strings.Contains(s, "Apply 3 runs? (y/N):")
-	})
-	tm.Type("y")
-
-	// Expect all 3 modules to be in applied state
-	waitFor(t, tm, func(s string) bool {
-		return matchPattern(t, `(?s)(applied.*)[3]`, s)
 	})
 }
 

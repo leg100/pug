@@ -260,12 +260,14 @@ func (m model) Title() string {
 func (m model) Status() string {
 	if m.run != nil {
 		return lipgloss.JoinHorizontal(lipgloss.Top,
+			m.helpers.TaskStatus(m.task, true),
+			" | ",
 			m.helpers.LatestRunReport(m.run),
 			" ",
-			m.helpers.RunStatus(m.run),
+			m.helpers.RunStatus(m.run, true),
 		)
 	}
-	return m.helpers.TaskStatus(m.task)
+	return m.helpers.TaskStatus(m.task, true)
 }
 
 func (m model) HelpBindings() []key.Binding {

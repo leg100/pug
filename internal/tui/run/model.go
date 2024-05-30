@@ -127,7 +127,7 @@ func (m model) Title() string {
 }
 
 func (m model) Status() string {
-	return m.helpers.RunStatus(m.run)
+	return m.helpers.RunStatus(m.run, true)
 }
 
 func (m model) ID() string {

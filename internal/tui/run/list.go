@@ -54,7 +54,7 @@ func (m *ListMaker) Make(parent resource.Resource, width, height int) (tea.Model
 		return table.RenderedRow{
 			table.ModuleColumn.Key:     r.ModulePath(),
 			table.WorkspaceColumn.Key:  r.WorkspaceName(),
-			table.RunStatusColumn.Key:  m.Helpers.RunStatus(r),
+			table.RunStatusColumn.Key:  m.Helpers.RunStatus(r, false),
 			table.RunChangesColumn.Key: m.Helpers.LatestRunReport(r),
 			ageColumn.Key:              tui.Ago(time.Now(), r.Updated),
 			table.IDColumn.Key:         r.String(),

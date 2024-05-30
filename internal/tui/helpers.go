@@ -70,54 +70,6 @@ func (h *Helpers) ModuleCurrentResourceCount(mod *module.Module) string {
 	return h.WorkspaceResourceCount(ws)
 }
 
-func (h *Helpers) ModuleCurrentRunStatus(mod *module.Module) string {
-	if mod.CurrentWorkspaceID == nil {
-		return ""
-	}
-	ws, err := h.WorkspaceService.Get(*mod.CurrentWorkspaceID)
-	if err != nil {
-		h.Logger.Error("rendering module current run status", "error", err)
-		return ""
-	}
-	return h.WorkspaceCurrentRunStatus(ws)
-}
-
-func (h *Helpers) ModuleCurrentRunChanges(mod *module.Module) string {
-	if mod.CurrentWorkspaceID == nil {
-		return ""
-	}
-	ws, err := h.WorkspaceService.Get(*mod.CurrentWorkspaceID)
-	if err != nil {
-		h.Logger.Error("rendering module current run changes", "error", err)
-		return ""
-	}
-	return h.WorkspaceCurrentRunChanges(ws)
-}
-
-func (h *Helpers) WorkspaceCurrentRunStatus(ws *workspace.Workspace) string {
-	if ws.CurrentRunID == nil {
-		return ""
-	}
-	run, err := h.RunService.Get(*ws.CurrentRunID)
-	if err != nil {
-		h.Logger.Error("rendering module current run status", "error", err)
-		return ""
-	}
-	return h.RunStatus(run)
-}
-
-func (h *Helpers) WorkspaceCurrentRunChanges(ws *workspace.Workspace) string {
-	if ws.CurrentRunID == nil {
-		return ""
-	}
-	run, err := h.RunService.Get(*ws.CurrentRunID)
-	if err != nil {
-		h.Logger.Error("rendering module current run changes", "error", err)
-		return ""
-	}
-	return h.LatestRunReport(run)
-}
-
 // WorkspaceCurrentCheckmark returns a check mark if the workspace is the
 // current workspace for its module.
 func (h *Helpers) WorkspaceCurrentCheckmark(ws *workspace.Workspace) string {
@@ -144,7 +96,8 @@ func (h *Helpers) WorkspaceResourceCount(ws *workspace.Workspace) string {
 	return strconv.Itoa(len(state.Resources))
 }
 
-func (h *Helpers) TaskStatus(t *task.Task) string {
+// TaskStatus provides a rendered colored task status.
+func (h *Helpers) TaskStatus(t *task.Task, background bool) string {
 	var color lipgloss.Color
 
 	switch t.State {
@@ -160,10 +113,14 @@ func (h *Helpers) TaskStatus(t *task.Task) string {
 		color = Red
 	}
 
-	return Regular.Copy().Foreground(color).Render(string(t.State))
+	if background {
+		return Regular.Copy().Padding(0, 1).Background(color).Foreground(White).Render(string(t.State))
+	} else {
+		return Regular.Copy().Foreground(color).Render(string(t.State))
+	}
 }
 
-func (h *Helpers) RunStatus(r *run.Run) string {
+func (h *Helpers) RunStatus(r *run.Run, background bool) string {
 	var color lipgloss.TerminalColor
 
 	switch r.Status {
@@ -187,7 +144,12 @@ func (h *Helpers) RunStatus(r *run.Run) string {
 	case run.Errored:
 		color = Red
 	}
-	return Regular.Copy().Foreground(color).Render(string(r.Status))
+
+	if background {
+		return Regular.Copy().Background(color).Padding(0, 1).Foreground(White).Render(string(r.Status))
+	} else {
+		return Regular.Copy().Foreground(color).Render(string(r.Status))
+	}
 }
 
 func (h *Helpers) LatestRunReport(r *run.Run) string {

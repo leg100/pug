@@ -79,7 +79,7 @@ func (m *ListMaker) Make(parent resource.Resource, width, height int) (tea.Model
 			commandColumn.Key:         t.CommandString(),
 			ageColumn.Key:             tui.Ago(time.Now(), t.Updated),
 			table.IDColumn.Key:        t.String(),
-			statusColumn.Key:          m.Helpers.TaskStatus(t),
+			statusColumn.Key:          m.Helpers.TaskStatus(t, false),
 		}
 
 		if rr := t.Run(); rr != nil {
@@ -89,7 +89,7 @@ func (m *ListMaker) Make(parent resource.Resource, width, height int) (tea.Model
 			} else if t.CommandString() == "apply" && run.ApplyReport != nil {
 				row[runChangesColumn.Key] = m.Helpers.RunReport(*run.ApplyReport)
 			}
-			row[runStatusColumn.Key] = m.Helpers.RunStatus(run)
+			row[runStatusColumn.Key] = m.Helpers.RunStatus(run, false)
 		}
 
 		return row
