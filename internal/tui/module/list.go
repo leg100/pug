@@ -133,24 +133,8 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, tui.OpenVim(row.Value.Path)
 			}
 		case key.Matches(msg, keys.Common.Init):
-			rows := m.table.SelectedOrCurrent()
-			switch len(rows) {
-			case 0:
-				// no rows, do nothing
-			case 1:
-				// create init task and switch user to its task page
-				return m, func() tea.Msg {
-					task, err := m.ModuleService.Init(rows[0].Key)
-					if err != nil {
-						return tui.NewErrorMsg(err, "creating init task")
-					}
-					return tui.NewNavigationMsg(tui.TaskKind, tui.WithParent(task))
-				}
-			default:
-				// create init tasks, and keep user on current page.
-				cmd := m.helpers.CreateTasks("init", m.ModuleService.Init, m.table.SelectedOrCurrentKeys()...)
-				return m, cmd
-			}
+			cmd := m.helpers.CreateTasks("init", m.ModuleService.Init, m.table.SelectedOrCurrentKeys()...)
+			return m, cmd
 		case key.Matches(msg, keys.Common.Validate):
 			cmd := m.helpers.CreateTasks("validate", m.ModuleService.Validate, m.table.SelectedOrCurrentKeys()...)
 			return m, cmd

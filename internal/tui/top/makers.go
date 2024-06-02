@@ -7,6 +7,7 @@ import (
 	moduletui "github.com/leg100/pug/internal/tui/module"
 	runtui "github.com/leg100/pug/internal/tui/run"
 	tasktui "github.com/leg100/pug/internal/tui/task"
+	"github.com/leg100/pug/internal/tui/taskgroup"
 	workspacetui "github.com/leg100/pug/internal/tui/workspace"
 )
 
@@ -85,6 +86,14 @@ func makeMakers(opts Options, spinner *spinner.Model) map[tui.Kind]tui.Maker {
 			RunService:  opts.RunService,
 			TaskService: opts.TaskService,
 			Helpers:     helpers,
+		},
+		tui.TaskGroupListKind: &taskgroup.ListMaker{
+			TaskService: opts.TaskService,
+			Helpers:     helpers,
+		},
+		tui.TaskGroupKind: &taskgroup.Maker{
+			TaskListMaker: taskListMaker,
+			Helpers:       helpers,
 		},
 		tui.LogListKind: &logs.ListMaker{
 			Logger: opts.Logger,

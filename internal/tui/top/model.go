@@ -249,6 +249,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, keys.Global.Tasks):
 			// 'T' lists all tasks
 			return m, tui.NavigateTo(tui.TaskListKind)
+		case key.Matches(msg, keys.Global.TaskGroups):
+			// 'ctrl+g' lists all taskgroups
+			return m, tui.NavigateTo(tui.TaskGroupListKind)
 		default:
 			// Send other keys to current model.
 			cmd := m.updateCurrent(msg)

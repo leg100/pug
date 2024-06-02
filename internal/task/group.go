@@ -20,6 +20,7 @@ func newGroup(cmd string, fn Func, ids ...resource.ID) (*Group, error) {
 	g := &Group{
 		Common:  resource.New(resource.TaskGroup, resource.GlobalResource),
 		Created: time.Now(),
+		Command: cmd,
 	}
 	for _, id := range ids {
 		task, err := fn(id)

@@ -26,12 +26,8 @@ var (
 )
 
 type ListMaker struct {
-	ModuleService    tui.ModuleService
-	WorkspaceService tui.WorkspaceService
-	RunService       tui.RunService
-	TaskService      tui.TaskService
-	MaxTasks         int
-	Helpers          *tui.Helpers
+	TaskService tui.TaskService
+	Helpers     *tui.Helpers
 }
 
 func (m *ListMaker) Make(_ resource.Resource, width, height int) (tea.Model, error) {
@@ -54,14 +50,12 @@ func (m *ListMaker) Make(_ resource.Resource, width, height int) (tea.Model, err
 	return list{
 		table: table,
 		svc:   m.TaskService,
-		runs:  m.RunService,
 	}, nil
 }
 
 type list struct {
 	table table.Model[resource.ID, *task.Group]
 	svc   tui.TaskService
-	runs  tui.RunService
 }
 
 func (m list) Init() tea.Cmd {

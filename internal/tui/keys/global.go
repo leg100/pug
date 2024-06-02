@@ -9,6 +9,7 @@ type global struct {
 	Workspaces  key.Binding
 	Runs        key.Binding
 	Tasks       key.Binding
+	TaskGroups  key.Binding
 	Logs        key.Binding
 	Back        key.Binding
 	Enter       key.Binding
@@ -37,6 +38,10 @@ var Global = global{
 	Tasks: key.NewBinding(
 		key.WithKeys("T"),
 		key.WithHelp("T", "all tasks"),
+	),
+	TaskGroups: key.NewBinding(
+		key.WithKeys("ctrl+g"),
+		key.WithHelp("ctrl+g", "all taskgroups"),
 	),
 	Logs: key.NewBinding(
 		key.WithKeys("l"),

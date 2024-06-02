@@ -63,7 +63,6 @@ func (m *ListMaker) Make(parent resource.Resource, width, height int) (tea.Model
 		columns = append(columns, commandColumn)
 	}
 	columns = append(columns,
-		commandColumn,
 		statusColumn,
 		runStatusColumn,
 		runChangesColumn,
