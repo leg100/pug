@@ -18,7 +18,6 @@ import (
 	"github.com/leg100/pug/internal/tui"
 	"github.com/leg100/pug/internal/tui/keys"
 	"github.com/leg100/pug/internal/tui/module"
-	tuitask "github.com/leg100/pug/internal/tui/task"
 	"github.com/leg100/pug/internal/version"
 )
 
@@ -266,11 +265,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.Tab != "" {
 			cmds = append(cmds, m.updateCurrent(tui.SetActiveTabMsg(msg.Tab)))
 		}
-	case tuitask.CreatedTasksMsg:
-		cmd, m.info, m.err = tuitask.HandleCreatedTasks(msg)
-		cmds = append(cmds, cmd)
-	case tuitask.CompletedTasksMsg:
-		m.info, m.err = tuitask.HandleCompletedTasks(msg)
 	case tui.ErrorMsg:
 		if msg.Error != nil {
 			err := msg.Error

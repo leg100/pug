@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/bubbles/key"
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/leg100/pug/internal/logging"
 	"github.com/leg100/pug/internal/module"
@@ -28,6 +29,7 @@ type Helpers struct {
 	ModuleService    ModuleService
 	WorkspaceService WorkspaceService
 	RunService       RunService
+	TaskService      TaskService
 	StateService     StateService
 	Logger           logging.Interface
 }
@@ -177,6 +179,10 @@ func (h *Helpers) Breadcrumbs(title string, res resource.Resource, crumbs ...str
 		cmd := Regular.Copy().Foreground(Blue).Render(res.String())
 		crumb := fmt.Sprintf("{%s}", cmd)
 		return h.Breadcrumbs(title, res.GetParent(), crumb)
+	case resource.TaskGroup:
+		cmd := Regular.Copy().Foreground(Blue).Render(res.String())
+		crumb := fmt.Sprintf("{%s}", cmd)
+		return h.Breadcrumbs(title, res.GetParent(), crumb)
 	case resource.Run:
 		// Skip run info in breadcrumbs
 		return h.Breadcrumbs(title, res.GetParent(), crumbs...)
@@ -188,6 +194,27 @@ func (h *Helpers) Breadcrumbs(title string, res resource.Resource, crumbs ...str
 		crumbs = append(crumbs, fmt.Sprintf("(%s)", path))
 	}
 	return fmt.Sprintf("%s%s", TitleStyle.Render(title), strings.Join(crumbs, ""))
+}
+
+func (h *Helpers) CreateTasks(cmd string, fn task.Func, ids ...resource.ID) tea.Cmd {
+	return func() tea.Msg {
+		switch len(ids) {
+		case 0:
+			return nil
+		case 1:
+			task, err := fn(ids[0])
+			if err != nil {
+				return ReportError(err, "creating task")
+			}
+			return NewNavigationMsg(TaskKind, WithParent(task))
+		default:
+			group, err := h.TaskService.CreateGroup(cmd, fn, ids...)
+			if err != nil {
+				return ReportError(err, "creating task group")
+			}
+			return NewNavigationMsg(TaskGroupKind, WithParent(group))
+		}
+	}
 }
 
 func GlobalBreadcrumb(title, total string) string {

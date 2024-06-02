@@ -53,16 +53,14 @@ type ListMaker struct {
 }
 
 func (m *ListMaker) Make(parent resource.Resource, width, height int) (tea.Model, error) {
-	var columns []table.Column
-	// Add further columns depending upon the kind of parent
-	switch parent.GetKind() {
-	case resource.Global:
-		// Show module and workspace columns in global tasks table
-		columns = append(columns, table.ModuleColumn)
-		fallthrough
-	case resource.Module:
-		// Show workspace column in module tasks table
-		columns = append(columns, table.WorkspaceColumn)
+	columns := []table.Column{
+		table.ModuleColumn,
+		table.WorkspaceColumn,
+	}
+	// Don't show command column in a task group list because all its tasks
+	// share the same command and the command is already included in the title.
+	if parent.GetKind() != resource.TaskGroup {
+		columns = append(columns, commandColumn)
 	}
 	columns = append(columns,
 		commandColumn,
@@ -99,24 +97,26 @@ func (m *ListMaker) Make(parent resource.Resource, width, height int) (tea.Model
 		WithSortFunc(task.ByState).
 		WithParent(parent)
 
-	return list{
-		table:  table,
-		svc:    m.TaskService,
-		runs:   m.RunService,
-		parent: parent,
-		max:    m.MaxTasks,
+	return List{
+		table:   table,
+		svc:     m.TaskService,
+		runs:    m.RunService,
+		parent:  parent,
+		max:     m.MaxTasks,
+		helpers: m.Helpers,
 	}, nil
 }
 
-type list struct {
-	table  table.Model[resource.ID, *task.Task]
-	svc    tui.TaskService
-	runs   tui.RunService
-	parent resource.Resource
-	max    int
+type List struct {
+	table   table.Model[resource.ID, *task.Task]
+	svc     tui.TaskService
+	runs    tui.RunService
+	parent  resource.Resource
+	max     int
+	helpers *tui.Helpers
 }
 
-func (m list) Init() tea.Cmd {
+func (m List) Init() tea.Cmd {
 	return func() tea.Msg {
 		tasks := m.svc.List(task.ListOptions{
 			Ancestor: m.parent.GetID(),
@@ -125,7 +125,7 @@ func (m list) Init() tea.Cmd {
 	}
 }
 
-func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m List) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var (
 		cmd  tea.Cmd
 		cmds []tea.Cmd
@@ -140,7 +140,7 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		case key.Matches(msg, keys.Common.Cancel):
 			taskIDs := m.table.SelectedOrCurrentKeys()
-			return m, CreateTasks("cancel", m.parent, m.svc.Cancel, taskIDs...)
+			return m, m.helpers.CreateTasks("cancel", m.svc.Cancel, taskIDs...)
 		case key.Matches(msg, keys.Common.Apply):
 			runIDs, err := m.pruneApplyableTasks()
 			if err != nil {
@@ -148,7 +148,7 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return m, tui.YesNoPrompt(
 				fmt.Sprintf("Apply %d plans?", len(runIDs)),
-				CreateTasks("apply", m.parent, m.runs.ApplyPlan, runIDs...),
+				m.helpers.CreateTasks("apply", m.runs.ApplyPlan, runIDs...),
 			)
 		}
 	}
@@ -162,7 +162,7 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 // pruneApplyableTasks removes from the selection any tasks that cannot be
 // applied, i.e all tasks other than those that are a plan and are in the
 // planned state. The run ID of each task after pruning is returned.
-func (m list) pruneApplyableTasks() ([]resource.ID, error) {
+func (m List) pruneApplyableTasks() ([]resource.ID, error) {
 	runIDs, err := m.table.Prune(func(task *task.Task) (resource.ID, error) {
 		rr := task.Run()
 		if rr == nil {
@@ -180,19 +180,19 @@ func (m list) pruneApplyableTasks() ([]resource.ID, error) {
 	return runIDs, nil
 }
 
-func (m list) Title() string {
+func (m List) Title() string {
 	return tui.GlobalBreadcrumb("Tasks", m.table.TotalString())
 }
 
-func (m list) View() string {
+func (m List) View() string {
 	return m.table.View()
 }
 
-func (m list) TabStatus() string {
+func (m List) TabStatus() string {
 	return fmt.Sprintf("(%s)", m.table.TotalString())
 }
 
-func (m list) HelpBindings() (bindings []key.Binding) {
+func (m List) HelpBindings() (bindings []key.Binding) {
 	return []key.Binding{
 		keys.Common.Cancel,
 	}

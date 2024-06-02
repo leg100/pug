@@ -14,7 +14,6 @@ import (
 	"github.com/leg100/pug/internal/tui"
 	"github.com/leg100/pug/internal/tui/keys"
 	"github.com/leg100/pug/internal/tui/table"
-	tuitask "github.com/leg100/pug/internal/tui/task"
 )
 
 var (
@@ -92,6 +91,7 @@ func (m *ListMaker) Make(_ resource.Resource, width, height int) (tea.Model, err
 		WorkspaceService: m.WorkspaceService,
 		RunService:       m.RunService,
 		workdir:          m.Workdir,
+		helpers:          m.Helpers,
 	}, nil
 }
 
@@ -103,6 +103,7 @@ type list struct {
 	table   table.Model[resource.ID, *module.Module]
 	spinner *spinner.Model
 	workdir string
+	helpers *tui.Helpers
 }
 
 func (m list) Init() tea.Cmd {
@@ -147,17 +148,17 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			default:
 				// create init tasks, and keep user on current page.
-				cmd := tuitask.CreateTasks("init", resource.GlobalResource, m.ModuleService.Init, m.table.SelectedOrCurrentKeys()...)
+				cmd := m.helpers.CreateTasks("init", m.ModuleService.Init, m.table.SelectedOrCurrentKeys()...)
 				return m, cmd
 			}
 		case key.Matches(msg, keys.Common.Validate):
-			cmd := tuitask.CreateTasks("validate", resource.GlobalResource, m.ModuleService.Validate, m.table.SelectedOrCurrentKeys()...)
+			cmd := m.helpers.CreateTasks("validate", m.ModuleService.Validate, m.table.SelectedOrCurrentKeys()...)
 			return m, cmd
 		case key.Matches(msg, keys.Common.Format):
-			cmd := tuitask.CreateTasks("format", resource.GlobalResource, m.ModuleService.Format, m.table.SelectedOrCurrentKeys()...)
+			cmd := m.helpers.CreateTasks("format", m.ModuleService.Format, m.table.SelectedOrCurrentKeys()...)
 			return m, cmd
 		case key.Matches(msg, localKeys.ReloadWorkspaces):
-			cmd := tuitask.CreateTasks("reload-workspace", resource.GlobalResource, m.WorkspaceService.Reload, m.table.SelectedOrCurrentKeys()...)
+			cmd := m.helpers.CreateTasks("reload-workspace", m.WorkspaceService.Reload, m.table.SelectedOrCurrentKeys()...)
 			return m, cmd
 		case key.Matches(msg, keys.Common.Destroy):
 			createRunOptions.Destroy = true
@@ -170,7 +171,7 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			fn := func(workspaceID resource.ID) (*task.Task, error) {
 				return m.RunService.Plan(workspaceID, createRunOptions)
 			}
-			return m, tuitask.CreateTasks("plan", resource.GlobalResource, fn, workspaceIDs...)
+			return m, m.helpers.CreateTasks("plan", fn, workspaceIDs...)
 		case key.Matches(msg, keys.Common.Apply):
 			workspaceIDs, err := m.pruneModulesWithoutCurrentWorkspace()
 			if err != nil {
@@ -181,7 +182,7 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return m, tui.YesNoPrompt(
 				fmt.Sprintf("Auto-apply %d modules?", len(workspaceIDs)),
-				tuitask.CreateTasks("apply", resource.GlobalResource, fn, workspaceIDs...),
+				m.helpers.CreateTasks("apply", fn, workspaceIDs...),
 			)
 		}
 	}

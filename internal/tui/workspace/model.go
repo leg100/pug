@@ -42,6 +42,7 @@ func (mm *Maker) Make(ws resource.Resource, width, height int) (tea.Model, error
 		StateService: mm.StateService,
 		RunService:   mm.RunService,
 		Spinner:      mm.Spinner,
+		Helpers:      mm.Helpers,
 	}
 
 	tabs := tui.NewTabSet(width, height)
@@ -101,7 +102,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			fn := func(workspaceID resource.ID) (*task.Task, error) {
 				return m.runs.Plan(workspaceID, createRunOptions)
 			}
-			return m, tuitask.CreateTasks("plan", m.workspace, fn, m.workspace.GetID())
+			return m, m.helpers.CreateTasks("plan", fn, m.workspace.GetID())
 		case key.Matches(msg, keys.Common.Init):
 			// create init task and switch user to its task page
 			return m, func() tea.Msg {
@@ -112,9 +113,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return tui.NewNavigationMsg(tui.TaskKind, tui.WithParent(task))
 			}
 		case key.Matches(msg, keys.Common.Validate):
-			return m, tuitask.CreateTasks("validate", m.workspace, m.modules.Validate, m.workspace.Module().GetID())
+			return m, m.helpers.CreateTasks("validate", m.modules.Validate, m.workspace.Module().GetID())
 		case key.Matches(msg, keys.Common.Format):
-			return m, tuitask.CreateTasks("format", m.workspace, m.modules.Format, m.workspace.Module().GetID())
+			return m, m.helpers.CreateTasks("format", m.modules.Format, m.workspace.Module().GetID())
 		case key.Matches(msg, keys.Common.Module):
 			return m, tui.NavigateTo(tui.ModuleKind, tui.WithParent(m.workspace.Module()))
 		}

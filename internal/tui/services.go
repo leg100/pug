@@ -45,8 +45,10 @@ type RunService interface {
 }
 
 type TaskService interface {
+	CreateGroup(cmd string, fn task.Func, ids ...resource.ID) (*task.Group, error)
 	Counter() int
 	Get(taskID resource.ID) (*task.Task, error)
 	List(opts task.ListOptions) []*task.Task
+	ListGroups() []*task.Group
 	Cancel(taskID resource.ID) (*task.Task, error)
 }

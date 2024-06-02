@@ -14,7 +14,6 @@ import (
 	"github.com/leg100/pug/internal/tui"
 	"github.com/leg100/pug/internal/tui/keys"
 	"github.com/leg100/pug/internal/tui/table"
-	tuitask "github.com/leg100/pug/internal/tui/task"
 )
 
 var ageColumn = table.Column{
@@ -65,18 +64,20 @@ func (m *ListMaker) Make(parent resource.Resource, width, height int) (tea.Model
 		WithParent(parent)
 
 	return list{
-		table:  table,
-		svc:    m.RunService,
-		tasks:  m.TaskService,
-		parent: parent,
+		table:   table,
+		svc:     m.RunService,
+		tasks:   m.TaskService,
+		parent:  parent,
+		helpers: m.Helpers,
 	}, nil
 }
 
 type list struct {
-	table  table.Model[resource.ID, *run.Run]
-	svc    tui.RunService
-	tasks  tui.TaskService
-	parent resource.Resource
+	table   table.Model[resource.ID, *run.Run]
+	svc     tui.RunService
+	tasks   tui.TaskService
+	parent  resource.Resource
+	helpers *tui.Helpers
 }
 
 func (m list) Init() tea.Cmd {
@@ -113,7 +114,7 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return m, tui.YesNoPrompt(
 				fmt.Sprintf("Apply %d plans?", len(runIDs)),
-				tuitask.CreateTasks("apply", m.parent, m.svc.ApplyPlan, runIDs...),
+				m.helpers.CreateTasks("apply", m.svc.ApplyPlan, runIDs...),
 			)
 		}
 	}

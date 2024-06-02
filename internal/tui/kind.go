@@ -13,7 +13,8 @@ const (
 	RunKind
 	TaskListKind
 	TaskKind
-	TaskDetailsKind
+	TaskGroupListKind
+	TaskGroupKind
 	LogListKind
 	LogKind
 )

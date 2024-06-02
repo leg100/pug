@@ -8,6 +8,7 @@ const (
 	Workspace
 	Run
 	Task
+	TaskGroup
 	Log
 	LogAttr
 	StateResource
@@ -20,6 +21,7 @@ func (k Kind) String() string {
 		"ws",
 		"run",
 		"task",
+		"tg",
 		"log",
 		"attr",
 		"res",

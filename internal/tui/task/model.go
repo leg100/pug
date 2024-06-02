@@ -103,7 +103,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// 'i' toggles showing task info
 			m.showInfo = !m.showInfo
 		case key.Matches(msg, keys.Common.Cancel):
-			return m, CreateTasks("cancel", m.task, m.svc.Cancel, m.task.ID)
+			return m, m.helpers.CreateTasks("cancel", m.svc.Cancel, m.task.ID)
 		case key.Matches(msg, keys.Common.Module):
 			// 'm' takes the user to the task's module, but only if the task
 			// belongs to a module.
@@ -130,7 +130,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 				return m, tui.YesNoPrompt(
 					"Apply run?",
-					CreateTasks("apply", m.run, m.runs.ApplyPlan, m.run.ID),
+					m.helpers.CreateTasks("apply", m.runs.ApplyPlan, m.run.ID),
 				)
 			}
 		}

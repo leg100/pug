@@ -13,7 +13,6 @@ import (
 	"github.com/leg100/pug/internal/tui"
 	"github.com/leg100/pug/internal/tui/keys"
 	tasktui "github.com/leg100/pug/internal/tui/task"
-	tuitask "github.com/leg100/pug/internal/tui/task"
 )
 
 type Maker struct {
@@ -88,7 +87,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return m, tui.YesNoPrompt(
 				"Apply run?",
-				tuitask.CreateTasks("apply", m.run, m.svc.ApplyPlan, m.run.ID),
+				m.helpers.CreateTasks("apply", m.svc.ApplyPlan, m.run.ID),
 			)
 		case key.Matches(msg, keys.Common.Module):
 			return m, tui.NavigateTo(tui.ModuleKind, tui.WithParent(m.run.Module()))

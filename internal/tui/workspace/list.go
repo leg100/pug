@@ -13,7 +13,6 @@ import (
 	"github.com/leg100/pug/internal/tui"
 	"github.com/leg100/pug/internal/tui/keys"
 	"github.com/leg100/pug/internal/tui/table"
-	tuitask "github.com/leg100/pug/internal/tui/task"
 	"github.com/leg100/pug/internal/workspace"
 )
 
@@ -62,6 +61,7 @@ func (m *ListMaker) Make(parent resource.Resource, width, height int) (tea.Model
 		modules: m.ModuleService,
 		runs:    m.RunService,
 		parent:  parent,
+		helpers: m.Helpers,
 	}, nil
 }
 
@@ -71,6 +71,7 @@ type list struct {
 	modules tui.ModuleService
 	runs    tui.RunService
 	parent  resource.Resource
+	helpers *tui.Helpers
 }
 
 func (m list) Init() tea.Cmd {
@@ -109,16 +110,16 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return m, tui.YesNoPrompt(
 				fmt.Sprintf("Delete %d workspace(s)?", len(workspaceIDs)),
-				tuitask.CreateTasks("delete-workspace", m.parent, m.svc.Delete, workspaceIDs...),
+				m.helpers.CreateTasks("delete-workspace", m.svc.Delete, workspaceIDs...),
 			)
 		case key.Matches(msg, keys.Common.Init):
-			cmd := tuitask.CreateTasks("init", m.parent, m.modules.Init, m.selectedOrCurrentModuleIDs()...)
+			cmd := m.helpers.CreateTasks("init", m.modules.Init, m.selectedOrCurrentModuleIDs()...)
 			return m, cmd
 		case key.Matches(msg, keys.Common.Format):
-			cmd := tuitask.CreateTasks("format", m.parent, m.modules.Format, m.selectedOrCurrentModuleIDs()...)
+			cmd := m.helpers.CreateTasks("format", m.modules.Format, m.selectedOrCurrentModuleIDs()...)
 			return m, cmd
 		case key.Matches(msg, keys.Common.Validate):
-			cmd := tuitask.CreateTasks("validate", m.parent, m.modules.Validate, m.selectedOrCurrentModuleIDs()...)
+			cmd := m.helpers.CreateTasks("validate", m.modules.Validate, m.selectedOrCurrentModuleIDs()...)
 			return m, cmd
 		case key.Matches(msg, localKeys.SetCurrent):
 			if row, ok := m.table.CurrentRow(); ok {
@@ -137,7 +138,7 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			fn := func(workspaceID resource.ID) (*task.Task, error) {
 				return m.runs.Plan(workspaceID, createRunOptions)
 			}
-			return m, tuitask.CreateTasks("plan", m.parent, fn, workspaceIDs...)
+			return m, m.helpers.CreateTasks("plan", fn, workspaceIDs...)
 		case key.Matches(msg, keys.Common.Apply):
 			workspaceIDs := m.table.SelectedOrCurrentKeys()
 			fn := func(workspaceID resource.ID) (*task.Task, error) {
@@ -145,7 +146,7 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return m, tui.YesNoPrompt(
 				fmt.Sprintf("Auto-apply %d workspaces?", len(workspaceIDs)),
-				tuitask.CreateTasks("apply", m.parent, fn, workspaceIDs...),
+				m.helpers.CreateTasks("apply", fn, workspaceIDs...),
 			)
 		}
 	}

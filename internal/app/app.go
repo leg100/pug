@@ -205,7 +205,7 @@ func startApp(cfg config, stdout io.Writer) (*app, error) {
 		wg.Done()
 	}()
 
-	taskEvents := tasks.Subscribe()
+	taskEvents := tasks.TaskBroker.Subscribe()
 	wg.Add(1)
 	go func() {
 		for ev := range taskEvents {
@@ -221,7 +221,7 @@ func startApp(cfg config, stdout io.Writer) (*app, error) {
 
 		// Close subscriptions
 		logger.Shutdown()
-		tasks.Shutdown()
+		tasks.TaskBroker.Shutdown()
 		modules.Shutdown()
 		workspaces.Shutdown()
 		states.Shutdown()
