@@ -2,8 +2,10 @@ package taskgroup
 
 import (
 	"errors"
+	"fmt"
 	"slices"
 
+	"github.com/charmbracelet/bubbles/progress"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/leg100/pug/internal/resource"
 	"github.com/leg100/pug/internal/task"
@@ -37,6 +39,11 @@ func (mm *Maker) Make(parent resource.Resource, width, height int) (tea.Model, e
 		group:   group,
 		helpers: mm.Helpers,
 	}
+
+	progress := progress.New(progress.WithDefaultGradient())
+	progress.Width = 20
+	m.progress = progress
+
 	return m, nil
 }
 
@@ -45,16 +52,25 @@ type model struct {
 	// Model is a task list model.
 	tea.Model
 
+	// Progress bar showing how many tasks are complete
+	progress progress.Model
+
 	tasks   tui.TaskService
 	group   *task.Group
 	helpers *tui.Helpers
 }
 
 func (m model) Init() tea.Cmd {
-	return func() tea.Msg {
-		// Seed table with task group tasks
-		return table.BulkInsertMsg[*task.Task](m.group.Tasks)
+	var cmds []tea.Cmd
+	if len(m.group.CreateErrors) > 0 {
+		err := fmt.Errorf("failed to create %d tasks: see logs", len(m.group.CreateErrors))
+		cmds = append(cmds, tui.ReportError(err, ""))
 	}
+	cmds = append(cmds, func() tea.Msg {
+		// Seed table with task group's tasks
+		return table.BulkInsertMsg[*task.Task](m.group.Tasks)
+	})
+	return tea.Batch(cmds...)
 }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -71,6 +87,20 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}) {
 			return m, nil
 		}
+		// Update progress bar to reflect task status
+		var finished int
+		for _, t := range m.group.Tasks {
+			if t.IsFinished() {
+				finished++
+			}
+		}
+		percentageComplete := float64(finished) / float64(len(m.group.Tasks))
+		cmds = append(cmds, m.progress.SetPercent(percentageComplete))
+	case progress.FrameMsg:
+		// FrameMsg is sent when the progress bar wants to animate itself
+		progressModel, cmd := m.progress.Update(msg)
+		m.progress = progressModel.(progress.Model)
+		return m, cmd
 	}
 
 	// Forward message to wrapped tasks list model
@@ -82,4 +112,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m model) Title() string {
 	return m.helpers.Breadcrumbs("TaskGroup", m.group)
+}
+
+func (m model) Status() string {
+	return m.progress.View()
 }
