@@ -53,7 +53,6 @@ func (mm *Maker) Make(res resource.Resource, width, height int) (tea.Model, erro
 		makerID: mm.MakerID,
 		// read upto 1kb at a time
 		buf:     make([]byte, 1024),
-		width:   width,
 		height:  height,
 		helpers: mm.Helpers,
 	}
@@ -64,7 +63,8 @@ func (mm *Maker) Make(res resource.Resource, width, height int) (tea.Model, erro
 
 	m.viewport = viewport.New(0, 0)
 	m.viewport.HighPerformanceRendering = false
-	m.setViewportDimensions(width, height)
+	m.setWidth(width)
+	m.setHeight(height)
 
 	return m, nil
 }
@@ -83,7 +83,6 @@ type model struct {
 	viewport viewport.Model
 	spinner  *spinner.Model
 
-	width  int
 	height int
 
 	showInfo bool
@@ -151,7 +150,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		m.content += msg.output
-		m.content = wordwrap.String(m.content, m.width)
+		m.content = wordwrap.String(m.content, m.viewport.Width)
 		m.viewport.SetContent(m.content)
 		m.viewport.GotoBottom()
 		if msg.eof {
@@ -185,9 +184,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		m.task = msg.Payload
 	case tea.WindowSizeMsg:
-		m.width = msg.Width
 		m.height = msg.Height
-		m.setViewportDimensions(msg.Width, msg.Height)
+		m.setWidth(msg.Width)
+		m.setHeight(msg.Height)
 	}
 
 	// Handle keyboard and mouse events in the viewport
@@ -201,20 +200,34 @@ const (
 	// scrollPercentWidth is the width of the scroll percentage section to the
 	// right of the viewport
 	scrollPercentWidth = 10
-	// viewportMarginsWidth is the total width of the margins to the left and
-	// right of the viewport
-	viewportMarginsWidth = 2
+	// bordersWidth is the total width of the borders to the left and
+	// right of the content
+	bordersWidth = 2
+	// bordersHeight is the total height of the borders to the top and
+	// bottom of the content
+	bordersHeight = 2
 )
 
-func (m *model) setViewportDimensions(width, height int) {
-	// minusWidth is the width to subtract from that available to the viewport
-	minusWidth := scrollPercentWidth - viewportMarginsWidth
+var borderStyle = lipgloss.NewStyle().Border(lipgloss.NormalBorder())
 
-	// width is the available to the viewport
-	width = max(0, width-minusWidth)
+func (m *model) setWidth(width int) {
+	viewportWidth := width - scrollPercentWidth
+	if m.hasBorders() {
+		viewportWidth -= bordersWidth
+	}
+	m.viewport.Width = max(0, viewportWidth)
+}
 
-	m.viewport.Width = width
+func (m *model) setHeight(height int) {
+	if m.hasBorders() {
+		height -= bordersHeight
+	}
 	m.viewport.Height = height
+	m.height = height
+}
+
+func (m *model) hasBorders() bool {
+	return m.makerID == TaskMakerID
 }
 
 // View renders the viewport
@@ -224,7 +237,6 @@ func (m model) View() string {
 	}
 
 	viewport := tui.Regular.Copy().
-		Margin(0, 1).
 		MaxWidth(m.viewport.Width).
 		Render(m.viewport.View())
 
@@ -241,10 +253,15 @@ func (m model) View() string {
 		AlignVertical(lipgloss.Bottom).
 		Render(scrollPercent)
 
-	return lipgloss.JoinHorizontal(lipgloss.Left,
+	content := lipgloss.JoinHorizontal(lipgloss.Left,
 		viewport,
 		scrollPercentContainer,
 	)
+
+	if m.hasBorders() {
+		return borderStyle.Render(content)
+	}
+	return content
 }
 
 func (m model) TabStatus() string {

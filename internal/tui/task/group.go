@@ -1,4 +1,4 @@
-package taskgroup
+package task
 
 import (
 	"errors"
@@ -11,46 +11,46 @@ import (
 	"github.com/leg100/pug/internal/task"
 	"github.com/leg100/pug/internal/tui"
 	"github.com/leg100/pug/internal/tui/table"
-	tuitask "github.com/leg100/pug/internal/tui/task"
 )
 
-// Maker makes taskgroup models
-type Maker struct {
+// GroupMaker makes taskgroup models
+type GroupMaker struct {
 	TaskService   tui.TaskService
-	TaskListMaker *tuitask.ListMaker
+	RunService    tui.RunService
+	TaskListMaker *ListMaker
 	Helpers       *tui.Helpers
 }
 
-func (mm *Maker) Make(parent resource.Resource, width, height int) (tea.Model, error) {
+func (mm *GroupMaker) Make(parent resource.Resource, width, height int) (tea.Model, error) {
 	group, ok := parent.(*task.Group)
 	if !ok {
 		return nil, errors.New("expected taskgroup resource")
 	}
-	// Make a child task list model with global as its parent. The constructed
-	// task group model (below) is then responsible for populating the task list table.
-	taskList, err := mm.TaskListMaker.Make(resource.GlobalResource, width, height)
-	if err != nil {
-		return nil, err
-	}
-
-	m := model{
-		tasks:   mm.TaskService,
-		Model:   taskList,
-		group:   group,
-		helpers: mm.Helpers,
-	}
 
 	progress := progress.New(progress.WithDefaultGradient())
 	progress.Width = 20
-	m.progress = progress
+
+	m := groupModel{
+		tasks: mm.TaskService,
+		lp: newListPreview(listPreviewOptions{
+			parent:      parent,
+			width:       width,
+			height:      height,
+			runService:  mm.RunService,
+			taskService: mm.TaskService,
+			helpers:     mm.Helpers,
+		}),
+		progress: progress,
+		group:    group,
+		helpers:  mm.Helpers,
+	}
 
 	return m, nil
 }
 
-// model renders a taskgroup, listing its tasks.
-type model struct {
-	// Model is a task list model.
-	tea.Model
+// groupModel is a model for a taskgroup, listing and previewing its tasks.
+type groupModel struct {
+	lp ListPreview
 
 	// Progress bar showing how many tasks are complete
 	progress progress.Model
@@ -60,7 +60,7 @@ type model struct {
 	helpers *tui.Helpers
 }
 
-func (m model) Init() tea.Cmd {
+func (m groupModel) Init() tea.Cmd {
 	var cmds []tea.Cmd
 	if len(m.group.CreateErrors) > 0 {
 		err := fmt.Errorf("failed to create %d tasks: see logs", len(m.group.CreateErrors))
@@ -73,7 +73,7 @@ func (m model) Init() tea.Cmd {
 	return tea.Batch(cmds...)
 }
 
-func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m groupModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var (
 		cmd  tea.Cmd
 		cmds []tea.Cmd
@@ -103,17 +103,21 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, cmd
 	}
 
-	// Forward message to wrapped tasks list model
-	m.Model, cmd = m.Model.Update(msg)
+	// Forward message to wrapped list preview model
+	m.lp, cmd = m.lp.Update(msg)
 	cmds = append(cmds, cmd)
 
 	return m, tea.Batch(cmds...)
 }
 
-func (m model) Title() string {
+func (m groupModel) View() string {
+	return m.lp.View()
+}
+
+func (m groupModel) Title() string {
 	return m.helpers.Breadcrumbs("TaskGroup", m.group)
 }
 
-func (m model) Status() string {
+func (m groupModel) Status() string {
 	return m.progress.View()
 }
