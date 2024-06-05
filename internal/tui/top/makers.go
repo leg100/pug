@@ -35,6 +35,12 @@ func makeMakers(opts Options, spinner *spinner.Model) map[tui.Kind]tui.Maker {
 		TaskService:      opts.TaskService,
 		Helpers:          helpers,
 	}
+	taskMaker := &tasktui.Maker{
+		MakerID:     tasktui.TaskMakerID,
+		RunService:  opts.RunService,
+		TaskService: opts.TaskService,
+		Helpers:     helpers,
+	}
 	taskListMaker := &tasktui.ListMaker{
 		ModuleService:    opts.ModuleService,
 		WorkspaceService: opts.WorkspaceService,
@@ -82,11 +88,7 @@ func makeMakers(opts Options, spinner *spinner.Model) map[tui.Kind]tui.Maker {
 			Helpers:     helpers,
 		},
 		tui.TaskListKind: taskListMaker,
-		tui.TaskKind: &tasktui.Maker{
-			RunService:  opts.RunService,
-			TaskService: opts.TaskService,
-			Helpers:     helpers,
-		},
+		tui.TaskKind:     taskMaker,
 		tui.TaskGroupListKind: &taskgroup.ListMaker{
 			TaskService: opts.TaskService,
 			Helpers:     helpers,

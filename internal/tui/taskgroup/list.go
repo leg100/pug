@@ -1,6 +1,7 @@
 package taskgroup
 
 import (
+	"strconv"
 	"time"
 
 	"github.com/charmbracelet/bubbles/key"
@@ -23,6 +24,11 @@ var (
 		Title: "AGE",
 		Width: 7,
 	}
+	taskGroupCount = table.Column{
+		Key:   "tasks",
+		Title: "TASKS",
+		Width: len("TASKS"),
+	}
 )
 
 type ListMaker struct {
@@ -33,13 +39,15 @@ type ListMaker struct {
 func (m *ListMaker) Make(_ resource.Resource, width, height int) (tea.Model, error) {
 	columns := []table.Column{
 		commandColumn,
+		taskGroupCount,
 		ageColumn,
 	}
 
 	renderer := func(g *task.Group) table.RenderedRow {
 		row := table.RenderedRow{
-			commandColumn.Key: g.Command,
-			ageColumn.Key:     tui.Ago(time.Now(), g.Created),
+			commandColumn.Key:  g.Command,
+			taskGroupCount.Key: strconv.Itoa(len(g.Tasks)),
+			ageColumn.Key:      tui.Ago(time.Now(), g.Created),
 		}
 		return row
 	}

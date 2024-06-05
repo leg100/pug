@@ -289,13 +289,13 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		// amend msg to account for header etc, and forward to all cached
 		// models.
-		_ = m.cache.updateAll(tea.WindowSizeMsg{
+		_ = m.cache.UpdateAll(tea.WindowSizeMsg{
 			Height: m.viewHeight(),
 			Width:  m.viewWidth(),
 		})
 	default:
 		// Send remaining msg types to all cached models
-		cmds = append(cmds, m.cache.updateAll(msg)...)
+		cmds = append(cmds, m.cache.UpdateAll(msg)...)
 
 		// Send message to the prompt too if in prompt mode (most likely a
 		// blink message)
@@ -349,15 +349,18 @@ func (m model) View() string {
 
 	switch m.mode {
 	case helpMode:
-		content = lipgloss.NewStyle().
-			Margin(1).
-			Render(
-				fullHelpView(
-					currentHelpBindings,
-					keys.KeyMapToSlice(keys.Global),
-					keys.KeyMapToSlice(keys.Navigation),
+		content = lipgloss.JoinVertical(lipgloss.Top,
+			strings.Repeat("─", m.width),
+			lipgloss.NewStyle().
+				Margin(1).
+				Render(
+					fullHelpView(
+						currentHelpBindings,
+						keys.KeyMapToSlice(keys.Global),
+						keys.KeyMapToSlice(keys.Navigation),
+					),
 				),
-			)
+		)
 		shortHelpBindings = []key.Binding{
 			key.NewBinding(
 				key.WithKeys("?"),
@@ -465,8 +468,6 @@ func (m model) View() string {
 			// Prefix title with a space to add margin (Inline() doesn't permit
 			// using Margin()).
 			Render(pageTitleLine),
-		// horizontal rule
-		strings.Repeat("─", m.width),
 	}
 
 	if m.mode == promptMode {
@@ -482,8 +483,6 @@ func (m model) View() string {
 		lipgloss.NewStyle().
 			Height(m.viewHeight()).
 			Render(content),
-		// horizontal rule
-		strings.Repeat("─", m.width),
 		// footer
 		lipgloss.JoinHorizontal(
 			lipgloss.Top,
@@ -506,7 +505,7 @@ const promptHeight = 2
 // viewHeight returns the height available to the current model (subordinate to
 // the top model).
 func (m model) viewHeight() int {
-	vh := m.height - headerHeight - breadcrumbsHeight - 2*horizontalRuleHeight - messageFooterHeight
+	vh := m.height - headerHeight - breadcrumbsHeight - messageFooterHeight
 	if m.mode == promptMode {
 		vh -= promptHeight
 	}

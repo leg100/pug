@@ -15,7 +15,7 @@ type navigator struct {
 	// history tracks the pages a user has visited, in LIFO order.
 	history []tui.Page
 	// cache each unique page visited
-	cache *cache
+	cache *tui.Cache
 	// directory of model makers for each kind
 	makers map[tui.Kind]tui.Maker
 	// navigator needs to know width and height when making a model
@@ -26,9 +26,7 @@ type navigator struct {
 func newNavigator(opts Options, spinner *spinner.Model) (*navigator, error) {
 	n := &navigator{
 		makers: makeMakers(opts, spinner),
-		cache: &cache{
-			cache: make(map[cacheKey]tea.Model),
-		},
+		cache:  tui.NewCache(),
 	}
 
 	firstKind, err := tui.FirstPageKind(opts.FirstPage)
@@ -48,7 +46,7 @@ func (n *navigator) currentPage() tui.Page {
 }
 
 func (n *navigator) currentModel() tea.Model {
-	return n.cache.get(n.currentPage())
+	return n.cache.Get(n.currentPage())
 }
 
 func (n *navigator) setCurrent(page tui.Page) (created bool, err error) {
@@ -58,7 +56,7 @@ func (n *navigator) setCurrent(page tui.Page) (created bool, err error) {
 	}
 
 	// Check target page model is cached; if not then create and cache it
-	if !n.cache.exists(page) {
+	if !n.cache.Exists(page) {
 		maker, ok := n.makers[page.Kind]
 		if !ok {
 			return false, fmt.Errorf("no maker could be found for %s", page.Kind)
@@ -67,7 +65,7 @@ func (n *navigator) setCurrent(page tui.Page) (created bool, err error) {
 		if err != nil {
 			return false, fmt.Errorf("making page: %w", err)
 		}
-		n.cache.put(page, model)
+		n.cache.Put(page, model)
 		created = true
 	}
 	// Push new current page to history
@@ -76,7 +74,7 @@ func (n *navigator) setCurrent(page tui.Page) (created bool, err error) {
 }
 
 func (n *navigator) updateCurrent(msg tea.Msg) tea.Cmd {
-	return n.cache.update(pageKey(n.currentPage()), msg)
+	return n.cache.Update(tui.NewCacheKey(n.currentPage()), msg)
 }
 
 func (n *navigator) goBack() {

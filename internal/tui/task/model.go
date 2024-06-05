@@ -20,16 +20,22 @@ import (
 	"github.com/leg100/reflow/wordwrap"
 )
 
+// MakerID uniquely identifies a task model maker
+type MakerID int
+
+const (
+	TaskMakerID MakerID = iota
+	RunTabMakerID
+	TaskListPreviewMakerID
+	TaskGroupPreviewMakerID
+)
+
 type Maker struct {
 	RunService  tui.RunService
 	TaskService tui.TaskService
 	Spinner     *spinner.Model
-
-	// If IsRunTab is true then Maker makes task models that are a tab within
-	// the run model.
-	IsRunTab bool
-
-	Helpers *tui.Helpers
+	MakerID     MakerID
+	Helpers     *tui.Helpers
 }
 
 func (mm *Maker) Make(res resource.Resource, width, height int) (tea.Model, error) {
@@ -39,12 +45,12 @@ func (mm *Maker) Make(res resource.Resource, width, height int) (tea.Model, erro
 	}
 
 	m := model{
-		svc:      mm.TaskService,
-		runs:     mm.RunService,
-		task:     task,
-		output:   task.NewReader(),
-		spinner:  mm.Spinner,
-		isRunTab: mm.IsRunTab,
+		svc:     mm.TaskService,
+		runs:    mm.RunService,
+		task:    task,
+		output:  task.NewReader(),
+		spinner: mm.Spinner,
+		makerID: mm.MakerID,
 		// read upto 1kb at a time
 		buf:     make([]byte, 1024),
 		width:   width,
@@ -69,10 +75,10 @@ type model struct {
 	run  *run.Run
 	runs tui.RunService
 
-	output   io.Reader
-	buf      []byte
-	content  string
-	isRunTab bool
+	output  io.Reader
+	buf     []byte
+	content string
+	makerID MakerID
 
 	viewport viewport.Model
 	spinner  *spinner.Model
@@ -141,7 +147,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// isRunTab is true when this msg is for a task model that is a child of a
 		// run model, i.e. a tab. Without this flag, output would be duplicated in
 		// both the tab and on the generic task view.
-		if msg.isRunTab != m.isRunTab {
+		if msg.makerID != m.makerID {
 			return m, nil
 		}
 		m.content += msg.output
@@ -290,7 +296,7 @@ func (m model) HelpBindings() []key.Binding {
 }
 
 func (m model) getOutput() tea.Msg {
-	msg := outputMsg{taskID: m.task.ID, isRunTab: m.isRunTab}
+	msg := outputMsg{taskID: m.task.ID, makerID: m.makerID}
 
 	n, err := m.output.Read(m.buf)
 	if err == io.EOF {
@@ -303,8 +309,8 @@ func (m model) getOutput() tea.Msg {
 }
 
 type outputMsg struct {
-	isRunTab bool
-	taskID   resource.ID
-	output   string
-	eof      bool
+	makerID MakerID
+	taskID  resource.ID
+	output  string
+	eof     bool
 }

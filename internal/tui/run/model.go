@@ -31,7 +31,7 @@ func (mm *Maker) Make(rr resource.Resource, width, height int) (tea.Model, error
 	taskMaker := &tasktui.Maker{
 		TaskService: mm.TaskService,
 		Spinner:     mm.Spinner,
-		IsRunTab:    true,
+		MakerID:     tasktui.RunTabMakerID,
 	}
 
 	m := model{

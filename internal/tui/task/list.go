@@ -7,12 +7,18 @@ import (
 
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/leg100/pug/internal/resource"
 	runpkg "github.com/leg100/pug/internal/run"
 	"github.com/leg100/pug/internal/task"
 	"github.com/leg100/pug/internal/tui"
 	"github.com/leg100/pug/internal/tui/keys"
 	"github.com/leg100/pug/internal/tui/table"
+)
+
+const (
+	tableHeight          = 4
+	previewDividerHeight = 1
 )
 
 var (
@@ -24,7 +30,7 @@ var (
 	statusColumn = table.Column{
 		Key:   "task_status",
 		Title: "STATUS",
-		Width: runpkg.MaxStatusLen,
+		Width: task.MaxStatusLen,
 	}
 	ageColumn = table.Column{
 		Key:   "age",
@@ -92,27 +98,48 @@ func (m *ListMaker) Make(parent resource.Resource, width, height int) (tea.Model
 		return row
 	}
 
-	table := table.New(columns, renderer, width, height).
-		WithSortFunc(task.ByState).
-		WithParent(parent)
-
-	return List{
-		table:   table,
+	list := List{
 		svc:     m.TaskService,
 		runs:    m.RunService,
 		parent:  parent,
 		max:     m.MaxTasks,
+		width:   width,
+		height:  height,
 		helpers: m.Helpers,
-	}, nil
+		taskMaker: &Maker{
+			MakerID:     TaskListPreviewMakerID,
+			RunService:  m.RunService,
+			TaskService: m.TaskService,
+			Helpers:     m.Helpers,
+		},
+		cache: tui.NewCache(),
+	}
+
+	// Create table for the top half of the split.
+	list.table = table.New(columns, renderer, list.panelWidth(), tableHeight).
+		WithSortFunc(task.ByState).
+		WithParent(parent)
+
+	return list, nil
 }
 
 type List struct {
-	table   table.Model[resource.ID, *task.Task]
-	svc     tui.TaskService
-	runs    tui.RunService
-	parent  resource.Resource
-	max     int
-	helpers *tui.Helpers
+	table     table.Model[resource.ID, *task.Task]
+	svc       tui.TaskService
+	runs      tui.RunService
+	parent    resource.Resource
+	max       int
+	height    int
+	width     int
+	helpers   *tui.Helpers
+	taskMaker tui.Maker
+	// map of task ID to task model
+	cache *tui.Cache
+	// currently highlighted task
+	current tui.Page
+	// whether the preview pane is currently focused (true) or the table is
+	// focused (false)
+	previewFocused bool
 }
 
 func (m List) Init() tea.Cmd {
@@ -150,10 +177,44 @@ func (m List) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.helpers.CreateTasks("apply", m.runs.ApplyPlan, runIDs...),
 			)
 		}
+	case tea.WindowSizeMsg:
+		m.height = msg.Height
+		m.width = msg.Width
+		m.table, cmd = m.table.Update(tea.WindowSizeMsg{
+			Height: tableHeight,
+			Width:  m.panelWidth(),
+		})
+		_ = m.cache.UpdateAll(tea.WindowSizeMsg{
+			Height: m.previewHeight(),
+			Width:  m.panelWidth(),
+		})
+		return m, cmd
 	}
+
 	// Handle keyboard and mouse events in the table widget
 	m.table, cmd = m.table.Update(msg)
 	cmds = append(cmds, cmd)
+
+	// Get currently highlighted task and ensure a model exists for it, and
+	// ensure that that model is the current model.
+	if row, ok := m.table.CurrentRow(); ok {
+		page := tui.Page{Kind: tui.TaskKind, Resource: row.Value}
+		if !m.cache.Exists(page) {
+			// Create model
+			model, err := m.taskMaker.Make(row.Value, m.panelWidth(), m.previewHeight())
+			if err != nil {
+				return m, tui.ReportError(err, "making task model")
+			}
+			// Cache newly created model
+			m.cache.Put(page, model)
+			// Initialize model
+			cmds = append(cmds, model.Init())
+		}
+		m.current = page
+	}
+
+	// Send message to all task preview models
+	cmds = append(cmds, m.cache.UpdateAll(msg)...)
 
 	return m, tea.Batch(cmds...)
 }
@@ -179,12 +240,34 @@ func (m List) pruneApplyableTasks() ([]resource.ID, error) {
 	return runIDs, nil
 }
 
+func (m List) previewHeight() int {
+	return m.height - tableHeight - 4
+}
+
+func (m List) panelWidth() int {
+	return m.width - 2
+}
+
 func (m List) Title() string {
 	return tui.GlobalBreadcrumb("Tasks", m.table.TotalString())
 }
 
 func (m List) View() string {
-	return m.table.View()
+	tableBorder := lipgloss.NewStyle().Border(lipgloss.NormalBorder(),
+		true, true, !m.previewFocused,
+	)
+	previewBorder := lipgloss.NewStyle().Border(lipgloss.NormalBorder(),
+		!m.previewFocused, true, true, true,
+	)
+	components := []string{
+		tableBorder.Render(m.table.View()),
+	}
+	if _, ok := m.table.CurrentRow(); ok {
+		components = append(components, previewBorder.Render(
+			m.cache.Get(m.current).View()),
+		)
+	}
+	return lipgloss.JoinVertical(lipgloss.Top, components...)
 }
 
 func (m List) TabStatus() string {
