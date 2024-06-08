@@ -80,16 +80,11 @@ func (p *Prompt) HandleKey(msg tea.KeyMsg) (closePrompt bool, cmd tea.Cmd) {
 	case key.Matches(msg, p.trigger):
 		cmd = p.action(p.model.Value())
 		closePrompt = true
-	case key.Matches(msg, p.cancel):
-		cmd = ReportInfo("chosen not to proceed")
+	case key.Matches(msg, p.cancel), p.cancelAnyOther:
+		cmd = ReportInfo("canceled operation")
 		closePrompt = true
 	default:
-		if p.cancelAnyOther {
-			cmd = ReportInfo("chosen not to proceed")
-			closePrompt = true
-		} else {
-			p.model, cmd = p.model.Update(msg)
-		}
+		p.model, cmd = p.model.Update(msg)
 	}
 	return
 }
