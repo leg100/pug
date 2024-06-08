@@ -7,7 +7,7 @@ type keyMap struct {
 	TogglePreview key.Binding
 	GrowPreview   key.Binding
 	ShrinkPreview key.Binding
-	Follow        key.Binding
+	Autoscroll    key.Binding
 }
 
 var localKeys = keyMap{
@@ -27,8 +27,8 @@ var localKeys = keyMap{
 		key.WithKeys("-"),
 		key.WithHelp("-", "shrink preview"),
 	),
-	Follow: key.NewBinding(
-		key.WithKeys("F"),
-		key.WithHelp("F", "follow output"),
+	Autoscroll: key.NewBinding(
+		key.WithKeys("ctrl+s"),
+		key.WithHelp("ctrl+s", "toggle autoscroll"),
 	),
 }

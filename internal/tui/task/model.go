@@ -38,6 +38,8 @@ type Maker struct {
 	MakerID     MakerID
 	Helpers     *tui.Helpers
 	Logger      *logging.Logger
+
+	autoscroll bool
 }
 
 func (mm *Maker) Make(res resource.Resource, width, height int) (tea.Model, error) {
@@ -54,9 +56,10 @@ func (mm *Maker) Make(res resource.Resource, width, height int) (tea.Model, erro
 		spinner: mm.Spinner,
 		makerID: mm.MakerID,
 		// read upto 1kb at a time
-		buf:     make([]byte, 1024),
-		height:  height,
-		helpers: mm.Helpers,
+		buf:        make([]byte, 1024),
+		height:     height,
+		helpers:    mm.Helpers,
+		autoscroll: mm.autoscroll,
 	}
 
 	if rr := m.task.Run(); rr != nil {
@@ -71,16 +74,40 @@ func (mm *Maker) Make(res resource.Resource, width, height int) (tea.Model, erro
 	return m, nil
 }
 
+func (mm *Maker) Update(msg tea.Msg) tea.Cmd {
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		switch {
+		case key.Matches(msg, localKeys.Autoscroll):
+			mm.autoscroll = !mm.autoscroll
+
+			var informUser tea.Cmd
+			if mm.autoscroll {
+				informUser = tui.ReportInfo("Enabled autoscroll")
+			} else {
+				informUser = tui.ReportInfo("Disabled autoscroll")
+			}
+
+			// Send out message to all cached task models to toggle autoscroll
+			toggle := tui.CmdHandler(toggleAutoscrollMsg{})
+
+			return tea.Batch(informUser, toggle)
+		}
+	}
+	return nil
+}
+
 type model struct {
 	svc  tui.TaskService
 	task *task.Task
 	run  *run.Run
 	runs tui.RunService
 
-	output  io.Reader
-	buf     []byte
-	content string
-	makerID MakerID
+	output     io.Reader
+	buf        []byte
+	content    string
+	makerID    MakerID
+	autoscroll bool
 
 	viewport viewport.Model
 	spinner  *spinner.Model
@@ -123,6 +150,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				)
 			}
 		}
+	case toggleAutoscrollMsg:
+		m.autoscroll = !m.autoscroll
 	case outputMsg:
 		// Ensure output is for this task
 		if msg.taskID != m.task.ID {
@@ -136,7 +165,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.content += msg.output
 		m.content = wordwrap.String(m.content, m.viewport.Width)
 		m.viewport.SetContent(m.content)
-		m.viewport.GotoBottom()
+		if m.autoscroll {
+			m.viewport.GotoBottom()
+		}
 		if msg.eof {
 			if m.task.JSON {
 				// Prettify JSON output from task. This can only be done once
@@ -150,7 +181,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				} else {
 					m.content = string(b)
 					m.viewport.SetContent(string(b))
-					m.viewport.GotoBottom()
+					if m.autoscroll {
+						m.viewport.GotoBottom()
+					}
 				}
 			}
 			if m.content == "" {

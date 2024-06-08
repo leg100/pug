@@ -234,24 +234,37 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			cmd = m.updateCurrent(tui.FilterFocusReqMsg{})
 			return m, cmd
 		case key.Matches(msg, keys.Global.Logs):
-			// 'l' shows logs
+			// show logs
 			return m, tui.NavigateTo(tui.LogListKind)
 		case key.Matches(msg, keys.Global.Modules):
-			// 'm' lists all modules
+			// list all modules
 			return m, tui.NavigateTo(tui.ModuleListKind)
 		case key.Matches(msg, keys.Global.Workspaces):
-			// 'W' lists all workspaces
+			// list all workspaces
 			return m, tui.NavigateTo(tui.WorkspaceListKind)
 		case key.Matches(msg, keys.Global.Tasks):
-			// 't' lists all tasks
+			// list all tasks
 			return m, tui.NavigateTo(tui.TaskListKind)
 		case key.Matches(msg, keys.Global.TaskGroups):
-			// 'ctrl+g' lists all taskgroups
+			// list all taskgroups
 			return m, tui.NavigateTo(tui.TaskGroupListKind)
 		default:
 			// Send other keys to current model.
-			cmd := m.updateCurrent(msg)
-			return m, cmd
+			if cmd := m.updateCurrent(msg); cmd != nil {
+				return m, cmd
+			}
+			// If current model doesn't respond with a command, then send key to
+			// any updateable model makers; first one to respond with a command
+			// wins.
+			for _, maker := range m.makers {
+				if updateable, ok := maker.(updateableMaker); ok {
+					if cmd := updateable.Update(msg); cmd != nil {
+						return m, cmd
+					}
+				}
+			}
+			// Unhandled key.
+			return m, nil
 		}
 	case tui.NavigationMsg:
 		created, err := m.setCurrent(msg.Page)

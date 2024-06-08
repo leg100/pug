@@ -2,12 +2,18 @@ package top
 
 import (
 	"github.com/charmbracelet/bubbles/spinner"
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/leg100/pug/internal/tui"
 	"github.com/leg100/pug/internal/tui/logs"
 	moduletui "github.com/leg100/pug/internal/tui/module"
 	tasktui "github.com/leg100/pug/internal/tui/task"
 	workspacetui "github.com/leg100/pug/internal/tui/workspace"
 )
+
+// updateableMaker is a dynamically configurable maker.
+type updateableMaker interface {
+	Update(tea.Msg) tea.Cmd
+}
 
 // makeMakers makes model makers for making models
 func makeMakers(opts Options, spinner *spinner.Model) map[tui.Kind]tui.Maker {
