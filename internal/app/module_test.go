@@ -93,9 +93,11 @@ func TestModule_ReloadWorkspaces(t *testing.T) {
 	// Reload workspaces for current module
 	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlW})
 
-	// Expect message to inform user that reload has finished.
+	// Expect to be taken to task page showing output of `workspace list`.
 	waitFor(t, tm, func(s string) bool {
-		return strings.Contains(s, "completed reload-workspaces task successfully")
+		return strings.Contains(s, "Task{workspace list}(modules/a)") &&
+			strings.Contains(s, "* default") &&
+			strings.Contains(s, "dev")
 	})
 }
 

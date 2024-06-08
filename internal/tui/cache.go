@@ -1,54 +1,59 @@
-package top
+package tui
 
 import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/leg100/pug/internal/resource"
-	"github.com/leg100/pug/internal/tui"
 )
 
-// page cache: not so much for performance but to retain memory of user actions,
+// page Cache: not so much for performance but to retain memory of user actions,
 // e.g. a user may select a particular row in a table, navigate away from the
 // page and later return to the page, and they would expect the same row still
 // to be selected.
-type cache struct {
+type Cache struct {
 	cache map[cacheKey]tea.Model
 }
 
+func NewCache() *Cache {
+	return &Cache{
+		cache: make(map[cacheKey]tea.Model),
+	}
+}
+
 type cacheKey struct {
-	kind tui.Kind
+	kind Kind
 	id   resource.ID
 }
 
-func (c *cache) exists(page tui.Page) bool {
-	_, ok := c.cache[pageKey(page)]
+func (c *Cache) Exists(page Page) bool {
+	_, ok := c.cache[NewCacheKey(page)]
 	return ok
 }
 
-func (c *cache) get(page tui.Page) tea.Model {
-	return c.cache[pageKey(page)]
+func (c *Cache) Get(page Page) tea.Model {
+	return c.cache[NewCacheKey(page)]
 }
 
-func (c *cache) put(page tui.Page, model tea.Model) {
-	c.cache[pageKey(page)] = model
+func (c *Cache) Put(page Page, model tea.Model) {
+	c.cache[NewCacheKey(page)] = model
 }
 
-func (c *cache) updateAll(msg tea.Msg) []tea.Cmd {
+func (c *Cache) UpdateAll(msg tea.Msg) []tea.Cmd {
 	cmds := make([]tea.Cmd, len(c.cache))
 	var i int
 	for k := range c.cache {
-		cmds[i] = c.update(k, msg)
+		cmds[i] = c.Update(k, msg)
 		i++
 	}
 	return cmds
 }
 
-func (c *cache) update(key cacheKey, msg tea.Msg) tea.Cmd {
+func (c *Cache) Update(key cacheKey, msg tea.Msg) tea.Cmd {
 	updated, cmd := c.cache[key].Update(msg)
 	c.cache[key] = updated
 	return cmd
 }
 
-func pageKey(page tui.Page) cacheKey {
+func NewCacheKey(page Page) cacheKey {
 	key := cacheKey{kind: page.Kind}
 	if page.Resource != nil {
 		key.id = page.Resource.GetID()

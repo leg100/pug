@@ -10,11 +10,13 @@ import (
 )
 
 type Service struct {
-	table   *resource.Table[*Task]
+	tasks   *resource.Table[*Task]
+	groups  *resource.Table[*Group]
 	counter *int
 	logger  logging.Interface
 
-	*pubsub.Broker[*Task]
+	TaskBroker  *pubsub.Broker[*Task]
+	GroupBroker *pubsub.Broker[*Group]
 	*factory
 }
 
@@ -28,9 +30,11 @@ type ServiceOptions struct {
 func NewService(opts ServiceOptions) *Service {
 	var counter int
 
-	broker := pubsub.NewBroker[*Task](opts.Logger)
+	taskBroker := pubsub.NewBroker[*Task](opts.Logger)
+	groupBroker := pubsub.NewBroker[*Group](opts.Logger)
+
 	factory := &factory{
-		publisher: broker,
+		publisher: taskBroker,
 		counter:   &counter,
 		program:   opts.Program,
 		workdir:   opts.Workdir,
@@ -38,11 +42,13 @@ func NewService(opts ServiceOptions) *Service {
 	}
 
 	svc := &Service{
-		table:   resource.NewTable(broker),
-		Broker:  broker,
-		factory: factory,
-		counter: &counter,
-		logger:  opts.Logger,
+		tasks:       resource.NewTable(taskBroker),
+		groups:      resource.NewTable(groupBroker),
+		TaskBroker:  taskBroker,
+		GroupBroker: groupBroker,
+		factory:     factory,
+		counter:     &counter,
+		logger:      opts.Logger,
 	}
 	return svc
 }
@@ -58,7 +64,7 @@ func (s *Service) Create(opts CreateOptions) (*Task, error) {
 	s.logger.Debug("created task", "task", task)
 
 	// Add to db
-	s.table.Add(task.ID, task)
+	s.tasks.Add(task.ID, task)
 	// Increment counter of number of live tasks
 	*s.counter++
 
@@ -76,9 +82,23 @@ func (s *Service) Create(opts CreateOptions) (*Task, error) {
 	return task, nil
 }
 
+func (s *Service) CreateGroup(cmd string, fn Func, ids ...resource.ID) (*Group, error) {
+	group, err := newGroup(cmd, fn, ids...)
+	if err != nil {
+		return nil, err
+	}
+
+	s.logger.Debug("created task group", "group", group)
+
+	// Add to db
+	s.groups.Add(group.ID, group)
+
+	return group, nil
+}
+
 // Enqueue moves the task onto the global queue for processing.
 func (s *Service) Enqueue(taskID resource.ID) (*Task, error) {
-	task, err := s.table.Update(taskID, func(existing *Task) error {
+	task, err := s.tasks.Update(taskID, func(existing *Task) error {
 		existing.updateState(Queued)
 		return nil
 	})
@@ -117,7 +137,7 @@ type taskLister interface {
 }
 
 func (s *Service) List(opts ListOptions) []*Task {
-	tasks := s.table.List()
+	tasks := s.tasks.List()
 
 	// Filter list according to options
 	var i int
@@ -167,12 +187,16 @@ func (s *Service) List(opts ListOptions) []*Task {
 	return tasks
 }
 
+func (s *Service) ListGroups() []*Group {
+	return s.groups.List()
+}
+
 func (s *Service) Get(taskID resource.ID) (*Task, error) {
-	return s.table.Get(taskID)
+	return s.tasks.Get(taskID)
 }
 
 func (s *Service) Cancel(taskID resource.ID) (*Task, error) {
-	task, err := s.table.Get(taskID)
+	task, err := s.tasks.Get(taskID)
 	if err != nil {
 		s.logger.Error("canceling task", "id", taskID)
 		return nil, err
@@ -187,7 +211,7 @@ func (s *Service) Cancel(taskID resource.ID) (*Task, error) {
 func (s *Service) Delete(taskID resource.ID) error {
 	// TODO: only allow deleting task if in finished state (error message should
 	// instruct user to cancel task first).
-	s.table.Delete(taskID)
+	s.tasks.Delete(taskID)
 	return nil
 }
 

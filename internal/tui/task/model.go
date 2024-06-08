@@ -12,22 +12,32 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/hokaccha/go-prettyjson"
+	"github.com/leg100/pug/internal/logging"
 	"github.com/leg100/pug/internal/resource"
+	"github.com/leg100/pug/internal/run"
 	"github.com/leg100/pug/internal/task"
 	"github.com/leg100/pug/internal/tui"
 	"github.com/leg100/pug/internal/tui/keys"
 	"github.com/leg100/reflow/wordwrap"
 )
 
+// MakerID uniquely identifies a task model maker
+type MakerID int
+
+const (
+	TaskMakerID MakerID = iota
+	RunTabMakerID
+	TaskListPreviewMakerID
+	TaskGroupPreviewMakerID
+)
+
 type Maker struct {
+	RunService  tui.RunService
 	TaskService tui.TaskService
 	Spinner     *spinner.Model
-
-	// If IsRunTab is true then Maker makes task models that are a tab within
-	// the run model.
-	IsRunTab bool
-
-	Helpers *tui.Helpers
+	MakerID     MakerID
+	Helpers     *tui.Helpers
+	Logger      *logging.Logger
 }
 
 func (mm *Maker) Make(res resource.Resource, width, height int) (tea.Model, error) {
@@ -37,21 +47,26 @@ func (mm *Maker) Make(res resource.Resource, width, height int) (tea.Model, erro
 	}
 
 	m := model{
-		svc:      mm.TaskService,
-		task:     task,
-		output:   task.NewReader(),
-		spinner:  mm.Spinner,
-		isRunTab: mm.IsRunTab,
+		svc:     mm.TaskService,
+		runs:    mm.RunService,
+		task:    task,
+		output:  task.NewReader(),
+		spinner: mm.Spinner,
+		makerID: mm.MakerID,
 		// read upto 1kb at a time
 		buf:     make([]byte, 1024),
-		width:   width,
 		height:  height,
 		helpers: mm.Helpers,
 	}
 
+	if rr := m.task.Run(); rr != nil {
+		m.run = rr.(*run.Run)
+	}
+
 	m.viewport = viewport.New(0, 0)
 	m.viewport.HighPerformanceRendering = false
-	m.setViewportDimensions(width, height)
+	m.setWidth(width)
+	m.setHeight(height)
 
 	return m, nil
 }
@@ -59,16 +74,17 @@ func (mm *Maker) Make(res resource.Resource, width, height int) (tea.Model, erro
 type model struct {
 	svc  tui.TaskService
 	task *task.Task
+	run  *run.Run
+	runs tui.RunService
 
-	output   io.Reader
-	buf      []byte
-	content  string
-	isRunTab bool
+	output  io.Reader
+	buf     []byte
+	content string
+	makerID MakerID
 
 	viewport viewport.Model
 	spinner  *spinner.Model
 
-	width  int
 	height int
 
 	showInfo bool
@@ -94,38 +110,31 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// 'i' toggles showing task info
 			m.showInfo = !m.showInfo
 		case key.Matches(msg, keys.Common.Cancel):
-			return m, CreateTasks("cancel", m.task, m.svc.Cancel, m.task.ID)
-		case key.Matches(msg, keys.Common.Module):
-			// 'm' takes the user to the task's module, but only if the task
-			// belongs to a module.
-			if mod := m.task.Module(); mod != nil {
-				return m, tui.NavigateTo(tui.ModuleKind, tui.WithParent(mod))
-			}
-		case key.Matches(msg, keys.Common.Workspace):
-			// 'w' takes the user to the task's workspace, but only if the task
-			// belongs to a workspace.
-			if ws := m.task.Workspace(); ws != nil {
-				return m, tui.NavigateTo(tui.WorkspaceKind, tui.WithParent(ws))
-			}
-		case key.Matches(msg, keys.Common.Run):
-			// 'r' takes the user to the task's run, but only if the task
-			// belongs to a run.
-			if run := m.task.Run(); run != nil {
-				return m, tui.NavigateTo(tui.RunKind, tui.WithParent(run))
+			return m, m.helpers.CreateTasks("cancel", m.svc.Cancel, m.task.ID)
+		case key.Matches(msg, keys.Common.Apply):
+			if m.run != nil {
+				// Only trigger an apply if run is in the planned state
+				if m.run.Status != run.Planned {
+					return m, nil
+				}
+				return m, tui.YesNoPrompt(
+					"Apply run?",
+					m.helpers.CreateTasks("apply", m.runs.ApplyPlan, m.run.ID),
+				)
 			}
 		}
 	case outputMsg:
+		// Ensure output is for this task
 		if msg.taskID != m.task.ID {
 			return m, nil
 		}
-		// isChild is true when this msg is for a task model that is a child of a
-		// run model, i.e. a tab. Without this flag, output would be duplicated in
-		// both the tab and on the generic task view.
-		if msg.isRunTab != m.isRunTab {
+		// Ensure output is for a task model made by the expected maker (avoids
+		// duplicate output where there are multiple models for the same task).
+		if msg.makerID != m.makerID {
 			return m, nil
 		}
 		m.content += msg.output
-		m.content = wordwrap.String(m.content, m.width)
+		m.content = wordwrap.String(m.content, m.viewport.Width)
 		m.viewport.SetContent(m.content)
 		m.viewport.GotoBottom()
 		if msg.eof {
@@ -134,13 +143,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				// the task has finished and has produced complete and
 				// syntactically valid json object(s).
 				//
-				// Note: terraform commands such as `state -json` can produce
-				// json strings with embedded newlines, which is invalid json
-				// and breaks the pretty printer. So we escape the newlines.
-				//
 				// TODO: avoid casting to string and back, thereby avoiding
 				// unnecessary allocations.
-				m.content = strings.ReplaceAll(m.content, "\n", "\\n")
 				if b, err := prettyjson.Format([]byte(m.content)); err != nil {
 					cmds = append(cmds, tui.ReportError(err, "pretty printing task json output"))
 				} else {
@@ -148,6 +152,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.viewport.SetContent(string(b))
 					m.viewport.GotoBottom()
 				}
+			}
+			if m.content == "" {
+				m.content = "Task finished without output"
+				m.viewport.SetContent(m.content)
 			}
 		} else {
 			cmds = append(cmds, m.getOutput)
@@ -159,9 +167,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		m.task = msg.Payload
 	case tea.WindowSizeMsg:
-		m.width = msg.Width
-		m.height = msg.Height
-		m.setViewportDimensions(msg.Width, msg.Height)
+		m.setWidth(msg.Width)
+		m.setHeight(msg.Height)
 	}
 
 	// Handle keyboard and mouse events in the viewport
@@ -171,32 +178,38 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, tea.Batch(cmds...)
 }
 
-func (m model) Title() string {
-	return m.helpers.Breadcrumbs("Task", m.task)
-}
-
-func (m model) ID() string {
-	return m.task.String()
-}
-
 const (
 	// scrollPercentWidth is the width of the scroll percentage section to the
 	// right of the viewport
 	scrollPercentWidth = 10
-	// viewportMarginsWidth is the total width of the margins to the left and
-	// right of the viewport
-	viewportMarginsWidth = 2
+	// bordersWidth is the total width of the borders to the left and
+	// right of the content
+	bordersWidth = 2
+	// bordersHeight is the total height of the borders to the top and
+	// bottom of the content
+	bordersHeight = 2
 )
 
-func (m *model) setViewportDimensions(width, height int) {
-	// minusWidth is the width to subtract from that available to the viewport
-	minusWidth := scrollPercentWidth - viewportMarginsWidth
+var borderStyle = lipgloss.NewStyle().Border(lipgloss.NormalBorder())
 
-	// width is the available to the viewport
-	width = max(0, width-minusWidth)
+func (m *model) setWidth(width int) {
+	viewportWidth := width - scrollPercentWidth
+	if m.hasBorders() {
+		viewportWidth -= bordersWidth
+	}
+	m.viewport.Width = max(0, viewportWidth)
+}
 
-	m.viewport.Width = width
+func (m *model) setHeight(height int) {
+	if m.hasBorders() {
+		height -= bordersHeight
+	}
 	m.viewport.Height = height
+	m.height = height
+}
+
+func (m *model) hasBorders() bool {
+	return m.makerID == TaskMakerID
 }
 
 // View renders the viewport
@@ -206,7 +219,6 @@ func (m model) View() string {
 	}
 
 	viewport := tui.Regular.Copy().
-		Margin(0, 1).
 		MaxWidth(m.viewport.Width).
 		Render(m.viewport.View())
 
@@ -223,10 +235,15 @@ func (m model) View() string {
 		AlignVertical(lipgloss.Bottom).
 		Render(scrollPercent)
 
-	return lipgloss.JoinHorizontal(lipgloss.Left,
+	content := lipgloss.JoinHorizontal(lipgloss.Left,
 		viewport,
 		scrollPercentContainer,
 	)
+
+	if m.hasBorders() {
+		return borderStyle.Render(content)
+	}
+	return content
 }
 
 func (m model) TabStatus() string {
@@ -241,22 +258,21 @@ func (m model) TabStatus() string {
 	return "+"
 }
 
-func (m model) Status() string {
-	var color lipgloss.Color
+func (m model) Title() string {
+	return m.helpers.Breadcrumbs("Task", m.task)
+}
 
-	switch m.task.State {
-	case task.Pending:
-		color = tui.Grey
-	case task.Queued:
-		color = tui.Orange
-	case task.Running:
-		color = tui.Blue
-	case task.Exited:
-		color = tui.GreenBlue
-	case task.Errored:
-		color = tui.Red
+func (m model) Status() string {
+	if m.run != nil {
+		return lipgloss.JoinHorizontal(lipgloss.Top,
+			m.helpers.TaskStatus(m.task, true),
+			" | ",
+			m.helpers.LatestRunReport(m.run),
+			" ",
+			m.helpers.RunStatus(m.run, true),
+		)
 	}
-	return tui.Regular.Copy().Foreground(color).Render(string(m.task.State))
+	return m.helpers.TaskStatus(m.task, true)
 }
 
 func (m model) HelpBindings() []key.Binding {
@@ -269,14 +285,17 @@ func (m model) HelpBindings() []key.Binding {
 	if ws := m.task.Workspace(); ws != nil {
 		bindings = append(bindings, keys.Common.Workspace)
 	}
-	if run := m.task.Run(); run != nil {
+	if m.run != nil {
 		bindings = append(bindings, keys.Common.Run)
+		if m.run.Status == run.Planned {
+			bindings = append(bindings, keys.Common.Apply)
+		}
 	}
 	return bindings
 }
 
 func (m model) getOutput() tea.Msg {
-	msg := outputMsg{taskID: m.task.ID, isRunTab: m.isRunTab}
+	msg := outputMsg{taskID: m.task.ID, makerID: m.makerID}
 
 	n, err := m.output.Read(m.buf)
 	if err == io.EOF {
@@ -289,8 +308,8 @@ func (m model) getOutput() tea.Msg {
 }
 
 type outputMsg struct {
-	isRunTab bool
-	taskID   resource.ID
-	output   string
-	eof      bool
+	makerID MakerID
+	taskID  resource.ID
+	output  string
+	eof     bool
 }

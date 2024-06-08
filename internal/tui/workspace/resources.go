@@ -16,7 +16,6 @@ import (
 	"github.com/leg100/pug/internal/tui"
 	"github.com/leg100/pug/internal/tui/keys"
 	"github.com/leg100/pug/internal/tui/table"
-	tuitask "github.com/leg100/pug/internal/tui/task"
 )
 
 var resourceColumn = table.Column{
@@ -29,6 +28,7 @@ type resourceListMaker struct {
 	StateService tui.StateService
 	RunService   tui.RunService
 	Spinner      *spinner.Model
+	Helpers      *tui.Helpers
 }
 
 func (m *resourceListMaker) Make(ws resource.Resource, width, height int) (tea.Model, error) {
@@ -40,9 +40,10 @@ func (m *resourceListMaker) Make(ws resource.Resource, width, height int) (tea.M
 		}
 		return table.RenderedRow{resourceColumn.Key: addr}
 	}
-	table := table.New(columns, renderer, width, height-metadataHeight).
-		WithSortFunc(state.Sort).
-		WithParent(ws)
+	table := table.New(columns, renderer, width, height-metadataHeight,
+		table.WithSortFunc(state.Sort),
+		table.WithParent[resource.ID, *state.Resource](ws),
+	)
 	return resources{
 		table:     table,
 		states:    m.StateService,
@@ -50,6 +51,7 @@ func (m *resourceListMaker) Make(ws resource.Resource, width, height int) (tea.M
 		workspace: ws,
 		spinner:   m.Spinner,
 		width:     width,
+		helpers:   m.Helpers,
 	}, nil
 }
 
@@ -61,6 +63,7 @@ type resources struct {
 	state     *state.State
 	reloading bool
 	width     int
+	helpers   *tui.Helpers
 
 	spinner *spinner.Model
 }
@@ -124,7 +127,7 @@ func (m resources) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return m, tui.YesNoPrompt(
 				fmt.Sprintf("Delete %d resource(s)?", len(addrs)),
-				tuitask.CreateTasks("state-rm", m.workspace, fn, m.workspace.GetID()),
+				m.helpers.CreateTasks("state-rm", fn, m.workspace.GetID()),
 			)
 		case key.Matches(msg, resourcesKeys.Taint):
 			addrs := m.selectedOrCurrentAddresses()
@@ -145,7 +148,7 @@ func (m resources) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						fn := func(workspaceID resource.ID) (*task.Task, error) {
 							return m.states.Move(workspaceID, from, state.ResourceAddress(v))
 						}
-						return tuitask.CreateTasks("state-mv", m.workspace, fn, m.workspace.GetID())
+						return m.helpers.CreateTasks("state-mv", fn, m.workspace.GetID())
 					},
 					Key:    key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", "confirm")),
 					Cancel: key.NewBinding(key.WithKeys("esc"), key.WithHelp("esc", "cancel")),
@@ -159,13 +162,10 @@ func (m resources) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			createRunOptions.TargetAddrs = m.selectedOrCurrentAddresses()
 			// NOTE: even if the user hasn't selected any rows, we still proceed
 			// to create a run without targeted resources.
-			return m, func() tea.Msg {
-				run, err := m.runs.Create(m.workspace.GetID(), createRunOptions)
-				if err != nil {
-					return tui.NewErrorMsg(err, "creating targeted run")
-				}
-				return tui.NewNavigationMsg(tui.RunKind, tui.WithParent(run))
+			fn := func(workspaceID resource.ID) (*task.Task, error) {
+				return m.runs.Plan(workspaceID, createRunOptions)
 			}
+			return m, m.helpers.CreateTasks("plan", fn, m.workspace.GetID())
 		}
 	case initState:
 		m.state = (*state.State)(msg)
@@ -253,22 +253,6 @@ func (m resources) selectedOrCurrentAddresses() []state.ResourceAddress {
 		i++
 	}
 	return addrs
-}
-
-type stateFunc func(workspaceID resource.ID, addr state.ResourceAddress) (*task.Task, error)
-
-func (m resources) createStateCommand(name string, fn stateFunc, addrs ...state.ResourceAddress) tea.Cmd {
-	return func() tea.Msg {
-		msg := tuitask.CreatedTasksMsg{Command: name, Issuer: m.workspace}
-		for _, addr := range addrs {
-			task, err := fn(m.workspace.GetID(), addr)
-			if err != nil {
-				msg.CreateErrs = append(msg.CreateErrs, err)
-			}
-			msg.Tasks = append(msg.Tasks, task)
-		}
-		return msg
-	}
 }
 
 type resourcesKeyMap struct {

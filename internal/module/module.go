@@ -27,20 +27,8 @@ type Module struct {
 	// The module's current workspace.
 	CurrentWorkspaceID *resource.ID
 
-	// Whether module is initialized correctly. Nil means it is unknown.
+	// Whether module has been initialized in the past. Nil means it is unknown.
 	Initialized *bool
-	// Whether a terraform init is in progress.
-	InitInProgress bool
-
-	// Whether module is formatted correctly. Nil means it is unknown.
-	Formatted *bool
-	// Whether formatting is in progress.
-	FormatInProgress bool
-
-	// Whether module is valid. Nil means it is unknown.
-	Valid *bool
-	// Whether validation is in progress.
-	ValidationInProgress bool
 }
 
 // New constructs a module. Workdir is the pug working directory, and path is

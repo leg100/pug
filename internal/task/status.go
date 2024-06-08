@@ -12,6 +12,8 @@ const (
 	Exited   Status = "exited"
 	Errored  Status = "errored"
 	Canceled Status = "canceled"
+
+	MaxStatusLen = len(Canceled)
 )
 
 type statusTimestamps struct {

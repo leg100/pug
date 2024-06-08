@@ -2,7 +2,6 @@ package run
 
 import (
 	"fmt"
-	"io"
 	"slices"
 
 	"github.com/leg100/pug/internal/logging"
@@ -19,13 +18,13 @@ type Service struct {
 	logger logging.Interface
 
 	tasks      *task.Service
-	modules    *module.Service
-	workspaces *workspace.Service
+	modules    moduleGetter
+	workspaces workspaceGetter
 	states     *state.Service
 
 	disableReloadAfterApply bool
-	dataDir                 string
 
+	*factory
 	*pubsub.Broker[*Run]
 }
 
@@ -39,6 +38,14 @@ type ServiceOptions struct {
 	Logger                  logging.Interface
 }
 
+type moduleGetter interface {
+	Get(moduleID resource.ID) (*module.Module, error)
+}
+
+type workspaceGetter interface {
+	Get(workspaceID resource.ID) (*workspace.Workspace, error)
+}
+
 func NewService(opts ServiceOptions) *Service {
 	broker := pubsub.NewBroker[*Run](opts.Logger)
 	return &Service{
@@ -49,49 +56,34 @@ func NewService(opts ServiceOptions) *Service {
 		workspaces:              opts.WorkspaceService,
 		states:                  opts.StateService,
 		disableReloadAfterApply: opts.DisableReloadAfterApply,
-		dataDir:                 opts.DataDir,
 		logger:                  opts.Logger,
+		factory: &factory{
+			dataDir:    opts.DataDir,
+			modules:    opts.ModuleService,
+			workspaces: opts.WorkspaceService,
+			broker:     broker,
+		},
 	}
 }
 
-// Create a run.
-func (s *Service) Create(workspaceID resource.ID, opts CreateOptions) (*Run, error) {
-	run, err := s.create(workspaceID, opts)
+// Plan creates a plan task.
+func (s *Service) Plan(workspaceID resource.ID, opts CreateOptions) (*task.Task, error) {
+	task, err := s.plan(workspaceID, opts)
 	if err != nil {
-		s.logger.Error("creating run", "error", err, "workspace_id", workspaceID)
+		s.logger.Error("creating plan task", "error", err)
 		return nil, err
 	}
-	s.logger.Info("created run", "run", run)
-	return run, nil
+	return task, nil
 }
 
-func (s *Service) create(workspaceID resource.ID, opts CreateOptions) (*Run, error) {
-	ws, err := s.workspaces.Get(workspaceID)
+func (s *Service) plan(workspaceID resource.ID, opts CreateOptions) (*task.Task, error) {
+	run, err := s.newRun(workspaceID, opts)
 	if err != nil {
-		return nil, fmt.Errorf("retrieving workspace: %w", err)
+		return nil, err
 	}
-	mod, err := s.modules.Get(ws.ModuleID())
-	if err != nil {
-		return nil, fmt.Errorf("workspace module: %w", err)
-	}
-	// Publish an event upon every run status update
-	opts.afterUpdate = func(run *Run) {
-		s.Publish(resource.UpdatedEvent, run)
-	}
-	opts.dataDir = s.dataDir
-	run, err := newRun(mod, ws, opts)
-	if err != nil {
-		return nil, fmt.Errorf("constructing run: %w", err)
-	}
-	s.table.Add(run.ID, run)
-	return run, nil
-}
-
-// Create a plan task for a run. Only to be called by the scheduler.
-func (s *Service) plan(run *Run) (*task.Task, error) {
 	task, err := s.createTask(run, task.CreateOptions{
 		Command:  []string{"plan"},
-		Args:     run.PlanArgs(),
+		Args:     run.planArgs(),
 		Blocking: true,
 		AfterQueued: func(*task.Task) {
 			run.updateStatus(PlanQueued)
@@ -100,63 +92,42 @@ func (s *Service) plan(run *Run) (*task.Task, error) {
 			run.updateStatus(Planning)
 		},
 		AfterError: func(t *task.Task) {
-			run.setErrored(t.Err)
+			run.updateStatus(Errored)
 		},
 		AfterCanceled: func(*task.Task) {
 			run.updateStatus(Canceled)
 		},
 		AfterExited: func(t *task.Task) {
-			out, err := io.ReadAll(t.NewReader())
-			if err != nil {
-				run.setErrored(err)
-				return
-			}
-			changes, report, err := parsePlanReport(string(out))
-			if err != nil {
-				run.setErrored(err)
-				return
-			}
-			run.PlanReport = report
-
-			// Determine status and whether to automatically proceed to apply
-			if !changes {
-				run.updateStatus(NoChanges)
-				return
-			}
-			run.updateStatus(Planned)
-			if run.AutoApply {
-				if _, err := s.Apply(run.ID); err != nil {
-					run.setErrored(err)
-					return
-				}
-			}
-			s.logger.Info("created plan", "run", run, "changes", run.PlanReport)
-		},
-		AfterFinish: func(t *task.Task) {
-			if t.Err != nil {
-				s.logger.Error("creating plan", "error", t.Err, "run", run)
+			if err := run.finishPlan(t.NewReader()); err != nil {
+				s.logger.Error("finishing plan", "error", err, "run", run)
 			}
 		},
 	})
 	if err != nil {
-		s.logger.Error("creating plan task", "error", err, "run", run)
 		return nil, err
 	}
+	s.table.Add(run.ID, run)
 	return task, nil
 }
 
-// Apply creates an apply task for a run. The run must be in the planned state,
-// and it must be the current run for its workspace.
-func (s *Service) Apply(runID resource.ID) (*task.Task, error) {
-	task, err := s.apply(runID)
+// Apply creates an apply task without an existing plan.
+func (s *Service) ApplyOnly(workspaceID resource.ID, opts CreateOptions) (*task.Task, error) {
+	opts.applyOnly = true
+	run, err := s.newRun(workspaceID, opts)
 	if err != nil {
-		s.logger.Error("applying plan", "error", err, "run_id", runID)
 		return nil, err
 	}
-	return task, err
+	task, err := s.createApplyTask(run)
+	if err != nil {
+		s.logger.Error("creating an apply task", "error", err)
+		return nil, err
+	}
+	s.table.Add(run.ID, run)
+	return task, nil
 }
 
-func (s *Service) apply(runID resource.ID) (*task.Task, error) {
+// ApplyPlan applies an existing plan.
+func (s *Service) ApplyPlan(runID resource.ID) (*task.Task, error) {
 	run, err := s.table.Get(runID)
 	if err != nil {
 		return nil, err
@@ -164,16 +135,13 @@ func (s *Service) apply(runID resource.ID) (*task.Task, error) {
 	if run.Status != Planned {
 		return nil, fmt.Errorf("run is not in the planned state: %s", run.Status)
 	}
-	ws, err := s.workspaces.Get(run.WorkspaceID())
-	if err != nil {
-		return nil, err
-	}
-	if ws.CurrentRunID == nil || *ws.CurrentRunID != runID {
-		return nil, fmt.Errorf("run is not the current run for its workspace: current run: %s", ws.CurrentRunID)
-	}
-	task, err := s.createTask(run, task.CreateOptions{
+	return s.createApplyTask(run)
+}
+
+func (s *Service) createApplyTask(run *Run) (*task.Task, error) {
+	return s.createTask(run, task.CreateOptions{
 		Command:  []string{"apply"},
-		Args:     []string{"-input=false", run.PlanPath()},
+		Args:     run.applyArgs(),
 		Blocking: true,
 		AfterQueued: func(*task.Task) {
 			run.updateStatus(ApplyQueued)
@@ -188,37 +156,16 @@ func (s *Service) apply(runID resource.ID) (*task.Task, error) {
 			run.updateStatus(Canceled)
 		},
 		AfterExited: func(t *task.Task) {
-			// TODO: mark all workspace runs in the planned state as stale
-			//
-			out, err := io.ReadAll(t.NewReader())
-			if err != nil {
-				run.setErrored(err)
+			if err := run.finishApply(t.NewReader()); err != nil {
+				s.logger.Error("finishing apply", "error", err, "run", run)
 				return
 			}
-			report, err := parseApplyReport(string(out))
-			if err != nil {
-				run.setErrored(err)
-				return
-			}
-			run.ApplyReport = report
-			run.updateStatus(Applied)
 
 			if !s.disableReloadAfterApply {
 				s.states.Reload(run.WorkspaceID())
 			}
 		},
-		AfterFinish: func(t *task.Task) {
-			if t.Err != nil {
-				s.logger.Error("applying plan", "error", t.Err, "run", run)
-			} else {
-				s.logger.Info("applied plan", "run", run)
-			}
-		},
 	})
-	if err != nil {
-		return nil, err
-	}
-	return task, nil
 }
 
 func (s *Service) Get(runID resource.ID) (*Run, error) {

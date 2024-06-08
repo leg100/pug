@@ -150,7 +150,6 @@ func startApp(cfg config, stdout io.Writer) (*app, error) {
 
 	// Start daemons
 	task.StartEnqueuer(tasks)
-	run.StartScheduler(runs, workspaces)
 	waitTasks := task.StartRunner(ctx, logger, tasks, cfg.MaxTasks)
 
 	// Automatically load workspaces whenever modules are loaded.
@@ -206,10 +205,19 @@ func startApp(cfg config, stdout io.Writer) (*app, error) {
 		wg.Done()
 	}()
 
-	taskEvents := tasks.Subscribe()
+	taskEvents := tasks.TaskBroker.Subscribe()
 	wg.Add(1)
 	go func() {
 		for ev := range taskEvents {
+			ch <- ev
+		}
+		wg.Done()
+	}()
+
+	taskGroupEvents := tasks.GroupBroker.Subscribe()
+	wg.Add(1)
+	go func() {
+		for ev := range taskGroupEvents {
 			ch <- ev
 		}
 		wg.Done()
@@ -222,7 +230,8 @@ func startApp(cfg config, stdout io.Writer) (*app, error) {
 
 		// Close subscriptions
 		logger.Shutdown()
-		tasks.Shutdown()
+		tasks.TaskBroker.Shutdown()
+		tasks.GroupBroker.Shutdown()
 		modules.Shutdown()
 		workspaces.Shutdown()
 		states.Shutdown()
@@ -235,7 +244,7 @@ func startApp(cfg config, stdout io.Writer) (*app, error) {
 
 		// Remove all run artefacts (plan files etc,...)
 		for _, run := range runs.List(run.ListOptions{}) {
-			_ = os.RemoveAll(run.ArtefactsPath())
+			_ = os.RemoveAll(run.ArtefactsPath)
 		}
 
 		// Wait for running tasks to terminate. Canceling the context (above)

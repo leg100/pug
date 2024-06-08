@@ -2,7 +2,6 @@ package top
 
 import (
 	"fmt"
-	"log/slog"
 	"os"
 	"strings"
 
@@ -18,8 +17,6 @@ import (
 	"github.com/leg100/pug/internal/tui"
 	"github.com/leg100/pug/internal/tui/keys"
 	"github.com/leg100/pug/internal/tui/module"
-	tuirun "github.com/leg100/pug/internal/tui/run"
-	tuitask "github.com/leg100/pug/internal/tui/task"
 	"github.com/leg100/pug/internal/version"
 )
 
@@ -245,12 +242,12 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, keys.Global.Workspaces):
 			// 'W' lists all workspaces
 			return m, tui.NavigateTo(tui.WorkspaceListKind)
-		case key.Matches(msg, keys.Global.Runs):
-			// 'R' lists all runs
-			return m, tui.NavigateTo(tui.RunListKind)
 		case key.Matches(msg, keys.Global.Tasks):
-			// 'T' lists all tasks
+			// 't' lists all tasks
 			return m, tui.NavigateTo(tui.TaskListKind)
+		case key.Matches(msg, keys.Global.TaskGroups):
+			// 'ctrl+g' lists all taskgroups
+			return m, tui.NavigateTo(tui.TaskGroupListKind)
 		default:
 			// Send other keys to current model.
 			cmd := m.updateCurrent(msg)
@@ -267,22 +264,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.Tab != "" {
 			cmds = append(cmds, m.updateCurrent(tui.SetActiveTabMsg(msg.Tab)))
 		}
-	case tuirun.CreatedRunsMsg:
-		cmd, m.info, m.err = tuirun.HandleCreatedRuns(msg)
-		cmds = append(cmds, cmd)
-	case tuitask.CreatedTasksMsg:
-		cmd, m.info, m.err = tuitask.HandleCreatedTasks(msg)
-		cmds = append(cmds, cmd)
-	case tuitask.CompletedTasksMsg:
-		m.info, m.err = tuitask.HandleCompletedTasks(msg)
 	case tui.ErrorMsg:
 		if msg.Error != nil {
 			err := msg.Error
 			msg := fmt.Sprintf(msg.Message, msg.Args...)
-
-			// Both print error in footer as well as log it.
 			m.err = fmt.Errorf("%s: %w", msg, err)
-			slog.Error(msg, "error", err)
 		}
 	case tui.InfoMsg:
 		m.info = string(msg)
@@ -296,13 +282,13 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		// amend msg to account for header etc, and forward to all cached
 		// models.
-		_ = m.cache.updateAll(tea.WindowSizeMsg{
+		_ = m.cache.UpdateAll(tea.WindowSizeMsg{
 			Height: m.viewHeight(),
 			Width:  m.viewWidth(),
 		})
 	default:
 		// Send remaining msg types to all cached models
-		cmds = append(cmds, m.cache.updateAll(msg)...)
+		cmds = append(cmds, m.cache.UpdateAll(msg)...)
 
 		// Send message to the prompt too if in prompt mode (most likely a
 		// blink message)
@@ -356,15 +342,18 @@ func (m model) View() string {
 
 	switch m.mode {
 	case helpMode:
-		content = lipgloss.NewStyle().
-			Margin(1).
-			Render(
-				fullHelpView(
-					currentHelpBindings,
-					keys.KeyMapToSlice(keys.Global),
-					keys.KeyMapToSlice(keys.Navigation),
+		content = lipgloss.JoinVertical(lipgloss.Top,
+			strings.Repeat("─", m.width),
+			lipgloss.NewStyle().
+				Margin(1).
+				Render(
+					fullHelpView(
+						currentHelpBindings,
+						keys.KeyMapToSlice(keys.Global),
+						keys.KeyMapToSlice(keys.Navigation),
+					),
 				),
-			)
+		)
 		shortHelpBindings = []key.Binding{
 			key.NewBinding(
 				key.WithKeys("?"),
@@ -439,7 +428,10 @@ func (m model) View() string {
 	var footerMsg string
 	if m.err != nil {
 		footerMsg = tui.Padded.Copy().
-			Foreground(tui.Red).
+			Bold(true).
+			Margin(0, 1).
+			Background(tui.Red).
+			Foreground(tui.White).
 			Render("Error: " + m.err.Error())
 	} else if m.info != "" {
 		footerMsg = tui.Padded.Copy().
@@ -472,16 +464,10 @@ func (m model) View() string {
 			// Prefix title with a space to add margin (Inline() doesn't permit
 			// using Margin()).
 			Render(pageTitleLine),
-		// horizontal rule
-		strings.Repeat("─", m.width),
 	}
 
 	if m.mode == promptMode {
-		components = append(components,
-			tui.Regular.Margin(0, 1).Render(m.prompt.View()),
-			// horizontal rule
-			strings.Repeat("─", m.width),
-		)
+		components = append(components, m.prompt.View(m.width))
 	}
 
 	components = append(components,
@@ -489,8 +475,6 @@ func (m model) View() string {
 		lipgloss.NewStyle().
 			Height(m.viewHeight()).
 			Render(content),
-		// horizontal rule
-		strings.Repeat("─", m.width),
 		// footer
 		lipgloss.JoinHorizontal(
 			lipgloss.Top,
@@ -508,14 +492,12 @@ func (m model) View() string {
 	return lipgloss.JoinVertical(lipgloss.Top, components...)
 }
 
-const promptHeight = 2
-
 // viewHeight returns the height available to the current model (subordinate to
 // the top model).
 func (m model) viewHeight() int {
-	vh := m.height - headerHeight - breadcrumbsHeight - 2*horizontalRuleHeight - messageFooterHeight
+	vh := m.height - headerHeight - breadcrumbsHeight - messageFooterHeight
 	if m.mode == promptMode {
-		vh -= promptHeight
+		vh -= tui.PromptHeight
 	}
 	return vh
 }

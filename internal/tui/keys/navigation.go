@@ -15,6 +15,7 @@ type navigation struct {
 	GotoBottom   key.Binding
 	TabNext      key.Binding
 	TabLast      key.Binding
+	SwitchPane   key.Binding
 }
 
 // Navigation returns key bindings for navigation.
@@ -58,5 +59,9 @@ var Navigation = navigation{
 	TabLast: key.NewBinding(
 		key.WithKeys("ctrl+pgup"),
 		key.WithHelp("ctrl+pgup", "last tab"),
+	),
+	SwitchPane: key.NewBinding(
+		key.WithKeys("tab"),
+		key.WithHelp("tab", "switch pane"),
 	),
 }

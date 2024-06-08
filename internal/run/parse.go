@@ -19,6 +19,8 @@ var (
 // parsePlanReport reads the logs from `terraform plan` and detects whether
 // there were any changes and produces a report of the number of resource
 // changes.
+//
+// TODO: parse bytes intead, to skip re-allocation
 func parsePlanReport(logs string) (bool, Report, error) {
 	raw := internal.StripAnsi(logs)
 
@@ -60,6 +62,8 @@ func parsePlanReport(logs string) (bool, Report, error) {
 
 // parseApplyReport reads the logs from `terraform apply` and produces a report
 // of the changes made.
+//
+// TODO: parse bytes intead, to skip re-allocation
 func parseApplyReport(logs string) (Report, error) {
 	matches := applyChangesRegex.FindStringSubmatch(logs)
 	if matches == nil {

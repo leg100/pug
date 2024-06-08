@@ -7,11 +7,13 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/bubbles/key"
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/leg100/pug/internal/logging"
 	"github.com/leg100/pug/internal/module"
 	"github.com/leg100/pug/internal/resource"
 	"github.com/leg100/pug/internal/run"
+	"github.com/leg100/pug/internal/task"
 	"github.com/leg100/pug/internal/workspace"
 )
 
@@ -27,6 +29,7 @@ type Helpers struct {
 	ModuleService    ModuleService
 	WorkspaceService WorkspaceService
 	RunService       RunService
+	TaskService      TaskService
 	StateService     StateService
 	Logger           logging.Interface
 }
@@ -69,54 +72,6 @@ func (h *Helpers) ModuleCurrentResourceCount(mod *module.Module) string {
 	return h.WorkspaceResourceCount(ws)
 }
 
-func (h *Helpers) ModuleCurrentRunStatus(mod *module.Module) string {
-	if mod.CurrentWorkspaceID == nil {
-		return ""
-	}
-	ws, err := h.WorkspaceService.Get(*mod.CurrentWorkspaceID)
-	if err != nil {
-		h.Logger.Error("rendering module current run status", "error", err)
-		return ""
-	}
-	return h.WorkspaceCurrentRunStatus(ws)
-}
-
-func (h *Helpers) ModuleCurrentRunChanges(mod *module.Module) string {
-	if mod.CurrentWorkspaceID == nil {
-		return ""
-	}
-	ws, err := h.WorkspaceService.Get(*mod.CurrentWorkspaceID)
-	if err != nil {
-		h.Logger.Error("rendering module current run changes", "error", err)
-		return ""
-	}
-	return h.WorkspaceCurrentRunChanges(ws)
-}
-
-func (h *Helpers) WorkspaceCurrentRunStatus(ws *workspace.Workspace) string {
-	if ws.CurrentRunID == nil {
-		return ""
-	}
-	run, err := h.RunService.Get(*ws.CurrentRunID)
-	if err != nil {
-		h.Logger.Error("rendering module current run status", "error", err)
-		return ""
-	}
-	return h.RunStatus(run)
-}
-
-func (h *Helpers) WorkspaceCurrentRunChanges(ws *workspace.Workspace) string {
-	if ws.CurrentRunID == nil {
-		return ""
-	}
-	run, err := h.RunService.Get(*ws.CurrentRunID)
-	if err != nil {
-		h.Logger.Error("rendering module current run changes", "error", err)
-		return ""
-	}
-	return h.LatestRunReport(run)
-}
-
 // WorkspaceCurrentCheckmark returns a check mark if the workspace is the
 // current workspace for its module.
 func (h *Helpers) WorkspaceCurrentCheckmark(ws *workspace.Workspace) string {
@@ -143,7 +98,31 @@ func (h *Helpers) WorkspaceResourceCount(ws *workspace.Workspace) string {
 	return strconv.Itoa(len(state.Resources))
 }
 
-func (h *Helpers) RunStatus(r *run.Run) string {
+// TaskStatus provides a rendered colored task status.
+func (h *Helpers) TaskStatus(t *task.Task, background bool) string {
+	var color lipgloss.Color
+
+	switch t.State {
+	case task.Pending:
+		color = Grey
+	case task.Queued:
+		color = Orange
+	case task.Running:
+		color = Blue
+	case task.Exited:
+		color = GreenBlue
+	case task.Errored:
+		color = Red
+	}
+
+	if background {
+		return Regular.Copy().Padding(0, 1).Background(color).Foreground(White).Render(string(t.State))
+	} else {
+		return Regular.Copy().Foreground(color).Render(string(t.State))
+	}
+}
+
+func (h *Helpers) RunStatus(r *run.Run, background bool) string {
 	var color lipgloss.TerminalColor
 
 	switch r.Status {
@@ -166,21 +145,23 @@ func (h *Helpers) RunStatus(r *run.Run) string {
 		color = Green
 	case run.Errored:
 		color = Red
-	case run.Stale:
-		color = Orange
 	}
-	return Regular.Copy().Foreground(color).Render(string(r.Status))
+
+	if background {
+		return Regular.Copy().Background(color).Padding(0, 1).Foreground(White).Render(string(r.Status))
+	} else {
+		return Regular.Copy().Foreground(color).Render(string(r.Status))
+	}
 }
 
 func (h *Helpers) LatestRunReport(r *run.Run) string {
-	switch r.Status {
-	case run.Planned, run.NoChanges, run.Stale:
-		return h.RunReport(r.PlanReport)
-	case run.Applied:
-		return h.RunReport(r.ApplyReport)
-	default:
-		return "-"
+	if r.ApplyReport != nil {
+		return h.RunReport(*r.ApplyReport)
 	}
+	if r.PlanReport != nil {
+		return h.RunReport(*r.PlanReport)
+	}
+	return ""
 }
 
 func (h *Helpers) RunReport(report run.Report) string {
@@ -195,14 +176,20 @@ func (h *Helpers) Breadcrumbs(title string, res resource.Resource, crumbs ...str
 	// format: title{task command}[workspace name](module path)
 	switch res.GetKind() {
 	case resource.Task:
-		cmd := Regular.Copy().Foreground(Green).Render(res.String())
+		cmd := Regular.Copy().Foreground(Blue).Render(res.String())
 		crumb := fmt.Sprintf("{%s}", cmd)
 		return h.Breadcrumbs(title, res.GetParent(), crumb)
+	case resource.TaskGroup:
+		cmd := Regular.Copy().Foreground(Blue).Render(res.String())
+		id := Regular.Copy().Foreground(Green).Render(res.GetID().String())
+		crumb := fmt.Sprintf("{%s}[%s]", cmd, id)
+		return h.Breadcrumbs(title, res.GetParent(), crumb)
 	case resource.Run:
-		return h.Breadcrumbs(title, res.GetParent())
+		// Skip run info in breadcrumbs
+		return h.Breadcrumbs(title, res.GetParent(), crumbs...)
 	case resource.Workspace:
 		crumb := fmt.Sprintf("[%s]", Regular.Copy().Foreground(Red).Render(res.String()))
-		return h.Breadcrumbs(title, res.GetParent(), crumb)
+		return h.Breadcrumbs(title, res.GetParent(), append(crumbs, crumb)...)
 	case resource.Module:
 		path := Regular.Copy().Foreground(modulePathColor).Render(res.String())
 		crumbs = append(crumbs, fmt.Sprintf("(%s)", path))
@@ -210,10 +197,30 @@ func (h *Helpers) Breadcrumbs(title string, res resource.Resource, crumbs ...str
 	return fmt.Sprintf("%s%s", TitleStyle.Render(title), strings.Join(crumbs, ""))
 }
 
+func (h *Helpers) CreateTasks(cmd string, fn task.Func, ids ...resource.ID) tea.Cmd {
+	return func() tea.Msg {
+		switch len(ids) {
+		case 0:
+			return nil
+		case 1:
+			task, err := fn(ids[0])
+			if err != nil {
+				return ReportError(err, "creating task")
+			}
+			return NewNavigationMsg(TaskKind, WithParent(task))
+		default:
+			group, err := h.TaskService.CreateGroup(cmd, fn, ids...)
+			if err != nil {
+				return ReportError(err, "creating task group")
+			}
+			return NewNavigationMsg(TaskGroupKind, WithParent(group))
+		}
+	}
+}
+
 func GlobalBreadcrumb(title, total string) string {
 	title = TitleStyle.Render(title)
-	all := Regular.Copy().Foreground(globalColor).Render("all")
-	return fmt.Sprintf("%s(%s)[%s]", title, all, total)
+	return fmt.Sprintf("%s[%s]", title, total)
 }
 
 // RemoveDuplicateBindings removes duplicate bindings from a list of bindings. A

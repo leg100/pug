@@ -34,6 +34,7 @@ type Model[K resource.ID, V resource.Resource] struct {
 	rowRenderer RowRenderer[V]
 	cursor      int
 	focus       bool
+	border      bool
 
 	items    map[K]V
 	sortFunc SortFunc[V]
@@ -80,7 +81,7 @@ type RenderedRow map[ColumnKey]string
 type SortFunc[V any] func(V, V) int
 
 // New creates a new model for the table widget.
-func New[K resource.ID, V resource.Resource](columns []Column, fn RowRenderer[V], width, height int) Model[K, V] {
+func New[K resource.ID, V resource.Resource](columns []Column, fn RowRenderer[V], width, height int, opts ...Option[K, V]) Model[K, V] {
 	filter := textinput.New()
 	filter.Prompt = "Filter: "
 
@@ -94,6 +95,10 @@ func New[K resource.ID, V resource.Resource](columns []Column, fn RowRenderer[V]
 		focus:       true,
 		filter:      filter,
 	}
+	for _, fn := range opts {
+		fn(&m)
+	}
+
 	// Deliberately use range to copy column structs onto receiver, because the
 	// caller may be using columns in multiple tables and columns are modified
 	// by each table.
@@ -107,18 +112,37 @@ func New[K resource.ID, V resource.Resource](columns []Column, fn RowRenderer[V]
 		m.cols = append(m.cols, col)
 	}
 
-	// Recalculates width of columns
-	//
-	// TODO: this also unnecessarily renders 0 rows
-	m.setDimensions(width, height)
+	m.setDimensionsAccountingForBorder(width, height)
 
 	return m
 }
 
+type Option[K resource.ID, V resource.Resource] func(m *Model[K, V])
+
 // WithSortFunc configures the table to sort rows using the given func.
-func (m Model[K, V]) WithSortFunc(sortFunc func(V, V) int) Model[K, V] {
-	m.sortFunc = sortFunc
-	return m
+func WithSortFunc[K resource.ID, V resource.Resource](sortFunc func(V, V) int) Option[K, V] {
+	return func(m *Model[K, V]) {
+		m.sortFunc = sortFunc
+	}
+}
+
+// WithSelectable sets whether rows are selectable.
+func WithSelectable[K resource.ID, V resource.Resource](s bool) Option[K, V] {
+	return func(m *Model[K, V]) {
+		m.selectable = s
+	}
+}
+
+func WithParent[K resource.ID, V resource.Resource](parent resource.Resource) Option[K, V] {
+	return func(m *Model[K, V]) {
+		m.parent = parent
+	}
+}
+
+func WithBorder[K resource.ID, V resource.Resource]() Option[K, V] {
+	return func(m *Model[K, V]) {
+		m.border = true
+	}
 }
 
 func (m *Model[K, V]) filterVisible() bool {
@@ -126,6 +150,18 @@ func (m *Model[K, V]) filterVisible() bool {
 	return m.filter.Focused() || m.filter.Value() != ""
 }
 
+// setDimensionsAccountingForBorder sets the dimensions of the table, taking
+// account of the height and width of the optional border.
+func (m *Model[K, V]) setDimensionsAccountingForBorder(width, height int) {
+	if m.border {
+		m.setDimensions(width-2, height-2)
+	} else {
+		m.setDimensions(width, height)
+	}
+}
+
+// setDimensions sets the dimensions of the table. Note the optional border is
+// not taken into account.
 func (m *Model[K, V]) setDimensions(width, height int) {
 	// Accommodate height of table header
 	m.viewport.Height = height - headerHeight
@@ -143,19 +179,6 @@ func (m *Model[K, V]) setDimensions(width, height int) {
 
 	// TODO: should this always be called?
 	m.UpdateViewport()
-}
-
-// WithSelectable sets whether rows are selectable.
-func (m Model[K, V]) WithSelectable(s bool) Model[K, V] {
-	m.selectable = s
-	return m
-}
-
-// WithParent sets a parent resource on the table, which precludes items from
-// being set on table that are not a descendent of the parent.
-func (m Model[K, V]) WithParent(parent resource.Resource) Model[K, V] {
-	m.parent = parent
-	return m
 }
 
 // Update is the Bubble Tea update loop.
@@ -207,7 +230,7 @@ func (m Model[K, V]) Update(msg tea.Msg) (Model[K, V], tea.Cmd) {
 			m.SetItems(m.items)
 		}
 	case tea.WindowSizeMsg:
-		m.setDimensions(msg.Width, msg.Height)
+		m.setDimensionsAccountingForBorder(msg.Width, msg.Height)
 	case spinner.TickMsg:
 		// Rows can contain spinners, so we re-render them whenever a tick is
 		// received.
@@ -279,7 +302,11 @@ func (m Model[K, V]) View() string {
 	}
 	components = append(components, m.headersView())
 	components = append(components, m.viewport.View())
-	return lipgloss.JoinVertical(lipgloss.Top, components...)
+	content := lipgloss.JoinVertical(lipgloss.Top, components...)
+	if m.border {
+		return tui.Border.Copy().Render(content)
+	}
+	return content
 }
 
 // UpdateViewport updates the list content based on the previously defined
@@ -643,40 +670,53 @@ func (m *Model[K, V]) renderRow(rowIdx int) string {
 	return renderedRow
 }
 
-// Prune passes each value from the selected rows (or if there are no
-// selections, from the current row) to the provided func. If the func
-// returns an error the row is de-selected (or if there are no selections, then
-// an error is returned). The resulting IDs from the provided func are returned.
-// If all selections are de-selected then an error is returned.
-func (m *Model[K, V]) Prune(fn func(value V) (resource.ID, error)) ([]resource.ID, error) {
+// Prune invokes the provided function with each selected value, and if the
+// function returns true then it is de-selected. If there are any de-selections
+// then an error is returned. If no pruning occurs then the id from each
+// function invocation is returned.
+//
+// In the case where there are no selections then the current value is passed to
+// the function, and if the function returns true then an error is reported. If
+// it returns false then the resulting id is returned.
+//
+// If there are no rows in the table then a nil error is returned.
+func (m *Model[K, V]) Prune(fn func(value V) (resource.ID, bool)) ([]resource.ID, error) {
 	rows := m.SelectedOrCurrent()
 	switch len(rows) {
 	case 0:
 		return nil, errors.New("no rows in table")
 	case 1:
 		// current row, no selections
-		id, err := fn(rows[0].Value)
-		if err != nil {
+		id, prune := fn(rows[0].Value)
+		if prune {
 			// the single current row is to be pruned, so report this as an
 			// error
-			return nil, err
+			return nil, fmt.Errorf("action is not applicable to the current row")
 		}
 		return []resource.ID{id}, nil
 	default:
 		// one or more selections: iterate thru and prune accordingly.
-		var ids []resource.ID
+		var (
+			ids    []resource.ID
+			before = len(m.Selected)
+			pruned int
+		)
 		for k, v := range m.Selected {
-			id, err := fn(v)
-			if err != nil {
+			id, prune := fn(v)
+			if prune {
 				// De-select
 				m.ToggleSelectionByKey(k)
+				pruned++
 				continue
 			}
 			ids = append(ids, id)
 		}
-		if len(ids) == 0 {
-			// no rows survived pruning, so report error
-			return nil, errors.New("no rows are applicable to the given action")
+		switch {
+		case len(ids) == 0:
+			return nil, errors.New("no selected rows are applicable to the given action")
+		case len(ids) != before:
+			// some rows have been pruned
+			return nil, fmt.Errorf("de-selected %d inapplicable rows out of %d", pruned, before)
 		}
 		return ids, nil
 	}

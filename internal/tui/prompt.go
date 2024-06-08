@@ -8,6 +8,9 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 )
 
+// Height of prompt including borders
+const PromptHeight = 3
+
 // PromptMsg enables the prompt widget.
 type PromptMsg struct {
 	// Prompt to display to the user.
@@ -104,8 +107,12 @@ func (p *Prompt) HandleBlink(msg tea.Msg) (cmd tea.Cmd) {
 	return
 }
 
-func (p *Prompt) View() string {
-	return p.model.View()
+func (p *Prompt) View(width int) string {
+	// Render a prompt, surrounded by a red border, spanning the width of the
+	// terminal, subtracting 2 to account for width of border.
+	return ThickBorder.Copy().BorderForeground(Red).Width(width - 2).Render(
+		Regular.Margin(0, 1).Render(p.model.View()),
+	)
 }
 
 func (p *Prompt) HelpBindings() []key.Binding {

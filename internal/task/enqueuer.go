@@ -12,7 +12,7 @@ type enqueuer struct {
 
 func StartEnqueuer(tasks *Service) {
 	e := enqueuer{tasks: tasks}
-	sub := tasks.Broker.Subscribe()
+	sub := tasks.TaskBroker.Subscribe()
 
 	go func() {
 		for range sub {

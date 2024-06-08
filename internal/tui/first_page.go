@@ -9,7 +9,6 @@ import (
 var firstPages = map[string]Kind{
 	"modules":    ModuleListKind,
 	"workspaces": WorkspaceListKind,
-	"runs":       RunListKind,
 	"tasks":      TaskListKind,
 	"logs":       LogListKind,
 }

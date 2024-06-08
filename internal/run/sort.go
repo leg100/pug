@@ -26,26 +26,11 @@ func ByStatus(i, j *Run) int {
 				return 1
 			}
 			return -1
-		case Applying, Planning, Planned, PlanQueued, ApplyQueued, Scheduled:
+		case Applying, Planning, Planned, PlanQueued, ApplyQueued:
 			// pending is after more active runs
 			return 1
 		default:
 			// pending is before finished
-			return -1
-		}
-	case Scheduled:
-		switch j.Status {
-		case Scheduled:
-			// scheduled==scheduled, oldest first
-			if i.Updated.Before(j.Updated) {
-				return 1
-			}
-			return -1
-		case Applying, Planning, Planned, PlanQueued, ApplyQueued:
-			// scheduled is after more active runs
-			return 1
-		default:
-			// scheduled is before pending, finished
 			return -1
 		}
 	case PlanQueued, ApplyQueued:

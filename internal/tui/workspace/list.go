@@ -1,7 +1,6 @@
 package workspace
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/charmbracelet/bubbles/key"
@@ -10,11 +9,10 @@ import (
 	"github.com/leg100/pug/internal/resource"
 	"github.com/leg100/pug/internal/run"
 	"github.com/leg100/pug/internal/state"
+	"github.com/leg100/pug/internal/task"
 	"github.com/leg100/pug/internal/tui"
 	"github.com/leg100/pug/internal/tui/keys"
-	tuirun "github.com/leg100/pug/internal/tui/run"
 	"github.com/leg100/pug/internal/tui/table"
-	tuitask "github.com/leg100/pug/internal/tui/task"
 	"github.com/leg100/pug/internal/workspace"
 )
 
@@ -42,24 +40,22 @@ func (m *ListMaker) Make(parent resource.Resource, width, height int) (tea.Model
 		table.WorkspaceColumn,
 		currentColumn,
 		table.ResourceCountColumn,
-		table.RunStatusColumn,
-		table.RunChangesColumn,
 	)
 
 	renderer := func(ws *workspace.Workspace) table.RenderedRow {
 		return table.RenderedRow{
 			table.ModuleColumn.Key:        ws.ModulePath(),
 			table.WorkspaceColumn.Key:     ws.Name,
-			table.RunStatusColumn.Key:     m.Helpers.WorkspaceCurrentRunStatus(ws),
-			table.RunChangesColumn.Key:    m.Helpers.WorkspaceCurrentRunChanges(ws),
 			table.ResourceCountColumn.Key: m.Helpers.WorkspaceResourceCount(ws),
 			currentColumn.Key:             m.Helpers.WorkspaceCurrentCheckmark(ws),
 		}
 	}
 
-	table := table.New(columns, renderer, width, height).
-		WithSortFunc(workspace.Sort(m.ModuleService)).
-		WithParent(parent)
+	table := table.New(columns, renderer, width, height,
+		table.WithSortFunc(workspace.Sort(m.ModuleService)),
+		table.WithParent[resource.ID, *workspace.Workspace](parent),
+		table.WithBorder[resource.ID, *workspace.Workspace](),
+	)
 
 	return list{
 		table:   table,
@@ -67,6 +63,7 @@ func (m *ListMaker) Make(parent resource.Resource, width, height int) (tea.Model
 		modules: m.ModuleService,
 		runs:    m.RunService,
 		parent:  parent,
+		helpers: m.Helpers,
 	}, nil
 }
 
@@ -76,6 +73,7 @@ type list struct {
 	modules tui.ModuleService
 	runs    tui.RunService
 	parent  resource.Resource
+	helpers *tui.Helpers
 }
 
 func (m list) Init() tea.Cmd {
@@ -98,18 +96,11 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case resource.Event[*module.Module]:
 		// Update changes to current workspace for a module
 		m.table.UpdateViewport()
-	case resource.Event[*run.Run]:
-		// Update current run status and changes
-		m.table.UpdateViewport()
 	case resource.Event[*state.State]:
 		// Update resource counts
 		m.table.UpdateViewport()
 	case tea.KeyMsg:
 		switch {
-		case key.Matches(msg, keys.Global.Enter):
-			if row, ok := m.table.CurrentRow(); ok {
-				return m, tui.NavigateTo(tui.WorkspaceKind, tui.WithParent(row.Value))
-			}
 		case key.Matches(msg, keys.Common.Delete):
 			workspaceIDs := m.table.SelectedOrCurrentKeys()
 			if len(workspaceIDs) == 0 {
@@ -117,16 +108,16 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return m, tui.YesNoPrompt(
 				fmt.Sprintf("Delete %d workspace(s)?", len(workspaceIDs)),
-				tuitask.CreateTasks("delete-workspace", m.parent, m.svc.Delete, workspaceIDs...),
+				m.helpers.CreateTasks("delete-workspace", m.svc.Delete, workspaceIDs...),
 			)
 		case key.Matches(msg, keys.Common.Init):
-			cmd := tuitask.CreateTasks("init", m.parent, m.modules.Init, m.selectedOrCurrentModuleIDs()...)
+			cmd := m.helpers.CreateTasks("init", m.modules.Init, m.selectedOrCurrentModuleIDs()...)
 			return m, cmd
 		case key.Matches(msg, keys.Common.Format):
-			cmd := tuitask.CreateTasks("format", m.parent, m.modules.Format, m.selectedOrCurrentModuleIDs()...)
+			cmd := m.helpers.CreateTasks("format", m.modules.Format, m.selectedOrCurrentModuleIDs()...)
 			return m, cmd
 		case key.Matches(msg, keys.Common.Validate):
-			cmd := tuitask.CreateTasks("validate", m.parent, m.modules.Validate, m.selectedOrCurrentModuleIDs()...)
+			cmd := m.helpers.CreateTasks("validate", m.modules.Validate, m.selectedOrCurrentModuleIDs()...)
 			return m, cmd
 		case key.Matches(msg, localKeys.SetCurrent):
 			if row, ok := m.table.CurrentRow(); ok {
@@ -142,18 +133,19 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			fallthrough
 		case key.Matches(msg, keys.Common.Plan):
 			workspaceIDs := m.table.SelectedOrCurrentKeys()
-			return m, tuirun.CreateRuns(m.runs, m.parent, createRunOptions, workspaceIDs...)
-		case key.Matches(msg, keys.Common.Apply):
-			runIDs, err := m.table.Prune(func(ws *workspace.Workspace) (resource.ID, error) {
-				if runID := ws.CurrentRunID; runID != nil {
-					return *runID, nil
-				}
-				return resource.ID{}, errors.New("workspace does not have a current run")
-			})
-			if err != nil {
-				return m, tui.ReportError(err, "")
+			fn := func(workspaceID resource.ID) (*task.Task, error) {
+				return m.runs.Plan(workspaceID, createRunOptions)
 			}
-			return m, tuirun.ApplyCommand(m.runs, m.parent, runIDs...)
+			return m, m.helpers.CreateTasks("plan", fn, workspaceIDs...)
+		case key.Matches(msg, keys.Common.Apply):
+			workspaceIDs := m.table.SelectedOrCurrentKeys()
+			fn := func(workspaceID resource.ID) (*task.Task, error) {
+				return m.runs.ApplyOnly(workspaceID, createRunOptions)
+			}
+			return m, tui.YesNoPrompt(
+				fmt.Sprintf("Auto-apply %d workspaces?", len(workspaceIDs)),
+				m.helpers.CreateTasks("apply", fn, workspaceIDs...),
+			)
 		}
 	}
 

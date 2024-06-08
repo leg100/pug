@@ -31,47 +31,42 @@ func TestModuleList(t *testing.T) {
 	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlA})
 	tm.Type("i")
 	waitFor(t, tm, func(s string) bool {
-		return strings.Contains(s, "completed init tasks: (3 successful; 0 errored; 0 canceled; 0 uncreated)")
+		return strings.Contains(s, "TaskGroup{init}") &&
+			matchPattern(t, `modules/a.*init.*exited`, s) &&
+			matchPattern(t, `modules/b.*init.*exited`, s) &&
+			matchPattern(t, `modules/c.*init.*exited`, s)
 	})
 
 	// Go back to module listing and format all modules
 	tm.Send(tea.KeyMsg{Type: tea.KeyEsc})
 	tm.Type("f")
 	waitFor(t, tm, func(s string) bool {
-		return strings.Contains(s, "completed format tasks: (3 successful; 0 errored; 0 canceled; 0 uncreated)")
+		return strings.Contains(s, "TaskGroup{format}") &&
+			matchPattern(t, `modules/a.*fmt.*exited`, s) &&
+			matchPattern(t, `modules/b.*fmt.*exited`, s) &&
+			matchPattern(t, `modules/c.*fmt.*exited`, s)
 	})
 
 	// Go back to module listing and validate all modules
 	tm.Send(tea.KeyMsg{Type: tea.KeyEsc})
 	tm.Type("v")
 	waitFor(t, tm, func(s string) bool {
-		return strings.Contains(s, "completed validate tasks: (3 successful; 0 errored; 0 canceled; 0 uncreated)")
+		return strings.Contains(s, "TaskGroup{validate}") &&
+			matchPattern(t, `modules/a.*validate.*exited`, s) &&
+			matchPattern(t, `modules/b.*validate.*exited`, s) &&
+			matchPattern(t, `modules/c.*validate.*exited`, s)
 	})
 
 	// Go back to module listing, and create plan on the current workspace of
 	// each module.
 	tm.Send(tea.KeyMsg{Type: tea.KeyEsc})
 	tm.Type("p")
-	// Expect all 3 modules to be in planned state
+	// Expect three plan tasks to be created and to reach planned state.
 	waitFor(t, tm, func(s string) bool {
-		return matchPattern(t, `modules/a.*default.*planned`, s) &&
+		return strings.Contains(s, "TaskGroup{plan}") &&
+			matchPattern(t, `modules/a.*default.*planned`, s) &&
 			matchPattern(t, `modules/b.*default.*planned`, s) &&
 			matchPattern(t, `modules/c.*default.*planned`, s)
-	})
-
-	// Go back to module listing, and apply the plan for each module.
-	tm.Send(tea.KeyMsg{Type: tea.KeyEsc})
-	tm.Type("a")
-
-	// Confirm apply
-	waitFor(t, tm, func(s string) bool {
-		return strings.Contains(s, "Apply 3 runs? (y/N):")
-	})
-	tm.Type("y")
-
-	// Expect all 3 modules to be in applied state
-	waitFor(t, tm, func(s string) bool {
-		return matchPattern(t, `(?s)(applied.*)[3]`, s)
 	})
 }
 

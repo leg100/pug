@@ -65,13 +65,13 @@ func TestService_List(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// bootstrap service with tasks
 			svc := &Service{
-				table: resource.NewTable(&fakePublisher[*Task]{}),
+				tasks: resource.NewTable(&fakePublisher[*Task]{}),
 			}
-			svc.table.Add(pending.ID, pending)
-			svc.table.Add(queued.ID, queued)
-			svc.table.Add(running.ID, running)
-			svc.table.Add(exited.ID, exited)
-			svc.table.Add(errored.ID, errored)
+			svc.tasks.Add(pending.ID, pending)
+			svc.tasks.Add(queued.ID, queued)
+			svc.tasks.Add(running.ID, running)
+			svc.tasks.Add(exited.ID, exited)
+			svc.tasks.Add(errored.ID, errored)
 
 			tt.want(t, svc.List(tt.opts))
 		})
