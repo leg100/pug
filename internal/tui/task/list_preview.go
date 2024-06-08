@@ -1,7 +1,6 @@
 package task
 
 import (
-	"errors"
 	"fmt"
 	"time"
 
@@ -208,7 +207,7 @@ func (m *listPreview) Update(msg tea.Msg) tea.Cmd {
 			case key.Matches(msg, keys.Common.Apply):
 				runIDs, err := m.pruneApplyableTasks()
 				if err != nil {
-					return tui.ReportError(err, "")
+					return tui.ReportError(err, "applying tasks")
 				}
 				return tui.YesNoPrompt(
 					fmt.Sprintf("Apply %d plans?", len(runIDs)),
@@ -286,22 +285,18 @@ func (m listPreview) previewHeight() int {
 // pruneApplyableTasks removes from the selection any tasks that cannot be
 // applied, i.e all tasks other than those that are a plan and are in the
 // planned state. The run ID of each task after pruning is returned.
-func (m listPreview) pruneApplyableTasks() ([]resource.ID, error) {
-	runIDs, err := m.list.Prune(func(task *task.Task) (resource.ID, error) {
+func (m *listPreview) pruneApplyableTasks() ([]resource.ID, error) {
+	return m.list.Prune(func(task *task.Task) (resource.ID, bool) {
 		rr := task.Run()
 		if rr == nil {
-			return resource.ID{}, errors.New("task is not applyable")
+			return resource.ID{}, true
 		}
 		run := rr.(*runpkg.Run)
 		if run.Status != runpkg.Planned {
-			return resource.ID{}, errors.New("task run is not in the planned state")
+			return resource.ID{}, true
 		}
-		return run.ID, nil
+		return run.ID, false
 	})
-	if err != nil {
-		return nil, err
-	}
-	return runIDs, nil
 }
 
 var (

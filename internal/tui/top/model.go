@@ -2,7 +2,6 @@ package top
 
 import (
 	"fmt"
-	"log/slog"
 	"os"
 	"strings"
 
@@ -269,10 +268,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.Error != nil {
 			err := msg.Error
 			msg := fmt.Sprintf(msg.Message, msg.Args...)
-
-			// Both print error in footer as well as log it.
 			m.err = fmt.Errorf("%s: %w", msg, err)
-			slog.Error(msg, "error", err)
 		}
 	case tui.InfoMsg:
 		m.info = string(msg)
@@ -432,7 +428,10 @@ func (m model) View() string {
 	var footerMsg string
 	if m.err != nil {
 		footerMsg = tui.Padded.Copy().
-			Foreground(tui.Red).
+			Bold(true).
+			Margin(0, 1).
+			Background(tui.Red).
+			Foreground(tui.White).
 			Render("Error: " + m.err.Error())
 	} else if m.info != "" {
 		footerMsg = tui.Padded.Copy().

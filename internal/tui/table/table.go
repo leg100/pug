@@ -670,40 +670,53 @@ func (m *Model[K, V]) renderRow(rowIdx int) string {
 	return renderedRow
 }
 
-// Prune passes each value from the selected rows (or if there are no
-// selections, from the current row) to the provided func. If the func
-// returns an error the row is de-selected (or if there are no selections, then
-// an error is returned). The resulting IDs from the provided func are returned.
-// If all selections are de-selected then an error is returned.
-func (m *Model[K, V]) Prune(fn func(value V) (resource.ID, error)) ([]resource.ID, error) {
+// Prune invokes the provided function with each selected value, and if the
+// function returns true then it is de-selected. If there are any de-selections
+// then an error is returned. If no pruning occurs then the id from each
+// function invocation is returned.
+//
+// In the case where there are no selections then the current value is passed to
+// the function, and if the function returns true then an error is reported. If
+// it returns false then the resulting id is returned.
+//
+// If there are no rows in the table then a nil error is returned.
+func (m *Model[K, V]) Prune(fn func(value V) (resource.ID, bool)) ([]resource.ID, error) {
 	rows := m.SelectedOrCurrent()
 	switch len(rows) {
 	case 0:
 		return nil, errors.New("no rows in table")
 	case 1:
 		// current row, no selections
-		id, err := fn(rows[0].Value)
-		if err != nil {
+		id, prune := fn(rows[0].Value)
+		if prune {
 			// the single current row is to be pruned, so report this as an
 			// error
-			return nil, err
+			return nil, fmt.Errorf("action is not applicable to the current row")
 		}
 		return []resource.ID{id}, nil
 	default:
 		// one or more selections: iterate thru and prune accordingly.
-		var ids []resource.ID
+		var (
+			ids    []resource.ID
+			before = len(m.Selected)
+			pruned int
+		)
 		for k, v := range m.Selected {
-			id, err := fn(v)
-			if err != nil {
+			id, prune := fn(v)
+			if prune {
 				// De-select
 				m.ToggleSelectionByKey(k)
+				pruned++
 				continue
 			}
 			ids = append(ids, id)
 		}
-		if len(ids) == 0 {
-			// no rows survived pruning, so report error
-			return nil, errors.New("no rows are applicable to the given action")
+		switch {
+		case len(ids) == 0:
+			return nil, errors.New("no selected rows are applicable to the given action")
+		case len(ids) != before:
+			// some rows have been pruned
+			return nil, fmt.Errorf("de-selected %d inapplicable rows out of %d", pruned, before)
 		}
 		return ids, nil
 	}
