@@ -94,7 +94,7 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, ReloadModules(false, m.ModuleService)
 		case key.Matches(msg, keys.Common.Edit):
 			if row, ok := m.table.CurrentRow(); ok {
-				return m, tui.OpenVim(row.Value.Path)
+				return m, tui.OpenVim(row.Value.FullPath())
 			}
 		case key.Matches(msg, keys.Common.Init):
 			cmd := m.helpers.CreateTasks("init", m.ModuleService.Init, m.table.SelectedOrCurrentKeys()...)
