@@ -6,11 +6,7 @@ type Kind int
 
 const (
 	ModuleListKind Kind = iota
-	ModuleKind
 	WorkspaceListKind
-	WorkspaceKind
-	RunListKind
-	RunKind
 	TaskListKind
 	TaskKind
 	TaskGroupListKind

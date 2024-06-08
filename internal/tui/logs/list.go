@@ -60,9 +60,11 @@ func (m *ListMaker) Make(_ resource.Resource, width, height int) (tea.Model, err
 			msgColumn.Key:   tui.Regular.Copy().Render(b.String()),
 		}
 	}
-	table := table.New(columns, renderer, width, height).
-		WithSortFunc(logging.BySerialDesc).
-		WithSelectable(false)
+	table := table.New(columns, renderer, width, height,
+		table.WithSortFunc(logging.BySerialDesc),
+		table.WithSelectable[resource.ID, logging.Message](false),
+		table.WithBorder[resource.ID, logging.Message](),
+	)
 
 	return list{logger: m.Logger, table: table}, nil
 }

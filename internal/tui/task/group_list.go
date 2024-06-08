@@ -1,7 +1,7 @@
-package taskgroup
+package task
 
 import (
-	"strconv"
+	"fmt"
 	"time"
 
 	"github.com/charmbracelet/bubbles/key"
@@ -14,31 +14,27 @@ import (
 )
 
 var (
-	commandColumn = table.Column{
-		Key:        "command",
-		Title:      "COMMAND",
-		FlexFactor: 1,
-	}
-	ageColumn = table.Column{
-		Key:   "age",
-		Title: "AGE",
-		Width: 7,
-	}
 	taskGroupCount = table.Column{
 		Key:   "tasks",
 		Title: "TASKS",
 		Width: len("TASKS"),
 	}
+	taskGroupID = table.Column{
+		Key:   "task_group_id",
+		Title: "TASK GROUP ID",
+		Width: resource.IDEncodedMaxLen,
+	}
 )
 
-type ListMaker struct {
+type GroupListMaker struct {
 	TaskService tui.TaskService
 	Helpers     *tui.Helpers
 }
 
-func (m *ListMaker) Make(_ resource.Resource, width, height int) (tea.Model, error) {
+func (m *GroupListMaker) Make(_ resource.Resource, width, height int) (tea.Model, error) {
 	columns := []table.Column{
 		commandColumn,
+		taskGroupID,
 		taskGroupCount,
 		ageColumn,
 	}
@@ -46,34 +42,37 @@ func (m *ListMaker) Make(_ resource.Resource, width, height int) (tea.Model, err
 	renderer := func(g *task.Group) table.RenderedRow {
 		row := table.RenderedRow{
 			commandColumn.Key:  g.Command,
-			taskGroupCount.Key: strconv.Itoa(len(g.Tasks)),
+			taskGroupID.Key:    g.ID.String(),
+			taskGroupCount.Key: fmt.Sprintf("%d/%d", g.Finished(), len(g.Tasks)),
 			ageColumn.Key:      tui.Ago(time.Now(), g.Created),
 		}
 		return row
 	}
 
-	table := table.New(columns, renderer, width, height).
-		WithSortFunc(task.SortGroupsByCreated)
+	table := table.New(columns, renderer, width, height,
+		table.WithSortFunc(task.SortGroupsByCreated),
+		table.WithBorder[resource.ID, *task.Group](),
+	)
 
-	return list{
+	return groupList{
 		table: table,
 		svc:   m.TaskService,
 	}, nil
 }
 
-type list struct {
+type groupList struct {
 	table table.Model[resource.ID, *task.Group]
 	svc   tui.TaskService
 }
 
-func (m list) Init() tea.Cmd {
+func (m groupList) Init() tea.Cmd {
 	return func() tea.Msg {
 		groups := m.svc.ListGroups()
 		return table.BulkInsertMsg[*task.Group](groups)
 	}
 }
 
-func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m groupList) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var (
 		cmd  tea.Cmd
 		cmds []tea.Cmd
@@ -95,14 +94,14 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, tea.Batch(cmds...)
 }
 
-func (m list) Title() string {
+func (m groupList) Title() string {
 	return tui.GlobalBreadcrumb("TaskGroups", m.table.TotalString())
 }
 
-func (m list) View() string {
+func (m groupList) View() string {
 	return m.table.View()
 }
 
-func (m list) HelpBindings() (bindings []key.Binding) {
+func (m groupList) HelpBindings() (bindings []key.Binding) {
 	return []key.Binding{}
 }

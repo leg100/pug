@@ -2,6 +2,7 @@ package task
 
 import (
 	"errors"
+	"slices"
 	"time"
 
 	"github.com/leg100/pug/internal/resource"
@@ -39,8 +40,24 @@ func newGroup(cmd string, fn Func, ids ...resource.ID) (*Group, error) {
 
 func (g *Group) String() string { return g.Command }
 
+func (g *Group) IncludesTask(taskID resource.ID) bool {
+	return slices.ContainsFunc(g.Tasks, func(tgt *Task) bool {
+		return tgt.ID == taskID
+	})
+}
+
+func (g *Group) Finished() int {
+	var finished int
+	for _, t := range g.Tasks {
+		if t.IsFinished() {
+			finished++
+		}
+	}
+	return finished
+}
+
 func SortGroupsByCreated(i, j *Group) int {
-	if i.Created.Before(j.Created) {
+	if i.Created.After(j.Created) {
 		return -1
 	}
 	return 1

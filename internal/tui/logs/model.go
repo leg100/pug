@@ -63,9 +63,11 @@ func (mm *Maker) Make(r resource.Resource, width, height int) (tea.Model, error)
 	for _, attr := range msg.Attributes {
 		items[resource.NewID(resource.LogAttr)] = attr
 	}
-	table := table.New(columns, renderer, width, height).
-		WithSortFunc(byAttribute).
-		WithSelectable(false)
+	table := table.New(columns, renderer, width, height,
+		table.WithSortFunc(byAttribute),
+		table.WithSelectable[resource.ID, logging.Attr](false),
+		table.WithBorder[resource.ID, logging.Attr](),
+	)
 	table.SetItems(items)
 
 	return model{
@@ -88,7 +90,6 @@ func (m model) Init() tea.Cmd {
 }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	// Handle keyboard and mouse events in the table widget
 	var cmd tea.Cmd
 	m.table, cmd = m.table.Update(msg)
 	return m, cmd

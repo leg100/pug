@@ -29,6 +29,16 @@ func (c *Cache) Exists(page Page) bool {
 	return ok
 }
 
+func (c *Cache) Entries() []resource.ID {
+	ids := make([]resource.ID, len(c.cache))
+	var i int
+	for k := range c.cache {
+		ids[i] = k.id
+		i++
+	}
+	return ids
+}
+
 func (c *Cache) Get(page Page) tea.Model {
 	return c.cache[NewCacheKey(page)]
 }

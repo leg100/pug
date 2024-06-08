@@ -8,6 +8,7 @@ import (
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/leg100/pug/internal"
 	"github.com/leg100/pug/internal/resource"
 	runpkg "github.com/leg100/pug/internal/run"
 	"github.com/leg100/pug/internal/task"
@@ -17,12 +18,12 @@ import (
 )
 
 const (
-	// height of the top list panel, not including borders
-	listPanelHeight = 10
-	// total width of borders to the left and right of a panel
-	totalPanelBorderWidth = 2
-	// total height of borders above and below a panel
-	totalPanelBorderHeight = 2
+	// default height of the top list pane, not including borders
+	defaultListPaneHeight = 10
+	// total width of borders to the left and right of a pane
+	totalPaneBorderWidth = 2
+	// total height of borders above and below a pane
+	totalPaneBorderHeight = 2
 )
 
 var (
@@ -54,22 +55,22 @@ var (
 )
 
 type listPreviewOptions struct {
-	parent      resource.Resource
 	width       int
 	height      int
 	runService  tui.RunService
 	taskService tui.TaskService
 	helpers     *tui.Helpers
+	makerID     MakerID
 }
 
-func newListPreview(opts listPreviewOptions) ListPreview {
+func newListPreview(opts listPreviewOptions) *listPreview {
 	columns := []table.Column{
 		table.ModuleColumn,
 		table.WorkspaceColumn,
 	}
 	// Don't show command column in a task group list because all its tasks
 	// share the same command and the command is already included in the title.
-	if opts.parent.GetKind() != resource.TaskGroup {
+	if opts.makerID != TaskGroupPreviewMakerID {
 		columns = append(columns, commandColumn)
 	}
 	columns = append(columns,
@@ -102,33 +103,41 @@ func newListPreview(opts listPreviewOptions) ListPreview {
 		return row
 	}
 
-	lp := ListPreview{
+	cache := tui.NewCache()
+
+	lp := listPreview{
 		tasks:   opts.taskService,
 		runs:    opts.runService,
 		width:   opts.width,
 		height:  opts.height,
 		helpers: opts.helpers,
 		taskMaker: &Maker{
-			MakerID:     TaskListPreviewMakerID,
+			MakerID:     opts.makerID,
 			RunService:  opts.runService,
 			TaskService: opts.taskService,
 			Helpers:     opts.helpers,
 		},
-		cache: tui.NewCache(),
+		cache:          cache,
+		previewVisible: true,
+		n:              internal.Int(1),
 	}
 
-	// Create table for the top list panel
-	lp.list = table.New(columns, renderer, lp.panelWidth(), lp.listHeight()).
-		WithSortFunc(task.ByState).
-		WithParent(opts.parent)
+	// Create table for the top list pane
+	lp.list = table.New(
+		columns,
+		renderer,
+		lp.paneWidth(),
+		lp.listHeight(),
+		table.WithSortFunc(task.ByState),
+	)
 
-	return lp
+	return &lp
 }
 
-// ListPreview is a composition of two panes: a top panel is a list of tasks;
-// the bottom panel is the output of the currently highlighted task in the list,
+// listPreview is a composition of two panes: a top pane is a list of tasks;
+// the bottom pane is the output of the currently highlighted task in the list,
 // i.e. a preview.
-type ListPreview struct {
+type listPreview struct {
 	list      table.Model[resource.ID, *task.Task]
 	tasks     tui.TaskService
 	runs      tui.RunService
@@ -138,16 +147,18 @@ type ListPreview struct {
 	previewFocused bool
 	height         int
 	width          int
+	// userListHeightAdjustment is the adjustment the user has requested to the
+	// default height of the list pane.
+	userListHeightAdjustment int
+
 	// map of task ID to task model
 	cache   *tui.Cache
 	helpers *tui.Helpers
-	// currently highlighted task
-	current tui.Page
 
-	tea.Model
+	n *int
 }
 
-func (m ListPreview) Update(msg tea.Msg) (ListPreview, tea.Cmd) {
+func (m *listPreview) Update(msg tea.Msg) tea.Cmd {
 	var (
 		cmd  tea.Cmd
 		cmds []tea.Cmd
@@ -159,14 +170,20 @@ func (m ListPreview) Update(msg tea.Msg) (ListPreview, tea.Cmd) {
 		switch {
 		case key.Matches(msg, keys.Navigation.SwitchPane):
 			m.previewFocused = !m.previewFocused
-			return m, nil
 		case key.Matches(msg, localKeys.TogglePreview):
 			m.previewVisible = !m.previewVisible
 			m.recalculateDimensions()
-			return m, nil
+		case key.Matches(msg, localKeys.GrowPreview):
+			// Grow the preview pane by shrinking the list pane
+			m.userListHeightAdjustment--
+			m.recalculateDimensions()
+		case key.Matches(msg, localKeys.ShrinkPreview):
+			// Shrink the preview pane by growing the list pane
+			m.userListHeightAdjustment++
+			m.recalculateDimensions()
 		case key.Matches(msg, keys.Global.Enter):
 			if row, ok := m.list.CurrentRow(); ok {
-				return m, tui.NavigateTo(tui.TaskKind, tui.WithParent(row.Value))
+				return tui.NavigateTo(tui.TaskKind, tui.WithParent(row.Value))
 			}
 		}
 		if m.previewVisible && m.previewFocused {
@@ -174,11 +191,11 @@ func (m ListPreview) Update(msg tea.Msg) (ListPreview, tea.Cmd) {
 			// model for the currently highlighted table row if there is one.
 			row, ok := m.list.CurrentRow()
 			if !ok {
-				return m, nil
+				break
 			}
 			page := tui.Page{Kind: tui.TaskKind, Resource: row.Value}
 			cmd := m.cache.Update(tui.NewCacheKey(page), msg)
-			return m, cmd
+			cmds = append(cmds, cmd)
 		} else {
 			// Table pane is focused, so handle keys relevant to table rows.
 			//
@@ -187,29 +204,25 @@ func (m ListPreview) Update(msg tea.Msg) (ListPreview, tea.Cmd) {
 			switch {
 			case key.Matches(msg, keys.Common.Cancel):
 				taskIDs := m.list.SelectedOrCurrentKeys()
-				return m, m.helpers.CreateTasks("cancel", m.tasks.Cancel, taskIDs...)
+				return m.helpers.CreateTasks("cancel", m.tasks.Cancel, taskIDs...)
 			case key.Matches(msg, keys.Common.Apply):
 				runIDs, err := m.pruneApplyableTasks()
 				if err != nil {
-					return m, tui.ReportError(err, "")
+					return tui.ReportError(err, "")
 				}
-				return m, tui.YesNoPrompt(
+				return tui.YesNoPrompt(
 					fmt.Sprintf("Apply %d plans?", len(runIDs)),
 					m.helpers.CreateTasks("apply", m.runs.ApplyPlan, runIDs...),
 				)
 			default:
 				m.list, cmd = m.list.Update(msg)
 				cmds = append(cmds, cmd)
-				// Key might have changed the current table row, so don't return
-				// yet, and let the code below check a task model exists for the
-				// row
 			}
 		}
 	case tea.WindowSizeMsg:
 		m.height = msg.Height
 		m.width = msg.Width
 		m.recalculateDimensions()
-		return m, cmd
 	default:
 		// Forward remaining message types to both the table model and cached
 		// task models
@@ -218,60 +231,62 @@ func (m ListPreview) Update(msg tea.Msg) (ListPreview, tea.Cmd) {
 		cmds = append(cmds, m.cache.UpdateAll(msg)...)
 	}
 
-	// Get currently highlighted task and ensure a model exists for it, and
-	// ensure that that model is the current model.
-	if row, ok := m.list.CurrentRow(); ok {
-		page := tui.Page{Kind: tui.TaskKind, Resource: row.Value}
-		if !m.cache.Exists(page) {
-			// Create model
-			model, err := m.taskMaker.Make(row.Value, m.panelWidth(), m.previewHeight())
-			if err != nil {
-				return m, tui.ReportError(err, "making task model")
+	if m.previewVisible {
+		// Get currently highlighted task and ensure a model exists for it, and
+		// ensure that that model is the current model.
+		if row, ok := m.list.CurrentRow(); ok {
+			page := tui.Page{Kind: tui.TaskKind, Resource: row.Value}
+			if !m.cache.Exists(page) {
+				// Create model
+				model, err := m.taskMaker.Make(row.Value, m.paneWidth(), m.previewHeight())
+				if err != nil {
+					return tui.ReportError(err, "making task model")
+				}
+				// Cache newly created model
+				m.cache.Put(page, model)
+				// Initialize model
+				cmds = append(cmds, model.Init())
 			}
-			// Cache newly created model
-			m.cache.Put(page, model)
-			// Initialize model
-			cmds = append(cmds, model.Init())
 		}
-		m.current = page
 	}
 
-	return m, tea.Batch(cmds...)
+	return tea.Batch(cmds...)
 }
 
-func (m *ListPreview) recalculateDimensions() {
+func (m *listPreview) recalculateDimensions() {
 	m.list, _ = m.list.Update(tea.WindowSizeMsg{
 		Height: m.listHeight(),
-		Width:  m.panelWidth(),
+		Width:  m.paneWidth(),
 	})
 	_ = m.cache.UpdateAll(tea.WindowSizeMsg{
 		Height: m.previewHeight(),
-		Width:  m.panelWidth(),
+		Width:  m.paneWidth(),
 	})
 }
 
-func (m ListPreview) panelWidth() int {
-	return m.width - totalPanelBorderWidth
+func (m listPreview) paneWidth() int {
+	return m.width - totalPaneBorderWidth
 }
 
-func (m ListPreview) listHeight() int {
+func (m listPreview) listHeight() int {
 	if m.previewVisible {
-		return listPanelHeight
+		// Ensure list pane is at least a height of 2 (the headings and one row)
+		return max(2, defaultListPaneHeight+m.userListHeightAdjustment)
 	}
-	return m.height - totalPanelBorderHeight
+	return m.height - totalPaneBorderHeight
 }
 
-func (m ListPreview) previewHeight() int {
+func (m listPreview) previewHeight() int {
 	// calculate height of preview pane after accounting for:
-	// (a) height of list panel above
-	// (b) height of borders above and below both panels
-	return m.height - listPanelHeight - (totalPanelBorderHeight * 2)
+	// (a) height of list pane above
+	// (b) height of borders above and below both panes
+	return max(0, m.height-m.listHeight()-(totalPaneBorderHeight*2))
 }
 
 // pruneApplyableTasks removes from the selection any tasks that cannot be
 // applied, i.e all tasks other than those that are a plan and are in the
 // planned state. The run ID of each task after pruning is returned.
-func (m ListPreview) pruneApplyableTasks() ([]resource.ID, error) {
+func (m listPreview) pruneApplyableTasks() ([]resource.ID, error) {
 	runIDs, err := m.list.Prune(func(task *task.Task) (resource.ID, error) {
 		rr := task.Run()
 		if rr == nil {
@@ -295,7 +310,7 @@ var (
 	inactivePaneBorder = lipgloss.NewStyle().Border(lipgloss.NormalBorder()).BorderForeground(tui.LighterGrey)
 )
 
-func (m ListPreview) View() string {
+func (m listPreview) View() string {
 	var (
 		tableBorder   lipgloss.Style
 		previewBorder lipgloss.Style
@@ -312,12 +327,22 @@ func (m ListPreview) View() string {
 	components := []string{
 		tableBorder.Render(m.list.View()),
 	}
+	// When preview pane is visible and there is a task model cached for the
+	// current row, then render the task's output in the pane.
 	if m.previewVisible {
-		if _, ok := m.list.CurrentRow(); ok {
-			components = append(components, previewBorder.Render(
-				m.cache.Get(m.current).View()),
-			)
+		if model, ok := m.currentTaskModel(); ok {
+			components = append(components, previewBorder.Render(model.View()))
 		}
 	}
 	return lipgloss.JoinVertical(lipgloss.Top, components...)
+}
+
+func (m listPreview) currentTaskModel() (tea.Model, bool) {
+	row, ok := m.list.CurrentRow()
+	if !ok {
+		return nil, false
+	}
+	page := tui.Page{Kind: tui.TaskKind, Resource: row.Value}
+	model := m.cache.Get(page)
+	return model, model != nil
 }

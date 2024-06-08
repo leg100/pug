@@ -17,12 +17,12 @@ type ListMaker struct {
 func (m *ListMaker) Make(parent resource.Resource, width, height int) (tea.Model, error) {
 	list := List{
 		lp: newListPreview(listPreviewOptions{
-			parent:      parent,
 			width:       width,
 			height:      height,
 			runService:  m.RunService,
 			taskService: m.TaskService,
 			helpers:     m.Helpers,
+			makerID:     TaskListPreviewMakerID,
 		}),
 		taskService: m.TaskService,
 		helpers:     m.Helpers,
@@ -31,7 +31,7 @@ func (m *ListMaker) Make(parent resource.Resource, width, height int) (tea.Model
 }
 
 type List struct {
-	lp ListPreview
+	lp *listPreview
 
 	taskService tui.TaskService
 	helpers     *tui.Helpers
@@ -46,7 +46,7 @@ func (m List) Init() tea.Cmd {
 
 func (m List) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
-	m.lp, cmd = m.lp.Update(msg)
+	cmd = m.lp.Update(msg)
 	return m, cmd
 }
 
@@ -55,5 +55,5 @@ func (m List) View() string {
 }
 
 func (m List) Title() string {
-	return tui.GlobalBreadcrumb("tasks", m.lp.list.TotalString())
+	return tui.GlobalBreadcrumb("Tasks", m.lp.list.TotalString())
 }

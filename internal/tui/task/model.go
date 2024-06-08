@@ -12,6 +12,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/hokaccha/go-prettyjson"
+	"github.com/leg100/pug/internal/logging"
 	"github.com/leg100/pug/internal/resource"
 	"github.com/leg100/pug/internal/run"
 	"github.com/leg100/pug/internal/task"
@@ -36,6 +37,7 @@ type Maker struct {
 	Spinner     *spinner.Model
 	MakerID     MakerID
 	Helpers     *tui.Helpers
+	Logger      *logging.Logger
 }
 
 func (mm *Maker) Make(res resource.Resource, width, height int) (tea.Model, error) {
@@ -109,24 +111,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.showInfo = !m.showInfo
 		case key.Matches(msg, keys.Common.Cancel):
 			return m, m.helpers.CreateTasks("cancel", m.svc.Cancel, m.task.ID)
-		case key.Matches(msg, keys.Common.Module):
-			// 'm' takes the user to the task's module, but only if the task
-			// belongs to a module.
-			if mod := m.task.Module(); mod != nil {
-				return m, tui.NavigateTo(tui.ModuleKind, tui.WithParent(mod))
-			}
-		case key.Matches(msg, keys.Common.Workspace):
-			// 'w' takes the user to the task's workspace, but only if the task
-			// belongs to a workspace.
-			if ws := m.task.Workspace(); ws != nil {
-				return m, tui.NavigateTo(tui.WorkspaceKind, tui.WithParent(ws))
-			}
-		case key.Matches(msg, keys.Common.Run):
-			// 'r' takes the user to the task's run, but only if the task
-			// belongs to a run.
-			if run := m.task.Run(); run != nil {
-				return m, tui.NavigateTo(tui.RunKind, tui.WithParent(run))
-			}
 		case key.Matches(msg, keys.Common.Apply):
 			if m.run != nil {
 				// Only trigger an apply if run is in the planned state
@@ -140,12 +124,12 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 	case outputMsg:
+		// Ensure output is for this task
 		if msg.taskID != m.task.ID {
 			return m, nil
 		}
-		// isRunTab is true when this msg is for a task model that is a child of a
-		// run model, i.e. a tab. Without this flag, output would be duplicated in
-		// both the tab and on the generic task view.
+		// Ensure output is for a task model made by the expected maker (avoids
+		// duplicate output where there are multiple models for the same task).
 		if msg.makerID != m.makerID {
 			return m, nil
 		}
@@ -159,13 +143,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				// the task has finished and has produced complete and
 				// syntactically valid json object(s).
 				//
-				// Note: terraform commands such as `state -json` can produce
-				// json strings with embedded newlines, which is invalid json
-				// and breaks the pretty printer. So we escape the newlines.
-				//
 				// TODO: avoid casting to string and back, thereby avoiding
 				// unnecessary allocations.
-				m.content = strings.ReplaceAll(m.content, "\n", "\\n")
 				if b, err := prettyjson.Format([]byte(m.content)); err != nil {
 					cmds = append(cmds, tui.ReportError(err, "pretty printing task json output"))
 				} else {
@@ -173,6 +152,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.viewport.SetContent(string(b))
 					m.viewport.GotoBottom()
 				}
+			}
+			if m.content == "" {
+				m.content = "Task finished without output"
+				m.viewport.SetContent(m.content)
 			}
 		} else {
 			cmds = append(cmds, m.getOutput)
@@ -184,7 +167,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		m.task = msg.Payload
 	case tea.WindowSizeMsg:
-		m.height = msg.Height
 		m.setWidth(msg.Width)
 		m.setHeight(msg.Height)
 	}

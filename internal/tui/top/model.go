@@ -243,11 +243,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, keys.Global.Workspaces):
 			// 'W' lists all workspaces
 			return m, tui.NavigateTo(tui.WorkspaceListKind)
-		case key.Matches(msg, keys.Global.Runs):
-			// 'R' lists all runs
-			return m, tui.NavigateTo(tui.RunListKind)
 		case key.Matches(msg, keys.Global.Tasks):
-			// 'T' lists all tasks
+			// 't' lists all tasks
 			return m, tui.NavigateTo(tui.TaskListKind)
 		case key.Matches(msg, keys.Global.TaskGroups):
 			// 'ctrl+g' lists all taskgroups
@@ -471,11 +468,7 @@ func (m model) View() string {
 	}
 
 	if m.mode == promptMode {
-		components = append(components,
-			tui.Regular.Margin(0, 1).Render(m.prompt.View()),
-			// horizontal rule
-			strings.Repeat("─", m.width),
-		)
+		components = append(components, m.prompt.View(m.width))
 	}
 
 	components = append(components,
@@ -500,14 +493,12 @@ func (m model) View() string {
 	return lipgloss.JoinVertical(lipgloss.Top, components...)
 }
 
-const promptHeight = 2
-
 // viewHeight returns the height available to the current model (subordinate to
 // the top model).
 func (m model) viewHeight() int {
 	vh := m.height - headerHeight - breadcrumbsHeight - messageFooterHeight
 	if m.mode == promptMode {
-		vh -= promptHeight
+		vh -= tui.PromptHeight
 	}
 	return vh
 }

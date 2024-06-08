@@ -86,23 +86,9 @@ func (s *Service) Init(moduleID resource.ID) (*task.Task, error) {
 		// The terraform plugin cache is not concurrency-safe, so only allow one
 		// init task to run at any given time.
 		Exclusive: s.pluginCache,
-		AfterCreate: func(*task.Task) {
-			s.table.Update(moduleID, func(mod *Module) error {
-				mod.InitInProgress = true
-				return nil
-			})
-		},
 		AfterExited: func(*task.Task) {
 			s.table.Update(moduleID, func(mod *Module) error {
 				mod.Initialized = internal.Bool(true)
-				mod.InitInProgress = false
-				return nil
-			})
-		},
-		AfterError: func(*task.Task) {
-			s.table.Update(moduleID, func(mod *Module) error {
-				mod.Initialized = internal.Bool(false)
-				mod.InitInProgress = false
 				return nil
 			})
 		},
@@ -151,26 +137,6 @@ func (s *Service) Format(moduleID resource.ID) (*task.Task, error) {
 
 	return s.CreateTask(mod, task.CreateOptions{
 		Command: []string{"fmt"},
-		AfterCreate: func(*task.Task) {
-			s.table.Update(moduleID, func(mod *Module) error {
-				mod.FormatInProgress = true
-				return nil
-			})
-		},
-		AfterExited: func(*task.Task) {
-			s.table.Update(moduleID, func(mod *Module) error {
-				mod.Formatted = internal.Bool(true)
-				mod.FormatInProgress = false
-				return nil
-			})
-		},
-		AfterError: func(*task.Task) {
-			s.table.Update(moduleID, func(mod *Module) error {
-				mod.Formatted = internal.Bool(false)
-				mod.FormatInProgress = false
-				return nil
-			})
-		},
 	})
 }
 
@@ -182,26 +148,6 @@ func (s *Service) Validate(moduleID resource.ID) (*task.Task, error) {
 
 	return s.CreateTask(mod, task.CreateOptions{
 		Command: []string{"validate"},
-		AfterCreate: func(*task.Task) {
-			s.table.Update(moduleID, func(mod *Module) error {
-				mod.ValidationInProgress = true
-				return nil
-			})
-		},
-		AfterExited: func(*task.Task) {
-			s.table.Update(moduleID, func(mod *Module) error {
-				mod.Valid = internal.Bool(true)
-				mod.ValidationInProgress = false
-				return nil
-			})
-		},
-		AfterError: func(*task.Task) {
-			s.table.Update(moduleID, func(mod *Module) error {
-				mod.Valid = internal.Bool(false)
-				mod.ValidationInProgress = false
-				return nil
-			})
-		},
 	})
 }
 

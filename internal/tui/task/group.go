@@ -3,7 +3,6 @@ package task
 import (
 	"errors"
 	"fmt"
-	"slices"
 
 	"github.com/charmbracelet/bubbles/progress"
 	tea "github.com/charmbracelet/bubbletea"
@@ -29,16 +28,17 @@ func (mm *GroupMaker) Make(parent resource.Resource, width, height int) (tea.Mod
 
 	progress := progress.New(progress.WithDefaultGradient())
 	progress.Width = 20
+	progress.ShowPercentage = false
 
 	m := groupModel{
 		tasks: mm.TaskService,
 		lp: newListPreview(listPreviewOptions{
-			parent:      parent,
 			width:       width,
 			height:      height,
 			runService:  mm.RunService,
 			taskService: mm.TaskService,
 			helpers:     mm.Helpers,
+			makerID:     TaskGroupPreviewMakerID,
 		}),
 		progress: progress,
 		group:    group,
@@ -50,10 +50,11 @@ func (mm *GroupMaker) Make(parent resource.Resource, width, height int) (tea.Mod
 
 // groupModel is a model for a taskgroup, listing and previewing its tasks.
 type groupModel struct {
-	lp ListPreview
+	lp *listPreview
 
 	// Progress bar showing how many tasks are complete
 	progress progress.Model
+	finished bool
 
 	tasks   tui.TaskService
 	group   *task.Group
@@ -80,22 +81,23 @@ func (m groupModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	)
 
 	switch msg := msg.(type) {
-	case resource.Event[*task.Task]:
-		// Only forward events for tasks that are part of this task group.
-		if !slices.ContainsFunc(m.group.Tasks, func(t *task.Task) bool {
-			return t.ID == msg.Payload.ID
-		}) {
+	case table.BulkInsertMsg[*task.Task]:
+		cmd, skip := m.handleTasks(([]*task.Task)(msg)...)
+		if skip {
 			return m, nil
 		}
-		// Update progress bar to reflect task status
-		var finished int
-		for _, t := range m.group.Tasks {
-			if t.IsFinished() {
-				finished++
-			}
+		cmds = append(cmds, cmd)
+	case resource.Event[*task.Task]:
+		cmd, skip := m.handleTasks(msg.Payload)
+		if skip {
+			return m, nil
 		}
-		percentageComplete := float64(finished) / float64(len(m.group.Tasks))
-		cmds = append(cmds, m.progress.SetPercent(percentageComplete))
+		cmds = append(cmds, cmd)
+	case outputMsg:
+		// Only forward output messages for tasks that are part of this task group.
+		if !m.group.IncludesTask(msg.taskID) {
+			return m, nil
+		}
 	case progress.FrameMsg:
 		// FrameMsg is sent when the progress bar wants to animate itself
 		progressModel, cmd := m.progress.Update(msg)
@@ -104,7 +106,7 @@ func (m groupModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	// Forward message to wrapped list preview model
-	m.lp, cmd = m.lp.Update(msg)
+	cmd = m.lp.Update(msg)
 	cmds = append(cmds, cmd)
 
 	return m, tea.Batch(cmds...)
@@ -119,5 +121,28 @@ func (m groupModel) Title() string {
 }
 
 func (m groupModel) Status() string {
-	return m.progress.View()
+	pbar := m.progress.View()
+	return fmt.Sprintf("%s %d/%d", pbar, m.group.Finished(), len(m.group.Tasks))
+}
+
+func (m *groupModel) handleTasks(tasks ...*task.Task) (tea.Cmd, bool) {
+	if m.finished {
+		return nil, true
+	}
+
+	for _, t := range tasks {
+		// If any of the tasks are not part of this task group then skip
+		// handling all tasks
+		if !m.group.IncludesTask(t.ID) {
+			return nil, true
+		}
+	}
+
+	// Update progress bar to reflect task status
+	percentageComplete := float64(m.group.Finished()) / float64(len(m.group.Tasks))
+	if percentageComplete == 1 {
+		// no more updates to progress bar necessary after this update.
+		m.finished = true
+	}
+	return m.progress.SetPercent(percentageComplete), false
 }

@@ -22,21 +22,6 @@ var (
 		Title:      "CURRENT WORKSPACE",
 		FlexFactor: 2,
 	}
-	initColumn = table.Column{
-		Key:   "init",
-		Title: "INIT",
-		Width: len("INIT"),
-	}
-	formatColumn = table.Column{
-		Key:   "format",
-		Title: "FORMAT",
-		Width: len("FORMAT"),
-	}
-	validColumn = table.Column{
-		Key:   "valid",
-		Title: "VALID",
-		Width: len("VALID"),
-	}
 )
 
 // ListMaker makes module list models
@@ -54,35 +39,19 @@ func (m *ListMaker) Make(_ resource.Resource, width, height int) (tea.Model, err
 		table.ModuleColumn,
 		currentWorkspace,
 		table.ResourceCountColumn,
-		initColumn,
-		formatColumn,
-		validColumn,
-	}
-	boolToUnicode := func(inprog bool, b *bool) string {
-		if inprog {
-			return m.Spinner.View()
-		}
-		if b == nil {
-			return "-"
-		}
-		if *b {
-			return "✓"
-		} else {
-			return "✗"
-		}
 	}
 
 	renderer := func(mod *module.Module) table.RenderedRow {
 		return table.RenderedRow{
 			table.ModuleColumn.Key:        mod.Path,
-			initColumn.Key:                boolToUnicode(mod.InitInProgress, mod.Initialized),
-			formatColumn.Key:              boolToUnicode(mod.FormatInProgress, mod.Formatted),
-			validColumn.Key:               boolToUnicode(mod.ValidationInProgress, mod.Valid),
 			currentWorkspace.Key:          m.Helpers.CurrentWorkspaceName(mod.CurrentWorkspaceID),
 			table.ResourceCountColumn.Key: m.Helpers.ModuleCurrentResourceCount(mod),
 		}
 	}
-	table := table.New(columns, renderer, width, height).WithSortFunc(module.ByPath)
+	table := table.New(columns, renderer, width, height,
+		table.WithSortFunc(module.ByPath),
+		table.WithBorder[resource.ID, *module.Module](),
+	)
 
 	return list{
 		table:            table,
@@ -124,10 +93,6 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch {
 		case key.Matches(msg, localKeys.ReloadModules):
 			return m, ReloadModules(false, m.ModuleService)
-		case key.Matches(msg, keys.Global.Enter):
-			if row, ok := m.table.CurrentRow(); ok {
-				return m, tui.NavigateTo(tui.ModuleKind, tui.WithParent(row.Value))
-			}
 		case key.Matches(msg, keys.Common.Edit):
 			if row, ok := m.table.CurrentRow(); ok {
 				return m, tui.OpenVim(row.Value.Path)

@@ -10,4 +10,7 @@ var (
 
 	Width  = lipgloss.Width
 	Height = lipgloss.Height
+
+	Border      = Regular.Copy().Border(lipgloss.NormalBorder())
+	ThickBorder = Regular.Copy().Border(lipgloss.ThickBorder())
 )

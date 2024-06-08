@@ -181,7 +181,8 @@ func (h *Helpers) Breadcrumbs(title string, res resource.Resource, crumbs ...str
 		return h.Breadcrumbs(title, res.GetParent(), crumb)
 	case resource.TaskGroup:
 		cmd := Regular.Copy().Foreground(Blue).Render(res.String())
-		crumb := fmt.Sprintf("{%s}", cmd)
+		id := Regular.Copy().Foreground(Green).Render(res.GetID().String())
+		crumb := fmt.Sprintf("{%s}[%s]", cmd, id)
 		return h.Breadcrumbs(title, res.GetParent(), crumb)
 	case resource.Run:
 		// Skip run info in breadcrumbs
@@ -219,8 +220,7 @@ func (h *Helpers) CreateTasks(cmd string, fn task.Func, ids ...resource.ID) tea.
 
 func GlobalBreadcrumb(title, total string) string {
 	title = TitleStyle.Render(title)
-	all := Regular.Copy().Foreground(globalColor).Render("all")
-	return fmt.Sprintf("%s(%s)[%s]", title, all, total)
+	return fmt.Sprintf("%s[%s]", title, total)
 }
 
 // RemoveDuplicateBindings removes duplicate bindings from a list of bindings. A

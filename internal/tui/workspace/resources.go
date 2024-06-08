@@ -40,9 +40,10 @@ func (m *resourceListMaker) Make(ws resource.Resource, width, height int) (tea.M
 		}
 		return table.RenderedRow{resourceColumn.Key: addr}
 	}
-	table := table.New(columns, renderer, width, height-metadataHeight).
-		WithSortFunc(state.Sort).
-		WithParent(ws)
+	table := table.New(columns, renderer, width, height-metadataHeight,
+		table.WithSortFunc(state.Sort),
+		table.WithParent[resource.ID, *state.Resource](ws),
+	)
 	return resources{
 		table:     table,
 		states:    m.StateService,

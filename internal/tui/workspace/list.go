@@ -51,9 +51,11 @@ func (m *ListMaker) Make(parent resource.Resource, width, height int) (tea.Model
 		}
 	}
 
-	table := table.New(columns, renderer, width, height).
-		WithSortFunc(workspace.Sort(m.ModuleService)).
-		WithParent(parent)
+	table := table.New(columns, renderer, width, height,
+		table.WithSortFunc(workspace.Sort(m.ModuleService)),
+		table.WithParent[resource.ID, *workspace.Workspace](parent),
+		table.WithBorder[resource.ID, *workspace.Workspace](),
+	)
 
 	return list{
 		table:   table,
@@ -99,10 +101,6 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.table.UpdateViewport()
 	case tea.KeyMsg:
 		switch {
-		case key.Matches(msg, keys.Global.Enter):
-			if row, ok := m.table.CurrentRow(); ok {
-				return m, tui.NavigateTo(tui.WorkspaceKind, tui.WithParent(row.Value))
-			}
 		case key.Matches(msg, keys.Common.Delete):
 			workspaceIDs := m.table.SelectedOrCurrentKeys()
 			if len(workspaceIDs) == 0 {

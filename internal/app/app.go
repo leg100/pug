@@ -214,6 +214,15 @@ func startApp(cfg config, stdout io.Writer) (*app, error) {
 		wg.Done()
 	}()
 
+	taskGroupEvents := tasks.GroupBroker.Subscribe()
+	wg.Add(1)
+	go func() {
+		for ev := range taskGroupEvents {
+			ch <- ev
+		}
+		wg.Done()
+	}()
+
 	// cleanup function to be invoked when app is terminated.
 	cleanup := func() {
 		// Cancel context
@@ -222,6 +231,7 @@ func startApp(cfg config, stdout io.Writer) (*app, error) {
 		// Close subscriptions
 		logger.Shutdown()
 		tasks.TaskBroker.Shutdown()
+		tasks.GroupBroker.Shutdown()
 		modules.Shutdown()
 		workspaces.Shutdown()
 		states.Shutdown()
