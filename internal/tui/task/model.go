@@ -35,14 +35,18 @@ type Maker struct {
 	RunService  tui.RunService
 	TaskService tui.TaskService
 	Spinner     *spinner.Model
-	MakerID     MakerID
 	Helpers     *tui.Helpers
 	Logger      *logging.Logger
 
 	autoscroll bool
+	showInfo   bool
 }
 
 func (mm *Maker) Make(res resource.Resource, width, height int) (tea.Model, error) {
+	return mm.makeWithID(res, width, height, TaskMakerID)
+}
+
+func (mm *Maker) makeWithID(res resource.Resource, width, height int, makerID MakerID) (tea.Model, error) {
 	task, ok := res.(*task.Task)
 	if !ok {
 		return model{}, errors.New("fatal: cannot make task model with non-task resource")
@@ -54,12 +58,13 @@ func (mm *Maker) Make(res resource.Resource, width, height int) (tea.Model, erro
 		task:    task,
 		output:  task.NewReader(),
 		spinner: mm.Spinner,
-		makerID: mm.MakerID,
+		makerID: makerID,
 		// read upto 1kb at a time
 		buf:        make([]byte, 1024),
 		height:     height,
 		helpers:    mm.Helpers,
 		autoscroll: mm.autoscroll,
+		showInfo:   mm.showInfo,
 	}
 
 	if rr := m.task.Run(); rr != nil {
@@ -92,6 +97,11 @@ func (mm *Maker) Update(msg tea.Msg) tea.Cmd {
 			toggle := tui.CmdHandler(toggleAutoscrollMsg{})
 
 			return tea.Batch(informUser, toggle)
+		case key.Matches(msg, localKeys.ToggleInfo):
+			mm.showInfo = !mm.showInfo
+
+			// Send out message to all cached task models to toggle task info
+			return tui.CmdHandler(toggleTaskInfoMsg{})
 		}
 	}
 	return nil
@@ -103,18 +113,19 @@ type model struct {
 	run  *run.Run
 	runs tui.RunService
 
-	output     io.Reader
-	buf        []byte
-	content    string
-	makerID    MakerID
+	output  io.Reader
+	buf     []byte
+	content string
+	makerID MakerID
+
 	autoscroll bool
+	showInfo   bool
 
 	viewport viewport.Model
 	spinner  *spinner.Model
 
 	height int
-
-	showInfo bool
+	width  int
 
 	helpers *tui.Helpers
 }
@@ -132,10 +143,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch {
-		// TODO: add keybinding to apply if task is a plan.
-		case key.Matches(msg, localKeys.Info):
-			// 'i' toggles showing task info
-			m.showInfo = !m.showInfo
 		case key.Matches(msg, keys.Common.Cancel):
 			return m, m.helpers.CreateTasks("cancel", m.svc.Cancel, m.task.ID)
 		case key.Matches(msg, keys.Common.Apply):
@@ -152,6 +159,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	case toggleAutoscrollMsg:
 		m.autoscroll = !m.autoscroll
+	case toggleTaskInfoMsg:
+		m.showInfo = !m.showInfo
+		// adjust width of viewport to accomodate info
+		m.setWidth(m.width)
 	case outputMsg:
 		// Ensure output is for this task
 		if msg.taskID != m.task.ID {
@@ -221,14 +232,22 @@ const (
 	// bordersHeight is the total height of the borders to the top and
 	// bottom of the content
 	bordersHeight = 2
+	// infoWidth is the width of the optional task info sidebar to the left of the
+	// viewport.
+	infoWidth = 35
 )
 
 var borderStyle = lipgloss.NewStyle().Border(lipgloss.NormalBorder())
 
 func (m *model) setWidth(width int) {
+	m.width = width
+
 	viewportWidth := width - scrollPercentWidth
 	if m.hasBorders() {
 		viewportWidth -= bordersWidth
+	}
+	if m.showInfo {
+		viewportWidth -= infoWidth
 	}
 	m.viewport.Width = max(0, viewportWidth)
 }
@@ -247,13 +266,52 @@ func (m *model) hasBorders() bool {
 
 // View renders the viewport
 func (m model) View() string {
+	var components []string
+
 	if m.showInfo {
-		return strings.Join(m.task.Env, " ")
+		var (
+			args = "-"
+			envs = "-"
+		)
+		if len(m.task.Args) > 0 {
+			args = strings.Join(m.task.Args, "\n")
+		}
+		if len(m.task.AdditionalEnv) > 0 {
+			envs = strings.Join(m.task.AdditionalEnv, "\n")
+		}
+
+		// Show info to the left of the viewport.
+		content := lipgloss.JoinVertical(lipgloss.Top,
+			tui.Bold.Render("Task ID"),
+			m.task.ID.String(),
+			"",
+			tui.Bold.Render("Command"),
+			m.task.CommandString(),
+			"",
+			tui.Bold.Render("Arguments"),
+			args,
+			"",
+			tui.Bold.Render("Environment variables"),
+			envs,
+			"",
+			fmt.Sprintf("Autoscroll: %s", boolToOnOff(m.autoscroll)),
+		)
+		container := tui.Regular.Copy().
+			Margin(0, 1).
+			Height(m.height).
+			// subtract 2 to account for margins, and 1 for the border to the
+			// right
+			Width(infoWidth-2-1).
+			Border(lipgloss.NormalBorder(), false, true, false, false).
+			BorderForeground(tui.LighterGrey).
+			Render(content)
+		components = append(components, container)
 	}
 
 	viewport := tui.Regular.Copy().
 		MaxWidth(m.viewport.Width).
 		Render(m.viewport.View())
+	components = append(components, viewport)
 
 	// scroll percent container occupies a fixed width section to the right of
 	// the viewport.
@@ -264,19 +322,25 @@ func (m model) View() string {
 	scrollPercentContainer := tui.Regular.Copy().
 		Margin(0, 1).
 		Height(m.height).
+		// subtract 2 to account for margins
 		Width(scrollPercentWidth - 2).
 		AlignVertical(lipgloss.Bottom).
 		Render(scrollPercent)
+	components = append(components, scrollPercentContainer)
 
-	content := lipgloss.JoinHorizontal(lipgloss.Left,
-		viewport,
-		scrollPercentContainer,
-	)
+	content := lipgloss.JoinHorizontal(lipgloss.Left, components...)
 
 	if m.hasBorders() {
 		return borderStyle.Render(content)
 	}
 	return content
+}
+
+func boolToOnOff(b bool) string {
+	if b {
+		return "on"
+	}
+	return "off"
 }
 
 func (m model) TabStatus() string {

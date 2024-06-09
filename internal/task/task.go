@@ -21,14 +21,14 @@ import (
 type Task struct {
 	resource.Common
 
-	Command   []string
-	Args      []string
-	Path      string
-	Blocking  bool
-	State     Status
-	Env       []string
-	JSON      bool
-	Immediate bool
+	Command       []string
+	Args          []string
+	Path          string
+	Blocking      bool
+	State         Status
+	JSON          bool
+	Immediate     bool
+	AdditionalEnv []string
 
 	program   string
 	exclusive bool
@@ -131,7 +131,7 @@ func (f *factory) newTask(opts CreateOptions) (*Task, error) {
 		Command:       opts.Command,
 		Path:          filepath.Join(f.workdir.String(), opts.Path),
 		Args:          opts.Args,
-		Env:           append(append(f.userEnvs, opts.Env...), os.Environ()...),
+		AdditionalEnv: append(f.userEnvs, opts.Env...),
 		JSON:          opts.JSON,
 		Blocking:      opts.Blocking,
 		exclusive:     opts.Exclusive,
@@ -250,7 +250,7 @@ func (t *Task) start(ctx context.Context) (func(), error) {
 	cmd.Dir = t.Path
 	cmd.Stdout = t.buf
 	cmd.Stderr = t.buf
-	cmd.Env = t.Env
+	cmd.Env = append(t.AdditionalEnv, os.Environ()...)
 
 	t.mu.Lock()
 	defer t.mu.Unlock()

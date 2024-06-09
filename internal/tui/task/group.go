@@ -17,6 +17,7 @@ type GroupMaker struct {
 	TaskService   tui.TaskService
 	RunService    tui.RunService
 	TaskListMaker *ListMaker
+	TaskMaker     *Maker
 	Helpers       *tui.Helpers
 }
 
@@ -33,12 +34,14 @@ func (mm *GroupMaker) Make(parent resource.Resource, width, height int) (tea.Mod
 	m := groupModel{
 		tasks: mm.TaskService,
 		lp: newListPreview(listPreviewOptions{
-			width:       width,
-			height:      height,
-			runService:  mm.RunService,
-			taskService: mm.TaskService,
-			helpers:     mm.Helpers,
-			makerID:     TaskGroupPreviewMakerID,
+			width:             width,
+			height:            height,
+			runService:        mm.RunService,
+			taskService:       mm.TaskService,
+			helpers:           mm.Helpers,
+			taskMaker:         mm.TaskMaker,
+			taskMakerID:       TaskGroupPreviewMakerID,
+			hideCommandColumn: true,
 		}),
 		progress: progress,
 		group:    group,

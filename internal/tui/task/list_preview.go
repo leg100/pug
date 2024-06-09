@@ -7,7 +7,6 @@ import (
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/leg100/pug/internal"
 	"github.com/leg100/pug/internal/resource"
 	runpkg "github.com/leg100/pug/internal/run"
 	"github.com/leg100/pug/internal/task"
@@ -54,12 +53,14 @@ var (
 )
 
 type listPreviewOptions struct {
-	width       int
-	height      int
-	runService  tui.RunService
-	taskService tui.TaskService
-	helpers     *tui.Helpers
-	makerID     MakerID
+	width             int
+	height            int
+	runService        tui.RunService
+	taskService       tui.TaskService
+	helpers           *tui.Helpers
+	taskMaker         *Maker
+	taskMakerID       MakerID
+	hideCommandColumn bool
 }
 
 func newListPreview(opts listPreviewOptions) *listPreview {
@@ -67,9 +68,7 @@ func newListPreview(opts listPreviewOptions) *listPreview {
 		table.ModuleColumn,
 		table.WorkspaceColumn,
 	}
-	// Don't show command column in a task group list because all its tasks
-	// share the same command and the command is already included in the title.
-	if opts.makerID != TaskGroupPreviewMakerID {
+	if opts.hideCommandColumn {
 		columns = append(columns, commandColumn)
 	}
 	columns = append(columns,
@@ -102,23 +101,16 @@ func newListPreview(opts listPreviewOptions) *listPreview {
 		return row
 	}
 
-	cache := tui.NewCache()
-
 	lp := listPreview{
-		tasks:   opts.taskService,
-		runs:    opts.runService,
-		width:   opts.width,
-		height:  opts.height,
-		helpers: opts.helpers,
-		taskMaker: &Maker{
-			MakerID:     opts.makerID,
-			RunService:  opts.runService,
-			TaskService: opts.taskService,
-			Helpers:     opts.helpers,
-		},
-		cache:          cache,
+		tasks:          opts.taskService,
+		runs:           opts.runService,
+		width:          opts.width,
+		height:         opts.height,
+		helpers:        opts.helpers,
+		taskMaker:      opts.taskMaker,
+		taskMakerID:    opts.taskMakerID,
+		cache:          tui.NewCache(),
 		previewVisible: true,
-		n:              internal.Int(1),
 	}
 
 	// Create table for the top list pane
@@ -137,10 +129,11 @@ func newListPreview(opts listPreviewOptions) *listPreview {
 // the bottom pane is the output of the currently highlighted task in the list,
 // i.e. a preview.
 type listPreview struct {
-	list      table.Model[resource.ID, *task.Task]
-	tasks     tui.TaskService
-	runs      tui.RunService
-	taskMaker tui.Maker
+	list        table.Model[resource.ID, *task.Task]
+	tasks       tui.TaskService
+	runs        tui.RunService
+	taskMaker   *Maker
+	taskMakerID MakerID
 
 	previewVisible bool
 	previewFocused bool
@@ -237,7 +230,7 @@ func (m *listPreview) Update(msg tea.Msg) tea.Cmd {
 			page := tui.Page{Kind: tui.TaskKind, Resource: row.Value}
 			if !m.cache.Exists(page) {
 				// Create model
-				model, err := m.taskMaker.Make(row.Value, m.paneWidth(), m.previewHeight())
+				model, err := m.taskMaker.makeWithID(row.Value, m.paneWidth(), m.previewHeight(), m.taskMakerID)
 				if err != nil {
 					return tui.ReportError(err, "making task model")
 				}

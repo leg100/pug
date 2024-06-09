@@ -11,6 +11,7 @@ import (
 type ListMaker struct {
 	RunService  tui.RunService
 	TaskService tui.TaskService
+	TaskMaker   *Maker
 	Helpers     *tui.Helpers
 }
 
@@ -22,7 +23,8 @@ func (m *ListMaker) Make(parent resource.Resource, width, height int) (tea.Model
 			runService:  m.RunService,
 			taskService: m.TaskService,
 			helpers:     m.Helpers,
-			makerID:     TaskListPreviewMakerID,
+			taskMaker:   m.TaskMaker,
+			taskMakerID: TaskListPreviewMakerID,
 		}),
 		taskService: m.TaskService,
 		helpers:     m.Helpers,
