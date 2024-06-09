@@ -38,8 +38,8 @@ type Maker struct {
 	Helpers     *tui.Helpers
 	Logger      *logging.Logger
 
-	autoscroll bool
-	showInfo   bool
+	disableAutoscroll bool
+	showInfo          bool
 }
 
 func (mm *Maker) Make(res resource.Resource, width, height int) (tea.Model, error) {
@@ -63,7 +63,7 @@ func (mm *Maker) makeWithID(res resource.Resource, width, height int, makerID Ma
 		buf:        make([]byte, 1024),
 		height:     height,
 		helpers:    mm.Helpers,
-		autoscroll: mm.autoscroll,
+		autoscroll: !mm.disableAutoscroll,
 		showInfo:   mm.showInfo,
 	}
 
@@ -84,19 +84,14 @@ func (mm *Maker) Update(msg tea.Msg) tea.Cmd {
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, localKeys.Autoscroll):
-			mm.autoscroll = !mm.autoscroll
+			mm.disableAutoscroll = !mm.disableAutoscroll
 
-			var informUser tea.Cmd
-			if mm.autoscroll {
-				informUser = tui.ReportInfo("Enabled autoscroll")
-			} else {
-				informUser = tui.ReportInfo("Disabled autoscroll")
-			}
-
-			// Send out message to all cached task models to toggle autoscroll
-			toggle := tui.CmdHandler(toggleAutoscrollMsg{})
-
-			return tea.Batch(informUser, toggle)
+			// Inform user, and send out message to all cached task models to
+			// toggle autoscroll.
+			return tea.Batch(
+				tui.CmdHandler(toggleAutoscrollMsg{}),
+				tui.ReportInfo("Toggled autoscroll %s", boolToOnOff(!mm.disableAutoscroll)),
+			)
 		case key.Matches(msg, localKeys.ToggleInfo):
 			mm.showInfo = !mm.showInfo
 
