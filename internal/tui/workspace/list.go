@@ -146,6 +146,10 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				fmt.Sprintf("Auto-apply %d workspaces?", len(workspaceIDs)),
 				m.helpers.CreateTasks("apply", fn, workspaceIDs...),
 			)
+		case key.Matches(msg, keys.Common.State):
+			if row, ok := m.table.CurrentRow(); ok {
+				return m, tui.NavigateTo(tui.ResourceListKind, tui.WithParent(row.Value))
+			}
 		}
 	}
 

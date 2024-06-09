@@ -9,7 +9,7 @@ import (
 
 type stateFunc func(workspaceID resource.ID, addr state.ResourceAddress) (*task.Task, error)
 
-func (m resources) createStateCommand(name string, fn stateFunc, addrs ...state.ResourceAddress) tea.Cmd {
+func (m resourceList) createStateCommand(name string, fn stateFunc, addrs ...state.ResourceAddress) tea.Cmd {
 	// Make N copies of the workspace ID where N is the number of addresses
 	workspaceIDs := make([]resource.ID, len(addrs))
 	for i := range workspaceIDs {

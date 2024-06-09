@@ -1,61 +1,194 @@
 package task
 
 import (
+	"fmt"
+	"time"
+
+	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/leg100/pug/internal/resource"
+	runpkg "github.com/leg100/pug/internal/run"
 	"github.com/leg100/pug/internal/task"
 	"github.com/leg100/pug/internal/tui"
+	"github.com/leg100/pug/internal/tui/keys"
+	"github.com/leg100/pug/internal/tui/split"
 	"github.com/leg100/pug/internal/tui/table"
 )
 
+var (
+	commandColumn = table.Column{
+		Key:        "command",
+		Title:      "COMMAND",
+		FlexFactor: 1,
+	}
+	statusColumn = table.Column{
+		Key:   "task_status",
+		Title: "STATUS",
+		Width: task.MaxStatusLen,
+	}
+	ageColumn = table.Column{
+		Key:   "age",
+		Title: "AGE",
+		Width: 7,
+	}
+	runChangesColumn = table.Column{
+		Key:        "run_changes",
+		Title:      "RUN CHANGES",
+		FlexFactor: 1,
+	}
+	runStatusColumn = table.Column{
+		Key:   "run_status",
+		Title: "RUN STATUS",
+		Width: runpkg.MaxStatusLen,
+	}
+)
+
+// ListTaskMaker makes task models belonging to a task list model
+type ListTaskMaker struct {
+	*Maker
+}
+
+func (m *ListTaskMaker) Make(res resource.Resource, width, height int) (tea.Model, error) {
+	return m.makeWithID(res, width, height, TaskListMakerID)
+}
+
+// NewListMaker constructs a task list model maker
+func NewListMaker(tasks tui.TaskService, runs tui.RunService, taskMaker *Maker, helpers *tui.Helpers) *ListMaker {
+	return &ListMaker{
+		TaskService: tasks,
+		RunService:  runs,
+		TaskMaker:   &ListTaskMaker{Maker: taskMaker},
+		Helpers:     helpers,
+	}
+}
+
+// ListMaker makes task list models
 type ListMaker struct {
 	RunService  tui.RunService
 	TaskService tui.TaskService
-	TaskMaker   *Maker
+	TaskMaker   tui.Maker
 	Helpers     *tui.Helpers
+
+	hideCommandColumn bool
 }
 
-func (m *ListMaker) Make(parent resource.Resource, width, height int) (tea.Model, error) {
-	list := List{
-		lp: newListPreview(listPreviewOptions{
-			width:       width,
-			height:      height,
-			runService:  m.RunService,
-			taskService: m.TaskService,
-			helpers:     m.Helpers,
-			taskMaker:   m.TaskMaker,
-			taskMakerID: TaskListPreviewMakerID,
-		}),
-		taskService: m.TaskService,
-		helpers:     m.Helpers,
+func (mm *ListMaker) Make(parent resource.Resource, width, height int) (tea.Model, error) {
+	columns := []table.Column{
+		table.ModuleColumn,
+		table.WorkspaceColumn,
 	}
-	return list, nil
+	if !mm.hideCommandColumn {
+		columns = append(columns, commandColumn)
+	}
+	columns = append(columns,
+		statusColumn,
+		runStatusColumn,
+		runChangesColumn,
+		ageColumn,
+	)
+
+	renderer := func(t *task.Task) table.RenderedRow {
+		row := table.RenderedRow{
+			table.ModuleColumn.Key:    mm.Helpers.ModulePath(t),
+			table.WorkspaceColumn.Key: mm.Helpers.WorkspaceName(t),
+			commandColumn.Key:         t.CommandString(),
+			ageColumn.Key:             tui.Ago(time.Now(), t.Updated),
+			table.IDColumn.Key:        t.String(),
+			statusColumn.Key:          mm.Helpers.TaskStatus(t, false),
+		}
+
+		if rr := t.Run(); rr != nil {
+			run := rr.(*runpkg.Run)
+			if t.CommandString() == "plan" && run.PlanReport != nil {
+				row[runChangesColumn.Key] = mm.Helpers.RunReport(*run.PlanReport)
+			} else if t.CommandString() == "apply" && run.ApplyReport != nil {
+				row[runChangesColumn.Key] = mm.Helpers.RunReport(*run.ApplyReport)
+			}
+			row[runStatusColumn.Key] = mm.Helpers.RunStatus(run, false)
+		}
+
+		return row
+	}
+
+	splitModel := split.New[*task.Task](split.Options[*task.Task]{
+		Columns:      columns,
+		Renderer:     renderer,
+		TableOptions: []table.Option[resource.ID, *task.Task]{table.WithSortFunc(task.ByState)},
+		Width:        width,
+		Height:       height,
+		Maker:        mm.TaskMaker,
+	})
+	m := List{
+		Model:   splitModel,
+		runs:    mm.RunService,
+		tasks:   mm.TaskService,
+		helpers: mm.Helpers,
+	}
+	return m, nil
 }
 
 type List struct {
-	lp *listPreview
+	split.Model[*task.Task]
 
-	taskService tui.TaskService
-	helpers     *tui.Helpers
+	runs    tui.RunService
+	tasks   tui.TaskService
+	helpers *tui.Helpers
 }
 
 func (m List) Init() tea.Cmd {
 	return func() tea.Msg {
-		tasks := m.taskService.List(task.ListOptions{})
+		tasks := m.tasks.List(task.ListOptions{})
 		return table.BulkInsertMsg[*task.Task](tasks)
 	}
 }
 
 func (m List) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		switch {
+		case key.Matches(msg, keys.Common.Cancel):
+			taskIDs := m.Table.SelectedOrCurrentKeys()
+			return m, m.helpers.CreateTasks("cancel", m.tasks.Cancel, taskIDs...)
+		case key.Matches(msg, keys.Common.Apply):
+			runIDs, err := m.pruneApplyableTasks()
+			if err != nil {
+				return m, tui.ReportError(err, "applying tasks")
+			}
+			return m, tui.YesNoPrompt(
+				fmt.Sprintf("Apply %d plans?", len(runIDs)),
+				m.helpers.CreateTasks("apply", m.runs.ApplyPlan, runIDs...),
+			)
+		case key.Matches(msg, keys.Common.State):
+			if row, ok := m.Table.CurrentRow(); ok {
+				if ws := m.helpers.TaskWorkspace(row.Value); ws != nil {
+					return m, tui.NavigateTo(tui.ResourceListKind, tui.WithParent(ws))
+				}
+			}
+		}
+	}
+
 	var cmd tea.Cmd
-	cmd = m.lp.Update(msg)
+	m.Model, cmd = m.Model.Update(msg)
 	return m, cmd
 }
 
-func (m List) View() string {
-	return m.lp.View()
+func (m List) Title() string {
+	return tui.GlobalBreadcrumb("Tasks", m.Table.TotalString())
 }
 
-func (m List) Title() string {
-	return tui.GlobalBreadcrumb("Tasks", m.lp.list.TotalString())
+// pruneApplyableTasks removes from the selection any tasks that cannot be
+// applied, i.e all tasks other than those that are a plan and are in the
+// planned state. The run ID of each task after pruning is returned.
+func (m *List) pruneApplyableTasks() ([]resource.ID, error) {
+	return m.Table.Prune(func(task *task.Task) (resource.ID, bool) {
+		rr := task.Run()
+		if rr == nil {
+			return resource.ID{}, true
+		}
+		run := rr.(*runpkg.Run)
+		if run.Status != runpkg.Planned {
+			return resource.ID{}, true
+		}
+		return run.ID, false
+	})
 }

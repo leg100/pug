@@ -37,6 +37,15 @@ func Test_newState(t *testing.T) {
 	assert.Contains(t, got.Resources, ResourceAddress("module.child2.module.child3.random_integer.suffix"))
 	assert.Contains(t, got.Resources, ResourceAddress("module.child2.module.child3.random_pet.pet"))
 
+	wantAttrs := map[string]any{
+		"id":        "next-thrush",
+		"keepers":   map[string]any{"now": "2024-05-17T17:23:31Z"},
+		"length":    float64(2),
+		"prefix":    nil,
+		"separator": "-",
+	}
+	assert.Equal(t, wantAttrs, got.Resources["random_pet.pet[3]"].Attributes)
+
 	assert.True(t, got.Resources["random_pet.pet[3]"].Tainted)
 }
 

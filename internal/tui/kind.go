@@ -11,6 +11,8 @@ const (
 	TaskKind
 	TaskGroupListKind
 	TaskGroupKind
+	ResourceListKind
+	ResourceKind
 	LogListKind
 	LogKind
 )

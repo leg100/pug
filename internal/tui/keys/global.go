@@ -56,8 +56,8 @@ var Global = global{
 		key.WithHelp("enter", "view"),
 	),
 	Select: key.NewBinding(
-		key.WithKeys("s", " "),
-		key.WithHelp("<space>/s", "select"),
+		key.WithKeys(" "),
+		key.WithHelp("<space>", "select"),
 	),
 	SelectAll: key.NewBinding(
 		key.WithKeys("ctrl+a"),

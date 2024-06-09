@@ -18,7 +18,6 @@ import (
 	"github.com/leg100/pug/internal/task"
 	"github.com/leg100/pug/internal/tui"
 	"github.com/leg100/pug/internal/tui/keys"
-	"github.com/leg100/reflow/wordwrap"
 )
 
 // MakerID uniquely identifies a task model maker
@@ -26,9 +25,8 @@ type MakerID int
 
 const (
 	TaskMakerID MakerID = iota
-	RunTabMakerID
-	TaskListPreviewMakerID
-	TaskGroupPreviewMakerID
+	TaskListMakerID
+	TaskGroupMakerID
 )
 
 type Maker struct {
@@ -49,7 +47,7 @@ func (mm *Maker) Make(res resource.Resource, width, height int) (tea.Model, erro
 func (mm *Maker) makeWithID(res resource.Resource, width, height int, makerID MakerID) (tea.Model, error) {
 	task, ok := res.(*task.Task)
 	if !ok {
-		return model{}, errors.New("fatal: cannot make task model with non-task resource")
+		return model{}, errors.New("fatal: cannot make task model with a non-task resource")
 	}
 
 	m := model{
@@ -147,9 +145,13 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return m, nil
 				}
 				return m, tui.YesNoPrompt(
-					"Apply run?",
+					"Apply plan?",
 					m.helpers.CreateTasks("apply", m.runs.ApplyPlan, m.run.ID),
 				)
+			}
+		case key.Matches(msg, keys.Common.State):
+			if ws := m.helpers.TaskWorkspace(m.task); ws != nil {
+				return m, tui.NavigateTo(tui.ResourceListKind, tui.WithParent(ws))
 			}
 		}
 	case toggleAutoscrollMsg:
@@ -169,7 +171,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		m.content += msg.output
-		m.content = wordwrap.String(m.content, m.viewport.Width)
 		m.viewport.SetContent(m.content)
 		if m.autoscroll {
 			m.viewport.GotoBottom()

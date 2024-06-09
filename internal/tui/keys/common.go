@@ -8,7 +8,7 @@ type common struct {
 	Destroy   key.Binding
 	Cancel    key.Binding
 	Delete    key.Binding
-	ShowState key.Binding
+	State     key.Binding
 	Retry     key.Binding
 	Reload    key.Binding
 	Module    key.Binding
@@ -42,9 +42,9 @@ var Common = common{
 		key.WithKeys("D"),
 		key.WithHelp("D", "delete"),
 	),
-	ShowState: key.NewBinding(
+	State: key.NewBinding(
 		key.WithKeys("s"),
-		key.WithHelp("s", "show state"),
+		key.WithHelp("s", "state"),
 	),
 	Retry: key.NewBinding(
 		key.WithKeys("r"),

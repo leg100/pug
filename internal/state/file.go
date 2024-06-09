@@ -6,6 +6,7 @@ import (
 
 const (
 	StateFileResourceInstanceTainted StateFileResourceInstanceStatus = "tainted"
+	StateFileResourceDataMode        StateFileResourceMode           = "data"
 )
 
 type (
@@ -35,6 +36,7 @@ type (
 		ProviderURI string `json:"provider"`
 		Type        string
 		Module      string
+		Mode        StateFileResourceMode
 		Instances   []StateFileResourceInstance
 	}
 
@@ -45,4 +47,5 @@ type (
 	}
 
 	StateFileResourceInstanceStatus string
+	StateFileResourceMode           string
 )

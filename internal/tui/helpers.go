@@ -48,6 +48,30 @@ func (h *Helpers) WorkspaceName(res resource.Resource) string {
 	return ""
 }
 
+func (h *Helpers) ModuleCurrentWorkspace(mod *module.Module) *workspace.Workspace {
+	if mod.CurrentWorkspaceID == nil {
+		return nil
+	}
+	ws, err := h.WorkspaceService.Get(*mod.CurrentWorkspaceID)
+	if err != nil {
+		h.Logger.Error("retrieving current workspace for module", "error", err, "module", mod)
+		return nil
+	}
+	return ws
+}
+
+func (h *Helpers) Module(res resource.Resource) *module.Module {
+	if res.Module() == nil {
+		return nil
+	}
+	mod, ok := res.Module().(*module.Module)
+	if !ok {
+		h.Logger.Error("unable to unwrap module from resource interface", "resource", res)
+		return nil
+	}
+	return mod
+}
+
 func (h *Helpers) CurrentWorkspaceName(workspaceID *resource.ID) string {
 	if workspaceID == nil {
 		return "-"
@@ -96,6 +120,19 @@ func (h *Helpers) WorkspaceResourceCount(ws *workspace.Workspace) string {
 		return ""
 	}
 	return strconv.Itoa(len(state.Resources))
+}
+
+// TaskWorkspace retrieves either the task's workspace if it belongs to a
+// workspace, or if it belongs to a module, then it retrieves the module's
+// current workspace
+func (h *Helpers) TaskWorkspace(t *task.Task) resource.Resource {
+	if ws := t.Workspace(); ws != nil {
+		return ws
+	}
+	if mod := h.Module(t); mod != nil {
+		return h.ModuleCurrentWorkspace(mod)
+	}
+	return nil
 }
 
 // TaskStatus provides a rendered colored task status.
@@ -178,6 +215,10 @@ func (h *Helpers) Breadcrumbs(title string, res resource.Resource, crumbs ...str
 	case resource.Task:
 		cmd := Regular.Copy().Foreground(Blue).Render(res.String())
 		crumb := fmt.Sprintf("{%s}", cmd)
+		return h.Breadcrumbs(title, res.GetParent(), crumb)
+	case resource.StateResource:
+		addr := Regular.Copy().Foreground(Blue).Render(res.String())
+		crumb := fmt.Sprintf("{%s}", addr)
 		return h.Breadcrumbs(title, res.GetParent(), crumb)
 	case resource.TaskGroup:
 		cmd := Regular.Copy().Foreground(Blue).Render(res.String())

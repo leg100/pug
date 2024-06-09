@@ -46,6 +46,9 @@ func newState(ws resource.Resource, r io.Reader) (*State, error) {
 				b.WriteString(res.Module)
 				b.WriteRune('.')
 			}
+			if res.Mode == StateFileResourceDataMode {
+				b.WriteString("data.")
+			}
 			b.WriteString(res.Type)
 			b.WriteRune('.')
 			b.WriteString(res.Name)
@@ -55,7 +58,11 @@ func newState(ws resource.Resource, r io.Reader) (*State, error) {
 				b.WriteRune(']')
 			}
 			addr := ResourceAddress(b.String())
-			m[addr] = newResource(ws, addr)
+			var err error
+			m[addr], err = newResource(ws, addr, instance.Attributes)
+			if err != nil {
+				return nil, fmt.Errorf("decoding resource %s: %w", addr, err)
+			}
 			if instance.Status == StateFileResourceInstanceTainted {
 				m[addr].Tainted = true
 			}

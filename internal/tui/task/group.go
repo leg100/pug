@@ -12,13 +12,35 @@ import (
 	"github.com/leg100/pug/internal/tui/table"
 )
 
+// groupTaskMaker makes task models belonging to a task group model
+type groupTaskMaker struct {
+	*Maker
+}
+
+func (m *groupTaskMaker) Make(res resource.Resource, width, height int) (tea.Model, error) {
+	return m.makeWithID(res, width, height, TaskGroupMakerID)
+}
+
 // GroupMaker makes taskgroup models
 type GroupMaker struct {
-	TaskService   tui.TaskService
-	RunService    tui.RunService
-	TaskListMaker *ListMaker
-	TaskMaker     *Maker
-	Helpers       *tui.Helpers
+	TaskService tui.TaskService
+	RunService  tui.RunService
+	Helpers     *tui.Helpers
+
+	taskListMaker *ListMaker
+}
+
+// NewGroupMaker constructs a task group model maker
+func NewGroupMaker(tasks tui.TaskService, runs tui.RunService, taskMaker *Maker, helpers *tui.Helpers) *GroupMaker {
+	return &GroupMaker{
+		taskListMaker: &ListMaker{
+			TaskService:       tasks,
+			RunService:        runs,
+			TaskMaker:         &groupTaskMaker{Maker: taskMaker},
+			Helpers:           helpers,
+			hideCommandColumn: true,
+		},
+	}
 }
 
 func (mm *GroupMaker) Make(parent resource.Resource, width, height int) (tea.Model, error) {
@@ -31,35 +53,28 @@ func (mm *GroupMaker) Make(parent resource.Resource, width, height int) (tea.Mod
 	progress.Width = 20
 	progress.ShowPercentage = false
 
+	list, err := mm.taskListMaker.Make(parent, width, height)
+	if err != nil {
+		return nil, fmt.Errorf("making task list model: %w", err)
+	}
+
 	m := groupModel{
-		tasks: mm.TaskService,
-		lp: newListPreview(listPreviewOptions{
-			width:             width,
-			height:            height,
-			runService:        mm.RunService,
-			taskService:       mm.TaskService,
-			helpers:           mm.Helpers,
-			taskMaker:         mm.TaskMaker,
-			taskMakerID:       TaskGroupPreviewMakerID,
-			hideCommandColumn: true,
-		}),
+		Model:    list,
 		progress: progress,
 		group:    group,
 		helpers:  mm.Helpers,
 	}
-
 	return m, nil
 }
 
 // groupModel is a model for a taskgroup, listing and previewing its tasks.
 type groupModel struct {
-	lp *listPreview
+	tea.Model
 
 	// Progress bar showing how many tasks are complete
 	progress progress.Model
 	finished bool
 
-	tasks   tui.TaskService
 	group   *task.Group
 	helpers *tui.Helpers
 }
@@ -108,15 +123,11 @@ func (m groupModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, cmd
 	}
 
-	// Forward message to wrapped list preview model
-	cmd = m.lp.Update(msg)
+	// Forward message to wrapped task list model
+	m.Model, cmd = m.Model.Update(msg)
 	cmds = append(cmds, cmd)
 
 	return m, tea.Batch(cmds...)
-}
-
-func (m groupModel) View() string {
-	return m.lp.View()
 }
 
 func (m groupModel) Title() string {
