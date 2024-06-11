@@ -225,6 +225,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, keys.Global.Back):
 			// <esc> goes back to last page
 			m.goBack()
+			cmds = append(cmds, tea.Sequence(tea.ClearScrollArea, m.currentModel().Init()))
 		case key.Matches(msg, keys.Global.Help):
 			// '?' enables help mode
 			m.mode = helpMode
@@ -267,16 +268,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 	case tui.NavigationMsg:
-		created, err := m.setCurrent(msg.Page)
+		cmd, err := m.setCurrent(msg.Page)
 		if err != nil {
 			return m, tui.ReportError(err, "setting current page")
 		}
-		if created {
-			cmds = append(cmds, m.currentModel().Init())
-		}
-		if msg.Tab != "" {
-			cmds = append(cmds, m.updateCurrent(tui.SetActiveTabMsg(msg.Tab)))
-		}
+		cmds = append(cmds, cmd)
 	case tui.ErrorMsg:
 		if msg.Error != nil {
 			err := msg.Error
@@ -468,6 +464,13 @@ func (m model) View() string {
 					renderedLogo,
 				),
 			),
+	}
+
+	if m.mode == promptMode {
+		components = append(components, m.prompt.View(m.width))
+	}
+
+	components = append(components,
 		// title
 		lipgloss.NewStyle().
 			// Prohibit overflowing title wrapping to another line.
@@ -477,17 +480,14 @@ func (m model) View() string {
 			// Prefix title with a space to add margin (Inline() doesn't permit
 			// using Margin()).
 			Render(pageTitleLine),
-	}
-
-	if m.mode == promptMode {
-		components = append(components, m.prompt.View(m.width))
-	}
-
-	components = append(components,
+		// horizontal rule
+		strings.Repeat("─", m.width),
 		// content
 		lipgloss.NewStyle().
 			Height(m.viewHeight()).
 			Render(content),
+		// horizontal rule
+		strings.Repeat("─", m.width),
 		// footer
 		lipgloss.JoinHorizontal(
 			lipgloss.Top,
@@ -508,7 +508,7 @@ func (m model) View() string {
 // viewHeight returns the height available to the current model (subordinate to
 // the top model).
 func (m model) viewHeight() int {
-	vh := m.height - headerHeight - breadcrumbsHeight - messageFooterHeight
+	vh := m.height - headerHeight - breadcrumbsHeight - (horizontalRuleHeight * 2) - messageFooterHeight
 	if m.mode == promptMode {
 		vh -= tui.PromptHeight
 	}

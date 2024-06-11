@@ -49,7 +49,6 @@ func (m *ListMaker) Make(_ resource.Resource, width, height int) (tea.Model, err
 	}
 	table := table.New(columns, renderer, width, height,
 		table.WithSortFunc(module.ByPath),
-		table.WithBorder[resource.ID, *module.Module](),
 	)
 
 	return list{
@@ -68,16 +67,21 @@ type list struct {
 	WorkspaceService tui.WorkspaceService
 	RunService       tui.RunService
 
-	table   table.Model[resource.ID, *module.Module]
-	spinner *spinner.Model
-	workdir string
-	helpers *tui.Helpers
+	table       table.Model[resource.ID, *module.Module]
+	spinner     *spinner.Model
+	workdir     string
+	helpers     *tui.Helpers
+	initialized bool
 }
 
 func (m list) Init() tea.Cmd {
-	return func() tea.Msg {
+	populate := func() tea.Msg {
+		if m.initialized {
+			return nil
+		}
 		return table.BulkInsertMsg[*module.Module](m.ModuleService.List())
 	}
+	return tea.Batch(populate, tui.ClearViewport())
 }
 
 func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {

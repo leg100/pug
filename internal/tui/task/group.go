@@ -17,8 +17,8 @@ type groupTaskMaker struct {
 	*Maker
 }
 
-func (m *groupTaskMaker) Make(res resource.Resource, width, height int) (tea.Model, error) {
-	return m.makeWithID(res, width, height, TaskGroupMakerID)
+func (m *groupTaskMaker) MakePreview(res resource.Resource, width, height, yPos int) (tea.Model, error) {
+	return m.Maker.make(res, width, height, TaskGroupMakerID, yPos)
 }
 
 // GroupMaker makes taskgroup models

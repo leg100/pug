@@ -281,3 +281,10 @@ func RemoveDuplicateBindings(bindings []key.Binding) []key.Binding {
 	}
 	return bindings[:i]
 }
+
+func BoolToOnOff(b bool) string {
+	if b {
+		return "on"
+	}
+	return "off"
+}

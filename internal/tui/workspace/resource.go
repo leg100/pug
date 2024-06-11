@@ -3,12 +3,10 @@ package workspace
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/charmbracelet/bubbles/key"
-	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
-	"github.com/hokaccha/go-prettyjson"
 	"github.com/leg100/pug/internal/resource"
 	"github.com/leg100/pug/internal/state"
 	"github.com/leg100/pug/internal/tui"
@@ -22,6 +20,10 @@ type ResourceMaker struct {
 }
 
 func (mm *ResourceMaker) Make(res resource.Resource, width, height int) (tea.Model, error) {
+	return mm.MakePreview(res, width, height, tui.DefaultYPosition)
+}
+
+func (mm *ResourceMaker) MakePreview(res resource.Resource, width, height int, yPos int) (tea.Model, error) {
 	stateResource, ok := res.(*state.Resource)
 	if !ok {
 		return nil, fmt.Errorf("constructing state resource model: unexpected resource type: %T", res)
@@ -33,28 +35,25 @@ func (mm *ResourceMaker) Make(res resource.Resource, width, height int) (tea.Mod
 		helpers:  mm.Helpers,
 		borders:  !mm.disableBorders,
 		resource: stateResource,
+		viewport: tui.NewViewport(tui.ViewportOptions{
+			Width:     width,
+			Height:    height,
+			YPosition: yPos,
+			JSON:      true,
+		}),
 	}
 
-	// marshal resource's attributes to json and set as the viewport's content.
-	marshaled, err := json.MarshalIndent(stateResource.Attributes, "", "\t")
+	marshaled, err := json.Marshal(stateResource.Attributes)
 	if err != nil {
 		return nil, err
 	}
-	prettified, err := prettyjson.Format([]byte(marshaled))
-	if err != nil {
-		return nil, err
-	}
-	m.viewport = viewport.New(0, 0)
-	m.viewport.SetContent(string(prettified))
-
-	m.setWidth(width)
-	m.setHeight(height)
+	m.viewport.SetContent(string(marshaled), true)
 
 	return m, nil
 }
 
 type resourceModel struct {
-	viewport viewport.Model
+	viewport tui.Viewport
 	resource *state.Resource
 	height   int
 	width    int
@@ -63,7 +62,7 @@ type resourceModel struct {
 }
 
 func (m resourceModel) Init() tea.Cmd {
-	return nil
+	return m.viewport.Init()
 }
 
 func (m resourceModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -71,12 +70,6 @@ func (m resourceModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmd  tea.Cmd
 		cmds []tea.Cmd
 	)
-
-	switch msg := msg.(type) {
-	case tea.WindowSizeMsg:
-		m.setWidth(msg.Width)
-		m.setHeight(msg.Height)
-	}
 
 	// Handle keyboard and mouse events in the viewport
 	m.viewport, cmd = m.viewport.Update(msg)
@@ -86,67 +79,21 @@ func (m resourceModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 const (
-	// scrollPercentWidth is the width of the scroll percentage section to the
-	// right of the viewport
-	scrollPercentWidth = 10
-	// bordersWidth is the total width of the borders to the left and
-	// right of the content
-	bordersWidth = 2
 	// bordersHeight is the total height of the borders to the top and
 	// bottom of the content
 	bordersHeight = 2
 )
 
-var borderStyle = lipgloss.NewStyle().Border(lipgloss.NormalBorder())
-
-func (m *resourceModel) setWidth(width int) {
-	m.width = width
-
-	viewportWidth := width - scrollPercentWidth
-	if m.borders {
-		viewportWidth -= bordersWidth
-	}
-	m.viewport.Width = max(0, viewportWidth)
-}
-
-func (m *resourceModel) setHeight(height int) {
-	if m.borders {
-		height -= bordersHeight
-	}
-	m.viewport.Height = height
-	m.height = height
-}
-
 // View renders the viewport
 func (m resourceModel) View() string {
-	var components []string
-
-	viewport := tui.Regular.Copy().
-		MaxWidth(m.viewport.Width).
-		Render(m.viewport.View())
-	components = append(components, viewport)
-
-	// scroll percent container occupies a fixed width section to the right of
-	// the viewport.
-	scrollPercent := tui.Regular.Copy().
-		Background(tui.ScrollPercentageBackground).
-		Padding(0, 1).
-		Render(fmt.Sprintf("%3.f%%", m.viewport.ScrollPercent()*100))
-	scrollPercentContainer := tui.Regular.Copy().
-		Margin(0, 1).
-		Height(m.height).
-		// subtract 2 to account for margins
-		Width(scrollPercentWidth - 2).
-		AlignVertical(lipgloss.Bottom).
-		Render(scrollPercent)
-	components = append(components, scrollPercentContainer)
-
-	content := lipgloss.JoinHorizontal(lipgloss.Left, components...)
-
 	if m.borders {
-		return borderStyle.Render(content)
+		return fmt.Sprintf("%s\n%s\n%s",
+			strings.Repeat("─", m.width),
+			m.viewport.View(),
+			strings.Repeat("─", m.width),
+		)
 	}
-	return content
+	return m.viewport.View()
 }
 
 func (m resourceModel) Title() string {

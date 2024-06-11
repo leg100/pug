@@ -48,8 +48,8 @@ type ListTaskMaker struct {
 	*Maker
 }
 
-func (m *ListTaskMaker) Make(res resource.Resource, width, height int) (tea.Model, error) {
-	return m.makeWithID(res, width, height, TaskListMakerID)
+func (m *ListTaskMaker) MakePreview(res resource.Resource, width, height, yPos int) (tea.Model, error) {
+	return m.Maker.make(res, width, height, TaskListMakerID, yPos)
 }
 
 // NewListMaker constructs a task list model maker
@@ -66,7 +66,7 @@ func NewListMaker(tasks tui.TaskService, runs tui.RunService, taskMaker *Maker, 
 type ListMaker struct {
 	RunService  tui.RunService
 	TaskService tui.TaskService
-	TaskMaker   tui.Maker
+	TaskMaker   split.Maker
 	Helpers     *tui.Helpers
 
 	hideCommandColumn bool
@@ -136,10 +136,11 @@ type List struct {
 }
 
 func (m List) Init() tea.Cmd {
-	return func() tea.Msg {
+	populateTasks := func() tea.Msg {
 		tasks := m.tasks.List(task.ListOptions{})
 		return table.BulkInsertMsg[*task.Task](tasks)
 	}
+	return tea.Batch(populateTasks, m.Model.Init())
 }
 
 func (m List) Update(msg tea.Msg) (tea.Model, tea.Cmd) {

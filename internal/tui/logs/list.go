@@ -63,7 +63,6 @@ func (m *ListMaker) Make(_ resource.Resource, width, height int) (tea.Model, err
 	table := table.New(columns, renderer, width, height,
 		table.WithSortFunc(logging.BySerialDesc),
 		table.WithSelectable[resource.ID, logging.Message](false),
-		table.WithBorder[resource.ID, logging.Message](),
 	)
 
 	return list{logger: m.Logger, table: table}, nil
@@ -75,9 +74,10 @@ type list struct {
 }
 
 func (m list) Init() tea.Cmd {
-	return func() tea.Msg {
+	populate := func() tea.Msg {
 		return table.BulkInsertMsg[logging.Message](m.logger.List())
 	}
+	return tea.Batch(populate, tui.ClearViewport())
 }
 
 func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {

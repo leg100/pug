@@ -70,28 +70,32 @@ func (m *ResourceListMaker) Make(ws resource.Resource, width, height int) (tea.M
 type resourceList struct {
 	split.Model[*state.Resource]
 
-	states    tui.StateService
-	runs      tui.RunService
-	workspace resource.Resource
-	state     *state.State
-	reloading bool
-	height    int
-	width     int
-	helpers   *tui.Helpers
-
-	spinner *spinner.Model
+	states      tui.StateService
+	runs        tui.RunService
+	workspace   resource.Resource
+	state       *state.State
+	reloading   bool
+	height      int
+	width       int
+	helpers     *tui.Helpers
+	spinner     *spinner.Model
+	initialized bool
 }
 
 type initState *state.State
 
 func (m resourceList) Init() tea.Cmd {
-	return func() tea.Msg {
+	initState := func() tea.Msg {
+		if m.initialized {
+			return nil
+		}
 		state, err := m.states.Get(m.workspace.GetID())
 		if err != nil {
 			return tui.ReportError(err, "initializing state model")
 		}
 		return initState(state)
 	}
+	return tea.Batch(initState, m.Model.Init())
 }
 
 // reloadedMsg is sent when a state reload has finished.

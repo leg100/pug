@@ -54,7 +54,6 @@ func (m *ListMaker) Make(parent resource.Resource, width, height int) (tea.Model
 	table := table.New(columns, renderer, width, height,
 		table.WithSortFunc(workspace.Sort(m.ModuleService)),
 		table.WithParent[resource.ID, *workspace.Workspace](parent),
-		table.WithBorder[resource.ID, *workspace.Workspace](),
 	)
 
 	return list{

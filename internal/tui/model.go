@@ -43,3 +43,9 @@ type ModelTitle interface {
 type ModelHelpBindings interface {
 	HelpBindings() []key.Binding
 }
+
+// ModelToggleVisibility is implemented by models that need to know whether they
+// are currently visible or not.
+type ModelToggleVisibility interface {
+	ToggleVisibility(visible bool) tea.Cmd
+}
