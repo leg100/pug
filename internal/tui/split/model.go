@@ -182,12 +182,6 @@ func (m Model[R]) previewHeight() int {
 	return max(0, m.height-m.listHeight()-(totalPaneBorderHeight*2))
 }
 
-var (
-	singlePaneBorder   = lipgloss.NewStyle().Border(lipgloss.NormalBorder())
-	activePaneBorder   = lipgloss.NewStyle().Border(lipgloss.ThickBorder())
-	inactivePaneBorder = lipgloss.NewStyle().Border(lipgloss.NormalBorder()).BorderForeground(tui.LighterGrey)
-)
-
 func (m Model[R]) View() string {
 	var (
 		tableBorder   lipgloss.Style

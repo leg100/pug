@@ -13,4 +13,7 @@ var (
 
 	Border      = Regular.Copy().Border(lipgloss.NormalBorder())
 	ThickBorder = Regular.Copy().Border(lipgloss.ThickBorder())
+
+	ActiveBorder   = ThickBorder.Copy()
+	InactiveBorder = Border.Copy().BorderForeground(LighterGrey)
 )
