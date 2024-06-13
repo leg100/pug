@@ -34,7 +34,7 @@ type Model[K resource.ID, V resource.Resource] struct {
 	rowRenderer RowRenderer[V]
 	cursor      int
 	focus       bool
-	border      bool
+	borderStyle lipgloss.Style
 
 	items    map[K]V
 	sortFunc SortFunc[V]
@@ -94,6 +94,7 @@ func New[K resource.ID, V resource.Resource](columns []Column, fn RowRenderer[V]
 		selectable:  true,
 		focus:       true,
 		filter:      filter,
+		borderStyle: tui.Border,
 	}
 	for _, fn := range opts {
 		fn(&m)
@@ -112,7 +113,7 @@ func New[K resource.ID, V resource.Resource](columns []Column, fn RowRenderer[V]
 		m.cols = append(m.cols, col)
 	}
 
-	m.setDimensionsAccountingForBorder(width, height)
+	m.setDimensions(width, height)
 
 	return m
 }
@@ -139,32 +140,15 @@ func WithParent[K resource.ID, V resource.Resource](parent resource.Resource) Op
 	}
 }
 
-func WithBorder[K resource.ID, V resource.Resource]() Option[K, V] {
-	return func(m *Model[K, V]) {
-		m.border = true
-	}
-}
-
 func (m *Model[K, V]) filterVisible() bool {
 	// Filter is visible if it's either in focus, or it has a non-empty value.
 	return m.filter.Focused() || m.filter.Value() != ""
 }
 
-// setDimensionsAccountingForBorder sets the dimensions of the table, taking
-// account of the height and width of the optional border.
-func (m *Model[K, V]) setDimensionsAccountingForBorder(width, height int) {
-	if m.border {
-		m.setDimensions(width-2, height-2)
-	} else {
-		m.setDimensions(width, height)
-	}
-}
-
-// setDimensions sets the dimensions of the table. Note the optional border is
-// not taken into account.
+// setDimensions sets the dimensions of the table.
 func (m *Model[K, V]) setDimensions(width, height int) {
-	// Accommodate height of table header
-	m.viewport.Height = height - headerHeight
+	// Accommodate height of table header and borders
+	m.viewport.Height = height - headerHeight - 2
 	if m.filterVisible() {
 		// Accommodate height of filter widget
 		m.viewport.Height -= filterHeight
@@ -172,8 +156,8 @@ func (m *Model[K, V]) setDimensions(width, height int) {
 	m.height = height
 
 	// Set available width for table to expand into, whilst respecting a
-	// minimum width of 80.
-	m.width = max(80, width)
+	// minimum width of 80, and accomodating border.
+	m.width = max(0, width-2)
 	m.viewport.Width = m.width
 	m.recalculateWidth()
 
@@ -230,7 +214,7 @@ func (m Model[K, V]) Update(msg tea.Msg) (Model[K, V], tea.Cmd) {
 			m.SetItems(m.items)
 		}
 	case tea.WindowSizeMsg:
-		m.setDimensionsAccountingForBorder(msg.Width, msg.Height)
+		m.setDimensions(msg.Width, msg.Height)
 	case spinner.TickMsg:
 		// Rows can contain spinners, so we re-render them whenever a tick is
 		// received.
@@ -303,10 +287,11 @@ func (m Model[K, V]) View() string {
 	components = append(components, m.headersView())
 	components = append(components, m.viewport.View())
 	content := lipgloss.JoinVertical(lipgloss.Top, components...)
-	if m.border {
-		return tui.Border.Copy().Render(content)
-	}
-	return content
+	return m.borderStyle.Render(content)
+}
+
+func (m *Model[K, V]) SetBorderStyle(style lipgloss.Style) {
+	m.borderStyle = style
 }
 
 // UpdateViewport updates the list content based on the previously defined

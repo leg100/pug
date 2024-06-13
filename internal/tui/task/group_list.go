@@ -51,7 +51,6 @@ func (m *GroupListMaker) Make(_ resource.Resource, width, height int) (tea.Model
 
 	table := table.New(columns, renderer, width, height,
 		table.WithSortFunc(task.SortGroupsByCreated),
-		table.WithBorder[resource.ID, *task.Group](),
 	)
 
 	return groupList{

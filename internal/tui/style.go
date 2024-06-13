@@ -12,7 +12,7 @@ var (
 	Height = lipgloss.Height
 
 	Border      = Regular.Copy().Border(lipgloss.NormalBorder())
-	ThickBorder = Regular.Copy().Border(lipgloss.ThickBorder())
+	ThickBorder = Regular.Copy().Border(lipgloss.ThickBorder()).BorderForeground(Violet)
 
 	ActiveBorder   = ThickBorder.Copy()
 	InactiveBorder = Border.Copy().BorderForeground(LighterGrey)

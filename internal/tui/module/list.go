@@ -49,7 +49,6 @@ func (m *ListMaker) Make(_ resource.Resource, width, height int) (tea.Model, err
 	}
 	table := table.New(columns, renderer, width, height,
 		table.WithSortFunc(module.ByPath),
-		table.WithBorder[resource.ID, *module.Module](),
 	)
 
 	return list{

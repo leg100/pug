@@ -27,6 +27,7 @@ func (mm *ResourceMaker) Make(res resource.Resource, width, height int) (tea.Mod
 	m := resourceModel{
 		helpers:  mm.Helpers,
 		resource: stateResource,
+		border:   !mm.disableBorders,
 	}
 
 	marshaled, err := json.MarshalIndent(stateResource.Attributes, "", "\t")
@@ -34,10 +35,9 @@ func (mm *ResourceMaker) Make(res resource.Resource, width, height int) (tea.Mod
 		return nil, err
 	}
 	m.viewport = tui.NewViewport(tui.ViewportOptions{
-		Width:  width,
-		Height: height,
+		Width:  m.viewportWidth(width),
+		Height: m.viewportHeight(height),
 		JSON:   true,
-		Border: !mm.disableBorders,
 	})
 	m.viewport.AppendContent(string(marshaled), true)
 
@@ -48,6 +48,7 @@ type resourceModel struct {
 	viewport tui.Viewport
 	resource *state.Resource
 	helpers  *tui.Helpers
+	border   bool
 }
 
 func (m resourceModel) Init() tea.Cmd {
@@ -62,10 +63,8 @@ func (m resourceModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
-		m.viewport, _ = m.viewport.Update(tea.WindowSizeMsg{
-			Width:  msg.Width,
-			Height: msg.Height,
-		})
+		m.viewport.SetDimensions(m.viewportWidth(msg.Width), m.viewportHeight(msg.Height))
+		return m, nil
 	}
 
 	// Handle keyboard and mouse events in the viewport
@@ -76,7 +75,24 @@ func (m resourceModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m resourceModel) View() string {
+	if m.border {
+		return tui.Border.Render(m.viewport.View())
+	}
 	return m.viewport.View()
+}
+
+func (m resourceModel) viewportWidth(width int) int {
+	if m.border {
+		width -= 2
+	}
+	return max(0, width)
+}
+
+func (m resourceModel) viewportHeight(height int) int {
+	if m.border {
+		height -= 2
+	}
+	return max(0, height)
 }
 
 func (m resourceModel) Title() string {

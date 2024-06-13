@@ -59,23 +59,21 @@ func (mm *Maker) makeWithID(res resource.Resource, width, height int, makerID Ma
 		buf:      make([]byte, 1024),
 		helpers:  mm.Helpers,
 		showInfo: mm.showInfo,
+		border:   border,
 		width:    width,
-		height:   height,
 	}
+	m.setHeight(height)
 
 	if rr := m.task.Run(); rr != nil {
 		m.run = rr.(*run.Run)
 	}
 
 	m.viewport = tui.NewViewport(tui.ViewportOptions{
-		Width:      width,
-		Height:     height,
-		JSON:       true,
+		JSON:       m.task.JSON,
 		Autoscroll: !mm.disableAutoscroll,
-		Border:     border,
+		Width:      m.viewportWidth(),
+		Height:     m.height,
 	})
-	m.setWidth(width)
-	m.setHeight(height)
 
 	return m, nil
 }
@@ -114,6 +112,7 @@ type model struct {
 	makerID MakerID
 
 	showInfo bool
+	border   bool
 
 	viewport tui.Viewport
 	spinner  *spinner.Model
@@ -160,7 +159,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case toggleTaskInfoMsg:
 		m.showInfo = !m.showInfo
 		// adjust width of viewport to accomodate info
-		m.setWidth(m.width)
+		m.viewport.SetDimensions(m.viewportWidth(), m.height)
 	case outputMsg:
 		// Ensure output is for this task
 		if msg.taskID != m.task.ID {
@@ -185,10 +184,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.task = msg.Payload
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
-		m.viewport, _ = m.viewport.Update(tea.WindowSizeMsg{
-			Width:  m.getViewportWidth(),
-			Height: msg.Height,
-		})
+		m.setHeight(msg.Height)
+		m.viewport.SetDimensions(m.viewportWidth(), m.height)
+		return m, nil
 	}
 
 	// Handle keyboard and mouse events in the viewport
@@ -198,26 +196,28 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, tea.Batch(cmds...)
 }
 
-func (m model) getViewportWidth() int {
-	if m.showInfo {
-		return m.width - infoWidth
+func (m model) viewportWidth() int {
+	if m.border {
+		m.width -= 2
 	}
-	return m.width
+	if m.showInfo {
+		m.width -= infoWidth
+	}
+	return max(0, m.width)
+}
+
+func (m *model) setHeight(height int) {
+	if m.border {
+		height -= 2
+	}
+	m.height = height
 }
 
 const (
-	// bordersWidth is the total width of the borders to the left and
-	// right of the content
-	bordersWidth = 2
-	// bordersHeight is the total height of the borders to the top and
-	// bottom of the content
-	bordersHeight = 2
 	// infoWidth is the width of the optional task info sidebar to the left of the
 	// viewport.
 	infoWidth = 35
 )
-
-var borderStyle = lipgloss.NewStyle().Border(lipgloss.NormalBorder())
 
 // View renders the viewport
 func (m model) View() string {
@@ -249,26 +249,25 @@ func (m model) View() string {
 			tui.Bold.Render("Environment variables"),
 			envs,
 			"",
-			fmt.Sprintf("Autoscroll: %s", boolToOnOff(m.autoscroll)),
+			fmt.Sprintf("Autoscroll: %s", boolToOnOff(m.viewport.Autoscroll)),
 		)
 		container := tui.Regular.Copy().
 			Margin(0, 1).
-			Height(m.height).
-			// subtract 2 to account for margins, and 1 for the border to the
-			// right
-			Width(infoWidth-2-1).
+			// Border to the right, dividing the info from the viewport
 			Border(lipgloss.NormalBorder(), false, true, false, false).
 			BorderForeground(tui.LighterGrey).
+			// Subtract 2 to account for margins, and 1 for border
+			Height(m.height).
+			// Subtract 2 to account for margins, and 1 for border
+			Width(max(infoWidth - 2 - 1)).
 			Render(content)
 		components = append(components, container)
 	}
-
-	viewport := tui.Regular.Copy().
-		Render(m.viewport.View())
-	components = append(components, viewport)
-
+	components = append(components, m.viewport.View())
 	content := lipgloss.JoinHorizontal(lipgloss.Left, components...)
-
+	if m.border {
+		return tui.Border.Render(content)
+	}
 	return content
 }
 

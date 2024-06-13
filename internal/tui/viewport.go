@@ -15,7 +15,6 @@ type Viewport struct {
 
 	Autoscroll bool
 
-	border  bool
 	content string
 	json    bool
 }
@@ -32,7 +31,6 @@ func NewViewport(opts ViewportOptions) Viewport {
 	m := Viewport{
 		viewport:   viewport.New(0, 0),
 		json:       opts.JSON,
-		border:     opts.Border,
 		Autoscroll: opts.Autoscroll,
 	}
 	m.SetDimensions(opts.Width, opts.Height)
@@ -57,26 +55,17 @@ func (m Viewport) Update(msg tea.Msg) (Viewport, tea.Cmd) {
 }
 
 func (m Viewport) View() string {
-	if m.border {
-		return Border.Render(m.viewport.View())
-	}
 	return m.viewport.View()
 }
 
-func (m Viewport) SetDimensions(width, height int) {
-	if m.border {
-		// Subtract 2 to accomodate border
-		width -= 2
-		height -= 2
-	}
-
-	// If width has changed, re-wrap existing content.
-	if m.viewport.Width != width {
-		m.setContent()
-	}
-
+func (m *Viewport) SetDimensions(width, height int) {
+	// If width has changed, re-rewrap existing content.
+	rewrap := m.viewport.Width != width
 	m.viewport.Width = width
 	m.viewport.Height = height
+	if rewrap {
+		m.setContent()
+	}
 }
 
 func (m *Viewport) AppendContent(content string, finished bool) error {
@@ -106,13 +95,6 @@ func (m *Viewport) AppendContent(content string, finished bool) error {
 }
 
 func (m *Viewport) setContent() {
-	// TODO: set min width
-	wrapped := wrap.String(m.content, m.viewport.Width)
-	m.viewport.SetContent(wrapped)
-}
-
-func (m *Viewport) ToggleAutoscroll() {
-	// TODO: set min width
 	wrapped := wrap.String(m.content, m.viewport.Width)
 	m.viewport.SetContent(wrapped)
 }
