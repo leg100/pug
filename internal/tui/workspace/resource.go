@@ -96,7 +96,7 @@ func (m resourceModel) viewportHeight(height int) int {
 }
 
 func (m resourceModel) Title() string {
-	return m.helpers.Breadcrumbs("Resource", m.resource)
+	return tui.Breadcrumbs("Resource", m.resource)
 }
 
 func (m resourceModel) HelpBindings() []key.Binding {

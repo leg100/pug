@@ -291,7 +291,7 @@ func (m model) TabStatus() string {
 }
 
 func (m model) Title() string {
-	return m.helpers.Breadcrumbs("Task", m.task)
+	return tui.Breadcrumbs("Task", m.task)
 }
 
 func (m model) Status() string {

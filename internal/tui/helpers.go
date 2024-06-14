@@ -209,28 +209,28 @@ func (h *Helpers) RunReport(report run.Report) string {
 	return fmt.Sprintf("%s%s%s", additions, changes, destructions)
 }
 
-func (h *Helpers) Breadcrumbs(title string, res resource.Resource, crumbs ...string) string {
+func Breadcrumbs(title string, res resource.Resource, crumbs ...string) string {
 	// format: title{task command}[workspace name](module path)
 	switch res.GetKind() {
 	case resource.Task:
 		cmd := Regular.Copy().Foreground(Blue).Render(res.String())
 		crumb := fmt.Sprintf("{%s}", cmd)
-		return h.Breadcrumbs(title, res.GetParent(), crumb)
+		return Breadcrumbs(title, res.GetParent(), crumb)
 	case resource.StateResource:
 		addr := Regular.Copy().Foreground(Blue).Render(res.String())
 		crumb := fmt.Sprintf("{%s}", addr)
-		return h.Breadcrumbs(title, res.GetParent(), crumb)
+		return Breadcrumbs(title, res.GetParent(), crumb)
 	case resource.TaskGroup:
 		cmd := Regular.Copy().Foreground(Blue).Render(res.String())
 		id := Regular.Copy().Foreground(Green).Render(res.GetID().String())
 		crumb := fmt.Sprintf("{%s}[%s]", cmd, id)
-		return h.Breadcrumbs(title, res.GetParent(), crumb)
+		return Breadcrumbs(title, res.GetParent(), crumb)
 	case resource.Run:
 		// Skip run info in breadcrumbs
-		return h.Breadcrumbs(title, res.GetParent(), crumbs...)
+		return Breadcrumbs(title, res.GetParent(), crumbs...)
 	case resource.Workspace:
 		crumb := fmt.Sprintf("[%s]", Regular.Copy().Foreground(Red).Render(res.String()))
-		return h.Breadcrumbs(title, res.GetParent(), append(crumbs, crumb)...)
+		return Breadcrumbs(title, res.GetParent(), append(crumbs, crumb)...)
 	case resource.Module:
 		path := Regular.Copy().Foreground(modulePathColor).Render(res.String())
 		crumbs = append(crumbs, fmt.Sprintf("(%s)", path))

@@ -246,7 +246,7 @@ func (m resourceList) View() string {
 func (m resourceList) Title() string {
 	title := fmt.Sprintf(
 		"%s[%s]",
-		m.helpers.Breadcrumbs("State", m.workspace),
+		tui.Breadcrumbs("State", m.workspace),
 		m.Table.TotalString(),
 	)
 	if m.state != nil {

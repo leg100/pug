@@ -131,7 +131,7 @@ func (m groupModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m groupModel) Title() string {
-	return m.helpers.Breadcrumbs("TaskGroup", m.group)
+	return tui.Breadcrumbs("TaskGroup", m.group)
 }
 
 func (m groupModel) Status() string {
