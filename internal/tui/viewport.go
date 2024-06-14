@@ -5,6 +5,7 @@ import (
 
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/hokaccha/go-prettyjson"
 	"github.com/leg100/reflow/wrap"
 )
@@ -54,11 +55,31 @@ func (m Viewport) Update(msg tea.Msg) (Viewport, tea.Cmd) {
 	return m, tea.Batch(cmds...)
 }
 
+// percentWidth is the width of the scroll percentage section to the
+// right of the viewport
+const percentWidth = 6 // 6 = 4 for xxx% + 2 for padding
+
 func (m Viewport) View() string {
-	return m.viewport.View()
+	// scroll percent container occupies a fixed width section to the right of
+	// the viewport.
+	percent := Regular.Copy().
+		Background(ScrollPercentageBackground).
+		Padding(0, 1).
+		Render(fmt.Sprintf("%3.f%%", m.viewport.ScrollPercent()*100))
+	percentContainer := Regular.Copy().
+		Height(m.viewport.Height).
+		Width(percentWidth).
+		AlignVertical(lipgloss.Bottom).
+		Render(percent)
+
+	return lipgloss.JoinHorizontal(lipgloss.Top,
+		m.viewport.View(),
+		percentContainer,
+	)
 }
 
 func (m *Viewport) SetDimensions(width, height int) {
+	width = max(0, width-percentWidth)
 	// If width has changed, re-rewrap existing content.
 	rewrap := m.viewport.Width != width
 	m.viewport.Width = width
