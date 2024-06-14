@@ -39,13 +39,14 @@ type testResource struct {
 // testing. The rows are sorted from lowest int to highest int.
 func setupTest() Model[resource.ID, testResource] {
 	renderer := func(v testResource) RenderedRow { return nil }
-	tbl := New[resource.ID, testResource](nil, renderer, 0, 0).
+	tbl := New(nil, renderer, 0, 0,
 		WithSortFunc(func(i, j testResource) int {
 			if i.n < j.n {
 				return -1
 			}
 			return 1
-		})
+		}),
+	)
 	tbl.SetItems(testItems)
 	return tbl
 }
@@ -121,7 +122,7 @@ func TestTable_SelectRange(t *testing.T) {
 			for _, key := range tt.selected {
 				tbl.ToggleSelectionByKey(key)
 			}
-			tbl.cursor = tt.cursor
+			tbl.cursorRow = tt.cursor
 
 			tbl.SelectRange()
 

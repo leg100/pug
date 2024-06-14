@@ -32,9 +32,11 @@ type Model[K resource.ID, V resource.Resource] struct {
 	cols        []Column
 	rows        []Row[K, V]
 	rowRenderer RowRenderer[V]
-	cursor      int
 	focus       bool
 	borderStyle lipgloss.Style
+
+	cursorRow int
+	cursorID  K
 
 	items    map[K]V
 	sortFunc SortFunc[V]
@@ -86,7 +88,6 @@ func New[K resource.ID, V resource.Resource](columns []Column, fn RowRenderer[V]
 	filter.Prompt = "Filter: "
 
 	m := Model[K, V]{
-		cursor:      0,
 		viewport:    viewport.New(0, 0),
 		rowRenderer: fn,
 		items:       make(map[K]V),
@@ -148,10 +149,10 @@ func (m *Model[K, V]) filterVisible() bool {
 // setDimensions sets the dimensions of the table.
 func (m *Model[K, V]) setDimensions(width, height int) {
 	// Accommodate height of table header and borders
-	m.viewport.Height = height - headerHeight - 2
+	m.viewport.Height = max(0, height-headerHeight-2)
 	if m.filterVisible() {
 		// Accommodate height of filter widget
-		m.viewport.Height -= filterHeight
+		m.viewport.Height = max(0, m.viewport.Height-filterHeight)
 	}
 	m.height = height
 
@@ -302,12 +303,12 @@ func (m *Model[K, V]) UpdateViewport() {
 	// Render only rows from: m.cursor-m.viewport.Height to: m.cursor+m.viewport.Height
 	// Constant runtime, independent of number of rows in a table.
 	// Limits the number of renderedRows to a maximum of 2*m.viewport.Height
-	if m.cursor >= 0 {
-		m.start = clamp(m.cursor-m.viewport.Height, 0, m.cursor)
+	if m.cursorRow >= 0 {
+		m.start = clamp(m.cursorRow-m.viewport.Height, 0, m.cursorRow)
 	} else {
 		m.start = 0
 	}
-	m.end = clamp(m.cursor+m.viewport.Height, m.cursor, len(m.rows))
+	m.end = clamp(m.cursorRow+m.viewport.Height, m.cursorRow, len(m.rows))
 	for i := m.start; i < m.end; i++ {
 		renderedRows = append(renderedRows, m.renderRow(i))
 	}
@@ -320,10 +321,10 @@ func (m *Model[K, V]) UpdateViewport() {
 // CurrentRow returns the row on which the cursor currently sits. If the cursor
 // is out of bounds then false is returned along with an empty row.
 func (m Model[K, V]) CurrentRow() (Row[K, V], bool) {
-	if m.cursor < 0 || m.cursor >= len(m.rows) {
+	if m.cursorRow < 0 || m.cursorRow >= len(m.rows) {
 		return *new(Row[K, V]), false
 	}
-	return m.rows[m.cursor], true
+	return m.rows[m.cursorRow], true
 }
 
 // SelectedOrCurrent returns either the selected rows, or if there are no
@@ -433,20 +434,20 @@ func (m *Model[K, V]) SelectRange() {
 	first := -1
 	n := 0
 	for i, row := range m.rows {
-		if i == m.cursor && first > -1 && first < m.cursor {
+		if i == m.cursorRow && first > -1 && first < m.cursorRow {
 			// Select rows before and including cursor
-			n = m.cursor - first + 1
+			n = m.cursorRow - first + 1
 			break
 		}
 		if _, ok := m.Selected[row.Key]; !ok {
 			// Ignore unselected rows
 			continue
 		}
-		if i > m.cursor {
+		if i > m.cursorRow {
 			// Select rows including cursor and all rows up to but not including
 			// next selected row
-			first = m.cursor
-			n = i - m.cursor
+			first = m.cursorRow
+			n = i - m.cursorRow
 			break
 		}
 		// Start selecting rows after this currently selected row.
@@ -490,6 +491,7 @@ func (m *Model[K, V]) SetItems(items map[K]V) {
 
 	// Overwrite existing rows
 	m.rows = make([]Row[K, V], 0, len(items))
+
 	// Convert items into rows, and carry across matching selections
 	for id, it := range items {
 		if m.filter.Value() != "" {
@@ -535,24 +537,45 @@ func (m *Model[K, V]) SetItems(items map[K]V) {
 	// corresponding item.
 	m.Selected = selections
 
-	// Check if cursor is now out of bounds and if so set it to the last row.
-	// This happens when rows are removed.
-	if m.cursor > len(m.rows)-1 {
-		m.cursor = max(0, len(m.rows)-1)
+	// Track item corresponding to the current cursor.
+	m.cursorRow = -1
+	for i, item := range m.rows {
+		if item.Key == m.cursorID {
+			// Found item corresponding to cursor, update its position
+			m.cursorRow = i
+		}
+	}
+	// Check if item corresponding to cursor doesn't exists, which occurs when
+	// items are removed, or the very first time the table is populated. If so,
+	// set cursor to the first row.
+	if m.cursorRow == -1 {
+		m.cursorRow = 0
+		if len(m.rows) > 0 {
+			m.cursorID = m.rows[m.cursorRow].Key
+		}
 	}
 
 	m.UpdateViewport()
+
+	// Move cursor back into view if viewport has gone below cursor.
+	if m.viewport.YOffset == 0 && m.cursorRow >= (m.start+m.viewport.Height) {
+		m.viewport.SetYOffset(m.viewport.YOffset + 1)
+	}
+	// Move cursor back into view if viewport has gone above cursor.
+	if m.viewport.YOffset >= m.viewport.Height && m.cursorRow < (m.start+m.viewport.Height) {
+		m.viewport.SetYOffset(m.viewport.YOffset - 1)
+	}
 }
 
 // MoveUp moves the current row up by any number of rows.
 // It can not go above the first row.
 func (m *Model[K, V]) MoveUp(n int) {
-	m.cursor = clamp(m.cursor-n, 0, len(m.rows)-1)
+	m.moveCursor(-n)
 	switch {
 	case m.start == 0:
-		m.viewport.SetYOffset(clamp(m.viewport.YOffset, 0, m.cursor))
+		m.viewport.SetYOffset(clamp(m.viewport.YOffset, 0, m.cursorRow))
 	case m.start < m.viewport.Height:
-		m.viewport.YOffset = (clamp(clamp(m.viewport.YOffset+n, 0, m.cursor), 0, m.viewport.Height))
+		m.viewport.YOffset = (clamp(clamp(m.viewport.YOffset+n, 0, m.cursorRow), 0, m.viewport.Height))
 	case m.viewport.YOffset >= 1:
 		m.viewport.SetYOffset(clamp(m.viewport.YOffset+n, 1, m.viewport.Height))
 	}
@@ -562,23 +585,30 @@ func (m *Model[K, V]) MoveUp(n int) {
 // MoveDown moves the current row down by any number of rows.
 // It can not go below the last row.
 func (m *Model[K, V]) MoveDown(n int) {
-	m.cursor = clamp(m.cursor+n, 0, len(m.rows)-1)
+	m.moveCursor(n)
 	m.UpdateViewport()
 
 	switch {
 	case m.end == len(m.rows) && m.viewport.YOffset > 0:
 		m.viewport.SetYOffset(clamp(m.viewport.YOffset-n, 1, m.viewport.Height))
-	case m.cursor > (m.end-m.start)/2 && m.viewport.YOffset > 0:
-		m.viewport.SetYOffset(clamp(m.viewport.YOffset-n, 1, m.cursor))
+	case m.cursorRow > (m.end-m.start)/2 && m.viewport.YOffset > 0:
+		m.viewport.SetYOffset(clamp(m.viewport.YOffset-n, 1, m.cursorRow))
 	case m.viewport.YOffset > 1:
-	case m.cursor > m.viewport.YOffset+m.viewport.Height-1:
+	case m.cursorRow > m.viewport.YOffset+m.viewport.Height-1:
 		m.viewport.SetYOffset(clamp(m.viewport.YOffset+1, 0, 1))
+	}
+}
+
+func (m *Model[K, V]) moveCursor(n int) {
+	m.cursorRow = clamp(m.cursorRow+n, 0, len(m.rows)-1)
+	if len(m.rows) > 0 {
+		m.cursorID = m.rows[m.cursorRow].Key
 	}
 }
 
 // GotoTop makes the top row the current row.
 func (m *Model[K, V]) GotoTop() {
-	m.MoveUp(m.cursor)
+	m.MoveUp(m.cursorRow)
 }
 
 // GotoBottom makes the bottom row the current row.
@@ -608,7 +638,7 @@ func (m *Model[K, V]) renderRow(rowIdx int) string {
 	if _, ok := m.Selected[row.Key]; ok {
 		selected = true
 	}
-	if rowIdx == m.cursor {
+	if rowIdx == m.cursorRow {
 		current = true
 	}
 	if current && selected {
