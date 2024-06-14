@@ -49,7 +49,7 @@ type ListTaskMaker struct {
 }
 
 func (m *ListTaskMaker) Make(res resource.Resource, width, height int) (tea.Model, error) {
-	return m.makeWithID(res, width, height, TaskListMakerID)
+	return m.makeWithID(res, width, height, TaskListMakerID, false)
 }
 
 // NewListMaker constructs a task list model maker
@@ -110,7 +110,7 @@ func (mm *ListMaker) Make(parent resource.Resource, width, height int) (tea.Mode
 		return row
 	}
 
-	splitModel := split.New[*task.Task](split.Options[*task.Task]{
+	splitModel := split.New(split.Options[*task.Task]{
 		Columns:      columns,
 		Renderer:     renderer,
 		TableOptions: []table.Option[resource.ID, *task.Task]{table.WithSortFunc(task.ByState)},
@@ -149,6 +149,10 @@ func (m List) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, keys.Common.Cancel):
 			taskIDs := m.Table.SelectedOrCurrentKeys()
 			return m, m.helpers.CreateTasks("cancel", m.tasks.Cancel, taskIDs...)
+		case key.Matches(msg, keys.Global.Enter):
+			if row, ok := m.Table.CurrentRow(); ok {
+				return m, tui.NavigateTo(tui.TaskKind, tui.WithParent(row.Value))
+			}
 		case key.Matches(msg, keys.Common.Apply):
 			runIDs, err := m.pruneApplyableTasks()
 			if err != nil {

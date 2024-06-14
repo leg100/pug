@@ -8,10 +8,8 @@ import (
 
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/spinner"
-	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/hokaccha/go-prettyjson"
 	"github.com/leg100/pug/internal/logging"
 	"github.com/leg100/pug/internal/resource"
 	"github.com/leg100/pug/internal/run"
@@ -41,10 +39,10 @@ type Maker struct {
 }
 
 func (mm *Maker) Make(res resource.Resource, width, height int) (tea.Model, error) {
-	return mm.makeWithID(res, width, height, TaskMakerID)
+	return mm.makeWithID(res, width, height, TaskMakerID, true)
 }
 
-func (mm *Maker) makeWithID(res resource.Resource, width, height int, makerID MakerID) (tea.Model, error) {
+func (mm *Maker) makeWithID(res resource.Resource, width, height int, makerID MakerID, border bool) (tea.Model, error) {
 	task, ok := res.(*task.Task)
 	if !ok {
 		return model{}, errors.New("fatal: cannot make task model with a non-task resource")
@@ -58,21 +56,24 @@ func (mm *Maker) makeWithID(res resource.Resource, width, height int, makerID Ma
 		spinner: mm.Spinner,
 		makerID: makerID,
 		// read upto 1kb at a time
-		buf:        make([]byte, 1024),
-		height:     height,
-		helpers:    mm.Helpers,
-		autoscroll: !mm.disableAutoscroll,
-		showInfo:   mm.showInfo,
+		buf:      make([]byte, 1024),
+		helpers:  mm.Helpers,
+		showInfo: mm.showInfo,
+		border:   border,
+		width:    width,
 	}
+	m.setHeight(height)
 
 	if rr := m.task.Run(); rr != nil {
 		m.run = rr.(*run.Run)
 	}
 
-	m.viewport = viewport.New(0, 0)
-	m.viewport.HighPerformanceRendering = false
-	m.setWidth(width)
-	m.setHeight(height)
+	m.viewport = tui.NewViewport(tui.ViewportOptions{
+		JSON:       m.task.JSON,
+		Autoscroll: !mm.disableAutoscroll,
+		Width:      m.viewportWidth(),
+		Height:     m.height,
+	})
 
 	return m, nil
 }
@@ -108,13 +109,12 @@ type model struct {
 
 	output  io.Reader
 	buf     []byte
-	content string
 	makerID MakerID
 
-	autoscroll bool
-	showInfo   bool
+	showInfo bool
+	border   bool
 
-	viewport viewport.Model
+	viewport tui.Viewport
 	spinner  *spinner.Model
 
 	height int
@@ -155,11 +155,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 	case toggleAutoscrollMsg:
-		m.autoscroll = !m.autoscroll
+		m.viewport.Autoscroll = !m.viewport.Autoscroll
 	case toggleTaskInfoMsg:
 		m.showInfo = !m.showInfo
 		// adjust width of viewport to accomodate info
-		m.setWidth(m.width)
+		m.viewport.SetDimensions(m.viewportWidth(), m.height)
 	case outputMsg:
 		// Ensure output is for this task
 		if msg.taskID != m.task.ID {
@@ -170,34 +170,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.makerID != m.makerID {
 			return m, nil
 		}
-		m.content += msg.output
-		m.viewport.SetContent(m.content)
-		if m.autoscroll {
-			m.viewport.GotoBottom()
+		if err := m.viewport.AppendContent(msg.output, msg.eof); err != nil {
+			return m, tui.ReportError(err, "")
 		}
-		if msg.eof {
-			if m.task.JSON {
-				// Prettify JSON output from task. This can only be done once
-				// the task has finished and has produced complete and
-				// syntactically valid json object(s).
-				//
-				// TODO: avoid casting to string and back, thereby avoiding
-				// unnecessary allocations.
-				if b, err := prettyjson.Format([]byte(m.content)); err != nil {
-					cmds = append(cmds, tui.ReportError(err, "pretty printing task json output"))
-				} else {
-					m.content = string(b)
-					m.viewport.SetContent(string(b))
-					if m.autoscroll {
-						m.viewport.GotoBottom()
-					}
-				}
-			}
-			if m.content == "" {
-				m.content = "Task finished without output"
-				m.viewport.SetContent(m.content)
-			}
-		} else {
+		if !msg.eof {
 			cmds = append(cmds, m.getOutput)
 		}
 	case resource.Event[*task.Task]:
@@ -207,8 +183,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		m.task = msg.Payload
 	case tea.WindowSizeMsg:
-		m.setWidth(msg.Width)
+		m.width = msg.Width
 		m.setHeight(msg.Height)
+		m.viewport.SetDimensions(m.viewportWidth(), m.height)
+		return m, nil
 	}
 
 	// Handle keyboard and mouse events in the viewport
@@ -218,47 +196,28 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, tea.Batch(cmds...)
 }
 
+func (m model) viewportWidth() int {
+	if m.border {
+		m.width -= 2
+	}
+	if m.showInfo {
+		m.width -= infoWidth
+	}
+	return max(0, m.width)
+}
+
+func (m *model) setHeight(height int) {
+	if m.border {
+		height -= 2
+	}
+	m.height = height
+}
+
 const (
-	// scrollPercentWidth is the width of the scroll percentage section to the
-	// right of the viewport
-	scrollPercentWidth = 10
-	// bordersWidth is the total width of the borders to the left and
-	// right of the content
-	bordersWidth = 2
-	// bordersHeight is the total height of the borders to the top and
-	// bottom of the content
-	bordersHeight = 2
 	// infoWidth is the width of the optional task info sidebar to the left of the
 	// viewport.
 	infoWidth = 35
 )
-
-var borderStyle = lipgloss.NewStyle().Border(lipgloss.NormalBorder())
-
-func (m *model) setWidth(width int) {
-	m.width = width
-
-	viewportWidth := width - scrollPercentWidth
-	if m.hasBorders() {
-		viewportWidth -= bordersWidth
-	}
-	if m.showInfo {
-		viewportWidth -= infoWidth
-	}
-	m.viewport.Width = max(0, viewportWidth)
-}
-
-func (m *model) setHeight(height int) {
-	if m.hasBorders() {
-		height -= bordersHeight
-	}
-	m.viewport.Height = height
-	m.height = height
-}
-
-func (m *model) hasBorders() bool {
-	return m.makerID == TaskMakerID
-}
 
 // View renders the viewport
 func (m model) View() string {
@@ -290,44 +249,24 @@ func (m model) View() string {
 			tui.Bold.Render("Environment variables"),
 			envs,
 			"",
-			fmt.Sprintf("Autoscroll: %s", boolToOnOff(m.autoscroll)),
+			fmt.Sprintf("Autoscroll: %s", boolToOnOff(m.viewport.Autoscroll)),
 		)
 		container := tui.Regular.Copy().
 			Margin(0, 1).
-			Height(m.height).
-			// subtract 2 to account for margins, and 1 for the border to the
-			// right
-			Width(infoWidth-2-1).
+			// Border to the right, dividing the info from the viewport
 			Border(lipgloss.NormalBorder(), false, true, false, false).
 			BorderForeground(tui.LighterGrey).
+			// Subtract 2 to account for margins, and 1 for border
+			Height(m.height).
+			// Subtract 2 to account for margins, and 1 for border
+			Width(max(infoWidth - 2 - 1)).
 			Render(content)
 		components = append(components, container)
 	}
-
-	viewport := tui.Regular.Copy().
-		MaxWidth(m.viewport.Width).
-		Render(m.viewport.View())
-	components = append(components, viewport)
-
-	// scroll percent container occupies a fixed width section to the right of
-	// the viewport.
-	scrollPercent := tui.Regular.Copy().
-		Background(tui.ScrollPercentageBackground).
-		Padding(0, 1).
-		Render(fmt.Sprintf("%3.f%%", m.viewport.ScrollPercent()*100))
-	scrollPercentContainer := tui.Regular.Copy().
-		Margin(0, 1).
-		Height(m.height).
-		// subtract 2 to account for margins
-		Width(scrollPercentWidth - 2).
-		AlignVertical(lipgloss.Bottom).
-		Render(scrollPercent)
-	components = append(components, scrollPercentContainer)
-
+	components = append(components, m.viewport.View())
 	content := lipgloss.JoinHorizontal(lipgloss.Left, components...)
-
-	if m.hasBorders() {
-		return borderStyle.Render(content)
+	if m.border {
+		return tui.Border.Render(content)
 	}
 	return content
 }

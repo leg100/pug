@@ -63,7 +63,6 @@ func (m *ListMaker) Make(_ resource.Resource, width, height int) (tea.Model, err
 	table := table.New(columns, renderer, width, height,
 		table.WithSortFunc(logging.BySerialDesc),
 		table.WithSelectable[resource.ID, logging.Message](false),
-		table.WithBorder[resource.ID, logging.Message](),
 	)
 
 	return list{logger: m.Logger, table: table}, nil

@@ -487,6 +487,7 @@ func (m model) View() string {
 		// content
 		lipgloss.NewStyle().
 			Height(m.viewHeight()).
+			Width(m.viewWidth()).
 			Render(content),
 		// footer
 		lipgloss.JoinHorizontal(

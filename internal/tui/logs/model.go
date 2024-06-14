@@ -66,7 +66,6 @@ func (mm *Maker) Make(r resource.Resource, width, height int) (tea.Model, error)
 	table := table.New(columns, renderer, width, height,
 		table.WithSortFunc(byAttribute),
 		table.WithSelectable[resource.ID, logging.Attr](false),
-		table.WithBorder[resource.ID, logging.Attr](),
 	)
 	table.SetItems(items)
 

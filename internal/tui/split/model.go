@@ -13,10 +13,8 @@ import (
 const (
 	// default height of the top list pane, not including borders
 	defaultListPaneHeight = 10
-	// total width of borders to the left and right of a pane
-	totalPaneBorderWidth = 2
-	// total height of borders above and below a pane
-	totalPaneBorderHeight = 2
+	// previewVisibleDefault sets the default visibility for the preview pane.
+	previewVisibleDefault = true
 )
 
 type Options[R resource.Resource] struct {
@@ -33,17 +31,18 @@ func New[R resource.Resource](opts Options[R]) Model[R] {
 		width:          opts.Width,
 		height:         opts.Height,
 		maker:          opts.Maker,
-		cache:          tui.NewCache(),
-		previewVisible: true,
+		cache:          newCache(),
+		previewVisible: previewVisibleDefault,
 	}
 	// Create table for the top list pane
 	m.Table = table.New(
 		opts.Columns,
 		opts.Renderer,
-		m.paneWidth(),
+		opts.Width,
 		m.listHeight(),
 		opts.TableOptions...,
 	)
+	m.setBorderStyles()
 	return m
 }
 
@@ -55,17 +54,18 @@ type Model[R resource.Resource] struct {
 	Table table.Model[resource.ID, R]
 	maker tui.Maker
 
-	previewVisible bool
-	previewFocused bool
-	height         int
-	width          int
+	previewVisible     bool
+	previewFocused     bool
+	previewBorderStyle lipgloss.Style
+	height             int
+	width              int
 
 	// userListHeightAdjustment is the adjustment the user has requested to the
 	// default height of the list pane.
 	userListHeightAdjustment int
 
 	// cache of models for the previews
-	cache *tui.Cache
+	cache *cache
 }
 
 func (m Model[R]) Init() tea.Cmd {
@@ -84,8 +84,10 @@ func (m Model[R]) Update(msg tea.Msg) (Model[R], tea.Cmd) {
 		switch {
 		case key.Matches(msg, keys.Navigation.SwitchPane):
 			m.previewFocused = !m.previewFocused
+			m.setBorderStyles()
 		case key.Matches(msg, localKeys.TogglePreview):
 			m.previewVisible = !m.previewVisible
+			m.setBorderStyles()
 			m.recalculateDimensions()
 		case key.Matches(msg, localKeys.GrowPreview):
 			// Grow the preview pane by shrinking the list pane
@@ -95,26 +97,18 @@ func (m Model[R]) Update(msg tea.Msg) (Model[R], tea.Cmd) {
 			// Shrink the preview pane by growing the list pane
 			m.userListHeightAdjustment++
 			m.recalculateDimensions()
-		case key.Matches(msg, keys.Global.Enter):
-			if row, ok := m.Table.CurrentRow(); ok {
-				return m, tui.NavigateTo(tui.TaskKind, tui.WithParent(row.Value))
-			}
 		}
 		if m.previewVisible && m.previewFocused {
-			// Preview pane is visible and focused, so send keys to the task
+			// Preview pane is visible and focused, so send keys to the preview
 			// model for the currently highlighted table row if there is one.
 			row, ok := m.Table.CurrentRow()
 			if !ok {
 				break
 			}
-			page := tui.Page{Kind: tui.TaskKind, Resource: row.Value}
-			cmd := m.cache.Update(tui.NewCacheKey(page), msg)
+			cmd := m.cache.Update(row.Key, msg)
 			cmds = append(cmds, cmd)
 		} else {
 			// Table pane is focused, so handle keys relevant to table rows.
-			//
-			// TODO: when preview is focused, we also want these keys to be
-			// handled for the current row (but not selected rows).
 			m.Table, cmd = m.Table.Update(msg)
 			cmds = append(cmds, cmd)
 		}
@@ -131,18 +125,19 @@ func (m Model[R]) Update(msg tea.Msg) (Model[R], tea.Cmd) {
 	}
 
 	if m.previewVisible {
-		// Get currently highlighted task and ensure a model exists for it, and
+		// Get current table row and ensure a model exists for it, and
 		// ensure that that model is the current model.
 		if row, ok := m.Table.CurrentRow(); ok {
-			page := tui.Page{Kind: tui.TaskKind, Resource: row.Value}
-			if !m.cache.Exists(page) {
+			if model := m.cache.Get(row.Key); model == nil {
 				// Create model
-				model, err := m.maker.Make(row.Value, m.paneWidth(), m.previewHeight())
+				model, err := m.maker.Make(row.Value, m.previewWidth(), m.previewHeight())
 				if err != nil {
 					return m, tui.ReportError(err, "making model for preview")
 				}
 				// Cache newly created model
-				m.cache.Put(page, model)
+				m.cache.Put(row.Key, model)
+				// Set border style on model
+				m.setBorderStyles()
 				// Initialize model
 				cmds = append(cmds, model.Init())
 			}
@@ -155,16 +150,17 @@ func (m Model[R]) Update(msg tea.Msg) (Model[R], tea.Cmd) {
 func (m *Model[R]) recalculateDimensions() {
 	m.Table, _ = m.Table.Update(tea.WindowSizeMsg{
 		Height: m.listHeight(),
-		Width:  m.paneWidth(),
+		Width:  m.width,
 	})
 	_ = m.cache.UpdateAll(tea.WindowSizeMsg{
 		Height: m.previewHeight(),
-		Width:  m.paneWidth(),
+		Width:  m.previewWidth(),
 	})
 }
 
-func (m Model[R]) paneWidth() int {
-	return m.width - totalPaneBorderWidth
+func (m Model[R]) previewWidth() int {
+	// Subtract 2 to accommodate borders
+	return m.width - 2
 }
 
 func (m Model[R]) listHeight() int {
@@ -172,44 +168,35 @@ func (m Model[R]) listHeight() int {
 		// Ensure list pane is at least a height of 2 (the headings and one row)
 		return max(2, defaultListPaneHeight+m.userListHeightAdjustment)
 	}
-	return m.height - totalPaneBorderHeight
+	return m.height
 }
 
 func (m Model[R]) previewHeight() int {
-	// calculate height of preview pane after accounting for:
-	// (a) height of list pane above
-	// (b) height of borders above and below both panes
-	return max(0, m.height-m.listHeight()-(totalPaneBorderHeight*2))
+	// Calculate height of preview pane after accommodating table and borders.
+	return max(0, m.height-m.listHeight()-2)
 }
 
-var (
-	singlePaneBorder   = lipgloss.NewStyle().Border(lipgloss.NormalBorder())
-	activePaneBorder   = lipgloss.NewStyle().Border(lipgloss.ThickBorder())
-	inactivePaneBorder = lipgloss.NewStyle().Border(lipgloss.NormalBorder()).BorderForeground(tui.LighterGrey)
-)
+func (m *Model[R]) setBorderStyles() {
+	if m.previewVisible {
+		if m.previewFocused {
+			m.Table.SetBorderStyle(tui.InactiveBorder)
+			m.previewBorderStyle = tui.ActiveBorder
+		} else {
+			m.Table.SetBorderStyle(tui.ActiveBorder)
+			m.previewBorderStyle = tui.InactiveBorder
+		}
+	} else {
+		m.Table.SetBorderStyle(tui.Border)
+	}
+}
 
 func (m Model[R]) View() string {
-	var (
-		tableBorder   lipgloss.Style
-		previewBorder lipgloss.Style
-	)
-	if !m.previewVisible {
-		tableBorder = singlePaneBorder
-	} else if m.previewFocused {
-		tableBorder = inactivePaneBorder
-		previewBorder = activePaneBorder
-	} else {
-		tableBorder = activePaneBorder
-		previewBorder = inactivePaneBorder
-	}
-	components := []string{
-		tableBorder.Render(m.Table.View()),
-	}
+	components := []string{m.Table.View()}
 	// When preview pane is visible and there is a model cached for the
 	// current row, then render the model's view in the pane.
 	if m.previewVisible {
 		if model, ok := m.getPreviewModel(); ok {
-			components = append(components, previewBorder.Render(model.View()))
+			components = append(components, m.previewBorderStyle.Render(model.View()))
 		}
 	}
 	return lipgloss.JoinVertical(lipgloss.Top, components...)
@@ -221,7 +208,6 @@ func (m Model[R]) getPreviewModel() (tea.Model, bool) {
 	if !ok {
 		return nil, false
 	}
-	page := tui.Page{Kind: tui.TaskKind, Resource: row.Value}
-	model := m.cache.Get(page)
+	model := m.cache.Get(row.Key)
 	return model, model != nil
 }
