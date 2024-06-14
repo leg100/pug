@@ -18,7 +18,7 @@ type groupTaskMaker struct {
 }
 
 func (m *groupTaskMaker) Make(res resource.Resource, width, height int) (tea.Model, error) {
-	return m.makeWithID(res, width, height, TaskGroupMakerID, true)
+	return m.makeWithID(res, width, height, TaskGroupMakerID, false)
 }
 
 // GroupMaker makes taskgroup models
