@@ -20,7 +20,7 @@ const (
 type Options[R resource.Resource] struct {
 	Columns      []table.Column
 	Renderer     table.RowRenderer[R]
-	TableOptions []table.Option[resource.ID, R]
+	TableOptions []table.Option[R]
 	Width        int
 	Height       int
 	Maker        tui.Maker
@@ -51,7 +51,7 @@ func New[R resource.Resource](opts Options[R]) Model[R] {
 // resource corresponding to the current row in the list - this pane is known as
 // the 'preview'.
 type Model[R resource.Resource] struct {
-	Table table.Model[resource.ID, R]
+	Table table.Model[R]
 	maker tui.Maker
 
 	previewVisible     bool
@@ -105,7 +105,7 @@ func (m Model[R]) Update(msg tea.Msg) (Model[R], tea.Cmd) {
 			if !ok {
 				break
 			}
-			cmd := m.cache.Update(row.Key, msg)
+			cmd := m.cache.Update(row.ID, msg)
 			cmds = append(cmds, cmd)
 		} else {
 			// Table pane is focused, so handle keys relevant to table rows.
@@ -128,14 +128,14 @@ func (m Model[R]) Update(msg tea.Msg) (Model[R], tea.Cmd) {
 		// Get current table row and ensure a model exists for it, and
 		// ensure that that model is the current model.
 		if row, ok := m.Table.CurrentRow(); ok {
-			if model := m.cache.Get(row.Key); model == nil {
+			if model := m.cache.Get(row.ID); model == nil {
 				// Create model
 				model, err := m.maker.Make(row.Value, m.previewWidth(), m.previewHeight())
 				if err != nil {
 					return m, tui.ReportError(err, "making model for preview")
 				}
 				// Cache newly created model
-				m.cache.Put(row.Key, model)
+				m.cache.Put(row.ID, model)
 				// Set border style on model
 				m.setBorderStyles()
 				// Initialize model
@@ -208,6 +208,6 @@ func (m Model[R]) getPreviewModel() (tea.Model, bool) {
 	if !ok {
 		return nil, false
 	}
-	model := m.cache.Get(row.Key)
+	model := m.cache.Get(row.ID)
 	return model, model != nil
 }

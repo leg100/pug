@@ -9,7 +9,7 @@ package table
 // Update column widths in-place.
 //
 // TODO: unit test
-func (m *Model[K, V]) recalculateWidth() {
+func (m *Model[V]) recalculateWidth() {
 	var (
 		// total available flex width initialized to total viewport width minus
 		// the padding on each col (2)

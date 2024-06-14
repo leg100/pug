@@ -37,7 +37,7 @@ type testResource struct {
 // setupTest sets up a table test with several rows. Each row is keyed with an
 // int, and the row item is an int corresponding to the key, for ease of
 // testing. The rows are sorted from lowest int to highest int.
-func setupTest() Model[resource.ID, testResource] {
+func setupTest() Model[testResource] {
 	renderer := func(v testResource) RenderedRow { return nil }
 	tbl := New(nil, renderer, 0, 0,
 		WithSortFunc(func(i, j testResource) int {
@@ -120,7 +120,7 @@ func TestTable_SelectRange(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			tbl := setupTest()
 			for _, key := range tt.selected {
-				tbl.ToggleSelectionByKey(key)
+				tbl.ToggleSelectionByID(key)
 			}
 			tbl.cursorRow = tt.cursor
 

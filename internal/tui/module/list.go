@@ -67,7 +67,7 @@ type list struct {
 	WorkspaceService tui.WorkspaceService
 	RunService       tui.RunService
 
-	table   table.Model[resource.ID, *module.Module]
+	table   table.Model[*module.Module]
 	spinner *spinner.Model
 	workdir string
 	helpers *tui.Helpers
@@ -96,16 +96,16 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, tui.OpenVim(row.Value.FullPath())
 			}
 		case key.Matches(msg, keys.Common.Init):
-			cmd := m.helpers.CreateTasks("init", m.ModuleService.Init, m.table.SelectedOrCurrentKeys()...)
+			cmd := m.helpers.CreateTasks("init", m.ModuleService.Init, m.table.SelectedOrCurrentIDs()...)
 			return m, cmd
 		case key.Matches(msg, keys.Common.Validate):
-			cmd := m.helpers.CreateTasks("validate", m.ModuleService.Validate, m.table.SelectedOrCurrentKeys()...)
+			cmd := m.helpers.CreateTasks("validate", m.ModuleService.Validate, m.table.SelectedOrCurrentIDs()...)
 			return m, cmd
 		case key.Matches(msg, keys.Common.Format):
-			cmd := m.helpers.CreateTasks("format", m.ModuleService.Format, m.table.SelectedOrCurrentKeys()...)
+			cmd := m.helpers.CreateTasks("format", m.ModuleService.Format, m.table.SelectedOrCurrentIDs()...)
 			return m, cmd
 		case key.Matches(msg, localKeys.ReloadWorkspaces):
-			cmd := m.helpers.CreateTasks("reload-workspace", m.WorkspaceService.Reload, m.table.SelectedOrCurrentKeys()...)
+			cmd := m.helpers.CreateTasks("reload-workspace", m.WorkspaceService.Reload, m.table.SelectedOrCurrentIDs()...)
 			return m, cmd
 		case key.Matches(msg, keys.Common.State):
 			if row, ok := m.table.CurrentRow(); ok {

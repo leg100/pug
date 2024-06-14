@@ -60,7 +60,7 @@ func (m *GroupListMaker) Make(_ resource.Resource, width, height int) (tea.Model
 }
 
 type groupList struct {
-	table table.Model[resource.ID, *task.Group]
+	table table.Model[*task.Group]
 	svc   tui.TaskService
 }
 

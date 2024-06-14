@@ -40,7 +40,7 @@ func (m *ResourceListMaker) Make(ws resource.Resource, width, height int) (tea.M
 		}
 		return table.RenderedRow{resourceColumn.Key: addr}
 	}
-	tableOptions := []table.Option[resource.ID, *state.Resource]{
+	tableOptions := []table.Option[*state.Resource]{
 		table.WithSortFunc(state.Sort),
 		table.WithParent[resource.ID, *state.Resource](ws),
 	}

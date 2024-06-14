@@ -67,7 +67,7 @@ func (m *ListMaker) Make(parent resource.Resource, width, height int) (tea.Model
 }
 
 type list struct {
-	table   table.Model[resource.ID, *workspace.Workspace]
+	table   table.Model[*workspace.Workspace]
 	svc     tui.WorkspaceService
 	modules tui.ModuleService
 	runs    tui.RunService
@@ -101,7 +101,7 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, keys.Common.Delete):
-			workspaceIDs := m.table.SelectedOrCurrentKeys()
+			workspaceIDs := m.table.SelectedOrCurrentIDs()
 			if len(workspaceIDs) == 0 {
 				return m, nil
 			}
@@ -131,13 +131,13 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			createRunOptions.Destroy = true
 			fallthrough
 		case key.Matches(msg, keys.Common.Plan):
-			workspaceIDs := m.table.SelectedOrCurrentKeys()
+			workspaceIDs := m.table.SelectedOrCurrentIDs()
 			fn := func(workspaceID resource.ID) (*task.Task, error) {
 				return m.runs.Plan(workspaceID, createRunOptions)
 			}
 			return m, m.helpers.CreateTasks("plan", fn, workspaceIDs...)
 		case key.Matches(msg, keys.Common.Apply):
-			workspaceIDs := m.table.SelectedOrCurrentKeys()
+			workspaceIDs := m.table.SelectedOrCurrentIDs()
 			fn := func(workspaceID resource.ID) (*task.Task, error) {
 				return m.runs.ApplyOnly(workspaceID, createRunOptions)
 			}

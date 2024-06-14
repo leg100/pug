@@ -79,7 +79,7 @@ func (mm *Maker) Make(r resource.Resource, width, height int) (tea.Model, error)
 
 type model struct {
 	msg    logging.Message
-	table  table.Model[resource.ID, logging.Attr]
+	table  table.Model[logging.Attr]
 	width  int
 	height int
 }

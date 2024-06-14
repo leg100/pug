@@ -113,7 +113,7 @@ func (mm *ListMaker) Make(parent resource.Resource, width, height int) (tea.Mode
 	splitModel := split.New(split.Options[*task.Task]{
 		Columns:      columns,
 		Renderer:     renderer,
-		TableOptions: []table.Option[resource.ID, *task.Task]{table.WithSortFunc(task.ByState)},
+		TableOptions: []table.Option[*task.Task]{table.WithSortFunc(task.ByState)},
 		Width:        width,
 		Height:       height,
 		Maker:        mm.TaskMaker,
@@ -147,7 +147,7 @@ func (m List) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, keys.Common.Cancel):
-			taskIDs := m.Table.SelectedOrCurrentKeys()
+			taskIDs := m.Table.SelectedOrCurrentIDs()
 			return m, m.helpers.CreateTasks("cancel", m.tasks.Cancel, taskIDs...)
 		case key.Matches(msg, keys.Global.Enter):
 			if row, ok := m.Table.CurrentRow(); ok {

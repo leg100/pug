@@ -70,7 +70,7 @@ func (m *ListMaker) Make(_ resource.Resource, width, height int) (tea.Model, err
 
 type list struct {
 	logger *logging.Logger
-	table  table.Model[resource.ID, logging.Message]
+	table  table.Model[logging.Message]
 }
 
 func (m list) Init() tea.Cmd {

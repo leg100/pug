@@ -28,20 +28,20 @@ const (
 )
 
 // Model defines a state for the table widget.
-type Model[K resource.ID, V resource.Resource] struct {
+type Model[V resource.Resource] struct {
 	cols        []Column
-	rows        []Row[K, V]
+	rows        []Row[V]
 	rowRenderer RowRenderer[V]
 	focus       bool
 	borderStyle lipgloss.Style
 
 	cursorRow int
-	cursorID  K
+	cursorID  resource.ID
 
-	items    map[K]V
+	items    map[resource.ID]V
 	sortFunc SortFunc[V]
 
-	Selected   map[K]V
+	Selected   map[resource.ID]V
 	selectable bool
 	selectAll  bool
 
@@ -70,8 +70,8 @@ type Column struct {
 
 type ColumnKey string
 
-type Row[K resource.ID, V any] struct {
-	Key   K
+type Row[V any] struct {
+	ID    resource.ID
 	Value V
 }
 
@@ -83,15 +83,15 @@ type RenderedRow map[ColumnKey]string
 type SortFunc[V any] func(V, V) int
 
 // New creates a new model for the table widget.
-func New[K resource.ID, V resource.Resource](columns []Column, fn RowRenderer[V], width, height int, opts ...Option[K, V]) Model[K, V] {
+func New[V resource.Resource](columns []Column, fn RowRenderer[V], width, height int, opts ...Option[V]) Model[V] {
 	filter := textinput.New()
 	filter.Prompt = "Filter: "
 
-	m := Model[K, V]{
+	m := Model[V]{
 		viewport:    viewport.New(0, 0),
 		rowRenderer: fn,
-		items:       make(map[K]V),
-		Selected:    make(map[K]V),
+		items:       make(map[resource.ID]V),
+		Selected:    make(map[resource.ID]V),
 		selectable:  true,
 		focus:       true,
 		filter:      filter,
@@ -119,35 +119,35 @@ func New[K resource.ID, V resource.Resource](columns []Column, fn RowRenderer[V]
 	return m
 }
 
-type Option[K resource.ID, V resource.Resource] func(m *Model[K, V])
+type Option[V resource.Resource] func(m *Model[V])
 
 // WithSortFunc configures the table to sort rows using the given func.
-func WithSortFunc[K resource.ID, V resource.Resource](sortFunc func(V, V) int) Option[K, V] {
-	return func(m *Model[K, V]) {
+func WithSortFunc[K resource.ID, V resource.Resource](sortFunc func(V, V) int) Option[V] {
+	return func(m *Model[V]) {
 		m.sortFunc = sortFunc
 	}
 }
 
 // WithSelectable sets whether rows are selectable.
-func WithSelectable[K resource.ID, V resource.Resource](s bool) Option[K, V] {
-	return func(m *Model[K, V]) {
+func WithSelectable[K resource.ID, V resource.Resource](s bool) Option[V] {
+	return func(m *Model[V]) {
 		m.selectable = s
 	}
 }
 
-func WithParent[K resource.ID, V resource.Resource](parent resource.Resource) Option[K, V] {
-	return func(m *Model[K, V]) {
+func WithParent[K resource.ID, V resource.Resource](parent resource.Resource) Option[V] {
+	return func(m *Model[V]) {
 		m.parent = parent
 	}
 }
 
-func (m *Model[K, V]) filterVisible() bool {
+func (m *Model[V]) filterVisible() bool {
 	// Filter is visible if it's either in focus, or it has a non-empty value.
 	return m.filter.Focused() || m.filter.Value() != ""
 }
 
 // setDimensions sets the dimensions of the table.
-func (m *Model[K, V]) setDimensions(width, height int) {
+func (m *Model[V]) setDimensions(width, height int) {
 	// Accommodate height of table header and borders
 	m.viewport.Height = max(0, height-headerHeight-2)
 	if m.filterVisible() {
@@ -167,7 +167,7 @@ func (m *Model[K, V]) setDimensions(width, height int) {
 }
 
 // Update is the Bubble Tea update loop.
-func (m Model[K, V]) Update(msg tea.Msg) (Model[K, V], tea.Cmd) {
+func (m Model[V]) Update(msg tea.Msg) (Model[V], tea.Cmd) {
 	if !m.focus {
 		return m, nil
 	}
@@ -202,16 +202,16 @@ func (m Model[K, V]) Update(msg tea.Msg) (Model[K, V], tea.Cmd) {
 		}
 	case BulkInsertMsg[V]:
 		for _, ws := range msg {
-			m.items[K(ws.GetID())] = ws
+			m.items[ws.GetID()] = ws
 		}
 		m.SetItems(m.items)
 	case resource.Event[V]:
 		switch msg.Type {
 		case resource.CreatedEvent, resource.UpdatedEvent:
-			m.items[K(msg.Payload.GetID())] = msg.Payload
+			m.items[msg.Payload.GetID()] = msg.Payload
 			m.SetItems(m.items)
 		case resource.DeletedEvent:
-			delete(m.items, K(msg.Payload.GetID()))
+			delete(m.items, msg.Payload.GetID())
 			m.SetItems(m.items)
 		}
 	case tea.WindowSizeMsg:
@@ -261,25 +261,25 @@ func (m Model[K, V]) Update(msg tea.Msg) (Model[K, V], tea.Cmd) {
 }
 
 // Focused returns the focus state of the table.
-func (m Model[K, V]) Focused() bool {
+func (m Model[V]) Focused() bool {
 	return m.focus
 }
 
 // Focus focuses the table, allowing the user to move around the rows and
 // interact.
-func (m *Model[K, V]) Focus() {
+func (m *Model[V]) Focus() {
 	m.focus = true
 	m.UpdateViewport()
 }
 
 // Blur blurs the table, preventing selection or movement.
-func (m *Model[K, V]) Blur() {
+func (m *Model[V]) Blur() {
 	m.focus = false
 	m.UpdateViewport()
 }
 
 // View renders the component.
-func (m Model[K, V]) View() string {
+func (m Model[V]) View() string {
 	components := make([]string, 0, 3)
 	if m.filterVisible() {
 		components = append(components, tui.Regular.Margin(0, 1).Render(m.filter.View()))
@@ -291,13 +291,13 @@ func (m Model[K, V]) View() string {
 	return m.borderStyle.Render(content)
 }
 
-func (m *Model[K, V]) SetBorderStyle(style lipgloss.Style) {
+func (m *Model[V]) SetBorderStyle(style lipgloss.Style) {
 	m.borderStyle = style
 }
 
 // UpdateViewport updates the list content based on the previously defined
 // columns and rows.
-func (m *Model[K, V]) UpdateViewport() {
+func (m *Model[V]) UpdateViewport() {
 	renderedRows := make([]string, 0, len(m.rows))
 
 	// Render only rows from: m.cursor-m.viewport.Height to: m.cursor+m.viewport.Height
@@ -320,43 +320,43 @@ func (m *Model[K, V]) UpdateViewport() {
 
 // CurrentRow returns the row on which the cursor currently sits. If the cursor
 // is out of bounds then false is returned along with an empty row.
-func (m Model[K, V]) CurrentRow() (Row[K, V], bool) {
+func (m Model[V]) CurrentRow() (Row[V], bool) {
 	if m.cursorRow < 0 || m.cursorRow >= len(m.rows) {
-		return *new(Row[K, V]), false
+		return *new(Row[V]), false
 	}
 	return m.rows[m.cursorRow], true
 }
 
 // SelectedOrCurrent returns either the selected rows, or if there are no
 // selections, the current row
-func (m Model[K, V]) SelectedOrCurrent() []Row[K, V] {
+func (m Model[V]) SelectedOrCurrent() []Row[V] {
 	if len(m.Selected) > 0 {
-		rows := make([]Row[K, V], len(m.Selected))
+		rows := make([]Row[V], len(m.Selected))
 		var i int
 		for k, v := range m.Selected {
-			rows[i] = Row[K, V]{Key: k, Value: v}
+			rows[i] = Row[V]{ID: k, Value: v}
 			i++
 		}
 		return rows
 	}
 	if row, ok := m.CurrentRow(); ok {
-		return []Row[K, V]{row}
+		return []Row[V]{row}
 	}
 	return nil
 }
 
-func (m Model[K, V]) SelectedOrCurrentKeys() []K {
+func (m Model[V]) SelectedOrCurrentIDs() []resource.ID {
 	if len(m.Selected) > 0 {
 		return maps.Keys(m.Selected)
 	}
 	if row, ok := m.CurrentRow(); ok {
-		return []K{row.Key}
+		return []resource.ID{row.ID}
 	}
 	return nil
 }
 
 // ToggleSelection toggles the selection of the current row.
-func (m *Model[K, V]) ToggleSelection() {
+func (m *Model[V]) ToggleSelection() {
 	if !m.selectable {
 		return
 	}
@@ -364,34 +364,34 @@ func (m *Model[K, V]) ToggleSelection() {
 	if !ok {
 		return
 	}
-	if _, isSelected := m.Selected[current.Key]; isSelected {
-		delete(m.Selected, current.Key)
+	if _, isSelected := m.Selected[current.ID]; isSelected {
+		delete(m.Selected, current.ID)
 	} else {
-		m.Selected[current.Key] = current.Value
+		m.Selected[current.ID] = current.Value
 	}
 	m.UpdateViewport()
 }
 
-// ToggleSelectionByKey toggles the selection of the row with the given key. If
-// the key does not exist no action is taken.
-func (m *Model[K, V]) ToggleSelectionByKey(key K) {
+// ToggleSelectionByID toggles the selection of the row with the given id. If
+// the id does not exist no action is taken.
+func (m *Model[V]) ToggleSelectionByID(id resource.ID) {
 	if !m.selectable {
 		return
 	}
-	v, ok := m.items[key]
+	v, ok := m.items[id]
 	if !ok {
 		return
 	}
-	if _, isSelected := m.Selected[key]; isSelected {
-		delete(m.Selected, key)
+	if _, isSelected := m.Selected[id]; isSelected {
+		delete(m.Selected, id)
 	} else {
-		m.Selected[key] = v
+		m.Selected[id] = v
 	}
 	m.UpdateViewport()
 }
 
 // ToggleSelectAll toggles the selection of all rows.
-func (m *Model[K, V]) ToggleSelectAll() {
+func (m *Model[V]) ToggleSelectAll() {
 	if !m.selectable {
 		return
 	}
@@ -399,21 +399,21 @@ func (m *Model[K, V]) ToggleSelectAll() {
 		m.DeselectAll()
 		return
 	}
-	m.Selected = make(map[K]V, len(m.rows))
+	m.Selected = make(map[resource.ID]V, len(m.rows))
 	for _, row := range m.rows {
-		m.Selected[row.Key] = row.Value
+		m.Selected[row.ID] = row.Value
 	}
 	m.selectAll = true
 	m.UpdateViewport()
 }
 
 // DeselectAll de-selects any rows that are currently selected
-func (m *Model[K, V]) DeselectAll() {
+func (m *Model[V]) DeselectAll() {
 	if !m.selectable {
 		return
 	}
 
-	m.Selected = make(map[K]V)
+	m.Selected = make(map[resource.ID]V)
 	m.selectAll = false
 	m.UpdateViewport()
 }
@@ -423,7 +423,7 @@ func (m *Model[K, V]) DeselectAll() {
 // Otherwise, if the current row is *above* a selected row then rows between
 // them are selected, including the current row. If there are no selected rows
 // then no action is taken.
-func (m *Model[K, V]) SelectRange() {
+func (m *Model[V]) SelectRange() {
 	if !m.selectable {
 		return
 	}
@@ -439,7 +439,7 @@ func (m *Model[K, V]) SelectRange() {
 			n = m.cursorRow - first + 1
 			break
 		}
-		if _, ok := m.Selected[row.Key]; !ok {
+		if _, ok := m.Selected[row.ID]; !ok {
 			// Ignore unselected rows
 			continue
 		}
@@ -454,7 +454,7 @@ func (m *Model[K, V]) SelectRange() {
 		first = i + 1
 	}
 	for _, row := range m.rows[first : first+n] {
-		m.Selected[row.Key] = row.Value
+		m.Selected[row.ID] = row.Value
 	}
 	m.UpdateViewport()
 }
@@ -463,7 +463,7 @@ func (m *Model[K, V]) SelectRange() {
 // in the table. If the table is filtered it is further broken down into number
 // of filtered items as well as total items, formatted as
 // "<filtered>/<total>".
-func (m Model[K, V]) TotalString() string {
+func (m Model[V]) TotalString() string {
 	if m.filterVisible() {
 		return fmt.Sprintf("%d/%d", len(m.rows), len(m.items))
 	}
@@ -473,7 +473,7 @@ func (m Model[K, V]) TotalString() string {
 // SetItems sets new items on the table, overwriting existing items. If the
 // table has a parent resource, then items that are not a descendent of that
 // resource are skipped.
-func (m *Model[K, V]) SetItems(items map[K]V) {
+func (m *Model[V]) SetItems(items map[resource.ID]V) {
 	// Skip non-descendent items
 	if m.parent != nil {
 		for k, v := range items {
@@ -487,10 +487,10 @@ func (m *Model[K, V]) SetItems(items map[K]V) {
 	m.items = items
 
 	// Carry over existing selections.
-	selections := make(map[K]V)
+	selections := make(map[resource.ID]V)
 
 	// Overwrite existing rows
-	m.rows = make([]Row[K, V], 0, len(items))
+	m.rows = make([]Row[V], 0, len(items))
 
 	// Convert items into rows, and carry across matching selections
 	for id, it := range items {
@@ -518,7 +518,7 @@ func (m *Model[K, V]) SetItems(items map[K]V) {
 				continue
 			}
 		}
-		m.rows = append(m.rows, Row[K, V]{Key: id, Value: it})
+		m.rows = append(m.rows, Row[V]{ID: id, Value: it})
 		if m.selectable {
 			if _, ok := m.Selected[id]; ok {
 				selections[id] = it
@@ -528,7 +528,7 @@ func (m *Model[K, V]) SetItems(items map[K]V) {
 
 	// Sort rows in-place
 	if m.sortFunc != nil {
-		slices.SortFunc(m.rows, func(i, j Row[K, V]) int {
+		slices.SortFunc(m.rows, func(i, j Row[V]) int {
 			return m.sortFunc(i.Value, j.Value)
 		})
 	}
@@ -540,7 +540,7 @@ func (m *Model[K, V]) SetItems(items map[K]V) {
 	// Track item corresponding to the current cursor.
 	m.cursorRow = -1
 	for i, item := range m.rows {
-		if item.Key == m.cursorID {
+		if item.ID == m.cursorID {
 			// Found item corresponding to cursor, update its position
 			m.cursorRow = i
 		}
@@ -551,7 +551,7 @@ func (m *Model[K, V]) SetItems(items map[K]V) {
 	if m.cursorRow == -1 {
 		m.cursorRow = 0
 		if len(m.rows) > 0 {
-			m.cursorID = m.rows[m.cursorRow].Key
+			m.cursorID = m.rows[m.cursorRow].ID
 		}
 	}
 
@@ -569,7 +569,7 @@ func (m *Model[K, V]) SetItems(items map[K]V) {
 
 // MoveUp moves the current row up by any number of rows.
 // It can not go above the first row.
-func (m *Model[K, V]) MoveUp(n int) {
+func (m *Model[V]) MoveUp(n int) {
 	m.moveCursor(-n)
 	switch {
 	case m.start == 0:
@@ -584,7 +584,7 @@ func (m *Model[K, V]) MoveUp(n int) {
 
 // MoveDown moves the current row down by any number of rows.
 // It can not go below the last row.
-func (m *Model[K, V]) MoveDown(n int) {
+func (m *Model[V]) MoveDown(n int) {
 	m.moveCursor(n)
 	m.UpdateViewport()
 
@@ -599,24 +599,24 @@ func (m *Model[K, V]) MoveDown(n int) {
 	}
 }
 
-func (m *Model[K, V]) moveCursor(n int) {
+func (m *Model[V]) moveCursor(n int) {
 	m.cursorRow = clamp(m.cursorRow+n, 0, len(m.rows)-1)
 	if len(m.rows) > 0 {
-		m.cursorID = m.rows[m.cursorRow].Key
+		m.cursorID = m.rows[m.cursorRow].ID
 	}
 }
 
 // GotoTop makes the top row the current row.
-func (m *Model[K, V]) GotoTop() {
+func (m *Model[V]) GotoTop() {
 	m.MoveUp(m.cursorRow)
 }
 
 // GotoBottom makes the bottom row the current row.
-func (m *Model[K, V]) GotoBottom() {
+func (m *Model[V]) GotoBottom() {
 	m.MoveDown(len(m.rows))
 }
 
-func (m Model[K, V]) headersView() string {
+func (m Model[V]) headersView() string {
 	var s = make([]string, 0, len(m.cols))
 	for _, col := range m.cols {
 		style := lipgloss.NewStyle().Width(col.Width).MaxWidth(col.Width).Inline(true)
@@ -626,7 +626,7 @@ func (m Model[K, V]) headersView() string {
 	return lipgloss.JoinHorizontal(lipgloss.Left, s...)
 }
 
-func (m *Model[K, V]) renderRow(rowIdx int) string {
+func (m *Model[V]) renderRow(rowIdx int) string {
 	row := m.rows[rowIdx]
 
 	var (
@@ -635,7 +635,7 @@ func (m *Model[K, V]) renderRow(rowIdx int) string {
 		current    bool
 		selected   bool
 	)
-	if _, ok := m.Selected[row.Key]; ok {
+	if _, ok := m.Selected[row.ID]; ok {
 		selected = true
 	}
 	if rowIdx == m.cursorRow {
@@ -695,7 +695,7 @@ func (m *Model[K, V]) renderRow(rowIdx int) string {
 // it returns false then the resulting id is returned.
 //
 // If there are no rows in the table then a nil error is returned.
-func (m *Model[K, V]) Prune(fn func(value V) (resource.ID, bool)) ([]resource.ID, error) {
+func (m *Model[V]) Prune(fn func(value V) (resource.ID, bool)) ([]resource.ID, error) {
 	rows := m.SelectedOrCurrent()
 	switch len(rows) {
 	case 0:
@@ -720,7 +720,7 @@ func (m *Model[K, V]) Prune(fn func(value V) (resource.ID, bool)) ([]resource.ID
 			id, prune := fn(v)
 			if prune {
 				// De-select
-				m.ToggleSelectionByKey(k)
+				m.ToggleSelectionByID(k)
 				pruned++
 				continue
 			}
