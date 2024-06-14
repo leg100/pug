@@ -167,10 +167,6 @@ func (m list) View() string {
 	return m.table.View()
 }
 
-func (m list) TabStatus() string {
-	return fmt.Sprintf("(%s)", m.table.TotalString())
-}
-
 func (m list) HelpBindings() []key.Binding {
 	return []key.Binding{
 		keys.Common.Init,

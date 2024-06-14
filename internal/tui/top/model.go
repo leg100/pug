@@ -274,9 +274,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if created {
 			cmds = append(cmds, m.currentModel().Init())
 		}
-		if msg.Tab != "" {
-			cmds = append(cmds, m.updateCurrent(tui.SetActiveTabMsg(msg.Tab)))
-		}
 	case tui.ErrorMsg:
 		if msg.Error != nil {
 			err := msg.Error

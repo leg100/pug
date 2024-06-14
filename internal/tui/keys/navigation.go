@@ -52,14 +52,6 @@ var Navigation = navigation{
 		key.WithKeys("end", "G"),
 		key.WithHelp("G/end", "go to end"),
 	),
-	TabNext: key.NewBinding(
-		key.WithKeys("tab", "ctrl+pgdown"),
-		key.WithHelp("tab/ctrl+pgdn", "next tab"),
-	),
-	TabLast: key.NewBinding(
-		key.WithKeys("ctrl+pgup"),
-		key.WithHelp("ctrl+pgup", "last tab"),
-	),
 	SwitchPane: key.NewBinding(
 		key.WithKeys("tab"),
 		key.WithHelp("tab", "switch pane"),

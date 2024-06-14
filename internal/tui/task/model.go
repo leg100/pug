@@ -278,18 +278,6 @@ func boolToOnOff(b bool) string {
 	return "off"
 }
 
-func (m model) TabStatus() string {
-	switch m.task.State {
-	case task.Running:
-		return m.spinner.View()
-	case task.Exited:
-		return "✓"
-	case task.Errored:
-		return "✗"
-	}
-	return "+"
-}
-
 func (m model) Title() string {
 	return tui.Breadcrumbs("Task", m.task)
 }
