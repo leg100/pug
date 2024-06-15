@@ -54,20 +54,6 @@ var (
 		Light: string(Pink),
 	}
 
-	globalColor = lipgloss.AdaptiveColor{
-		Dark:  string(Pink),
-		Light: string(Pink),
-	}
-
-	activeTabColor = lipgloss.AdaptiveColor{
-		Dark:  string(LightBlue),
-		Light: string(Violet),
-	}
-	inactiveTabColor = lipgloss.AdaptiveColor{
-		Dark:  string(DarkGrey),
-		Light: string(LighterGrey),
-	}
-
 	ScrollPercentageBackground = lipgloss.AdaptiveColor{
 		Dark:  string(DarkGrey),
 		Light: string(EvenLighterGrey),

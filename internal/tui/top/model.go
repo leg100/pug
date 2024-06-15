@@ -316,11 +316,10 @@ var (
 			Margin(0, 1).
 			Foreground(tui.Pink).
 			Render(logo)
-	logoWidth            = lipgloss.Width(renderedLogo)
-	headerHeight         = 3
-	breadcrumbsHeight    = 1
-	horizontalRuleHeight = 1
-	messageFooterHeight  = 1
+	logoWidth           = lipgloss.Width(renderedLogo)
+	headerHeight        = 3
+	breadcrumbsHeight   = 1
+	messageFooterHeight = 1
 
 	workdirIcon = tui.Bold.Copy().
 			Foreground(tui.Pink).
