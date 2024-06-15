@@ -307,31 +307,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 var (
-	logo = strings.Join([]string{
-		"▄▄▄ ▄ ▄ ▄▄▄",
-		"█▄█ █ █ █ ▄",
-		"▀   ▀▀▀ ▀▀▀",
-	}, "\n")
-	renderedLogo = tui.Bold.
-			Copy().
-			Margin(0, 1).
-			Foreground(tui.Pink).
-			Render(logo)
-	logoWidth           = lipgloss.Width(renderedLogo)
-	headerHeight        = 3
 	breadcrumbsHeight   = 1
 	messageFooterHeight = 1
-
-	workdirIcon = tui.Bold.Copy().
-			Foreground(tui.Pink).
-			Margin(0, 2, 0, 1).
-			Render("🗀")
-	versionIcon = tui.Bold.Copy().
-			Foreground(tui.Pink).
-			Margin(0, 2, 0, 1).
-			Render("ⓥ")
-	workdirStyle = tui.Regular.Copy()
-	versionStyle = tui.Regular.Copy()
 )
 
 func (m model) View() string {
@@ -381,101 +358,85 @@ func (m model) View() string {
 	}
 
 	// Render global static info in top left corner
-	globalStatic := lipgloss.JoinVertical(lipgloss.Top,
-		lipgloss.JoinHorizontal(lipgloss.Left, workdirIcon, workdirStyle.Render(m.workdir)),
-		lipgloss.JoinHorizontal(lipgloss.Left, versionIcon, versionStyle.Render(version.Version)),
-	)
+	// globalStatic := lipgloss.JoinVertical(lipgloss.Top,
+	// 	lipgloss.JoinHorizontal(lipgloss.Left, workdirIcon, workdirStyle.Render(m.workdir)),
+	// 	lipgloss.JoinHorizontal(lipgloss.Left, versionIcon, versionStyle.Render(version.Version)),
+	// )
 
 	// Render help bindings in between version and logo. Set its available width
 	// to the width of the terminal minus the width of the global static info,
 	// the width of the logo, and the width of its margins.
-	shortHelpWidth := m.width - tui.Width(globalStatic) - logoWidth - 6
-	shortHelp := lipgloss.NewStyle().
-		Margin(0, 2, 0, 4).
-		Width(shortHelpWidth).
-		Render(shortHelpView(shortHelpBindings, shortHelpWidth))
+	//shortHelpWidth := m.width - tui.Width(globalStatic) - logoWidth - 6
+	//shortHelp := lipgloss.NewStyle().
+	//	Margin(0, 2, 0, 4).
+	//	Width(shortHelpWidth).
+	//	Render(shortHelpView(shortHelpBindings, shortHelpWidth))
 
 	// Render page title line
 	var (
 		pageTitle  string
-		pageID     string
 		pageStatus string
 	)
 	if titled, ok := m.currentModel().(tui.ModelTitle); ok {
-		pageTitle = tui.Regular.Copy().Margin(0, 1).Render(titled.Title())
+		pageTitle = tui.Regular.Copy().Padding(0, 1).Render(titled.Title())
 	}
 
 	// Optionally render page id and/or status to the right side of title
-	pageIDAndStatusStyle := tui.Regular.
-		Margin(0, 1).
-		Width(m.width - tui.Width(pageTitle) - 2).
+	pageStatusStyle := tui.Regular.
+		Width(m.width - tui.Width(pageTitle)).
 		Align(lipgloss.Right)
-	if identifiable, ok := m.currentModel().(tui.ModelID); ok {
-		pageID = tui.Regular.Copy().Padding(0, 0, 0, 0).Render(identifiable.ID())
-	}
 	if statusable, ok := m.currentModel().(tui.ModelStatus); ok {
-		pageStatus = tui.Padded.Copy().Render(statusable.Status())
+		pageStatus = pageStatusStyle.Render(statusable.Status())
 	}
-	pageIDAndStatus := pageIDAndStatusStyle.Render(
-		lipgloss.JoinHorizontal(lipgloss.Left, pageStatus, pageID),
-	)
 
 	// Stitch together page title line, and id and status to the right
-	pageTitleLine := lipgloss.JoinHorizontal(lipgloss.Left, pageTitle, pageIDAndStatus)
+	pageTitleLine := lipgloss.JoinHorizontal(lipgloss.Left, pageTitle, pageStatus)
 
-	// Global-level info goes in the bottom right corner in the footer.
-	metadata := tui.Padded.Copy().Render(
-		fmt.Sprintf("%d/%d tasks", m.tasks.Counter(), m.maxTasks),
-	)
-
-	// Render any info/error message to be shown in the bottom left corner in
-	// the footer, using whatever space is remaining to the left of the
-	// metadata.
-	var footerMsg string
-	if m.err != nil {
-		footerMsg = tui.Padded.Copy().
+	// Footer is the last line in the terminal. If there is an info or error
+	// message then show that. Otherwise show:
+	// * help bindings
+	// * working dir
+	// * version
+	var footer string
+	switch {
+	case m.err != nil:
+		footer = tui.Padded.Copy().
 			Bold(true).
 			Margin(0, 1).
 			Background(tui.Red).
 			Foreground(tui.White).
 			Render("Error: " + m.err.Error())
-	} else if m.info != "" {
-		footerMsg = tui.Padded.Copy().
+	case m.info != "":
+		footer = tui.Padded.Copy().
 			Foreground(tui.Black).
 			Render(m.info)
+	default:
+		// First allocate space for version string.
+		footer = tui.Regular.Copy().Margin(0, 1).Render(
+			lipgloss.JoinHorizontal(lipgloss.Left,
+				shortHelpView(shortHelpBindings, 10),
+				m.workdir,
+				version.Version,
+			),
+		)
 	}
 
 	// Vertical stack of components that make up the rendered view.
 	components := []string{
-		// header
-		lipgloss.NewStyle().
-			Height(headerHeight).
-			Render(
-				lipgloss.JoinHorizontal(
-					lipgloss.Left,
-					// global static info
-					globalStatic,
-					// help
-					shortHelp,
-					// logo
-					renderedLogo,
-				),
-			),
 		// title
 		lipgloss.NewStyle().
 			// Prohibit overflowing title wrapping to another line.
 			MaxHeight(1).
-			Inline(true).
+			Inline(false).
 			Width(m.width).
+			Inherit(tui.Title).
 			// Prefix title with a space to add margin (Inline() doesn't permit
 			// using Margin()).
 			Render(pageTitleLine),
 	}
-
 	if m.mode == promptMode {
 		components = append(components, m.prompt.View(m.width))
 	}
-
 	components = append(components,
 		// content
 		lipgloss.NewStyle().
@@ -483,17 +444,11 @@ func (m model) View() string {
 			Width(m.viewWidth()).
 			Render(content),
 		// footer
-		lipgloss.JoinHorizontal(
-			lipgloss.Top,
-			// info/error message
-			tui.Regular.
-				Inline(true).
-				MaxWidth(m.width-tui.Width(metadata)).
-				Width(m.width-tui.Width(metadata)).
-				Render(footerMsg),
-			// pagination
-			metadata,
-		),
+		tui.Regular.
+			Inline(true).
+			MaxWidth(m.width).
+			Width(m.width).
+			Render(footer),
 	)
 
 	return lipgloss.JoinVertical(lipgloss.Top, components...)
@@ -502,7 +457,7 @@ func (m model) View() string {
 // viewHeight returns the height available to the current model (subordinate to
 // the top model).
 func (m model) viewHeight() int {
-	vh := m.height - headerHeight - breadcrumbsHeight - messageFooterHeight
+	vh := m.height - breadcrumbsHeight - messageFooterHeight
 	if m.mode == promptMode {
 		vh -= tui.PromptHeight
 	}

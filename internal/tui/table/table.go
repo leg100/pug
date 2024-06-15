@@ -33,7 +33,9 @@ type Model[V resource.Resource] struct {
 	rows        []Row[V]
 	rowRenderer RowRenderer[V]
 	focus       bool
-	borderStyle lipgloss.Style
+
+	border      lipgloss.Border
+	borderColor lipgloss.Color
 
 	cursorRow int
 	cursorID  resource.ID
@@ -95,7 +97,7 @@ func New[V resource.Resource](columns []Column, fn RowRenderer[V], width, height
 		selectable:  true,
 		focus:       true,
 		filter:      filter,
-		borderStyle: tui.Border,
+		border:      lipgloss.NormalBorder(),
 	}
 	for _, fn := range opts {
 		fn(&m)
@@ -122,20 +124,20 @@ func New[V resource.Resource](columns []Column, fn RowRenderer[V], width, height
 type Option[V resource.Resource] func(m *Model[V])
 
 // WithSortFunc configures the table to sort rows using the given func.
-func WithSortFunc[K resource.ID, V resource.Resource](sortFunc func(V, V) int) Option[V] {
+func WithSortFunc[V resource.Resource](sortFunc func(V, V) int) Option[V] {
 	return func(m *Model[V]) {
 		m.sortFunc = sortFunc
 	}
 }
 
 // WithSelectable sets whether rows are selectable.
-func WithSelectable[K resource.ID, V resource.Resource](s bool) Option[V] {
+func WithSelectable[V resource.Resource](s bool) Option[V] {
 	return func(m *Model[V]) {
 		m.selectable = s
 	}
 }
 
-func WithParent[K resource.ID, V resource.Resource](parent resource.Resource) Option[V] {
+func WithParent[V resource.Resource](parent resource.Resource) Option[V] {
 	return func(m *Model[V]) {
 		m.parent = parent
 	}
@@ -148,18 +150,19 @@ func (m *Model[V]) filterVisible() bool {
 
 // setDimensions sets the dimensions of the table.
 func (m *Model[V]) setDimensions(width, height int) {
+	m.height = height
+	m.width = width
+
 	// Accommodate height of table header and borders
 	m.viewport.Height = max(0, height-headerHeight-2)
 	if m.filterVisible() {
 		// Accommodate height of filter widget
 		m.viewport.Height = max(0, m.viewport.Height-filterHeight)
 	}
-	m.height = height
 
 	// Set available width for table to expand into, whilst respecting a
 	// minimum width of 80, and accomodating border.
-	m.width = max(0, width-2)
-	m.viewport.Width = m.width
+	m.viewport.Width = max(0, width-2)
 	m.recalculateWidth()
 
 	// TODO: should this always be called?
@@ -283,16 +286,31 @@ func (m Model[V]) View() string {
 	components := make([]string, 0, 3)
 	if m.filterVisible() {
 		components = append(components, tui.Regular.Margin(0, 1).Render(m.filter.View()))
-		components = append(components, strings.Repeat("─", m.width))
+		// Subtract 2 to accommodate border
+		components = append(components, strings.Repeat("─", m.width-2))
 	}
 	components = append(components, m.headersView())
 	components = append(components, m.viewport.View())
 	content := lipgloss.JoinVertical(lipgloss.Top, components...)
-	return m.borderStyle.Render(content)
+
+	metadata := m.TotalString()
+
+	// total length of top border runes, not including corners
+	topBorderLength := max(0, m.width-lipgloss.Width(metadata)-2)
+	topBorderLeftLength := topBorderLength / 2
+	topBorderRightLength := topBorderLength - topBorderLeftLength
+
+	topBorder := lipgloss.NewStyle().Foreground(m.borderColor).Render(fmt.Sprintf("%s%s%s%s%s", m.border.TopLeft, strings.Repeat(m.border.Top, topBorderLeftLength), metadata, strings.Repeat(m.border.Top, topBorderRightLength), m.border.TopRight))
+
+	return lipgloss.JoinVertical(lipgloss.Top,
+		topBorder,
+		lipgloss.NewStyle().Border(m.border, false, true, true, true).BorderForeground(m.borderColor).Render(content),
+	)
 }
 
-func (m *Model[V]) SetBorderStyle(style lipgloss.Style) {
-	m.borderStyle = style
+func (m *Model[V]) SetBorderStyle(border lipgloss.Border, color lipgloss.Color) {
+	m.border = border
+	m.borderColor = color
 }
 
 // UpdateViewport updates the list content based on the previously defined
@@ -459,15 +477,31 @@ func (m *Model[V]) SelectRange() {
 	m.UpdateViewport()
 }
 
-// TotalString returns a stringified representation of the total number of items
-// in the table. If the table is filtered it is further broken down into number
-// of filtered items as well as total items, formatted as
-// "<filtered>/<total>".
 func (m Model[V]) TotalString() string {
-	if m.filterVisible() {
-		return fmt.Sprintf("%d/%d", len(m.rows), len(m.items))
+	// Calculate the top and bottom visible row ordinal numbers, starting from 1
+	top := m.TopRowIndex() + 1
+	bottom := m.BottomRowIndex() + 1
+
+	// Only print range of rows if there are any rows
+	var prefix string
+	if (bottom - top) > 0 {
+		prefix = fmt.Sprintf("%d-%d of ", top, bottom)
 	}
-	return fmt.Sprintf("%d", len(m.items))
+
+	if m.filterVisible() {
+		return prefix + fmt.Sprintf("%d/%d", len(m.rows), len(m.items))
+	}
+	return prefix + fmt.Sprintf("%d", len(m.rows))
+}
+
+// TopRowNumber returns the index of the top visible row.
+func (m Model[V]) TopRowIndex() int {
+	return m.start + max(0, m.viewport.YOffset)
+}
+
+// BottomRowNumber returns the index of the bottom visible row.
+func (m Model[V]) BottomRowIndex() int {
+	return clamp(m.start+m.viewport.YOffset+m.viewport.Height-1, m.TopRowIndex(), clamp(len(m.rows)-1, 0, len(m.rows)))
 }
 
 // SetItems sets new items on the table, overwriting existing items. If the
@@ -555,15 +589,14 @@ func (m *Model[V]) SetItems(items map[resource.ID]V) {
 		}
 	}
 
-	m.UpdateViewport()
-
-	// Move cursor back into view if viewport has gone below cursor.
-	if m.viewport.YOffset == 0 && m.cursorRow >= (m.start+m.viewport.Height) {
-		m.viewport.SetYOffset(m.viewport.YOffset + 1)
-	}
-	// Move cursor back into view if viewport has gone above cursor.
-	if m.viewport.YOffset >= m.viewport.Height && m.cursorRow < (m.start+m.viewport.Height) {
-		m.viewport.SetYOffset(m.viewport.YOffset - 1)
+	if m.cursorRow < m.TopRowIndex() {
+		// Cursor is above visible lines; move cursor back into view
+		m.MoveUp(0)
+	} else if m.cursorRow > m.BottomRowIndex() {
+		// Cursor is below visible lines; move cursor back into view
+		m.MoveDown(0)
+	} else {
+		m.UpdateViewport()
 	}
 }
 
@@ -571,6 +604,7 @@ func (m *Model[V]) SetItems(items map[resource.ID]V) {
 // It can not go above the first row.
 func (m *Model[V]) MoveUp(n int) {
 	m.moveCursor(-n)
+
 	switch {
 	case m.start == 0:
 		m.viewport.SetYOffset(clamp(m.viewport.YOffset, 0, m.cursorRow))
@@ -579,6 +613,7 @@ func (m *Model[V]) MoveUp(n int) {
 	case m.viewport.YOffset >= 1:
 		m.viewport.SetYOffset(clamp(m.viewport.YOffset+n, 1, m.viewport.Height))
 	}
+
 	m.UpdateViewport()
 }
 

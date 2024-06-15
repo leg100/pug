@@ -177,7 +177,7 @@ func (m List) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m List) Title() string {
-	return tui.GlobalBreadcrumb("Tasks", m.Table.TotalString())
+	return tui.Breadcrumbs("Tasks", resource.GlobalResource)
 }
 
 // pruneApplyableTasks removes from the selection any tasks that cannot be

@@ -65,7 +65,7 @@ func (mm *Maker) Make(r resource.Resource, width, height int) (tea.Model, error)
 	}
 	table := table.New(columns, renderer, width, height,
 		table.WithSortFunc(byAttribute),
-		table.WithSelectable[resource.ID, logging.Attr](false),
+		table.WithSelectable[logging.Attr](false),
 	)
 	table.SetItems(items)
 
@@ -95,7 +95,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m model) Title() string {
-	title := tui.TitleStyle.Render("LogMessage")
+	title := tui.Title.Render("LogMessage")
 	id := tui.Regular.Copy().Foreground(tui.Pink).Render(fmt.Sprintf("#%d", m.msg.Serial))
 	s := fmt.Sprintf("%s(%s)", title, id)
 	return tui.Bold.Render(s)

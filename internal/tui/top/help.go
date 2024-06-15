@@ -13,45 +13,31 @@ var (
 	shortHelpDescStyle = tui.Regular.Foreground(tui.HelpDesc).Copy()
 )
 
-const shortHelpRows = 2
-
 // shortHelpView renders help for key bindings within the header.
 func shortHelpView(bindings []key.Binding, maxWidth int) string {
 	// enumerate through each group of three bindings, populating a series of
 	// pairs of columns, one for keys, one for descriptions
 	var (
-		pairs []string
+		b     strings.Builder
 		width int
 	)
-	for i := 0; i < len(bindings); i += shortHelpRows {
-		var (
-			keys  []string
-			descs []string
-		)
-		for j := i; j < min(i+shortHelpRows, len(bindings)); j++ {
-			keys = append(keys, bindings[j].Help().Key)
-			descs = append(descs, bindings[j].Help().Desc)
+	for i, binding := range bindings {
+		var bb strings.Builder
+		if i > 0 {
+			bb.WriteString("  ")
 		}
-		// Render pair of columns; beyond the first pair, render a three space
-		// left margin, in order to visually separate the pairs.
-		var cols []string
-		if len(pairs) > 0 {
-			cols = []string{"   "}
-		}
-		cols = append(cols,
-			shortHelpKeyStyle.Render(strings.Join(keys, "\n")),
-			shortHelpDescStyle.Render(strings.Join(descs, "\n")),
-		)
+		bb.WriteString(shortHelpKeyStyle.Render(binding.Help().Key))
+		bb.WriteString(" ")
+		bb.WriteString(shortHelpDescStyle.Render(binding.Help().Desc))
 
-		pair := lipgloss.JoinHorizontal(lipgloss.Left, cols...)
 		// check whether it exceeds the maximum width avail
-		width += lipgloss.Width(pair)
+		width += lipgloss.Width(bb.String())
 		if width > maxWidth {
 			break
 		}
-		pairs = append(pairs, pair)
+		b.WriteString(bb.String())
 	}
-	return lipgloss.JoinHorizontal(lipgloss.Top, pairs...)
+	return b.String()
 }
 
 var (

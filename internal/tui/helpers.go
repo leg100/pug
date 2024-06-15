@@ -13,11 +13,10 @@ import (
 	"github.com/leg100/pug/internal/module"
 	"github.com/leg100/pug/internal/resource"
 	"github.com/leg100/pug/internal/run"
+	"github.com/leg100/pug/internal/state"
 	"github.com/leg100/pug/internal/task"
 	"github.com/leg100/pug/internal/workspace"
 )
-
-var TitleStyle = Bold.Copy().Foreground(TitleColor)
 
 // Helper methods for easily surfacing info in the TUI.
 //
@@ -211,31 +210,27 @@ func (h *Helpers) RunReport(report run.Report) string {
 
 func Breadcrumbs(title string, res resource.Resource, crumbs ...string) string {
 	// format: title{task command}[workspace name](module path)
-	switch res.GetKind() {
-	case resource.Task:
-		cmd := Regular.Copy().Foreground(Blue).Render(res.String())
-		crumb := fmt.Sprintf("{%s}", cmd)
-		return Breadcrumbs(title, res.GetParent(), crumb)
-	case resource.StateResource:
-		addr := Regular.Copy().Foreground(Blue).Render(res.String())
-		crumb := fmt.Sprintf("{%s}", addr)
-		return Breadcrumbs(title, res.GetParent(), crumb)
-	case resource.TaskGroup:
-		cmd := Regular.Copy().Foreground(Blue).Render(res.String())
-		id := Regular.Copy().Foreground(Green).Render(res.GetID().String())
-		crumb := fmt.Sprintf("{%s}[%s]", cmd, id)
-		return Breadcrumbs(title, res.GetParent(), crumb)
-	case resource.Run:
+	switch res := res.(type) {
+	case *task.Task:
+		cmd := TitleCommand.Render(res.String())
+		return Breadcrumbs(title, res.GetParent(), cmd)
+	case *state.Resource:
+		addr := TitleAddress.Render(res.String())
+		return Breadcrumbs(title, res.GetParent(), addr)
+	case *task.Group:
+		cmd := TitleCommand.Render(res.String())
+		id := TitleID.Render(res.GetID().String())
+		return Breadcrumbs(title, res.GetParent(), cmd, id)
+	case *run.Run:
 		// Skip run info in breadcrumbs
 		return Breadcrumbs(title, res.GetParent(), crumbs...)
-	case resource.Workspace:
-		crumb := fmt.Sprintf("[%s]", Regular.Copy().Foreground(Red).Render(res.String()))
-		return Breadcrumbs(title, res.GetParent(), append(crumbs, crumb)...)
-	case resource.Module:
-		path := Regular.Copy().Foreground(modulePathColor).Render(res.String())
-		crumbs = append(crumbs, fmt.Sprintf("(%s)", path))
+	case *workspace.Workspace:
+		name := TitleWorkspace.Render(res.String())
+		return Breadcrumbs(title, res.GetParent(), append(crumbs, name)...)
+	case *module.Module:
+		crumbs = append(crumbs, TitlePath.Render(res.String()))
 	}
-	return fmt.Sprintf("%s%s", TitleStyle.Render(title), strings.Join(crumbs, ""))
+	return fmt.Sprintf("%s%s", Title.Render(title), strings.Join(crumbs, ""))
 }
 
 func (h *Helpers) CreateTasks(cmd string, fn task.Func, ids ...resource.ID) tea.Cmd {
@@ -257,11 +252,6 @@ func (h *Helpers) CreateTasks(cmd string, fn task.Func, ids ...resource.ID) tea.
 			return NewNavigationMsg(TaskGroupKind, WithParent(group))
 		}
 	}
-}
-
-func GlobalBreadcrumb(title, total string) string {
-	title = TitleStyle.Render(title)
-	return fmt.Sprintf("%s[%s]", title, total)
 }
 
 // RemoveDuplicateBindings removes duplicate bindings from a list of bindings. A

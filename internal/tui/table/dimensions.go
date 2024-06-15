@@ -13,7 +13,7 @@ func (m *Model[V]) recalculateWidth() {
 	var (
 		// total available flex width initialized to total viewport width minus
 		// the padding on each col (2)
-		totalFlexWidth  = m.width - 2*len(m.cols)
+		totalFlexWidth  = m.viewport.Width - 2*len(m.cols)
 		totalFlexFactor int
 		flexGCD         int
 	)

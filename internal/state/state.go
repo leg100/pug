@@ -12,6 +12,8 @@ import (
 )
 
 type State struct {
+	resource.Common
+
 	WorkspaceID      resource.ID
 	Resources        map[ResourceAddress]*Resource
 	Serial           int64
@@ -21,7 +23,11 @@ type State struct {
 
 func newState(ws resource.Resource, r io.Reader) (*State, error) {
 	// Default to a serial of -1 to indicate that there is no state yet.
-	state := &State{WorkspaceID: ws.GetID(), Serial: -1}
+	state := &State{
+		Common:      resource.New(resource.State, ws),
+		WorkspaceID: ws.GetID(),
+		Serial:      -1,
+	}
 
 	var file StateFile
 	if err := json.NewDecoder(r).Decode(&file); err != nil {
