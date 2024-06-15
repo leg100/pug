@@ -1,7 +1,9 @@
 package tui
 
 import (
+	"errors"
 	"fmt"
+	"os"
 	"os/exec"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -17,12 +19,18 @@ func ReportInfo(msg string, args ...any) tea.Cmd {
 	return CmdHandler(InfoMsg(fmt.Sprintf(msg, args...)))
 }
 
-func OpenVim(path string) tea.Cmd {
-	// TODO: use env var EDITOR
+func OpenEditor(path string) tea.Cmd {
 	// TODO: check for side effects of exec blocking the tui - do
 	// messages get queued up?
-	c := exec.Command("vim", path)
-	return tea.ExecProcess(c, func(err error) tea.Msg {
-		return ReportError(fmt.Errorf("opening vim: %w", err))()
+	editor, ok := os.LookupEnv("EDITOR")
+	if !ok {
+		return ReportError(errors.New("cannot open editor: environment variable EDITOR not set"))
+	}
+	cmd := exec.Command(editor, path)
+	return tea.ExecProcess(cmd, func(err error) tea.Msg {
+		if err != nil {
+			return ReportError(fmt.Errorf("opening %s in editor: %w", path, err))()
+		}
+		return nil
 	})
 }
