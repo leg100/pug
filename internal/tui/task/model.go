@@ -73,6 +73,7 @@ func (mm *Maker) makeWithID(res resource.Resource, width, height int, makerID Ma
 		Autoscroll: !mm.disableAutoscroll,
 		Width:      m.viewportWidth(),
 		Height:     m.height,
+		Spinner:    m.spinner,
 	})
 
 	return m, nil

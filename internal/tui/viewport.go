@@ -3,6 +3,7 @@ package tui
 import (
 	"fmt"
 
+	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -18,6 +19,7 @@ type Viewport struct {
 
 	content string
 	json    bool
+	spinner *spinner.Model
 }
 
 type ViewportOptions struct {
@@ -26,13 +28,15 @@ type ViewportOptions struct {
 	JSON       bool
 	Border     bool
 	Autoscroll bool
+	Spinner    *spinner.Model
 }
 
 func NewViewport(opts ViewportOptions) Viewport {
 	m := Viewport{
+		Autoscroll: opts.Autoscroll,
 		viewport:   viewport.New(0, 0),
 		json:       opts.JSON,
-		Autoscroll: opts.Autoscroll,
+		spinner:    opts.Spinner,
 	}
 	m.SetDimensions(opts.Width, opts.Height)
 	return m
@@ -72,8 +76,22 @@ func (m Viewport) View() string {
 		AlignVertical(lipgloss.Bottom).
 		Render(percent)
 
+	var output string
+	if m.content == "" {
+		msg := "Awaiting output"
+		if m.spinner != nil {
+			msg += " " + m.spinner.View()
+		}
+		output = Regular.Copy().
+			Height(m.viewport.Height).
+			Width(m.viewport.Width).
+			Render(msg)
+	} else {
+		output = m.viewport.View()
+	}
+
 	return lipgloss.JoinHorizontal(lipgloss.Top,
-		m.viewport.View(),
+		output,
 		percentContainer,
 	)
 }
