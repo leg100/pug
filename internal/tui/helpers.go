@@ -246,13 +246,13 @@ func (h *Helpers) CreateTasks(cmd string, fn task.Func, ids ...resource.ID) tea.
 		case 1:
 			task, err := fn(ids[0])
 			if err != nil {
-				return ReportError(err, "creating task")
+				return ReportError(fmt.Errorf("creating task: %w", err))
 			}
 			return NewNavigationMsg(TaskKind, WithParent(task))
 		default:
 			group, err := h.TaskService.CreateGroup(cmd, fn, ids...)
 			if err != nil {
-				return ReportError(err, "creating task group")
+				return ReportError(fmt.Errorf("creating task group: %w", err))
 			}
 			return NewNavigationMsg(TaskGroupKind, WithParent(group))
 		}

@@ -88,7 +88,7 @@ func (m resourceList) Init() tea.Cmd {
 	return func() tea.Msg {
 		state, err := m.states.Get(m.workspace.GetID())
 		if err != nil {
-			return tui.ReportError(err, "initializing state model")
+			return tui.ReportError(fmt.Errorf("initializing state model: %w", err))
 		}
 		return initState(state)
 	}
@@ -111,7 +111,7 @@ func (m resourceList) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case reloadedMsg:
 		m.reloading = false
 		if msg.err != nil {
-			return m, tui.ReportError(msg.err, "reloading state failed")
+			return m, tui.ReportError(fmt.Errorf("reloading state failed: %w", msg.err))
 		}
 		return m, tui.ReportInfo("reloading finished")
 	case tea.KeyMsg:
@@ -122,7 +122,7 @@ func (m resourceList) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		case key.Matches(msg, resourcesKeys.Reload):
 			if m.reloading {
-				return m, tui.ReportError(errors.New("reloading in progress"), "")
+				return m, tui.ReportError(errors.New("reloading in progress"))
 			}
 			m.reloading = true
 			return m, func() tea.Msg {

@@ -83,7 +83,7 @@ func (m groupModel) Init() tea.Cmd {
 	var cmds []tea.Cmd
 	if len(m.group.CreateErrors) > 0 {
 		err := fmt.Errorf("failed to create %d tasks: see logs", len(m.group.CreateErrors))
-		cmds = append(cmds, tui.ReportError(err, ""))
+		cmds = append(cmds, tui.ReportError(err))
 	}
 	cmds = append(cmds, func() tea.Msg {
 		// Seed table with task group's tasks

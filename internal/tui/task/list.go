@@ -156,7 +156,7 @@ func (m List) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, keys.Common.Apply):
 			runIDs, err := m.pruneApplyableTasks()
 			if err != nil {
-				return m, tui.ReportError(err, "applying tasks")
+				return m, tui.ReportError(fmt.Errorf("applying tasks: %w", err))
 			}
 			return m, tui.YesNoPrompt(
 				fmt.Sprintf("Apply %d plans?", len(runIDs)),

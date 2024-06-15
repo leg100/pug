@@ -269,17 +269,13 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tui.NavigationMsg:
 		created, err := m.setCurrent(msg.Page)
 		if err != nil {
-			return m, tui.ReportError(err, "setting current page")
+			return m, tui.ReportError(fmt.Errorf("setting current page: %w", err))
 		}
 		if created {
 			cmds = append(cmds, m.currentModel().Init())
 		}
 	case tui.ErrorMsg:
-		if msg.Error != nil {
-			err := msg.Error
-			msg := fmt.Sprintf(msg.Message, msg.Args...)
-			m.err = fmt.Errorf("%s: %w", msg, err)
-		}
+		m.err = error(msg)
 	case tui.InfoMsg:
 		m.info = string(msg)
 	case tea.WindowSizeMsg:

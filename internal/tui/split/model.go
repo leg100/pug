@@ -1,6 +1,8 @@
 package split
 
 import (
+	"fmt"
+
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -132,7 +134,7 @@ func (m Model[R]) Update(msg tea.Msg) (Model[R], tea.Cmd) {
 				// Create model
 				model, err := m.maker.Make(row.Value, m.previewWidth(), m.previewHeight())
 				if err != nil {
-					return m, tui.ReportError(err, "making model for preview")
+					return m, tui.ReportError(fmt.Errorf("making model for preview: %w", err))
 				}
 				// Cache newly created model
 				m.cache.Put(row.ID, model)

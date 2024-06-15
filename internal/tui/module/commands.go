@@ -14,7 +14,7 @@ func ReloadModules(firsttime bool, modules tui.ModuleService) tea.Cmd {
 	return func() tea.Msg {
 		added, removed, err := modules.Reload()
 		if err != nil {
-			return tui.NewErrorMsg(err, "reloading modules")
+			return tui.ReportError(fmt.Errorf("reloading modules: %w", err))()
 		}
 		if firsttime {
 			return tui.InfoMsg(

@@ -171,7 +171,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		if err := m.viewport.AppendContent(msg.output, msg.eof); err != nil {
-			return m, tui.ReportError(err, "")
+			return m, tui.ReportError(err)
 		}
 		if !msg.eof {
 			cmds = append(cmds, m.getOutput)
@@ -321,7 +321,7 @@ func (m model) getOutput() tea.Msg {
 	if err == io.EOF {
 		msg.eof = true
 	} else if err != nil {
-		return tui.NewErrorMsg(err, "reading task output")
+		return tui.ReportError(errors.New("reading task output"))()
 	}
 	msg.output = string(m.buf[:n])
 	return msg

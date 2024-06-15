@@ -122,7 +122,7 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if row, ok := m.table.CurrentRow(); ok {
 				return m, func() tea.Msg {
 					if err := m.svc.SelectWorkspace(row.Value.ModuleID(), row.Value.ID); err != nil {
-						return tui.NewErrorMsg(err, "setting current workspace")
+						return tui.ReportError(fmt.Errorf("setting current workspace: %w", err))()
 					}
 					return nil
 				}

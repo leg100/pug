@@ -8,7 +8,6 @@ import (
 // NavigationMsg is an instruction to navigate to a page.
 type NavigationMsg struct {
 	Page Page
-	Tab  string
 }
 
 func NewNavigationMsg(kind Kind, opts ...NavigateOption) NavigationMsg {
@@ -27,29 +26,7 @@ func WithParent(parent resource.Resource) NavigateOption {
 	}
 }
 
-func WithTab(tab string) NavigateOption {
-	return func(msg *NavigationMsg) {
-		msg.Tab = tab
-	}
-}
-
-type SetActiveTabMsg string
-
 type InfoMsg string
-
-type ErrorMsg struct {
-	Error   error
-	Message string
-	Args    []any
-}
-
-func NewErrorMsg(err error, msg string, args ...any) ErrorMsg {
-	return ErrorMsg{
-		Error:   err,
-		Message: msg,
-		Args:    args,
-	}
-}
 
 // FilterFocusReqMsg is a request to focus the filter widget. FilterFocusAckMsg
 // should be sent in response to ackowledge the request.
