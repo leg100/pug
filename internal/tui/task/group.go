@@ -18,7 +18,7 @@ type groupTaskMaker struct {
 }
 
 func (m *groupTaskMaker) Make(res resource.Resource, width, height int) (tea.Model, error) {
-	return m.makeWithID(res, width, height, TaskGroupMakerID, false)
+	return m.make(res, width, height, false)
 }
 
 // GroupMaker makes taskgroup models
@@ -111,11 +111,6 @@ func (m groupModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		cmds = append(cmds, cmd)
-	case outputMsg:
-		// Only forward output messages for tasks that are part of this task group.
-		if !m.group.IncludesTask(msg.taskID) {
-			return m, nil
-		}
 	case progress.FrameMsg:
 		// FrameMsg is sent when the progress bar wants to animate itself
 		progressModel, cmd := m.progress.Update(msg)

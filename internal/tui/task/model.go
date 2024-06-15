@@ -10,21 +10,13 @@ import (
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/google/uuid"
 	"github.com/leg100/pug/internal/logging"
 	"github.com/leg100/pug/internal/resource"
 	"github.com/leg100/pug/internal/run"
 	"github.com/leg100/pug/internal/task"
 	"github.com/leg100/pug/internal/tui"
 	"github.com/leg100/pug/internal/tui/keys"
-)
-
-// MakerID uniquely identifies a task model maker
-type MakerID int
-
-const (
-	TaskMakerID MakerID = iota
-	TaskListMakerID
-	TaskGroupMakerID
 )
 
 type Maker struct {
@@ -40,22 +32,22 @@ type Maker struct {
 }
 
 func (mm *Maker) Make(res resource.Resource, width, height int) (tea.Model, error) {
-	return mm.makeWithID(res, width, height, TaskMakerID, true)
+	return mm.make(res, width, height, true)
 }
 
-func (mm *Maker) makeWithID(res resource.Resource, width, height int, makerID MakerID, border bool) (tea.Model, error) {
+func (mm *Maker) make(res resource.Resource, width, height int, border bool) (tea.Model, error) {
 	task, ok := res.(*task.Task)
 	if !ok {
 		return model{}, errors.New("fatal: cannot make task model with a non-task resource")
 	}
 
 	m := model{
+		id:      uuid.New(),
 		svc:     mm.TaskService,
 		runs:    mm.RunService,
 		task:    task,
 		output:  task.NewReader(),
 		spinner: mm.Spinner,
-		makerID: makerID,
 		// read upto 1kb at a time
 		buf:      make([]byte, 1024),
 		helpers:  mm.Helpers,
@@ -105,14 +97,15 @@ func (mm *Maker) Update(msg tea.Msg) tea.Cmd {
 }
 
 type model struct {
+	id uuid.UUID
+
 	svc  tui.TaskService
 	task *task.Task
 	run  *run.Run
 	runs tui.RunService
 
-	output  io.Reader
-	buf     []byte
-	makerID MakerID
+	output io.Reader
+	buf    []byte
 
 	showInfo bool
 	border   bool
@@ -165,13 +158,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// adjust width of viewport to accomodate info
 		m.viewport.SetDimensions(m.viewportWidth(), m.height)
 	case outputMsg:
-		// Ensure output is for this task
-		if msg.taskID != m.task.ID {
-			return m, nil
-		}
-		// Ensure output is for a task model made by the expected maker (avoids
-		// duplicate output where there are multiple models for the same task).
-		if msg.makerID != m.makerID {
+		// Ensure output is for this model
+		if msg.modelID != m.id {
 			return m, nil
 		}
 		if err := m.viewport.AppendContent(msg.output, msg.eof); err != nil {
@@ -322,7 +310,7 @@ func (m model) HelpBindings() []key.Binding {
 }
 
 func (m model) getOutput() tea.Msg {
-	msg := outputMsg{taskID: m.task.ID, makerID: m.makerID}
+	msg := outputMsg{modelID: m.id}
 
 	n, err := m.output.Read(m.buf)
 	if err == io.EOF {
@@ -335,8 +323,7 @@ func (m model) getOutput() tea.Msg {
 }
 
 type outputMsg struct {
-	makerID MakerID
-	taskID  resource.ID
+	modelID uuid.UUID
 	output  string
 	eof     bool
 }

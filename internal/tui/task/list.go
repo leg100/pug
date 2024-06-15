@@ -49,7 +49,7 @@ type ListTaskMaker struct {
 }
 
 func (m *ListTaskMaker) Make(res resource.Resource, width, height int) (tea.Model, error) {
-	return m.makeWithID(res, width, height, TaskListMakerID, false)
+	return m.make(res, width, height, false)
 }
 
 // NewListMaker constructs a task list model maker
