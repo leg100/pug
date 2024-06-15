@@ -38,6 +38,7 @@ func makeMakers(opts Options, spinner *spinner.Model) map[tui.Kind]tui.Maker {
 		Spinner:     spinner,
 		Helpers:     helpers,
 		Logger:      opts.Logger,
+		Program:     opts.Program,
 	}
 	taskListMaker := tasktui.NewListMaker(
 		opts.TaskService,

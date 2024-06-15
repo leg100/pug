@@ -33,6 +33,7 @@ type Maker struct {
 	Spinner     *spinner.Model
 	Helpers     *tui.Helpers
 	Logger      *logging.Logger
+	Program     string
 
 	disableAutoscroll bool
 	showInfo          bool
@@ -61,6 +62,7 @@ func (mm *Maker) makeWithID(res resource.Resource, width, height int, makerID Ma
 		showInfo: mm.showInfo,
 		border:   border,
 		width:    width,
+		program:  mm.Program,
 	}
 	m.setHeight(height)
 
@@ -114,6 +116,7 @@ type model struct {
 
 	showInfo bool
 	border   bool
+	program  string
 
 	viewport tui.Viewport
 	spinner  *spinner.Model
@@ -242,10 +245,13 @@ func (m model) View() string {
 			m.task.ID.String(),
 			"",
 			tui.Bold.Render("Command"),
-			m.task.CommandString(),
+			fmt.Sprintf("%s %s", m.program, m.task.CommandString()),
 			"",
 			tui.Bold.Render("Arguments"),
 			args,
+			"",
+			tui.Bold.Render("Path"),
+			m.task.Path,
 			"",
 			tui.Bold.Render("Environment variables"),
 			envs,

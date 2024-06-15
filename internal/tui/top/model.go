@@ -68,6 +68,7 @@ type Options struct {
 	FirstPage string
 	MaxTasks  int
 	Debug     bool
+	Program   string
 }
 
 // New constructs the top-level TUI model.

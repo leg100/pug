@@ -141,6 +141,7 @@ func startApp(cfg config, stdout io.Writer) (*app, error) {
 		Workdir:          workdir,
 		MaxTasks:         cfg.MaxTasks,
 		Debug:            cfg.Debug,
+		Program:          cfg.Program,
 	})
 	if err != nil {
 		return nil, err
