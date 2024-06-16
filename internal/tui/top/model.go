@@ -247,7 +247,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					}
 				}
 			}
-			// Unhandled key.
+			m.err = fmt.Errorf("unknown key: %s", msg.String())
 			return m, nil
 		}
 	case tui.NavigationMsg:
@@ -351,7 +351,7 @@ func (m model) View() string {
 			Bold(true).
 			Background(tui.Red).
 			Foreground(tui.White).
-			Render("Error: ")
+			Render("Error:")
 		footer += tui.Regular.Copy().Padding(0, 1, 0, 0).
 			Background(tui.Red).
 			Foreground(tui.White).
