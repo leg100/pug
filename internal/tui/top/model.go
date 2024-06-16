@@ -247,7 +247,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					}
 				}
 			}
-			m.err = fmt.Errorf("unknown key: %s", msg.String())
 			return m, nil
 		}
 	case tui.NavigationMsg:
