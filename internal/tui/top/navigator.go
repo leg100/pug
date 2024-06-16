@@ -3,7 +3,6 @@ package top
 import (
 	"fmt"
 
-	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/leg100/pug/internal/resource"
 	"github.com/leg100/pug/internal/tui"
@@ -18,14 +17,15 @@ type navigator struct {
 	cache *tui.Cache
 	// directory of model makers for each kind
 	makers map[tui.Kind]tui.Maker
+
 	// navigator needs to know width and height when making a model
 	width  int
 	height int
 }
 
-func newNavigator(opts Options, spinner *spinner.Model) (*navigator, error) {
+func newNavigator(opts Options, makers map[tui.Kind]tui.Maker) (*navigator, error) {
 	n := &navigator{
-		makers: makeMakers(opts, spinner),
+		makers: makers,
 		cache:  tui.NewCache(),
 	}
 

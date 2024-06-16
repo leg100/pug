@@ -50,9 +50,11 @@ var (
 	}
 
 	modulePathColor = lipgloss.AdaptiveColor{
-		Dark:  string(Pink),
-		Light: string(Pink),
+		Dark:  string(Grey),
+		Light: string(Grey),
 	}
+
+	RunReportBackgroundColor = EvenLighterGrey
 
 	ScrollPercentageBackground = lipgloss.AdaptiveColor{
 		Dark:  string(DarkGrey),

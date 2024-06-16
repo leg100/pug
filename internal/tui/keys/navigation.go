@@ -13,8 +13,6 @@ type navigation struct {
 	HalfPageDown key.Binding
 	GotoTop      key.Binding
 	GotoBottom   key.Binding
-	TabNext      key.Binding
-	TabLast      key.Binding
 	SwitchPane   key.Binding
 }
 

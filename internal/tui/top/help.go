@@ -5,40 +5,7 @@ import (
 
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/leg100/pug/internal/tui"
 )
-
-var (
-	shortHelpKeyStyle  = tui.Bold.Foreground(tui.HelpKey).Copy().Margin(0, 1, 0, 0)
-	shortHelpDescStyle = tui.Regular.Foreground(tui.HelpDesc).Copy()
-)
-
-// shortHelpView renders help for key bindings within the header.
-func shortHelpView(bindings []key.Binding, maxWidth int) string {
-	// enumerate through each group of three bindings, populating a series of
-	// pairs of columns, one for keys, one for descriptions
-	var (
-		b     strings.Builder
-		width int
-	)
-	for i, binding := range bindings {
-		var bb strings.Builder
-		if i > 0 {
-			bb.WriteString("  ")
-		}
-		bb.WriteString(shortHelpKeyStyle.Render(binding.Help().Key))
-		bb.WriteString(" ")
-		bb.WriteString(shortHelpDescStyle.Render(binding.Help().Desc))
-
-		// check whether it exceeds the maximum width avail
-		width += lipgloss.Width(bb.String())
-		if width > maxWidth {
-			break
-		}
-		b.WriteString(bb.String())
-	}
-	return b.String()
-}
 
 var (
 	longHelpHeadingStyle = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{

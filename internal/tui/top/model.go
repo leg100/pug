@@ -25,35 +25,28 @@ type mode int
 
 const (
 	normalMode mode = iota // default
-	helpMode               // help is visible
 	promptMode             // confirm prompt is visible and taking input
 	filterMode             // filter is visible and taking input
 )
 
 type model struct {
-	ModuleService tui.ModuleService
-
 	*navigator
 
-	width  int
-	height int
-
-	mode mode
-
-	prompt *tui.Prompt
-
-	// Either an error or an informational message is rendered in the footer.
-	err  error
-	info string
-
-	tasks    tui.TaskService
-	spinner  *spinner.Model
-	spinning bool
-	maxTasks int
-
-	dump *os.File
-
-	workdir string
+	moduleService tui.ModuleService
+	width         int
+	height        int
+	mode          mode
+	showHelp      bool
+	helpContent   string
+	prompt        *tui.Prompt
+	dump          *os.File
+	workdir       string
+	err           error
+	info          string
+	tasks         tui.TaskService
+	spinner       *spinner.Model
+	spinning      bool
+	maxTasks      int
 }
 
 type Options struct {
@@ -62,13 +55,12 @@ type Options struct {
 	StateService     tui.StateService
 	RunService       tui.RunService
 	TaskService      tui.TaskService
-
-	Logger    *logging.Logger
-	Workdir   internal.Workdir
-	FirstPage string
-	MaxTasks  int
-	Debug     bool
-	Program   string
+	Logger           *logging.Logger
+	Workdir          internal.Workdir
+	FirstPage        string
+	MaxTasks         int
+	Debug            bool
+	Program          string
 }
 
 // New constructs the top-level TUI model.
@@ -83,28 +75,30 @@ func New(opts Options) (model, error) {
 	}
 
 	spinner := spinner.New(spinner.WithSpinner(spinner.Line))
-
-	navigator, err := newNavigator(opts, &spinner)
-	if err != nil {
-		return model{}, err
-	}
+	makers := makeMakers(opts, &spinner)
 
 	m := model{
-		ModuleService: opts.ModuleService,
-		navigator:     navigator,
+		moduleService: opts.ModuleService,
 		spinner:       &spinner,
 		tasks:         opts.TaskService,
 		maxTasks:      opts.MaxTasks,
 		dump:          dump,
 		workdir:       opts.Workdir.PrettyString(),
 	}
+
+	var err error
+	m.navigator, err = newNavigator(opts, makers)
+	if err != nil {
+		return model{}, err
+	}
+
 	return m, nil
 }
 
 func (m model) Init() tea.Cmd {
 	return tea.Batch(
 		m.currentModel().Init(),
-		module.ReloadModules(true, m.ModuleService),
+		module.ReloadModules(true, m.moduleService),
 	)
 }
 
@@ -165,19 +159,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.err = nil
 
 		switch m.mode {
-		case helpMode:
-			switch {
-			case key.Matches(msg, keys.Global.Quit):
-				// Let quit key handler below handle this
-				break
-			case key.Matches(msg, keys.Global.Help, keys.Global.Back):
-				// Exit help
-				m.mode = normalMode
-				return m, nil
-			default:
-				// Any other key is ignored
-				return m, nil
-			}
 		case promptMode:
 			closePrompt, cmd := m.prompt.HandleKey(msg)
 			if closePrompt {
@@ -227,8 +208,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// <esc> goes back to last page
 			m.goBack()
 		case key.Matches(msg, keys.Global.Help):
-			// '?' enables help mode
-			m.mode = helpMode
+			// '?' toggles help widget
+			m.showHelp = !m.showHelp
+			// Help widget takes up space so reset dimensions for all new and
+			// existing child models
+			m.resetDimensions()
 		case key.Matches(msg, keys.Global.Filter):
 			// '/' enables filter mode, but only if the current model
 			// acknowledges the message.
@@ -282,17 +266,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
-
-		// Inform navigator of new dimensions for when it builds new models
-		m.navigator.width = m.viewWidth()
-		m.navigator.height = m.viewHeight()
-
-		// amend msg to account for header etc, and forward to all cached
-		// models.
-		_ = m.cache.UpdateAll(tea.WindowSizeMsg{
-			Height: m.viewHeight(),
-			Width:  m.viewWidth(),
-		})
+		m.resetDimensions()
 	default:
 		// Send remaining msg types to all cached models
 		cmds = append(cmds, m.cache.UpdateAll(msg)...)
@@ -306,149 +280,103 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, tea.Batch(cmds...)
 }
 
+func (m *model) resetDimensions() {
+	// Inform navigator of new dimensions for when it builds new models
+	m.navigator.width = m.viewWidth()
+	m.navigator.height = m.viewHeight()
+
+	// Inform all existing models of new dimensions
+	_ = m.cache.UpdateAll(tea.WindowSizeMsg{
+		Height: m.viewHeight(),
+		Width:  m.viewWidth(),
+	})
+}
+
 var (
 	breadcrumbsHeight   = 1
 	messageFooterHeight = 1
 )
 
 func (m model) View() string {
+	// Compose header
 	var (
-		content           string
-		shortHelpBindings []key.Binding
+		header   string
+		status   string
+		leftover int
 	)
-
-	var currentHelpBindings []key.Binding
-	if bindings, ok := m.currentModel().(tui.ModelHelpBindings); ok {
-		currentHelpBindings = bindings.HelpBindings()
-		currentHelpBindings = tui.RemoveDuplicateBindings(currentHelpBindings)
+	// Optionally render title on the left of header
+	if model, ok := m.currentModel().(tui.ModelTitle); ok {
+		header = model.Title()
+		leftover = m.width - tui.Width(header)
 	}
-
-	switch m.mode {
-	case helpMode:
-		content = lipgloss.JoinVertical(lipgloss.Top,
-			strings.Repeat("─", m.width),
-			lipgloss.NewStyle().
-				Margin(1).
-				Render(
-					fullHelpView(
-						currentHelpBindings,
-						keys.KeyMapToSlice(keys.Global),
-						keys.KeyMapToSlice(keys.Navigation),
-					),
-				),
-		)
-		shortHelpBindings = []key.Binding{
-			key.NewBinding(
-				key.WithKeys("?"),
-				key.WithHelp("?", "close help"),
-			),
-		}
-	case promptMode:
-		content = m.currentModel().View()
-		shortHelpBindings = m.prompt.HelpBindings()
-	case filterMode:
-		content = m.currentModel().View()
-		shortHelpBindings = keys.KeyMapToSlice(keys.Filter)
-	default:
-		content = m.currentModel().View()
-		shortHelpBindings = append(
-			currentHelpBindings,
-			keys.KeyMapToSlice(keys.Global)...,
-		)
-	}
-
-	// Render global static info in top left corner
-	// globalStatic := lipgloss.JoinVertical(lipgloss.Top,
-	// 	lipgloss.JoinHorizontal(lipgloss.Left, workdirIcon, workdirStyle.Render(m.workdir)),
-	// 	lipgloss.JoinHorizontal(lipgloss.Left, versionIcon, versionStyle.Render(version.Version)),
-	// )
-
-	// Render help bindings in between version and logo. Set its available width
-	// to the width of the terminal minus the width of the global static info,
-	// the width of the logo, and the width of its margins.
-	//shortHelpWidth := m.width - tui.Width(globalStatic) - logoWidth - 6
-	//shortHelp := lipgloss.NewStyle().
-	//	Margin(0, 2, 0, 4).
-	//	Width(shortHelpWidth).
-	//	Render(shortHelpView(shortHelpBindings, shortHelpWidth))
-
-	// Render page title line
-	var (
-		pageTitle  string
-		pageStatus string
-	)
-	if titled, ok := m.currentModel().(tui.ModelTitle); ok {
-		pageTitle = tui.Regular.Copy().Padding(0, 1).Render(titled.Title())
-	}
-
-	// Optionally render page id and/or status to the right side of title
-	pageStatusStyle := tui.Regular.
-		Width(m.width - tui.Width(pageTitle)).
-		Align(lipgloss.Right)
+	// Optionally render status on the right of header
 	if statusable, ok := m.currentModel().(tui.ModelStatus); ok {
-		pageStatus = pageStatusStyle.Render(statusable.Status())
+		status = statusable.Status()
+		leftover -= tui.Width(status)
 	}
+	// Fill in left over space in between title and status with background color
+	header += tui.Regular.Width(leftover).Background(tui.Pink).Render()
+	header += status
+	// Style the header
+	header = lipgloss.NewStyle().
+		MaxHeight(1).
+		Inline(true).
+		MaxWidth(m.width).
+		// TODO: is this needed?
+		Inherit(tui.Title).
+		Render(header)
 
-	// Stitch together page title line, and id and status to the right
-	pageTitleLine := lipgloss.JoinHorizontal(lipgloss.Left, pageTitle, pageStatus)
+	// Start composing vertical stack of components that fill entire terminal.
+	components := []string{header}
 
-	// Footer is the last line in the terminal. If there is an info or error
-	// message then show that. Otherwise show:
-	// * help bindings
-	// * working dir
-	// * version
-	var footer string
-	switch {
-	case m.err != nil:
-		footer = tui.Padded.Copy().
-			Bold(true).
-			Margin(0, 1).
-			Background(tui.Red).
-			Foreground(tui.White).
-			Render("Error: " + m.err.Error())
-	case m.info != "":
-		footer = tui.Padded.Copy().
-			Foreground(tui.Black).
-			Render(m.info)
-	default:
-		// First allocate space for version string.
-		footer = tui.Regular.Copy().Margin(0, 1).Render(
-			lipgloss.JoinHorizontal(lipgloss.Left,
-				shortHelpView(shortHelpBindings, 10),
-				m.workdir,
-				version.Version,
-			),
-		)
-	}
-
-	// Vertical stack of components that make up the rendered view.
-	components := []string{
-		// title
-		lipgloss.NewStyle().
-			// Prohibit overflowing title wrapping to another line.
-			MaxHeight(1).
-			Inline(false).
-			Width(m.width).
-			Inherit(tui.Title).
-			// Prefix title with a space to add margin (Inline() doesn't permit
-			// using Margin()).
-			Render(pageTitleLine),
-	}
+	// Add prompt if in prompt mode.
 	if m.mode == promptMode {
 		components = append(components, m.prompt.View(m.width))
 	}
-	components = append(components,
-		// content
-		lipgloss.NewStyle().
-			Height(m.viewHeight()).
-			Width(m.viewWidth()).
-			Render(content),
-		// footer
-		tui.Regular.
-			Inline(true).
-			MaxWidth(m.width).
-			Width(m.width).
-			Render(footer),
+	// Add main content
+	components = append(components, lipgloss.NewStyle().
+		Height(m.viewHeight()).
+		Width(m.viewWidth()).
+		Render(m.currentModel().View()),
+	)
+
+	// Add help if enabled
+	if m.showHelp {
+		components = append(components, m.help())
+	}
+
+	// Compose footer
+	footer := tui.Padded.Copy().Background(tui.Grey).Foreground(tui.White).Render("? help")
+	if m.err != nil {
+		footer += tui.Padded.Copy().
+			Bold(true).
+			Background(tui.Red).
+			Foreground(tui.White).
+			Render("Error: ")
+		footer += tui.Regular.Copy().Padding(0, 1, 0, 0).
+			Background(tui.Red).
+			Foreground(tui.White).
+			Render(m.err.Error())
+	} else if m.info != "" {
+		footer += tui.Padded.Copy().
+			Foreground(tui.Black).
+			Background(tui.EvenLighterGrey).
+			Render(m.info)
+	}
+	workdir := tui.Padded.Copy().Background(tui.Grey).Foreground(tui.White).Render(m.workdir)
+	version := tui.Padded.Copy().Background(tui.Black).Foreground(tui.White).Render(version.Version)
+	// Fill in left over space with background color
+	leftover = m.width - tui.Width(footer) - tui.Width(workdir) - tui.Width(version)
+	footer += tui.Regular.Copy().Width(leftover).Background(tui.EvenLighterGrey).Render()
+	footer += workdir
+	footer += version
+
+	// Add footer
+	components = append(components, tui.Regular.
+		Inline(true).
+		MaxWidth(m.width).
+		Width(m.width).
+		Render(footer),
 	)
 
 	return lipgloss.JoinVertical(lipgloss.Top, components...)
@@ -461,10 +389,98 @@ func (m model) viewHeight() int {
 	if m.mode == promptMode {
 		vh -= tui.PromptHeight
 	}
+	if m.showHelp {
+		vh -= helpWidgetHeight
+	}
 	return vh
 }
 
 // viewWidth retrieves the width available within the main view
 func (m model) viewWidth() int {
 	return m.width
+}
+
+var (
+	helpKeyStyle  = tui.Bold.Copy().Foreground(tui.HelpKey).Margin(0, 1, 0, 0)
+	helpDescStyle = tui.Regular.Copy().Foreground(tui.HelpDesc)
+	// Height of help widget, including borders
+	helpWidgetHeight = 12
+)
+
+// help renders key bindings
+func (m model) help() string {
+	// Compile list of bindings to render
+	var bindings []key.Binding
+	switch m.mode {
+	case promptMode:
+		bindings = append(bindings, m.prompt.HelpBindings()...)
+	case filterMode:
+		bindings = append(bindings, keys.KeyMapToSlice(keys.Filter)...)
+	default:
+		if model, ok := m.currentModel().(tui.ModelHelpBindings); ok {
+			bindings = append(bindings, model.HelpBindings()...)
+		}
+	}
+	bindings = append(bindings, keys.KeyMapToSlice(keys.Global)...)
+	bindings = append(bindings, keys.KeyMapToSlice(keys.Navigation)...)
+	bindings = removeDuplicateBindings(bindings)
+
+	// Enumerate through each group of bindings, populating a series of
+	// pairs of columns, one for keys, one for descriptions
+	var (
+		pairs []string
+		width int
+		// Subtract 2 to accommodate borders
+		rows = helpWidgetHeight - 2
+	)
+	for i := 0; i < len(bindings); i += rows {
+		var (
+			keys  []string
+			descs []string
+		)
+		for j := i; j < min(i+rows, len(bindings)); j++ {
+			keys = append(keys, bindings[j].Help().Key)
+			descs = append(descs, bindings[j].Help().Desc)
+		}
+		// Render pair of columns; beyond the first pair, render a three space
+		// left margin, in order to visually separate the pairs.
+		var cols []string
+		if len(pairs) > 0 {
+			cols = []string{"   "}
+		}
+		cols = append(cols,
+			helpKeyStyle.Render(strings.Join(keys, "\n")),
+			helpDescStyle.Render(strings.Join(descs, "\n")),
+		)
+
+		pair := lipgloss.JoinHorizontal(lipgloss.Top, cols...)
+		// check whether it exceeds the maximum width avail (the width of the
+		// terminal, subtracting 2 for the borders).
+		width += lipgloss.Width(pair)
+		if width > m.width-2 {
+			break
+		}
+		pairs = append(pairs, pair)
+	}
+	// Join pairs of columns and enclose in a border
+	content := lipgloss.JoinHorizontal(lipgloss.Top, pairs...)
+	return tui.Border.Copy().Height(rows).Width(m.width - 2).Render(content)
+}
+
+// removeDuplicateBindings removes duplicate bindings from a list of bindings. A
+// binding is deemed a duplicate if another binding has the same list of keys.
+func removeDuplicateBindings(bindings []key.Binding) []key.Binding {
+	seen := make(map[string]struct{})
+	var i int
+	for _, b := range bindings {
+		key := strings.Join(b.Keys(), " ")
+		if _, ok := seen[key]; ok {
+			// duplicate, skip
+			continue
+		}
+		seen[key] = struct{}{}
+		bindings[i] = b
+		i++
+	}
+	return bindings[:i]
 }

@@ -100,9 +100,9 @@ func (mm *ListMaker) Make(parent resource.Resource, width, height int) (tea.Mode
 		if rr := t.Run(); rr != nil {
 			run := rr.(*runpkg.Run)
 			if t.CommandString() == "plan" && run.PlanReport != nil {
-				row[runChangesColumn.Key] = mm.Helpers.RunReport(*run.PlanReport)
+				row[runChangesColumn.Key] = mm.Helpers.RunReport(*run.PlanReport, true)
 			} else if t.CommandString() == "apply" && run.ApplyReport != nil {
-				row[runChangesColumn.Key] = mm.Helpers.RunReport(*run.ApplyReport)
+				row[runChangesColumn.Key] = mm.Helpers.RunReport(*run.ApplyReport, true)
 			}
 			row[runStatusColumn.Key] = mm.Helpers.RunStatus(run, false)
 		}

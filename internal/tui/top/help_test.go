@@ -44,7 +44,7 @@ func Test_render(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := shortHelpView(tt.bindings, 30)
+			got := help(tt.bindings, 30)
 			assert.Equal(t, tt.want, got)
 		})
 	}

@@ -6,7 +6,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/leg100/pug/internal/logging"
@@ -152,7 +151,7 @@ func (h *Helpers) TaskStatus(t *task.Task, background bool) string {
 	}
 
 	if background {
-		return Regular.Copy().Padding(0, 1).Background(color).Foreground(White).Render(string(t.State))
+		return Padded.Background(color).Foreground(White).Render(string(t.State))
 	} else {
 		return Regular.Copy().Foreground(color).Render(string(t.State))
 	}
@@ -184,28 +183,38 @@ func (h *Helpers) RunStatus(r *run.Run, background bool) string {
 	}
 
 	if background {
-		return Regular.Copy().Background(color).Padding(0, 1).Foreground(White).Render(string(r.Status))
+		return Padded.Background(color).Foreground(White).Render(string(r.Status))
 	} else {
 		return Regular.Copy().Foreground(color).Render(string(r.Status))
 	}
 }
 
-func (h *Helpers) LatestRunReport(r *run.Run) string {
+func (h *Helpers) LatestRunReport(r *run.Run, table bool) string {
 	if r.ApplyReport != nil {
-		return h.RunReport(*r.ApplyReport)
+		return h.RunReport(*r.ApplyReport, table)
 	}
 	if r.PlanReport != nil {
-		return h.RunReport(*r.PlanReport)
+		return h.RunReport(*r.PlanReport, table)
 	}
 	return ""
 }
 
-func (h *Helpers) RunReport(report run.Report) string {
-	additions := Regular.Copy().Foreground(Green).Render(fmt.Sprintf("+%d", report.Additions))
-	changes := Regular.Copy().Foreground(Blue).Render(fmt.Sprintf("~%d", report.Changes))
-	destructions := Regular.Copy().Foreground(Red).Render(fmt.Sprintf("-%d", report.Destructions))
+// RunReport renders a colored summary of a run's changes. Set table to true if
+// the report is rendered within a table row.
+func (h *Helpers) RunReport(report run.Report, table bool) string {
+	var background lipgloss.TerminalColor = lipgloss.NoColor{}
+	if !table {
+		background = RunReportBackgroundColor
+	}
+	additions := Regular.Copy().Background(background).Foreground(Green).Render(fmt.Sprintf("+%d", report.Additions))
+	changes := Regular.Copy().Background(background).Foreground(Blue).Render(fmt.Sprintf("~%d", report.Changes))
+	destructions := Regular.Copy().Background(background).Foreground(Red).Render(fmt.Sprintf("-%d", report.Destructions))
 
-	return fmt.Sprintf("%s%s%s", additions, changes, destructions)
+	s := fmt.Sprintf("%s%s%s", additions, changes, destructions)
+	if !table {
+		s = Padded.Background(background).Render(s)
+	}
+	return s
 }
 
 func Breadcrumbs(title string, res resource.Resource, crumbs ...string) string {
@@ -252,22 +261,4 @@ func (h *Helpers) CreateTasks(cmd string, fn task.Func, ids ...resource.ID) tea.
 			return NewNavigationMsg(TaskGroupKind, WithParent(group))
 		}
 	}
-}
-
-// RemoveDuplicateBindings removes duplicate bindings from a list of bindings. A
-// binding is deemed a duplicate if another binding has the same list of keys.
-func RemoveDuplicateBindings(bindings []key.Binding) []key.Binding {
-	seen := make(map[string]struct{})
-	var i int
-	for _, b := range bindings {
-		key := strings.Join(b.Keys(), " ")
-		if _, ok := seen[key]; ok {
-			// duplicate, skip
-			continue
-		}
-		seen[key] = struct{}{}
-		bindings[i] = b
-		i++
-	}
-	return bindings[:i]
 }

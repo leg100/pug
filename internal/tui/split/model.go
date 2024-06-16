@@ -14,7 +14,7 @@ import (
 
 const (
 	// default height of the top list pane, not including borders
-	defaultListPaneHeight = 10
+	defaultListPaneHeight = 15
 	// previewVisibleDefault sets the default visibility for the preview pane.
 	previewVisibleDefault = true
 )
@@ -169,14 +169,14 @@ func (m Model[R]) previewWidth() int {
 
 func (m Model[R]) listHeight() int {
 	if m.previewVisible {
-		// Ensure list pane is at least a height of 2 (the headings and one row)
-		return max(2, defaultListPaneHeight+m.userListHeightAdjustment)
+		// List height cannot exceed available height
+		return min(defaultListPaneHeight+m.userListHeightAdjustment, m.height-3)
 	}
 	return m.height
 }
 
 func (m Model[R]) previewHeight() int {
-	// Calculate height of preview pane after accommodating table and borders.
+	// Calculate height of preview pane after accommodating list and borders.
 	return max(0, m.height-m.listHeight()-2)
 }
 
