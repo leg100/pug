@@ -169,12 +169,14 @@ func (m Model[R]) previewWidth() int {
 
 func (m Model[R]) listHeight() int {
 	if m.previewVisible {
-		// List height cannot exceed available height
+		// List height cannot exceed available height - 3 is the min height of
+		// the preview pane including borders.
 		return min(defaultListPaneHeight+m.userListHeightAdjustment, m.height-3)
 	}
 	return m.height
 }
 
+// previewHeight returns the height of the preview pane, not including borders
 func (m Model[R]) previewHeight() int {
 	// Calculate height of preview pane after accommodating list and borders.
 	return max(0, m.height-m.listHeight()-2)

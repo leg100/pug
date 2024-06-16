@@ -37,7 +37,6 @@ type model struct {
 	height        int
 	mode          mode
 	showHelp      bool
-	helpContent   string
 	prompt        *tui.Prompt
 	dump          *os.File
 	workdir       string
