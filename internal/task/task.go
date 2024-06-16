@@ -54,6 +54,10 @@ type Task struct {
 	// and out of a status.
 	timestamps map[Status]statusTimestamps
 
+	// Retain a copy of the options used to originally create the task so that
+	// the task can be retried.
+	createOptions CreateOptions
+
 	// Call this function after the task has successfully finished
 	AfterExited func(*Task)
 	// Call this function after the task is enqueued.
@@ -135,6 +139,7 @@ func (f *factory) newTask(opts CreateOptions) (*Task, error) {
 		JSON:          opts.JSON,
 		Blocking:      opts.Blocking,
 		exclusive:     opts.Exclusive,
+		createOptions: opts,
 		AfterExited:   opts.AfterExited,
 		AfterError:    opts.AfterError,
 		AfterCanceled: opts.AfterCanceled,

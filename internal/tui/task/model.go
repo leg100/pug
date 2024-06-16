@@ -150,6 +150,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if ws := m.helpers.TaskWorkspace(m.task); ws != nil {
 				return m, tui.NavigateTo(tui.ResourceListKind, tui.WithParent(ws))
 			}
+		case key.Matches(msg, keys.Common.Retry):
+			return m, m.helpers.CreateTasks("retry", m.svc.Retry, m.task.ID)
 		}
 	case toggleAutoscrollMsg:
 		m.viewport.Autoscroll = !m.viewport.Autoscroll

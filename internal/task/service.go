@@ -96,6 +96,16 @@ func (s *Service) CreateGroup(cmd string, fn Func, ids ...resource.ID) (*Group, 
 	return group, nil
 }
 
+// Retry creates a new task that has all the properties of the task with the
+// given ID.
+func (s *Service) Retry(taskID resource.ID) (*Task, error) {
+	task, err := s.Get(taskID)
+	if err != nil {
+		return nil, err
+	}
+	return s.Create(task.createOptions)
+}
+
 // Enqueue moves the task onto the global queue for processing.
 func (s *Service) Enqueue(taskID resource.ID) (*Task, error) {
 	task, err := s.tasks.Update(taskID, func(existing *Task) error {

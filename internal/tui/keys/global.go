@@ -31,10 +31,6 @@ var Global = global{
 		key.WithKeys("w"),
 		key.WithHelp("w", "workspaces"),
 	),
-	Runs: key.NewBinding(
-		key.WithKeys("r"),
-		key.WithHelp("r", "runs"),
-	),
 	Tasks: key.NewBinding(
 		key.WithKeys("t"),
 		key.WithHelp("t", "tasks"),

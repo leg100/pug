@@ -168,6 +168,9 @@ func (m List) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return m, tui.NavigateTo(tui.ResourceListKind, tui.WithParent(ws))
 				}
 			}
+		case key.Matches(msg, keys.Common.Retry):
+			taskIDs := m.Table.SelectedOrCurrentIDs()
+			return m, m.helpers.CreateTasks("retry", m.tasks.Retry, taskIDs...)
 		}
 	}
 
