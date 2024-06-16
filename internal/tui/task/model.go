@@ -298,12 +298,6 @@ func (m model) HelpBindings() []key.Binding {
 	if ws := m.task.Workspace(); ws != nil {
 		bindings = append(bindings, keys.Common.Workspace)
 	}
-	if m.run != nil {
-		bindings = append(bindings, keys.Common.Run)
-		if m.run.Status == run.Planned {
-			bindings = append(bindings, keys.Common.Apply)
-		}
-	}
 	return bindings
 }
 
