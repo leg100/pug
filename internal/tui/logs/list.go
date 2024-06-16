@@ -1,7 +1,6 @@
 package logs
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/key"
@@ -62,7 +61,7 @@ func (m *ListMaker) Make(_ resource.Resource, width, height int) (tea.Model, err
 	}
 	table := table.New(columns, renderer, width, height,
 		table.WithSortFunc(logging.BySerialDesc),
-		table.WithSelectable[resource.ID, logging.Message](false),
+		table.WithSelectable[logging.Message](false),
 	)
 
 	return list{logger: m.Logger, table: table}, nil
@@ -103,9 +102,7 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m list) Title() string {
-	title := tui.TitleStyle.Render("Logs")
-	s := fmt.Sprintf("%s[%s]", title, m.table.TotalString())
-	return tui.Bold.Render(s)
+	return tui.Breadcrumbs("Logs", resource.GlobalResource)
 }
 
 func (m list) View() string {

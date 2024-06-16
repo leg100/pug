@@ -100,9 +100,9 @@ func (mm *ListMaker) Make(parent resource.Resource, width, height int) (tea.Mode
 		if rr := t.Run(); rr != nil {
 			run := rr.(*runpkg.Run)
 			if t.CommandString() == "plan" && run.PlanReport != nil {
-				row[runChangesColumn.Key] = mm.Helpers.RunReport(*run.PlanReport)
+				row[runChangesColumn.Key] = mm.Helpers.RunReport(*run.PlanReport, true)
 			} else if t.CommandString() == "apply" && run.ApplyReport != nil {
-				row[runChangesColumn.Key] = mm.Helpers.RunReport(*run.ApplyReport)
+				row[runChangesColumn.Key] = mm.Helpers.RunReport(*run.ApplyReport, true)
 			}
 			row[runStatusColumn.Key] = mm.Helpers.RunStatus(run, false)
 		}
@@ -177,7 +177,7 @@ func (m List) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m List) Title() string {
-	return tui.GlobalBreadcrumb("Tasks", m.Table.TotalString())
+	return tui.Breadcrumbs("Tasks", resource.GlobalResource)
 }
 
 // pruneApplyableTasks removes from the selection any tasks that cannot be

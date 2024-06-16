@@ -53,7 +53,7 @@ func (m *ListMaker) Make(parent resource.Resource, width, height int) (tea.Model
 
 	table := table.New(columns, renderer, width, height,
 		table.WithSortFunc(workspace.Sort(m.ModuleService)),
-		table.WithParent[resource.ID, *workspace.Workspace](parent),
+		table.WithParent[*workspace.Workspace](parent),
 	)
 
 	return list{
@@ -160,7 +160,7 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m list) Title() string {
-	return tui.GlobalBreadcrumb("Workspaces", m.table.TotalString())
+	return tui.Breadcrumbs("Workspaces", resource.GlobalResource)
 }
 
 func (m list) View() string {

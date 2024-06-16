@@ -14,7 +14,7 @@ import (
 
 const (
 	// default height of the top list pane, not including borders
-	defaultListPaneHeight = 10
+	defaultListPaneHeight = 15
 	// previewVisibleDefault sets the default visibility for the preview pane.
 	previewVisibleDefault = true
 )
@@ -56,11 +56,13 @@ type Model[R resource.Resource] struct {
 	Table table.Model[R]
 	maker tui.Maker
 
-	previewVisible     bool
-	previewFocused     bool
-	previewBorderStyle lipgloss.Style
-	height             int
-	width              int
+	previewVisible bool
+	previewFocused bool
+	height         int
+	width          int
+
+	previewBorder      lipgloss.Border
+	previewBorderColor lipgloss.Color
 
 	// userListHeightAdjustment is the adjustment the user has requested to the
 	// default height of the list pane.
@@ -167,28 +169,32 @@ func (m Model[R]) previewWidth() int {
 
 func (m Model[R]) listHeight() int {
 	if m.previewVisible {
-		// Ensure list pane is at least a height of 2 (the headings and one row)
-		return max(2, defaultListPaneHeight+m.userListHeightAdjustment)
+		// List height cannot exceed available height - 3 is the min height of
+		// the preview pane including borders.
+		return min(defaultListPaneHeight+m.userListHeightAdjustment, m.height-3)
 	}
 	return m.height
 }
 
+// previewHeight returns the height of the preview pane, not including borders
 func (m Model[R]) previewHeight() int {
-	// Calculate height of preview pane after accommodating table and borders.
+	// Calculate height of preview pane after accommodating list and borders.
 	return max(0, m.height-m.listHeight()-2)
 }
 
 func (m *Model[R]) setBorderStyles() {
 	if m.previewVisible {
 		if m.previewFocused {
-			m.Table.SetBorderStyle(tui.InactiveBorder)
-			m.previewBorderStyle = tui.ActiveBorder
+			m.Table.SetBorderStyle(lipgloss.NormalBorder(), tui.LighterGrey)
+			m.previewBorder = lipgloss.ThickBorder()
+			m.previewBorderColor = tui.Blue
 		} else {
-			m.Table.SetBorderStyle(tui.ActiveBorder)
-			m.previewBorderStyle = tui.InactiveBorder
+			m.Table.SetBorderStyle(lipgloss.ThickBorder(), tui.Black)
+			m.previewBorder = lipgloss.NormalBorder()
+			m.previewBorderColor = tui.LighterGrey
 		}
 	} else {
-		m.Table.SetBorderStyle(tui.Border)
+		m.Table.SetBorderStyle(lipgloss.NormalBorder(), tui.Black)
 	}
 }
 
@@ -198,7 +204,10 @@ func (m Model[R]) View() string {
 	// current row, then render the model's view in the pane.
 	if m.previewVisible {
 		if model, ok := m.getPreviewModel(); ok {
-			components = append(components, m.previewBorderStyle.Render(model.View()))
+			style := lipgloss.NewStyle().
+				Border(m.previewBorder).
+				BorderForeground(m.previewBorderColor)
+			components = append(components, style.Render(model.View()))
 		}
 	}
 	return lipgloss.JoinVertical(lipgloss.Top, components...)

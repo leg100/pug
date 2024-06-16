@@ -42,7 +42,7 @@ func (m *ResourceListMaker) Make(ws resource.Resource, width, height int) (tea.M
 	}
 	tableOptions := []table.Option[*state.Resource]{
 		table.WithSortFunc(state.Sort),
-		table.WithParent[resource.ID, *state.Resource](ws),
+		table.WithParent[*state.Resource](ws),
 	}
 	splitModel := split.New(split.Options[*state.Resource]{
 		Columns:      columns,
@@ -244,19 +244,11 @@ func (m resourceList) View() string {
 }
 
 func (m resourceList) Title() string {
-	title := fmt.Sprintf(
-		"%s[%s]",
-		tui.Breadcrumbs("State", m.workspace),
-		m.Table.TotalString(),
-	)
+	var serial string
 	if m.state != nil {
-		title += tui.Regular.Copy().
-			Background(tui.LightBlue).
-			Foreground(tui.Black).
-			Padding(0, 1).
-			Render(fmt.Sprintf("serial:%d", m.state.Serial))
+		serial = tui.TitleSerial.Render(fmt.Sprintf("%d", m.state.Serial))
 	}
-	return title
+	return tui.Breadcrumbs("State", m.workspace, serial)
 }
 
 func (m resourceList) HelpBindings() []key.Binding {

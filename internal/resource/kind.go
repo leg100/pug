@@ -11,6 +11,7 @@ const (
 	TaskGroup
 	Log
 	LogAttr
+	State
 	StateResource
 )
 
@@ -24,6 +25,7 @@ func (k Kind) String() string {
 		"tg",
 		"log",
 		"attr",
+		"state",
 		"res",
 	}[k]
 }

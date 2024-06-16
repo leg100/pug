@@ -94,7 +94,7 @@ func (m groupList) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m groupList) Title() string {
-	return tui.GlobalBreadcrumb("TaskGroups", m.table.TotalString())
+	return tui.Breadcrumbs("TaskGroups", resource.GlobalResource)
 }
 
 func (m groupList) View() string {

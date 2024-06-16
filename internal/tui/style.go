@@ -16,4 +16,14 @@ var (
 
 	ActiveBorder   = ThickBorder.Copy()
 	InactiveBorder = Border.Copy().BorderForeground(LighterGrey)
+
+	Title          = Bold.Copy().Padding(0, 1).Background(Pink).Foreground(White)
+	TitleCommand   = Padded.Copy().Foreground(White).Background(Blue)
+	TitlePath      = Padded.Copy().Foreground(White).Background(modulePathColor)
+	TitleWorkspace = Padded.Copy().Foreground(White).Background(Green)
+	TitleID        = Padded.Copy().Foreground(White).Background(Green)
+	TitleAddress   = Padded.Copy().Foreground(White).Background(Blue)
+	TitleSerial    = Padded.Copy().Foreground(White).Background(Orange)
+
+	RunReportStyle = Padded.Copy().Background(EvenLighterGrey)
 )

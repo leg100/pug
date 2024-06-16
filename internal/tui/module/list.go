@@ -155,7 +155,7 @@ func (m *list) pruneModulesWithoutCurrentWorkspace() ([]resource.ID, error) {
 }
 
 func (m list) Title() string {
-	return tui.GlobalBreadcrumb("Modules", m.table.TotalString())
+	return tui.Breadcrumbs("Modules", resource.GlobalResource)
 }
 
 func (m list) View() string {
