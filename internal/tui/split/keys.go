@@ -8,7 +8,7 @@ type keyMap struct {
 	ShrinkPreview key.Binding
 }
 
-var localKeys = keyMap{
+var Keys = keyMap{
 	TogglePreview: key.NewBinding(
 		key.WithKeys("P"),
 		key.WithHelp("P", "toggle preview"),

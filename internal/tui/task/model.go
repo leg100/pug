@@ -77,7 +77,7 @@ func (mm *Maker) Update(msg tea.Msg) tea.Cmd {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch {
-		case key.Matches(msg, localKeys.Autoscroll):
+		case key.Matches(msg, keys.Global.Autoscroll):
 			mm.disableAutoscroll = !mm.disableAutoscroll
 
 			// Inform user, and send out message to all cached task models to
@@ -293,12 +293,18 @@ func (m model) Status() string {
 func (m model) HelpBindings() []key.Binding {
 	bindings := []key.Binding{
 		keys.Common.Cancel,
+		keys.Common.State,
+		keys.Common.Retry,
+		localKeys.ToggleInfo,
 	}
 	if mod := m.task.Module(); mod != nil {
 		bindings = append(bindings, keys.Common.Module)
 	}
 	if ws := m.task.Workspace(); ws != nil {
 		bindings = append(bindings, keys.Common.Workspace)
+	}
+	if run := m.task.Run(); run != nil {
+		bindings = append(bindings, keys.Common.Apply)
 	}
 	return bindings
 }

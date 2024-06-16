@@ -89,15 +89,15 @@ func (m Model[R]) Update(msg tea.Msg) (Model[R], tea.Cmd) {
 		case key.Matches(msg, keys.Navigation.SwitchPane):
 			m.previewFocused = !m.previewFocused
 			m.setBorderStyles()
-		case key.Matches(msg, localKeys.TogglePreview):
+		case key.Matches(msg, Keys.TogglePreview):
 			m.previewVisible = !m.previewVisible
 			m.setBorderStyles()
 			m.recalculateDimensions()
-		case key.Matches(msg, localKeys.GrowPreview):
+		case key.Matches(msg, Keys.GrowPreview):
 			// Grow the preview pane by shrinking the list pane
 			m.userListHeightAdjustment--
 			m.recalculateDimensions()
-		case key.Matches(msg, localKeys.ShrinkPreview):
+		case key.Matches(msg, Keys.ShrinkPreview):
 			// Shrink the preview pane by growing the list pane
 			m.userListHeightAdjustment++
 			m.recalculateDimensions()

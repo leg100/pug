@@ -183,6 +183,16 @@ func (m List) Title() string {
 	return tui.Breadcrumbs("Tasks", resource.GlobalResource)
 }
 
+func (m List) HelpBindings() []key.Binding {
+	bindings := []key.Binding{
+		keys.Common.Cancel,
+		keys.Common.Apply,
+		keys.Common.State,
+		keys.Common.Retry,
+	}
+	return append(bindings, keys.KeyMapToSlice(split.Keys)...)
+}
+
 // pruneApplyableTasks removes from the selection any tasks that cannot be
 // applied, i.e all tasks other than those that are a plan and are in the
 // planned state. The run ID of each task after pruning is returned.

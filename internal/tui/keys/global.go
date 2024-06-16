@@ -7,7 +7,6 @@ import (
 type global struct {
 	Modules     key.Binding
 	Workspaces  key.Binding
-	Runs        key.Binding
 	Tasks       key.Binding
 	TaskGroups  key.Binding
 	Logs        key.Binding
@@ -18,6 +17,7 @@ type global struct {
 	SelectClear key.Binding
 	SelectRange key.Binding
 	Filter      key.Binding
+	Autoscroll  key.Binding
 	Quit        key.Binding
 	Help        key.Binding
 }
@@ -70,6 +70,10 @@ var Global = global{
 	Filter: key.NewBinding(
 		key.WithKeys("/"),
 		key.WithHelp(`/`, "filter"),
+	),
+	Autoscroll: key.NewBinding(
+		key.WithKeys("ctrl+s"),
+		key.WithHelp("ctrl+s", "toggle autoscroll"),
 	),
 	Quit: key.NewBinding(
 		key.WithKeys("ctrl+c"),

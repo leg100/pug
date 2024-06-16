@@ -252,7 +252,7 @@ func (m resourceList) Title() string {
 }
 
 func (m resourceList) HelpBindings() []key.Binding {
-	return []key.Binding{
+	bindings := []key.Binding{
 		keys.Common.Plan,
 		keys.Common.Destroy,
 		keys.Common.Delete,
@@ -261,6 +261,7 @@ func (m resourceList) HelpBindings() []key.Binding {
 		resourcesKeys.Untaint,
 		resourcesKeys.Reload,
 	}
+	return append(bindings, keys.KeyMapToSlice(split.Keys)...)
 }
 
 func (m resourceList) selectedOrCurrentAddresses() []state.ResourceAddress {
@@ -291,8 +292,8 @@ type resourcesKeyMap struct {
 
 var resourcesKeys = resourcesKeyMap{
 	Taint: key.NewBinding(
-		key.WithKeys("t"),
-		key.WithHelp("t", "taint"),
+		key.WithKeys("alt+t"),
+		key.WithHelp("alt+t", "taint"),
 	),
 	Untaint: key.NewBinding(
 		key.WithKeys("u"),
