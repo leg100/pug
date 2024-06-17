@@ -236,7 +236,7 @@ func (h *Helpers) GroupReport(group *task.Group, table bool) string {
 	}
 
 	if !table {
-		s = Padded.Background(background).Render(s)
+		s = Padded.Copy().Background(background).Render(s)
 	}
 	return s
 }

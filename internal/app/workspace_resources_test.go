@@ -269,7 +269,6 @@ func TestWorkspace_Resources_NoState(t *testing.T) {
 
 	// Expect resources tab title to reveal zero resources
 	waitFor(t, tm, func(s string) bool {
-		t.Log(s)
 		return strings.Contains(s, "resources (0)")
 	})
 

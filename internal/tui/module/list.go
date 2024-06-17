@@ -1,6 +1,7 @@
 package module
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/charmbracelet/bubbles/key"
@@ -146,12 +147,16 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m *list) pruneModulesWithoutCurrentWorkspace() ([]resource.ID, error) {
-	return m.table.Prune(func(mod *module.Module) (resource.ID, bool) {
+	workspaceIDs, err := m.table.Prune(func(mod *module.Module) (resource.ID, bool) {
 		if workspaceID := mod.CurrentWorkspaceID; workspaceID != nil {
 			return *workspaceID, false
 		}
 		return resource.ID{}, true
 	})
+	if err != nil {
+		return nil, errors.New("module(s) do not have a current workspace")
+	}
+	return workspaceIDs, nil
 }
 
 func (m list) Title() string {
