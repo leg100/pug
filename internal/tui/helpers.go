@@ -152,7 +152,7 @@ func (h *Helpers) TaskStatus(t *task.Task, background bool) string {
 	}
 
 	if background {
-		return Padded.Background(color).Foreground(White).Render(string(t.State))
+		return Padded.Copy().Background(color).Foreground(White).Render(string(t.State))
 	} else {
 		return Regular.Copy().Foreground(color).Render(string(t.State))
 	}
@@ -184,7 +184,7 @@ func (h *Helpers) RunStatus(r *run.Run, background bool) string {
 	}
 
 	if background {
-		return Padded.Background(color).Foreground(White).Render(string(r.Status))
+		return Padded.Copy().Background(color).Foreground(White).Render(string(r.Status))
 	} else {
 		return Regular.Copy().Foreground(color).Render(string(r.Status))
 	}
@@ -213,7 +213,7 @@ func (h *Helpers) RunReport(report run.Report, table bool) string {
 
 	s := fmt.Sprintf("%s%s%s", additions, changes, destructions)
 	if !table {
-		s = Padded.Background(background).Render(s)
+		s = Padded.Copy().Background(background).Render(s)
 	}
 	return s
 }

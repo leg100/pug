@@ -179,7 +179,7 @@ func TestWorkspace_MultipleApplies(t *testing.T) {
 	})
 }
 
-func TestWorkspaceList_Filter(t *testing.T) {
+func TestWorkspace_Filter(t *testing.T) {
 	t.Parallel()
 
 	tm := setup(t, "./testdata/module_list")
