@@ -51,6 +51,8 @@ func (m *ResourceListMaker) Make(ws resource.Resource, width, height int) (tea.M
 		Width:        width,
 		Height:       height,
 		Maker: &ResourceMaker{
+			StateService:   m.StateService,
+			RunService:     m.RunService,
 			Helpers:        m.Helpers,
 			disableBorders: true,
 		},
@@ -156,27 +158,14 @@ func (m resourceList) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, resourcesKeys.Move):
 			if row, ok := m.Table.CurrentRow(); ok {
 				from := row.Value.Address
-				return m, tui.CmdHandler(tui.PromptMsg{
-					Prompt:       "Enter destination address: ",
-					InitialValue: string(from),
-					Action: func(v string) tea.Cmd {
-						if v == "" {
-							return nil
-						}
-						fn := func(workspaceID resource.ID) (*task.Task, error) {
-							return m.states.Move(workspaceID, from, state.ResourceAddress(v))
-						}
-						return m.helpers.CreateTasks("state-mv", fn, m.workspace.GetID())
-					},
-					Key:    key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", "confirm")),
-					Cancel: key.NewBinding(key.WithKeys("esc"), key.WithHelp("esc", "cancel")),
-				})
+				return m, m.helpers.Move(m.workspace.GetID(), from)
 			}
 		case key.Matches(msg, keys.Common.Destroy):
+			// Create a targeted destroy plan.
 			createRunOptions.Destroy = true
 			fallthrough
 		case key.Matches(msg, keys.Common.Plan):
-			// Create a targeted run.
+			// Create a targeted plan.
 			createRunOptions.TargetAddrs = m.selectedOrCurrentAddresses()
 			// NOTE: even if the user hasn't selected any rows, we still proceed
 			// to create a run without targeted resources.
@@ -246,7 +235,7 @@ func (m resourceList) View() string {
 func (m resourceList) Title() string {
 	var serial string
 	if m.state != nil {
-		serial = tui.TitleSerial.Render(fmt.Sprintf("%d", m.state.Serial))
+		serial = serialBreadcrumb(m.state.Serial)
 	}
 	return tui.Breadcrumbs("State", m.workspace, serial)
 }
@@ -307,4 +296,8 @@ var resourcesKeys = resourcesKeyMap{
 		key.WithKeys("ctrl+r"),
 		key.WithHelp("ctrl+r", "reload"),
 	),
+}
+
+func serialBreadcrumb(serial int64) string {
+	return tui.TitleSerial.Render(fmt.Sprintf("%d", serial))
 }

@@ -1,7 +1,6 @@
 package task
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/charmbracelet/bubbles/key"
@@ -17,7 +16,7 @@ var (
 	taskGroupCount = table.Column{
 		Key:   "tasks",
 		Title: "TASKS",
-		Width: len("TASKS"),
+		Width: 10,
 	}
 	taskGroupID = table.Column{
 		Key:   "task_group_id",
@@ -43,7 +42,7 @@ func (m *GroupListMaker) Make(_ resource.Resource, width, height int) (tea.Model
 		row := table.RenderedRow{
 			commandColumn.Key:  g.Command,
 			taskGroupID.Key:    g.ID.String(),
-			taskGroupCount.Key: fmt.Sprintf("%d/%d", g.Finished(), len(g.Tasks)),
+			taskGroupCount.Key: m.Helpers.GroupReport(g, true),
 			ageColumn.Key:      tui.Ago(time.Now(), g.Created),
 		}
 		return row

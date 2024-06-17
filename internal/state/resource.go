@@ -19,9 +19,9 @@ func (r *Resource) String() string {
 	return string(r.Address)
 }
 
-func newResource(ws resource.Resource, addr ResourceAddress, attrs json.RawMessage) (*Resource, error) {
+func newResource(state resource.Resource, addr ResourceAddress, attrs json.RawMessage) (*Resource, error) {
 	res := &Resource{
-		Common:  resource.New(resource.StateResource, ws),
+		Common:  resource.New(resource.StateResource, state),
 		Address: addr,
 	}
 	if err := json.Unmarshal(attrs, &res.Attributes); err != nil {

@@ -24,6 +24,7 @@ var (
 	TitleID        = Padded.Copy().Foreground(White).Background(Green)
 	TitleAddress   = Padded.Copy().Foreground(White).Background(Blue)
 	TitleSerial    = Padded.Copy().Foreground(White).Background(Orange)
+	TitleTainted   = Padded.Copy().Foreground(White).Background(Red)
 
 	RunReportStyle = Padded.Copy().Background(EvenLighterGrey)
 )

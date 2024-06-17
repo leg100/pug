@@ -95,10 +95,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m model) Title() string {
-	title := tui.Title.Render("LogMessage")
-	id := tui.Regular.Copy().Foreground(tui.Pink).Render(fmt.Sprintf("#%d", m.msg.Serial))
-	s := fmt.Sprintf("%s(%s)", title, id)
-	return tui.Bold.Render(s)
+	serial := tui.TitleSerial.Render(fmt.Sprintf("#%d", m.msg.Serial))
+	return tui.Breadcrumbs("LogMessage", resource.GlobalResource, serial)
 }
 
 func (m model) View() string {

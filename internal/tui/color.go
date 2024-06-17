@@ -54,7 +54,8 @@ var (
 		Light: string(Grey),
 	}
 
-	RunReportBackgroundColor = EvenLighterGrey
+	RunReportBackgroundColor   = EvenLighterGrey
+	GroupReportBackgroundColor = EvenLighterGrey
 
 	ScrollPercentageBackground = lipgloss.AdaptiveColor{
 		Dark:  string(DarkGrey),

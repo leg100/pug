@@ -65,7 +65,7 @@ func newState(ws resource.Resource, r io.Reader) (*State, error) {
 			}
 			addr := ResourceAddress(b.String())
 			var err error
-			m[addr], err = newResource(ws, addr, instance.Attributes)
+			m[addr], err = newResource(state, addr, instance.Attributes)
 			if err != nil {
 				return nil, fmt.Errorf("decoding resource %s: %w", addr, err)
 			}

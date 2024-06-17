@@ -56,6 +56,26 @@ func (g *Group) Finished() int {
 	return finished
 }
 
+func (g *Group) Exited() int {
+	var exited int
+	for _, t := range g.Tasks {
+		if t.State == Exited {
+			exited++
+		}
+	}
+	return exited
+}
+
+func (g *Group) Errored() int {
+	var errored int
+	for _, t := range g.Tasks {
+		if t.State == Errored {
+			errored++
+		}
+	}
+	return errored
+}
+
 func SortGroupsByCreated(i, j *Group) int {
 	if i.Created.After(j.Created) {
 		return -1

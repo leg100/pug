@@ -49,9 +49,10 @@ func (mm *GroupMaker) Make(parent resource.Resource, width, height int) (tea.Mod
 		return nil, errors.New("expected taskgroup resource")
 	}
 
-	progress := progress.New(progress.WithDefaultGradient())
+	progress := progress.New(progress.WithDefaultGradient(), progress.WithScaledGradient("253", "#606362"))
 	progress.Width = 20
 	progress.ShowPercentage = false
+	progress.EmptyColor = "0"
 
 	list, err := mm.taskListMaker.Make(parent, width, height)
 	if err != nil {
@@ -130,8 +131,7 @@ func (m groupModel) Title() string {
 }
 
 func (m groupModel) Status() string {
-	pbar := m.progress.View()
-	return fmt.Sprintf("%s %d/%d", pbar, m.group.Finished(), len(m.group.Tasks))
+	return m.helpers.GroupReport(m.group, false)
 }
 
 func (m *groupModel) handleTasks(tasks ...*task.Task) (tea.Cmd, bool) {

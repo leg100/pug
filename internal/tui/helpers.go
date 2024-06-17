@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/leg100/pug/internal/logging"
@@ -217,29 +218,27 @@ func (h *Helpers) RunReport(report run.Report, table bool) string {
 	return s
 }
 
-func Breadcrumbs(title string, res resource.Resource, crumbs ...string) string {
-	// format: title{task command}[workspace name](module path)
-	switch res := res.(type) {
-	case *task.Task:
-		cmd := TitleCommand.Render(res.String())
-		return Breadcrumbs(title, res.GetParent(), cmd)
-	case *state.Resource:
-		addr := TitleAddress.Render(res.String())
-		return Breadcrumbs(title, res.GetParent(), addr)
-	case *task.Group:
-		cmd := TitleCommand.Render(res.String())
-		id := TitleID.Render(res.GetID().String())
-		return Breadcrumbs(title, res.GetParent(), cmd, id)
-	case *run.Run:
-		// Skip run info in breadcrumbs
-		return Breadcrumbs(title, res.GetParent(), crumbs...)
-	case *workspace.Workspace:
-		name := TitleWorkspace.Render(res.String())
-		return Breadcrumbs(title, res.GetParent(), append(crumbs, name)...)
-	case *module.Module:
-		crumbs = append(crumbs, TitlePath.Render(res.String()))
+// RunReport renders a colored summary of a run's changes. Set table to true if
+// the report is rendered within a table row.
+func (h *Helpers) GroupReport(group *task.Group, table bool) string {
+	var background lipgloss.TerminalColor = lipgloss.NoColor{}
+	if !table {
+		background = GroupReportBackgroundColor
 	}
-	return fmt.Sprintf("%s%s", Title.Render(title), strings.Join(crumbs, ""))
+	slash := Regular.Copy().Background(background).Foreground(Black).Render("/")
+	exited := Regular.Copy().Background(background).Foreground(Green).Render(fmt.Sprintf("%d", group.Exited()))
+	total := Regular.Copy().Background(background).Foreground(Black).Render(fmt.Sprintf("%d", len(group.Tasks)))
+
+	s := fmt.Sprintf("%s%s%s", exited, slash, total)
+	if errored := group.Errored(); errored > 0 {
+		erroredString := Regular.Copy().Background(background).Foreground(Red).Render(fmt.Sprintf("%d", errored))
+		s = fmt.Sprintf("%s%s%s", erroredString, slash, s)
+	}
+
+	if !table {
+		s = Padded.Background(background).Render(s)
+	}
+	return s
 }
 
 func (h *Helpers) CreateTasks(cmd string, fn task.Func, ids ...resource.ID) tea.Cmd {
@@ -261,4 +260,47 @@ func (h *Helpers) CreateTasks(cmd string, fn task.Func, ids ...resource.ID) tea.
 			return NewNavigationMsg(TaskGroupKind, WithParent(group))
 		}
 	}
+}
+
+func (h *Helpers) Move(workspaceID resource.ID, from state.ResourceAddress) tea.Cmd {
+	return CmdHandler(PromptMsg{
+		Prompt:       "Enter destination address: ",
+		InitialValue: string(from),
+		Action: func(v string) tea.Cmd {
+			if v == "" {
+				return nil
+			}
+			fn := func(workspaceID resource.ID) (*task.Task, error) {
+				return h.StateService.Move(workspaceID, from, state.ResourceAddress(v))
+			}
+			return h.CreateTasks("state-mv", fn, workspaceID)
+		},
+		Key:    key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", "confirm")),
+		Cancel: key.NewBinding(key.WithKeys("esc"), key.WithHelp("esc", "cancel")),
+	})
+}
+
+func Breadcrumbs(title string, res resource.Resource, crumbs ...string) string {
+	// format: title{task command}[workspace name](module path)
+	switch res := res.(type) {
+	case *task.Task:
+		cmd := TitleCommand.Render(res.String())
+		return Breadcrumbs(title, res.GetParent(), cmd)
+	case *state.Resource:
+		addr := TitleAddress.Render(res.String())
+		return Breadcrumbs(title, res.GetParent().GetParent(), addr)
+	case *task.Group:
+		cmd := TitleCommand.Render(res.String())
+		id := TitleID.Render(res.GetID().String())
+		return Breadcrumbs(title, res.GetParent(), cmd, id)
+	case *run.Run:
+		// Skip run info in breadcrumbs
+		return Breadcrumbs(title, res.GetParent(), crumbs...)
+	case *workspace.Workspace:
+		name := TitleWorkspace.Render(res.String())
+		return Breadcrumbs(title, res.GetParent(), append(crumbs, name)...)
+	case *module.Module:
+		crumbs = append(crumbs, TitlePath.Render(res.String()))
+	}
+	return fmt.Sprintf("%s%s", Title.Render(title), strings.Join(crumbs, ""))
 }
