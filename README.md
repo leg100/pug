@@ -3,49 +3,13 @@
 A TUI application for terraform power users.
 
 * Perform tasks in parallel (plan, apply, init, etc)
-* Manage state resources
-* Task scheduling
+* Interactively manage state resources (targeted plans, move, delete, etc)
 * Supports tofu as well as terraform
 * Supports workspaces
-* Backend agnostic
+* Automatically loads workspace variable files
+* Backend agnostic (s3, cloud, etc)
 
-![Applying runs](./demos/runs/applied_runs.png)
-
-## Demos
-
-### Modules
-
-Invoke `init`, `validate`, and `fmt` across multiple modules.
-
-![Modules demo](https://vhs.charm.sh/vhs-53mqCswUf5h4cNzqA0Qtl6.gif)
-
-### Workspaces
-
-Pug supports workspaces. Invoke plan and apply on workspaces. Change the current workspace for a module.
-
-![Workspaces demo](https://vhs.charm.sh/vhs-6LBu70R4S1EYcJ80uougkf.gif)
-
-### Runs
-
-Create multiple plans and apply them in parallel.
-
-![Runs demo](https://vhs.charm.sh/vhs-1ztr7r0fx8OpywnNabBsZw.gif)
-
-View the output of plans and applies.
-
-![Run demo](https://vhs.charm.sh/vhs-5suMKsO7HrmJHdWpUgXAS5.gif)
-
-### State management
-
-Manage state resources. Move, delete, taint and untaint resources. Select resources for targeted plans.
-
-![State demo](https://vhs.charm.sh/vhs-5rUfQMVa5Mg2K6BiHIJFLP.gif)
-
-### Tasks
-
-All invocations of terraform are represented as a task.
-
-![Tasks demo](https://vhs.charm.sh/vhs-25VtcZBEUC6ULcmfcnxFG4.gif)
+![Demo](./demo/demo.gif)
 
 ## Install instructions
 
@@ -77,40 +41,6 @@ cd pug
 cd demos/getting_started
 pug
 ```
-
-At startup, pug lists your root modules:
-
-![list root modules](./demos/getting_started/modules.png)
-
-Initialize module `modules/a` by pressing `i`. That takes you to the task view, which includes the output from `terraform init`:
-
-![init](./demos/getting_started/init.png)
-
-Press `m` to show the corresponding module page for the task:
-
-![module](./demos/getting_started/module.png)
-
-You'll be presented with multiple tabs. To cycle through tabs press the `tab` key.
-
-On the `workspaces` tab, press `p` to create a plan. That takes you to the `plan` tab in the run view, showing the output from `terraform plan`:
-
-![plan](./demos/getting_started/plan.png)
-
-A run is composed of a plan, and optionally an apply. Once the plan has completed, press `a` to apply:
-
-![confirm](./demos/getting_started/confirm.png)
-
-You're presented with a prompt to confirm whether you want to proceed with an apply. Press `y` to confirm. That takes you to the `apply` tab on the run view, showing the output from `terraform apply`:
-
-![apply](./demos/getting_started/apply.png)
-
-Note that pug automatically pulls state after a workspace is loaded for the first time, and after an apply completes.
-
-To see the state resources for the workspace, press `w` and cycle through the tabs to the `resources` tab:
-
-![resources](./demos/getting_started/resources.png)
-
-This is the end of the getting started walkthrough.
 
 ## Configuration
 
@@ -149,18 +79,14 @@ There are several types of resources in pug:
 
 * modules
 * workspaces
-* runs
+* states
 * tasks
-
-A task can belong to a run, a workspace, or a module. A run belongs to a workspace. And a workspace belongs to a module.
 
 ### Modules
  
 *Note: what Pug calls a module is equivalent to a [root module](https://developer.hashicorp.com/terraform/language/modules#the-root-module), i.e. a directory containing terraform configuration, including a state backend. It is not to be confused with a [child module](https://developer.hashicorp.com/terraform/language/modules#child-modules).*
 
 A module is a directory of terraform configuration with a backend configuration. When Pug starts up, it looks recursively within the working directory, walking each directory and parsing any terraform configuration it finds. If the configuration contains a [state backend definition](https://developer.hashicorp.com/terraform/language/settings/backends/configuration) then Pug loads the directory as a module.
-
-Pug also checks if the module contains a `.terraform` directory. If it does not then the module is marked as *uninitialized*, because `terraform init` needs to be run before it can be deemed *initialized*.
 
 Each module has zero or more workspaces. Following successful initialization the module has at least one workspace, named `default`. One workspace is set as the *current workspace* for the module. When you create a run on a module, the run is created on its current workspace. The latest run on its current workspace is set as the *current run* for the module.
 
@@ -172,27 +98,22 @@ A workspace is directly equivalent to a [terraform workspace](https://developer.
 
 When a module is loaded for the first time, Pug automatically creates a task to run `terraform workspace list`, to retrieve the list of workspaces for the module.
 
-When a workspace is loaded into Pug for the first time, it'll create a task that invokes `terraform show -json`, to retrieve the workspace's state.
-
 If you add/remove workspaces outside of Pug, you can instruct Pug to reload workspaces by pressing `Ctrl-w` on a module.
 
-### Runs
+### States
 
-A run represents a terraform plan and the optional apply of that plan. Under the hood, it invokes `terraform plan -out <plan-file>`. Should you then apply the run, it invokes `terraform apply <plan-file>`.
+Each workspace has state. Type `s` on a workspace to see its state, or type `s` on a module to see the state of its current workspace. You can also type `s` on a task, and it'll take you to the state of the task's workspace, or its module's current workspace.
 
-A run starts in the `pending` state. It remains in that state until it can be scheduled. It can only be scheduled once all runs created prior to it on the same workspace have finished.
+When a workspace is loaded into Pug for the first time, a task is created to invoke `terraform state pull`, to retrieve the workspace's state. The task is also triggered after any task that alters the state, such as an apply or a state action.
 
-An exception to this rule is if the previous run is in the `planned` state. In which case the previous run is placed into the `stale` termination state, i.e. its plan file is deemed stale and cannot be applied.
+Various actions can be carried out on state:
 
-Once a run is scheduled, it's placed into `scheduled` state and it's designated as the *current run* for the workspace.
-
-If there are no blocked tasks running on its workspace and module (see tasks below) then the run transitions into the `plan queued` state. Once there is sufficient task capacity, the run enters the `planning` state, and `terraform plan` is invoked.
-
-Once `terraform plan` completes, it enters one of several states depending upon the outcome of that task. If there were no changes, then it enters the `no changes` termination state, otherwise it enters the `planned` state.
-
-When you apply a run, it enters the `apply queued` state. Once there is sufficient task capacity, the run enters the `applying` state and `terraform apply` is invoked. Upon success it enters the `applied` state. Pug then automatically creates a task to invoke `terraform show -json`, to retrieve the workspace's updated state. 
-
-A run can be canceled at any stage. If it is `planning` or `applying` then the current terraform process is sent a termination signal. Otherwise, in any other non-terminated state, the run is immediately set as `canceled`.
+* delete
+* taint
+* untaint
+* targeted plan
+* targeted destroy plan
+* move (only a single resource at a time)
 
 ### Tasks
 
@@ -207,6 +128,18 @@ An exception to this rule are tasks which are classified as *immediate*. Immedia
 A task can further be classed as *exclusive*. These tasks are globally mutually exclusive and cannot run concurrently. The only task classified as such is the `init` task, and only when you have enabled the [provider plugin cache](https://developer.hashicorp.com/terraform/cli/config/config-file#provider-plugin-cache) (the plugin cache does not permit concurrent writes).
 
 A task can be canceled at any stage. If it is `running` then the current terraform process is sent a termination signal. Otherwise, in any other non-terminated state, the task is immediately set as `canceled`.
+
+#### Plans
+
+Press `p` to create a plan. Under the hood, Pug invokes `terraform plan -out <plan-file>`. To apply the plan file, press `a` on the plan task.
+
+Press `d` to create a destroy plan. This is identical to a plan but with a `-destroy` flag.
+
+#### Applies
+
+Press `a` to apply a module or workspace. Pug then requests your confirmation before invoking `terraform apply -auto-approve`.
+
+Alternatively, you can apply a plan file (see above).
 
 ## Tofu support
 
