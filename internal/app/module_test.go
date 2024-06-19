@@ -319,11 +319,11 @@ func initAllModules(t *testing.T, tm *testModel) {
 	// Go back to modules listing
 	tm.Send(tea.KeyMsg{Type: tea.KeyEsc})
 
-	// Expect three modules to be listed
+	// Expect three modules to be listed, along with their default workspace.
 	waitFor(t, tm, func(s string) bool {
-		return strings.Contains(s, "modules/a") &&
-			strings.Contains(s, "modules/b") &&
-			strings.Contains(s, "modules/c")
+		return matchPattern(t, "modules/a.*default", s) &&
+			matchPattern(t, "modules/b.*default", s) &&
+			matchPattern(t, "modules/c.*default", s)
 	})
 
 	// Clear selection
