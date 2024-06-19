@@ -30,9 +30,7 @@ func TestNew(t *testing.T) {
 	t.Run("without_dot_terraform_dir", func(t *testing.T) {
 		got := New(workdir, "with_s3_backend")
 		assert.Equal(t, "with_s3_backend", got.Path)
-		if assert.NotNil(t, got.Initialized) {
-			assert.Equal(t, false, *got.Initialized)
-		}
+		assert.Nil(t, got.Initialized)
 	})
 }
 
