@@ -37,15 +37,15 @@ type Model[V resource.Resource] struct {
 	border      lipgloss.Border
 	borderColor lipgloss.Color
 
-	cursorRow int
-	cursorID  resource.ID
+	cursorRow       int
+	cursorID        resource.ID
+	userMovedCursor bool
 
 	items    map[resource.ID]V
 	sortFunc SortFunc[V]
 
 	Selected   map[resource.ID]V
 	selectable bool
-	selectAll  bool
 
 	filter textinput.Model
 
@@ -197,7 +197,7 @@ func (m Model[V]) Update(msg tea.Msg) (Model[V], tea.Cmd) {
 		case key.Matches(msg, keys.Global.Select):
 			m.ToggleSelection()
 		case key.Matches(msg, keys.Global.SelectAll):
-			m.ToggleSelectAll()
+			m.SelectAll()
 		case key.Matches(msg, keys.Global.SelectClear):
 			m.DeselectAll()
 		case key.Matches(msg, keys.Global.SelectRange):
@@ -408,20 +408,15 @@ func (m *Model[V]) ToggleSelectionByID(id resource.ID) {
 	m.UpdateViewport()
 }
 
-// ToggleSelectAll toggles the selection of all rows.
-func (m *Model[V]) ToggleSelectAll() {
+// SelectAll selects all rows. Any rows not currently selected are selected.
+func (m *Model[V]) SelectAll() {
 	if !m.selectable {
 		return
 	}
-	if m.selectAll {
-		m.DeselectAll()
-		return
-	}
-	m.Selected = make(map[resource.ID]V, len(m.rows))
+
 	for _, row := range m.rows {
 		m.Selected[row.ID] = row.Value
 	}
-	m.selectAll = true
 	m.UpdateViewport()
 }
 
@@ -432,7 +427,6 @@ func (m *Model[V]) DeselectAll() {
 	}
 
 	m.Selected = make(map[resource.ID]V)
-	m.selectAll = false
 	m.UpdateViewport()
 }
 
@@ -571,15 +565,18 @@ func (m *Model[V]) SetItems(items map[resource.ID]V) {
 	// corresponding item.
 	m.Selected = selections
 
-	// Track item corresponding to the current cursor.
+	// Track item corresponding to the current cursor, but only if the user has
+	// moved the cursor. Otherwise keep cursor on the first row.
 	m.cursorRow = -1
-	for i, item := range m.rows {
-		if item.ID == m.cursorID {
-			// Found item corresponding to cursor, update its position
-			m.cursorRow = i
+	if m.userMovedCursor {
+		for i, item := range m.rows {
+			if item.ID == m.cursorID {
+				// Found item corresponding to cursor, update its position
+				m.cursorRow = i
+			}
 		}
 	}
-	// Check if item corresponding to cursor doesn't exists, which occurs when
+	// Check if item corresponding to cursor doesn't exist, which occurs when
 	// items are removed, or the very first time the table is populated. If so,
 	// set cursor to the first row.
 	if m.cursorRow == -1 {
@@ -638,6 +635,9 @@ func (m *Model[V]) moveCursor(n int) {
 	m.cursorRow = clamp(m.cursorRow+n, 0, len(m.rows)-1)
 	if len(m.rows) > 0 {
 		m.cursorID = m.rows[m.cursorRow].ID
+	}
+	if n != 0 {
+		m.userMovedCursor = true
 	}
 }
 

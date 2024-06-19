@@ -87,6 +87,8 @@ func (s *Service) LoadWorkspacesUponModuleLoad(ms moduleSubscription) {
 				}
 			case resource.UpdatedEvent:
 				if event.Payload.CurrentWorkspaceID != nil {
+					// Module already has a current workspace; no need to reload
+					// workspaces
 					continue
 				}
 				if event.Payload.Initialized == nil {

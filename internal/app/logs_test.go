@@ -1,6 +1,7 @@
 package app
 
 import (
+	"strings"
 	"testing"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -14,10 +15,28 @@ func TestLogs(t *testing.T) {
 	// Go to logs
 	tm.Type("l")
 
-	// Expect at a log message indicating modules have been reloaded
+	// Wait for log message to appear telling us modules have been reloaded.
+	// Note we only test for the first part of the log message because the test
+	// terminal is only of a limited width, which means the message is
+	// truncated.
 	waitFor(t, tm, func(s string) bool {
-		return matchPattern(t, `reloaded modules added=\[modules/[a-c] modules/[a-c] modules/[a-c]\] removed=\[\]`, s)
+		return strings.Contains(s, `reloaded modules`)
 	})
+
+	// Focus filter widget
+	tm.Type("/")
+
+	// Expect filter prompt
+	waitFor(t, tm, func(s string) bool {
+		return strings.Contains(s, "Filter:")
+	})
+
+	// Filter to only the reloaded modules message, so that we can be sure the
+	// cursor is on that message.
+	tm.Type("reloaded modules")
+
+	// Exit filter prompt
+	tm.Send(tea.KeyMsg{Type: tea.KeyEnter})
 
 	// Drill down into log message
 	tm.Send(tea.KeyMsg{Type: tea.KeyEnter})

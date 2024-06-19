@@ -49,6 +49,7 @@ func (h *Helpers) WorkspaceName(res resource.Resource) string {
 
 func (h *Helpers) ModuleCurrentWorkspace(mod *module.Module) *workspace.Workspace {
 	if mod.CurrentWorkspaceID == nil {
+		h.Logger.Error("module does not have a current workspace", "module", mod)
 		return nil
 	}
 	ws, err := h.WorkspaceService.Get(*mod.CurrentWorkspaceID)
@@ -124,14 +125,17 @@ func (h *Helpers) WorkspaceResourceCount(ws *workspace.Workspace) string {
 // TaskWorkspace retrieves either the task's workspace if it belongs to a
 // workspace, or if it belongs to a module, then it retrieves the module's
 // current workspace
-func (h *Helpers) TaskWorkspace(t *task.Task) resource.Resource {
+func (h *Helpers) TaskWorkspace(t *task.Task) (resource.Resource, bool) {
 	if ws := t.Workspace(); ws != nil {
-		return ws
+		return ws, true
 	}
 	if mod := h.Module(t); mod != nil {
-		return h.ModuleCurrentWorkspace(mod)
+		if ws := h.ModuleCurrentWorkspace(mod); ws != nil {
+			return ws, true
+		}
+		return nil, false
 	}
-	return nil
+	return nil, false
 }
 
 // TaskStatus provides a rendered colored task status.
@@ -152,7 +156,7 @@ func (h *Helpers) TaskStatus(t *task.Task, background bool) string {
 	}
 
 	if background {
-		return Padded.Background(color).Foreground(White).Render(string(t.State))
+		return Padded.Copy().Background(color).Foreground(White).Render(string(t.State))
 	} else {
 		return Regular.Copy().Foreground(color).Render(string(t.State))
 	}
@@ -184,7 +188,7 @@ func (h *Helpers) RunStatus(r *run.Run, background bool) string {
 	}
 
 	if background {
-		return Padded.Background(color).Foreground(White).Render(string(r.Status))
+		return Padded.Copy().Background(color).Foreground(White).Render(string(r.Status))
 	} else {
 		return Regular.Copy().Foreground(color).Render(string(r.Status))
 	}
@@ -213,7 +217,7 @@ func (h *Helpers) RunReport(report run.Report, table bool) string {
 
 	s := fmt.Sprintf("%s%s%s", additions, changes, destructions)
 	if !table {
-		s = Padded.Background(background).Render(s)
+		s = Padded.Copy().Background(background).Render(s)
 	}
 	return s
 }
@@ -236,7 +240,7 @@ func (h *Helpers) GroupReport(group *task.Group, table bool) string {
 	}
 
 	if !table {
-		s = Padded.Background(background).Render(s)
+		s = Padded.Copy().Background(background).Render(s)
 	}
 	return s
 }
