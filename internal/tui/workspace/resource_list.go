@@ -272,32 +272,6 @@ func toTableItems(s *state.State) map[resource.ID]*state.Resource {
 	return to
 }
 
-type resourcesKeyMap struct {
-	Taint   key.Binding
-	Untaint key.Binding
-	Move    key.Binding
-	Reload  key.Binding
-}
-
-var resourcesKeys = resourcesKeyMap{
-	Taint: key.NewBinding(
-		key.WithKeys("alt+t"),
-		key.WithHelp("alt+t", "taint"),
-	),
-	Untaint: key.NewBinding(
-		key.WithKeys("u"),
-		key.WithHelp("u", "untaint"),
-	),
-	Move: key.NewBinding(
-		key.WithKeys("alt+m"),
-		key.WithHelp("alt+m", "move"),
-	),
-	Reload: key.NewBinding(
-		key.WithKeys("ctrl+r"),
-		key.WithHelp("ctrl+r", "reload"),
-	),
-}
-
 func serialBreadcrumb(serial int64) string {
 	return tui.TitleSerial.Render(fmt.Sprintf("%d", serial))
 }
