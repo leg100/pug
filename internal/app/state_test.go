@@ -17,7 +17,7 @@ func TestState_SingleTaint_Untaint(t *testing.T) {
 	tm := setupState(t)
 
 	// Taint first resource, which should be random_pet.pet[0]
-	tm.Send(tea.KeyMsg{Type: tea.KeyRunes, Alt: true, Runes: []rune{'t'}})
+	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlT})
 
 	// Expect to be taken to task page for taint
 	waitFor(t, tm, func(s string) bool {
@@ -33,7 +33,7 @@ func TestState_SingleTaint_Untaint(t *testing.T) {
 	})
 
 	// Untaint resource
-	tm.Type("u")
+	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlU})
 
 	// Expect to be taken to task page for untaint
 	waitFor(t, tm, func(s string) bool {
@@ -48,7 +48,7 @@ func TestState_MultipleTaint_Untaint(t *testing.T) {
 
 	// Taint all resources
 	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlA})
-	tm.Send(tea.KeyMsg{Type: tea.KeyRunes, Alt: true, Runes: []rune{'t'}})
+	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlT})
 
 	// Expect to be taken to task group page for taint
 	waitFor(t, tm, func(s string) bool {
@@ -81,7 +81,7 @@ func TestState_MultipleTaint_Untaint(t *testing.T) {
 	// Untaint all resources (need to select all again, because resources have
 	// been reloaded).
 	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlA})
-	tm.Type("u")
+	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlU})
 
 	// Expect to be taken to task group page for untaint
 	waitFor(t, tm, func(s string) bool {
@@ -96,7 +96,7 @@ func TestState_Move(t *testing.T) {
 	tm := setupState(t)
 
 	// Move resource random_pet.pet[0]
-	tm.Send(tea.KeyMsg{Type: tea.KeyRunes, Alt: true, Runes: []rune{'m'}})
+	tm.Type("M")
 
 	// Expect to see prompt prompting to enter a destination address
 	waitFor(t, tm, func(s string) bool {
