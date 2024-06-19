@@ -297,7 +297,6 @@ func TestState_NoState(t *testing.T) {
 
 	// Expect message indicating no state found
 	waitFor(t, tm, func(s string) bool {
-		t.Log(s)
 		return strings.Contains(s, "No state found")
 	})
 }
@@ -330,7 +329,6 @@ func setupState(t *testing.T) *testModel {
 
 	// Expect to see title and several resources listed
 	waitFor(t, tm, func(s string) bool {
-		t.Log(s)
 		return matchPattern(t, `State.*11.*default.*modules/a`, s) &&
 			strings.Contains(s, "random_pet.pet[0]") &&
 			strings.Contains(s, "random_pet.pet[1]") &&

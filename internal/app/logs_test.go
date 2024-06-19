@@ -28,7 +28,6 @@ func TestLogs(t *testing.T) {
 
 	// Expect filter prompt
 	waitFor(t, tm, func(s string) bool {
-		t.Log(s)
 		return strings.Contains(s, "Filter:")
 	})
 

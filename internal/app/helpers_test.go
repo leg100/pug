@@ -40,7 +40,6 @@ func setup(t *testing.T, workdir string) *testModel {
 	err = cp.Copy(workdir, target)
 	require.NoError(t, err)
 	workdir = target
-	t.Log(workdir)
 
 	app, err := startApp(
 		config{
