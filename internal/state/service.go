@@ -68,9 +68,22 @@ func (s *Service) Reload(workspaceID resource.ID) (*task.Task, error) {
 				s.logger.Error("reloading state", "error", err, "workspace", t.Workspace())
 				return
 			}
+			// Skip caching state if identical to already cached state.
+			//
+			// NOTE: re-caching the same state is harmless, but each re-caching
+			// generates an event, which reloads the state in the TUI, which
+			// makes for unreliable integration tests....instead the tests can
+			// wait for a certain serial to appear and be sure no further
+			// updates will be made before checking for content.
+			if cached, err := s.cache.Get(workspaceID); err == nil {
+				if cached.Serial == state.Serial {
+					s.logger.Info("skipping caching of reloaded state: identical serial", "state", state)
+					return
+				}
+			}
 			// Add/replace state in cache.
 			s.cache.Add(workspaceID, state)
-			s.logger.Info("reloaded state", "workspace", t.Workspace(), "resources", len(state.Resources))
+			s.logger.Info("reloaded state", "state", state)
 		},
 	})
 }

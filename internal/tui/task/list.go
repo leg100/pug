@@ -1,6 +1,7 @@
 package task
 
 import (
+	"errors"
 	"fmt"
 	"time"
 
@@ -164,8 +165,10 @@ func (m List) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			)
 		case key.Matches(msg, keys.Common.State):
 			if row, ok := m.Table.CurrentRow(); ok {
-				if ws := m.helpers.TaskWorkspace(row.Value); ws != nil {
+				if ws, ok := m.helpers.TaskWorkspace(row.Value); ok {
 					return m, tui.NavigateTo(tui.ResourceListKind, tui.WithParent(ws))
+				} else {
+					return m, tui.ReportError(errors.New("task not associated with a workspace"))
 				}
 			}
 		case key.Matches(msg, keys.Common.Retry):

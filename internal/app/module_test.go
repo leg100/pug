@@ -80,7 +80,6 @@ func TestModule_MultipleValidate(t *testing.T) {
 	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlA})
 	tm.Type("v")
 	waitFor(t, tm, func(s string) bool {
-		t.Log(s)
 		return matchPattern(t, "TaskGroup.*validate", s) &&
 			matchPattern(t, `modules/a.*exited`, s) &&
 			matchPattern(t, `modules/b.*exited`, s) &&
@@ -104,7 +103,6 @@ func TestModule_Reload(t *testing.T) {
 	// Expect message to inform user that reload has finished and no modules
 	// have been added nor removed.
 	waitFor(t, tm, func(s string) bool {
-		t.Log(s)
 		return strings.Contains(s, "reloaded modules: added 0; removed 0")
 	})
 }
@@ -154,7 +152,7 @@ func TestModule_SinglePlan(t *testing.T) {
 	// Initialize all modules
 	initAllModules(t, tm)
 
-	// Create plan on whatever the currently highlighted module is
+	// Create plan on first module
 	tm.Type("p")
 	waitFor(t, tm, func(s string) bool {
 		return matchPattern(t, "Task.*plan.*default.*modules/a.*exited.*planned", s)

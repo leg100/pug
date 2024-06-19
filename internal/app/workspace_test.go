@@ -29,7 +29,6 @@ func TestWorkspace_SetCurrentWorkspace(t *testing.T) {
 	// Expect two workspaces to be listed, and expect default to be the current
 	// workspace
 	waitFor(t, tm, func(s string) bool {
-		t.Log(s)
 		return matchPattern(t, `modules/a.*default.*✓`, s) &&
 			matchPattern(t, `modules/a.*dev`, s)
 	})
@@ -62,7 +61,8 @@ func TestWorkspace_SinglePlan(t *testing.T) {
 	// Wait for modules/a's default workspace to be listed. This should be the
 	// first workspace listed.
 	waitFor(t, tm, func(s string) bool {
-		return matchPattern(t, `modules/a.*default`, s)
+		return strings.Contains(s, "Workspaces") &&
+			matchPattern(t, `modules/a.*default.*✓`, s)
 	})
 
 	// Create plan on modules/a's default workspace
@@ -122,7 +122,8 @@ func TestWorkspace_SingleApply(t *testing.T) {
 	// Wait for modules/a's default workspace to be listed. This should be the
 	// first workspace listed.
 	waitFor(t, tm, func(s string) bool {
-		return matchPattern(t, `modules/a.*default`, s)
+		return strings.Contains(s, "Workspaces") &&
+			matchPattern(t, `modules/a.*default.*✓`, s)
 	})
 
 	// Create apply on workspace
