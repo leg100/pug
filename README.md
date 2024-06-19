@@ -88,7 +88,7 @@ There are several types of resources in pug:
 
 A module is a directory of terraform configuration with a backend configuration. When Pug starts up, it looks recursively within the working directory, walking each directory and parsing any terraform configuration it finds. If the configuration contains a [state backend definition](https://developer.hashicorp.com/terraform/language/settings/backends/configuration) then Pug loads the directory as a module.
 
-Each module has zero or more workspaces. Following successful initialization the module has at least one workspace, named `default`. One workspace is set as the *current workspace* for the module. When you create a run on a module, the run is created on its current workspace. The latest run on its current workspace is set as the *current run* for the module.
+Each module has zero or more workspaces. Following successful initialization the module has at least one workspace, named `default`. One workspace is set as the *current workspace* for the module. When you run a plan or apply on a module, it is created on its current workspace.
 
 If you add/remove modules outside of Pug, you can instruct Pug to reload modules by pressing `Ctrl-r` on the modules listing.
 
@@ -117,7 +117,7 @@ Various actions can be carried out on state:
 
 ### Tasks
 
-Each invocation of terraform is represented as a task. A task belongs either to a run, a workspace, or a module.
+Each invocation of terraform is represented as a task. A task belongs either to a workspace or a module.
 
 A task is either non-blocking or blocking. If it is blocking then it blocks tasks created after it that belong either to the same resource, or to a child resource. For example, an `init` task, which is a blocking task, runs on module "A". Another `init` task for module "A", created immediately afterwards, would be blocked until the former task has completed. Or a `plan` task created afterwards on workspace "default" on module "A", would also be blocked.
 
