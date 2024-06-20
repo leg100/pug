@@ -120,7 +120,7 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, keys.Common.Plan):
 			workspaceIDs, err := m.pruneModulesWithoutCurrentWorkspace()
 			if err != nil {
-				return m, tui.ReportError(err)
+				return m, tui.ReportError(fmt.Errorf("deselected items: %w", err))
 			}
 			fn := func(workspaceID resource.ID) (*task.Task, error) {
 				return m.RunService.Plan(workspaceID, createRunOptions)
@@ -129,7 +129,7 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, keys.Common.Apply):
 			workspaceIDs, err := m.pruneModulesWithoutCurrentWorkspace()
 			if err != nil {
-				return m, tui.ReportError(err)
+				return m, tui.ReportError(fmt.Errorf("deselected items: %w", err))
 			}
 			fn := func(workspaceID resource.ID) (*task.Task, error) {
 				return m.RunService.ApplyOnly(workspaceID, createRunOptions)
