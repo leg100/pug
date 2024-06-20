@@ -16,7 +16,6 @@ require (
 	github.com/charmbracelet/x/exp/teatest v0.0.0-20240329185201-62a6965a9fad
 	github.com/davecgh/go-spew v1.1.1
 	github.com/go-logfmt/logfmt v0.6.0
-	github.com/hashicorp/terraform v1.8.3
 	github.com/hokaccha/go-prettyjson v0.0.0-20211117102719-0474bc63780f
 	github.com/leg100/go-runewidth v0.0.16-0.20240513191656-9e28d2bebd46
 	github.com/leg100/reflow v0.0.0-20240513191534-e77d7e432a72
@@ -27,6 +26,11 @@ require (
 	github.com/stretchr/testify v1.9.0
 	golang.org/x/exp v0.0.0-20240506185415-9bf2ced13842
 )
+
+// Many functions of terraform was converted to internal to avoid use as a
+// library after v0.15.3. This means that we can't use terraform as a library
+// after v0.15.3, so we pull that in here.
+require github.com/hashicorp/terraform v0.15.3
 
 require (
 	github.com/agext/levenshtein v1.2.3 // indirect
@@ -73,7 +77,5 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
-// Many functions of terraform was converted to internal to avoid use as a
-// library after v0.15.3. This means that we can't use terraform as a library
-// after v0.15.3, so we pull that in here.
-replace github.com/hashicorp/terraform => github.com/hashicorp/terraform v0.15.3
+// NOTE: do not add replace directives; they're incompatible with go install.
+// See https://github.com/golang/go/issues/44840
