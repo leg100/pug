@@ -1,5 +1,61 @@
 # Changelog
 
+## [0.2.0](https://github.com/leg100/pug/compare/v0.1.11...v0.2.0) (2024-06-20)
+
+
+### ⚠ BREAKING CHANGES
+
+* bump minor version
+
+### Features
+
+* add commands to state resource page ([9550973](https://github.com/leg100/pug/commit/955097341ec3d690e9b812da6524e443a8945b45))
+* add more task info ([26d25c8](https://github.com/leg100/pug/commit/26d25c854c5b42e23ed60cd8f53cb18090adbf51))
+* bump minor version ([2d0bff0](https://github.com/leg100/pug/commit/2d0bff08f2ce8ad92bf04d644b61ddac2d24ab97))
+* retry tasks ([e5ef0c4](https://github.com/leg100/pug/commit/e5ef0c4f447bbaddcfabd320f1f44e7805d7ec7d))
+* show error when key is unknwon ([e07c455](https://github.com/leg100/pug/commit/e07c4551d250ad095ed3170718d411a0d405de61))
+* show spinner when waiting for output ([bda279d](https://github.com/leg100/pug/commit/bda279d448ae0880c1497d7509aeac88a8950064))
+* split state page ([bfb86f4](https://github.com/leg100/pug/commit/bfb86f46a2ab4c842ab8c9d3758caf1c6169d3aa))
+* task groups and split screen  ([#69](https://github.com/leg100/pug/issues/69)) ([869a790](https://github.com/leg100/pug/commit/869a7901ddd26c8ace015397e8e416fc81f4001f))
+* task info sidebar ([a888922](https://github.com/leg100/pug/commit/a8889226d5e12c9047ebe7e13d17cfe97f5cdd77))
+* toggle autoscroll ([57234fd](https://github.com/leg100/pug/commit/57234fd42b4482ddeb480917ae6446473b85b971))
+
+
+### Bug Fixes
+
+* adding missing key bindings to help ([368d59e](https://github.com/leg100/pug/commit/368d59ea79c5e63f3584e0c95604d66e7fc5d716))
+* consistenly format error messages ([f4f02e0](https://github.com/leg100/pug/commit/f4f02e005c5abf4ad861e9197cbf17c21685e3a0))
+* get tests passing again ([#72](https://github.com/leg100/pug/issues/72)) ([fa482ce](https://github.com/leg100/pug/commit/fa482ce52c8dca68fb49dca88b608c0380ebf4af))
+* handle empty state without panic ([26028c2](https://github.com/leg100/pug/commit/26028c253d516e1ea991da86b67fd3fdeb345f38))
+* handling unknown keys is difficult so remove err ([eea8b49](https://github.com/leg100/pug/commit/eea8b49be5ee1a7a1a97ec67eab62fc73228e034))
+* integration tests use mirror ([a5a0f5a](https://github.com/leg100/pug/commit/a5a0f5ac1407967382d616aa5784c59c427def05))
+* keep track of cursor on table ([bd4b8eb](https://github.com/leg100/pug/commit/bd4b8ebb618527fe86beeb2bbea4676091aa46b9))
+* key changes broke tests ([866b0d2](https://github.com/leg100/pug/commit/866b0d2d6f3025de3e7250ebfc38e808cb19c219))
+* remove double border on task group table ([2fe00a6](https://github.com/leg100/pug/commit/2fe00a6e39bad0b2a5698185e3c04c46b63dcf0f))
+* show task's workspace/module in logs ([4a67df5](https://github.com/leg100/pug/commit/4a67df5e977aaf48c4b045abab4d935c3d6e34d3))
+* use absolute path for edit ([8c0aac1](https://github.com/leg100/pug/commit/8c0aac12f11378bbe560a36be3c768e760876431))
+* use EDITOR for editing modules ([d4bb1f4](https://github.com/leg100/pug/commit/d4bb1f4d6f3d58e4b59aa1643b7bbbce0d47bf17))
+
+
+### Miscellaneous
+
+* bump go deps ([7f2e8d2](https://github.com/leg100/pug/commit/7f2e8d2b47ee37277d953cfd2a2cf730b481db98))
+* change cancel language ([6d90e7e](https://github.com/leg100/pug/commit/6d90e7ed10b13d7eebf51339a222fc96f71324b9))
+* clean up table naming ([c3cdf2e](https://github.com/leg100/pug/commit/c3cdf2e43821794cc9c20f984fc384e4c2fcc3e5))
+* enable autoscroll by default ([62f95ae](https://github.com/leg100/pug/commit/62f95ae33ae2aac83ecf86093e308145a35dd194))
+* lint changes ([72820ab](https://github.com/leg100/pug/commit/72820ab2e3c050266c83f275bcb83141cb7ddf3d))
+* merge demos into one and update readme ([#73](https://github.com/leg100/pug/issues/73)) ([f2cf271](https://github.com/leg100/pug/commit/f2cf271e118590323de5b5780a8e2aec71e0ae26))
+* merge table types into one ([#68](https://github.com/leg100/pug/issues/68)) ([6bcc5fb](https://github.com/leg100/pug/commit/6bcc5fb898629a89b9c44017cb3d5890a3f97a68))
+* refactor resources ([#64](https://github.com/leg100/pug/issues/64)) ([16741d7](https://github.com/leg100/pug/commit/16741d71150c3a1af19df60855d34d7ea96a1867))
+* refactor state ([#67](https://github.com/leg100/pug/issues/67)) ([8f516c4](https://github.com/leg100/pug/commit/8f516c43c51b197a0d224f82c06bfb578784fa94))
+* remove leftover tab code ([b60fc0d](https://github.com/leg100/pug/commit/b60fc0d91bbf4b6fb891e024a099c80c3394cbb6))
+* remove redundant run key ([382f9fe](https://github.com/leg100/pug/commit/382f9fefa63f5d3143c59acc0038f6c911a0cc37))
+* remove redundant table.Items() method ([5bc749d](https://github.com/leg100/pug/commit/5bc749da374e851e376250bd68a89c2b0ddbd685))
+* remove shift-tab key binding to go back ([e5f4e11](https://github.com/leg100/pug/commit/e5f4e1146e1ea32204d1444a60e86fa0b5efdb70))
+* remove unnecessary generic table param ([3871c1f](https://github.com/leg100/pug/commit/3871c1fba50a9b31896ccce540fb481038916431))
+* rm unnecess receiver from crumbs method ([5d32a7a](https://github.com/leg100/pug/commit/5d32a7a6ef035530ad73660c2b7bd5b6229090f0))
+* rm unnecessary mod retrieval ([1f61982](https://github.com/leg100/pug/commit/1f619827890194908d48258ff004ae4a4535579c))
+
 ## [0.1.11](https://github.com/leg100/pug/compare/v0.1.10...v0.1.11) (2024-05-13)
 
 
