@@ -92,6 +92,10 @@ func TestTask_Retry(t *testing.T) {
 
 	// Retry task.
 	tm.Type("r")
+	waitFor(t, tm, func(s string) bool {
+		return strings.Contains(s, "Retry task? (y/N):")
+	})
+	tm.Type("y")
 
 	// Expect to be taken to new task page for plan.
 	waitFor(t, tm, func(s string) bool {
@@ -99,5 +103,35 @@ func TestTask_Retry(t *testing.T) {
 		s = internal.StripAnsi(s)
 		return matchPattern(t, "Task.*plan.*default.*modules/a.*exited.*planned", s) &&
 			strings.Contains(s, "Plan: 10 to add, 0 to change, 0 to destroy.")
+	})
+}
+
+func TestTask_RetryMultiple(t *testing.T) {
+	t.Parallel()
+
+	tm := setup(t, "./testdata/module_list")
+
+	initAllModules(t, tm)
+
+	// Create plan for all modules
+	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlA})
+	tm.Type("p")
+
+	// Expect to be taken to task page for plan and wait for it to finish.
+	waitFor(t, tm, func(s string) bool {
+		return matchPattern(t, "TaskGroup.*plan.*3/3", s)
+	})
+
+	// Retry all tasks.
+	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlA})
+	tm.Type("r")
+	waitFor(t, tm, func(s string) bool {
+		return strings.Contains(s, "Retry 3 tasks? (y/N):")
+	})
+	tm.Type("y")
+
+	// Expect to be taken to task page for plan and wait for it to finish.
+	waitFor(t, tm, func(s string) bool {
+		return matchPattern(t, "TaskGroup.*plan.*3/3", s)
 	})
 }

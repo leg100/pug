@@ -153,7 +153,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, tui.ReportError(errors.New("task not associated with a workspace"))
 			}
 		case key.Matches(msg, keys.Common.Retry):
-			return m, m.helpers.CreateTasks("retry", m.svc.Retry, m.task.ID)
+			return m, tui.YesNoPrompt(
+				"Retry task?",
+				m.helpers.CreateTasks("retry", m.svc.Retry, m.task.ID),
+			)
 		}
 	case toggleAutoscrollMsg:
 		m.viewport.Autoscroll = !m.viewport.Autoscroll

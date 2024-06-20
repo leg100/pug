@@ -173,7 +173,13 @@ func (m List) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		case key.Matches(msg, keys.Common.Retry):
 			taskIDs := m.Table.SelectedOrCurrentIDs()
-			return m, m.helpers.CreateTasks("retry", m.tasks.Retry, taskIDs...)
+			if len(taskIDs) == 0 {
+				return m, nil
+			}
+			return m, tui.YesNoPrompt(
+				fmt.Sprintf("Retry %d tasks?", len(taskIDs)),
+				m.helpers.CreateTasks("retry", m.tasks.Retry, taskIDs...),
+			)
 		}
 	}
 
