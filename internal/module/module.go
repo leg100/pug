@@ -58,7 +58,7 @@ func (m *Module) LogValue() slog.Value {
 //
 // A root module is deemed to be a directory that contains a .tf file that
 // contains a backend block.
-func findModules(logger logging.Interface, workdir internal.Workdir) (modules []string, err error) {
+func findModules(logger logging.Interface, workdir internal.Workdir, terragrunt bool) (modules []string, err error) {
 	found := make(map[string]struct{})
 	walkfn := func(path string, d fs.DirEntry, walkerr error) error {
 		// skip directories that have already been identified as containing a
@@ -70,12 +70,16 @@ func findModules(logger logging.Interface, workdir internal.Workdir) (modules []
 			return err
 		}
 		if d.IsDir() {
-			if d.Name() == ".terraform" {
-				// skip walking .terraform/
+			switch d.Name() {
+			case ".terraform", ".terragrunt-cache":
 				return filepath.SkipDir
 			}
-			// Ignore directory entries
 			return nil
+		}
+		if d.Name() == "terragrunt.hcl" {
+			found[filepath.Dir(path)] = struct{}{}
+			// skip walking remainder of parent directory
+			return fs.SkipDir
 		}
 		if filepath.Ext(path) != ".tf" {
 			return nil

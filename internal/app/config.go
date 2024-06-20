@@ -24,6 +24,7 @@ type config struct {
 	WorkDir                 string
 	DataDir                 string
 	Envs                    []string
+	Terragrunt              bool
 
 	loggingOptions logging.Options
 	version        bool
@@ -32,7 +33,9 @@ type config struct {
 // set config in order of precedence:
 // 1. flags > 2. env vars > 3. config file
 func parse(stderr io.Writer, args []string) (config, error) {
-	var cfg config
+	cfg := config{
+		Terragrunt: true,
+	}
 
 	home, err := os.UserHomeDir()
 	if err != nil {

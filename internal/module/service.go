@@ -48,7 +48,7 @@ func NewService(opts ServiceOptions) *Service {
 // to the store before pruning those that are currently stored but can no longer
 // be found.
 func (s *Service) Reload() (added []string, removed []string, err error) {
-	found, err := findModules(s.logger, s.workdir)
+	found, err := findModules(s.logger, s.workdir, true)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -81,7 +81,7 @@ func (s *Service) Init(moduleID resource.ID) (*task.Task, error) {
 	// create asynchronous task that runs terraform init
 	tsk, err := s.CreateTask(mod, task.CreateOptions{
 		Command:  []string{"init"},
-		Args:     []string{"-input=false"},
+		Args:     []string{"-input=false", "--terragrunt-non-interactive"},
 		Blocking: true,
 		// The terraform plugin cache is not concurrency-safe, so only allow one
 		// init task to run at any given time.
