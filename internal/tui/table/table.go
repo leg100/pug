@@ -35,7 +35,7 @@ type Model[V resource.Resource] struct {
 	focus       bool
 
 	border      lipgloss.Border
-	borderColor lipgloss.Color
+	borderColor lipgloss.TerminalColor
 
 	cursorRow       int
 	cursorID        resource.ID
@@ -308,7 +308,7 @@ func (m Model[V]) View() string {
 	)
 }
 
-func (m *Model[V]) SetBorderStyle(border lipgloss.Border, color lipgloss.Color) {
+func (m *Model[V]) SetBorderStyle(border lipgloss.Border, color lipgloss.TerminalColor) {
 	m.border = border
 	m.borderColor = color
 }

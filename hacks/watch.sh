@@ -2,5 +2,5 @@
 
 # in foreground, continously run app
 while true; do
-    _build/pug -w ./demos -f tasks -d
+    _build/pug -w ./demo/configs -d
 done

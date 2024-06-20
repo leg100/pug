@@ -361,8 +361,8 @@ func (m model) View() string {
 			Background(tui.EvenLighterGrey).
 			Render(m.info)
 	}
-	workdir := tui.Padded.Copy().Background(tui.Grey).Foreground(tui.White).Render(m.workdir)
-	version := tui.Padded.Copy().Background(tui.Black).Foreground(tui.White).Render(version.Version)
+	workdir := tui.Padded.Copy().Background(tui.LightGrey).Foreground(tui.White).Render(m.workdir)
+	version := tui.Padded.Copy().Background(tui.DarkGrey).Foreground(tui.White).Render(version.Version)
 	// Fill in left over space with background color
 	leftover = m.width - tui.Width(footer) - tui.Width(workdir) - tui.Width(version)
 	footer += tui.Regular.Copy().Width(leftover).Background(tui.EvenLighterGrey).Render()
@@ -437,8 +437,8 @@ func (m model) help() string {
 			descs []string
 		)
 		for j := i; j < min(i+rows, len(bindings)); j++ {
-			keys = append(keys, bindings[j].Help().Key)
-			descs = append(descs, bindings[j].Help().Desc)
+			keys = append(keys, helpKeyStyle.Render(bindings[j].Help().Key))
+			descs = append(descs, helpDescStyle.Render(bindings[j].Help().Desc))
 		}
 		// Render pair of columns; beyond the first pair, render a three space
 		// left margin, in order to visually separate the pairs.
@@ -447,8 +447,8 @@ func (m model) help() string {
 			cols = []string{"   "}
 		}
 		cols = append(cols,
-			helpKeyStyle.Render(strings.Join(keys, "\n")),
-			helpDescStyle.Render(strings.Join(descs, "\n")),
+			strings.Join(keys, "\n"),
+			strings.Join(descs, "\n"),
 		)
 
 		pair := lipgloss.JoinHorizontal(lipgloss.Top, cols...)

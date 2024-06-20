@@ -30,15 +30,23 @@ Type "m"
 Type "v"
 # we're taken to the validate task group page
 Sleep 0.5s
+# enable task info side panel
+Type "I"
 # preview output for several tasks
 Down Sleep 0.5s Down Sleep 0.5s Down Sleep 0.5s
+# disable task info side panel
+Type "I" Sleep 0.5s
 
 # go back to modules
-Type "m"
+Type "m" Sleep 0.5s
+# show help
+Type "?" Sleep 0.5s
 # run plan on all modules
 Type "p"
 # we're taken to the plan task group page
-Sleep 0.5s
+Sleep 1s
+# hide help
+Type "?"
 # preview output for several tasks
 Down Sleep 0.5s Down Sleep 0.5s Down Sleep 0.5s
 
@@ -47,7 +55,7 @@ Ctrl+a Sleep 0.5s Type "a"
 # accept confirmation
 Sleep 0.5s Type "y"
 # preview output for several tasks
-Sleep 1.5s Down Sleep 0.5s Down Sleep 0.5s Down Sleep 0.5s
+Sleep 2s Down Sleep 0.5s Down Sleep 0.5s Down Sleep 0.5s
 
 # go back to modules
 Type "m"

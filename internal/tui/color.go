@@ -34,8 +34,19 @@ var (
 
 	LogRecordAttributeKey = lipgloss.AdaptiveColor{Dark: string(White), Light: string(Black)}
 
-	HelpKey  = Grey
-	HelpDesc = LightGrey
+	HelpKey = lipgloss.AdaptiveColor{
+		Dark:  "ff",
+		Light: "",
+	}
+	HelpDesc = lipgloss.AdaptiveColor{
+		Dark:  "248",
+		Light: "246",
+	}
+
+	InactivePreviewBorder = lipgloss.AdaptiveColor{
+		Dark:  "244",
+		Light: "250",
+	}
 
 	CurrentBackground            = Grey
 	CurrentForeground            = White

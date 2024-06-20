@@ -62,7 +62,7 @@ type Model[R resource.Resource] struct {
 	width          int
 
 	previewBorder      lipgloss.Border
-	previewBorderColor lipgloss.Color
+	previewBorderColor lipgloss.TerminalColor
 
 	// userListHeightAdjustment is the adjustment the user has requested to the
 	// default height of the list pane.
@@ -185,16 +185,16 @@ func (m Model[R]) previewHeight() int {
 func (m *Model[R]) setBorderStyles() {
 	if m.previewVisible {
 		if m.previewFocused {
-			m.Table.SetBorderStyle(lipgloss.NormalBorder(), tui.LighterGrey)
+			m.Table.SetBorderStyle(lipgloss.NormalBorder(), tui.InactivePreviewBorder)
 			m.previewBorder = lipgloss.ThickBorder()
 			m.previewBorderColor = tui.Blue
 		} else {
-			m.Table.SetBorderStyle(lipgloss.ThickBorder(), tui.Black)
+			m.Table.SetBorderStyle(lipgloss.ThickBorder(), tui.Blue)
 			m.previewBorder = lipgloss.NormalBorder()
-			m.previewBorderColor = tui.LighterGrey
+			m.previewBorderColor = tui.InactivePreviewBorder
 		}
 	} else {
-		m.Table.SetBorderStyle(lipgloss.NormalBorder(), tui.Black)
+		m.Table.SetBorderStyle(lipgloss.NormalBorder(), tui.White)
 	}
 }
 

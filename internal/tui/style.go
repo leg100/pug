@@ -14,9 +14,6 @@ var (
 	Border      = Regular.Copy().Border(lipgloss.NormalBorder())
 	ThickBorder = Regular.Copy().Border(lipgloss.ThickBorder()).BorderForeground(Violet)
 
-	ActiveBorder   = ThickBorder.Copy()
-	InactiveBorder = Border.Copy().BorderForeground(LighterGrey)
-
 	Title          = Bold.Copy().Padding(0, 1).Background(Pink).Foreground(White)
 	TitleCommand   = Padded.Copy().Foreground(White).Background(Blue)
 	TitlePath      = Padded.Copy().Foreground(White).Background(modulePathColor)
