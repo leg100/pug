@@ -34,13 +34,8 @@ var (
 	}
 	runChangesColumn = table.Column{
 		Key:        "run_changes",
-		Title:      "RUN CHANGES",
+		Title:      "CHANGES",
 		FlexFactor: 1,
-	}
-	runStatusColumn = table.Column{
-		Key:   "run_status",
-		Title: "RUN STATUS",
-		Width: runpkg.MaxStatusLen,
 	}
 )
 
@@ -77,7 +72,6 @@ func (mm *ListMaker) Make(parent resource.Resource, width, height int) (tea.Mode
 		table.WorkspaceColumn,
 		commandColumn,
 		statusColumn,
-		runStatusColumn,
 		runChangesColumn,
 		ageColumn,
 	}
@@ -99,7 +93,6 @@ func (mm *ListMaker) Make(parent resource.Resource, width, height int) (tea.Mode
 			} else if t.CommandString() == "apply" && run.ApplyReport != nil {
 				row[runChangesColumn.Key] = mm.Helpers.RunReport(*run.ApplyReport, true)
 			}
-			row[runStatusColumn.Key] = mm.Helpers.RunStatus(run, false)
 		}
 
 		return row

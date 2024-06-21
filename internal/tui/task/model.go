@@ -287,9 +287,8 @@ func (m model) Title() string {
 func (m model) Status() string {
 	if m.run != nil {
 		return lipgloss.JoinHorizontal(lipgloss.Top,
-			m.helpers.TaskStatus(m.task, true),
 			m.helpers.LatestRunReport(m.run, false),
-			m.helpers.RunStatus(m.run, true),
+			m.helpers.TaskStatus(m.task, true),
 		)
 	}
 	return m.helpers.TaskStatus(m.task, true)

@@ -202,7 +202,7 @@ func TestState_TargetedPlan_SingleResource(t *testing.T) {
 	waitFor(t, tm, func(s string) bool {
 		// Strip ANSI formatting from output
 		s = internal.StripAnsi(s)
-		return matchPattern(t, `Task.*plan.*default.*modules/a.*exited.*\+1~0\-1.*planned`, s) &&
+		return matchPattern(t, `Task.*plan.*default.*modules/a.*\+1~0\-1.*exited`, s) &&
 			strings.Contains(s, "Warning: Resource targeting is in effect")
 	})
 }
@@ -221,7 +221,7 @@ func TestState_TargetedPlan_MultipleResource(t *testing.T) {
 	waitFor(t, tm, func(s string) bool {
 		// Remove bold formatting
 		s = internal.StripAnsi(s)
-		return matchPattern(t, `Task.*plan.*default.*modules/a.*exited.*\+10~0\-10.*planned`, s) &&
+		return matchPattern(t, `Task.*plan.*default.*modules/a.*\+10~0\-10.*exited`, s) &&
 			strings.Contains(s, "Warning: Resource targeting is in effect")
 	})
 }

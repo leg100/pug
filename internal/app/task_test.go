@@ -20,7 +20,7 @@ func TestTask_SingleApply(t *testing.T) {
 	waitFor(t, tm, func(s string) bool {
 		// Remove bold formatting
 		s = internal.StripAnsi(s)
-		return matchPattern(t, "Task.*plan.*default.*modules/a.*exited.*planned", s) &&
+		return matchPattern(t, `Task.*plan.*default.*modules/a.*\+10~0-0.*exited`, s) &&
 			strings.Contains(s, "Plan: 10 to add, 0 to change, 0 to destroy.")
 	})
 
@@ -62,9 +62,9 @@ func TestTask_MultipleApply(t *testing.T) {
 	// Expected to be taken to the task group page for apply tasks
 	waitFor(t, tm, func(s string) bool {
 		return matchPattern(t, "TaskGroup.*apply.*3/3", s) &&
-			matchPattern(t, "modules/a.*default.*applied", s) &&
-			matchPattern(t, "modules/b.*default.*applied", s) &&
-			matchPattern(t, "modules/c.*default.*applied", s)
+			matchPattern(t, `modules/a.*default.*\+10~0-0`, s) &&
+			matchPattern(t, `modules/b.*default.*\+10~0-0`, s) &&
+			matchPattern(t, `modules/c.*default.*\+10~0-0`, s)
 	})
 }
 
@@ -80,7 +80,7 @@ func TestTask_Retry(t *testing.T) {
 	waitFor(t, tm, func(s string) bool {
 		// Remove bold formatting
 		s = internal.StripAnsi(s)
-		return matchPattern(t, "Task.*plan.*default.*modules/a.*exited.*planned", s) &&
+		return matchPattern(t, `Task.*plan.*default.*modules/a.*\+10~0-0.*exited`, s) &&
 			strings.Contains(s, "Plan: 10 to add, 0 to change, 0 to destroy.")
 	})
 
@@ -95,7 +95,7 @@ func TestTask_Retry(t *testing.T) {
 	waitFor(t, tm, func(s string) bool {
 		// Remove bold formatting
 		s = internal.StripAnsi(s)
-		return matchPattern(t, "Task.*plan.*default.*modules/a.*exited.*planned", s) &&
+		return matchPattern(t, `Task.*plan.*default.*modules/a.*\+10~0-0.*exited`, s) &&
 			strings.Contains(s, "Plan: 10 to add, 0 to change, 0 to destroy.")
 	})
 }

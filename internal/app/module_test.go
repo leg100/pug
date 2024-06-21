@@ -143,7 +143,7 @@ func TestModule_SinglePlan(t *testing.T) {
 	// Create plan on first module
 	tm.Type("p")
 	waitFor(t, tm, func(s string) bool {
-		return matchPattern(t, "Task.*plan.*default.*modules/a.*exited.*planned", s)
+		return matchPattern(t, "Task.*plan.*default.*modules/a.*exited", s)
 	})
 
 }
@@ -159,9 +159,9 @@ func TestModule_MultiplePlans(t *testing.T) {
 	tm.Type("p")
 	waitFor(t, tm, func(s string) bool {
 		return matchPattern(t, "TaskGroup.*plan.*3/3", s) &&
-			matchPattern(t, "modules/a.*default.*planned", s) &&
-			matchPattern(t, "modules/b.*default.*planned", s) &&
-			matchPattern(t, "modules/c.*default.*planned", s)
+			matchPattern(t, `modules/a.*default.*\+10~0-0`, s) &&
+			matchPattern(t, `modules/b.*default.*\+10~0-0`, s) &&
+			matchPattern(t, `modules/c.*default.*\+10~0-0`, s)
 	})
 
 }
@@ -199,7 +199,7 @@ func TestModule_SingleDestroyPlan(t *testing.T) {
 	// Expect 10 resources to be proposed for deletion
 	waitFor(t, tm, func(s string) bool {
 		//s = internal.StripAnsi(s)
-		return matchPattern(t, `Task.*plan.*default.*modules/a.*exited.*\+0~0\-10.*planned`, s)
+		return matchPattern(t, `Task.*plan.*default.*modules/a.*\+0~0\-10.*exited`, s)
 	})
 }
 
@@ -220,7 +220,7 @@ func TestModule_SingleApply(t *testing.T) {
 
 	// Send to apply task page
 	waitFor(t, tm, func(s string) bool {
-		return matchPattern(t, "Task.*apply.*default.*modules/a.*exited.*applied", s)
+		return matchPattern(t, `Task.*apply.*default.*modules/a.*\+10~0-0.*exited`, s)
 	})
 
 }
@@ -242,9 +242,9 @@ func TestModule_MultipleApplies(t *testing.T) {
 
 	waitFor(t, tm, func(s string) bool {
 		return matchPattern(t, "TaskGroup.*apply.*3/3", s) &&
-			matchPattern(t, "modules/a.*default.*applied", s) &&
-			matchPattern(t, "modules/b.*default.*applied", s) &&
-			matchPattern(t, "modules/c.*default.*applied", s)
+			matchPattern(t, `modules/a.*default.*\+10~0-0`, s) &&
+			matchPattern(t, `modules/b.*default.*\+10~0-0`, s) &&
+			matchPattern(t, `modules/c.*default.*\+10~0-0`, s)
 	})
 }
 

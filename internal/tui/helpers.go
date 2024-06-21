@@ -162,38 +162,6 @@ func (h *Helpers) TaskStatus(t *task.Task, background bool) string {
 	}
 }
 
-func (h *Helpers) RunStatus(r *run.Run, background bool) string {
-	var color lipgloss.TerminalColor
-
-	switch r.Status {
-	case run.Pending:
-		color = Grey
-	case run.PlanQueued:
-		color = Orange
-	case run.Planning:
-		color = Blue
-	case run.Planned:
-		color = DeepBlue
-	case run.NoChanges:
-		color = GreenBlue
-	case run.Applying:
-		color = lipgloss.AdaptiveColor{
-			Light: string(DarkGreen),
-			Dark:  string(LightGreen),
-		}
-	case run.Applied:
-		color = Green
-	case run.Errored:
-		color = Red
-	}
-
-	if background {
-		return Padded.Copy().Background(color).Foreground(White).Render(string(r.Status))
-	} else {
-		return Regular.Copy().Foreground(color).Render(string(r.Status))
-	}
-}
-
 func (h *Helpers) LatestRunReport(r *run.Run, table bool) string {
 	if r.ApplyReport != nil {
 		return h.RunReport(*r.ApplyReport, table)

@@ -67,7 +67,7 @@ func TestWorkspace_SinglePlan(t *testing.T) {
 
 	// Expect to be taken to the plan's task page
 	waitFor(t, tm, func(s string) bool {
-		return matchPattern(t, "Task.*plan.*default.*modules/a.*exited.*planned", s)
+		return matchPattern(t, `Task.*plan.*default.*modules/a.*\+10~0-0.*exited`, s)
 	})
 }
 
@@ -95,10 +95,10 @@ func TestWorkspace_MultiplePlans(t *testing.T) {
 	// Expect to be taken to task group's page
 	waitFor(t, tm, func(s string) bool {
 		return matchPattern(t, "TaskGroup.*plan.*4/4", s) &&
-			matchPattern(t, "modules/a.*default.*planned", s) &&
-			matchPattern(t, "modules/a.*dev.*planned", s) &&
-			matchPattern(t, "modules/b.*default.*planned", s) &&
-			matchPattern(t, "modules/c.*default.*planned", s)
+			matchPattern(t, `modules/a.*default.*\+10~0-0`, s) &&
+			matchPattern(t, `modules/a.*dev.*\+10~0-0`, s) &&
+			matchPattern(t, `modules/b.*default.*\+10~0-0`, s) &&
+			matchPattern(t, `modules/c.*default.*\+10~0-0`, s)
 	})
 
 }
@@ -130,7 +130,7 @@ func TestWorkspace_SingleApply(t *testing.T) {
 
 	// Send to apply task page
 	waitFor(t, tm, func(s string) bool {
-		return matchPattern(t, "Task.*apply.*default.*modules/a.*exited.*applied", s)
+		return matchPattern(t, `Task.*apply.*default.*modules/a.*\+10~0-0.*exited`, s)
 	})
 
 }
@@ -164,10 +164,10 @@ func TestWorkspace_MultipleApplies(t *testing.T) {
 
 	waitFor(t, tm, func(s string) bool {
 		return matchPattern(t, "TaskGroup.*apply.*4/4", s) &&
-			matchPattern(t, "modules/a.*default.*applied", s) &&
-			matchPattern(t, "modules/a.*dev.*applied", s) &&
-			matchPattern(t, "modules/b.*default.*applied", s) &&
-			matchPattern(t, "modules/c.*default.*applied", s)
+			matchPattern(t, `modules/a.*default.*\+10~0-0`, s) &&
+			matchPattern(t, `modules/a.*dev.*\+10~0-0`, s) &&
+			matchPattern(t, `modules/b.*default.*\+10~0-0`, s) &&
+			matchPattern(t, `modules/c.*default.*\+10~0-0`, s)
 	})
 }
 

@@ -34,14 +34,12 @@ func TestRun_WithVars(t *testing.T) {
 	// Create plan for default workspace
 	tm.Type("p")
 
-	// Expect to see summary of changes, and the run should be in the planned
-	// state
+	// Expect to see summary of changes
 	waitFor(t, tm, func(s string) bool {
 		// Remove formatting
 		s = internal.StripAnsi(s)
 		return strings.Contains(s, "Changes to Outputs:") &&
-			strings.Contains(s, `+ foo = "override"`) &&
-			strings.Contains(s, "planned")
+			strings.Contains(s, `+ foo = "override"`)
 	})
 
 	// Apply plan and provide confirmation
