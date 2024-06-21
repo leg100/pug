@@ -86,12 +86,6 @@ func (s *Service) Init(moduleID resource.ID) (*task.Task, error) {
 		// The terraform plugin cache is not concurrency-safe, so only allow one
 		// init task to run at any given time.
 		Exclusive: s.pluginCache,
-		AfterExited: func(*task.Task) {
-			s.table.Update(moduleID, func(mod *Module) error {
-				mod.Initialized = internal.Bool(true)
-				return nil
-			})
-		},
 	})
 	if err != nil {
 		return nil, err

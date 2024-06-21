@@ -38,7 +38,8 @@ func TestRun_WithVars(t *testing.T) {
 	waitFor(t, tm, func(s string) bool {
 		// Remove formatting
 		s = internal.StripAnsi(s)
-		return strings.Contains(s, "Changes to Outputs:") &&
+		return matchPattern(t, `Task.*plan.*default.*modules/a.*\+0~0-0.*exited`, s) &&
+			strings.Contains(s, "Changes to Outputs:") &&
 			strings.Contains(s, `+ foo = "override"`)
 	})
 
