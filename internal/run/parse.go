@@ -12,7 +12,7 @@ import (
 var (
 	planChangesRegex       = regexp.MustCompile(`Plan: (\d+) to add, (\d+) to change, (\d+) to destroy.`)
 	planOutputChangesRegex = regexp.MustCompile(`Changes to Outputs:`)
-	planNoChangesRegex     = regexp.MustCompile(`No changes. Your infrastructure matches the configuration.`)
+	noChangesRegex         = regexp.MustCompile(`No changes. Your infrastructure matches the configuration.`)
 	applyChangesRegex      = regexp.MustCompile(`(?m)^Apply complete! Resources: (\d+) added, (\d+) changed, (\d+) destroyed.`)
 )
 
@@ -25,7 +25,7 @@ func parsePlanReport(logs string) (bool, Report, error) {
 	raw := internal.StripAnsi(logs)
 
 	// No changes
-	if planNoChangesRegex.MatchString(raw) {
+	if noChangesRegex.MatchString(raw) {
 		return false, Report{}, nil
 	}
 
@@ -65,7 +65,14 @@ func parsePlanReport(logs string) (bool, Report, error) {
 //
 // TODO: parse bytes intead, to skip re-allocation
 func parseApplyReport(logs string) (Report, error) {
-	matches := applyChangesRegex.FindStringSubmatch(logs)
+	raw := internal.StripAnsi(logs)
+
+	// No changes
+	if noChangesRegex.MatchString(raw) {
+		return Report{}, nil
+	}
+
+	matches := applyChangesRegex.FindStringSubmatch(raw)
 	if matches == nil {
 		return Report{}, fmt.Errorf("regexes unexpectedly did not match apply output")
 	}
