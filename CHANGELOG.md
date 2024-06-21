@@ -1,5 +1,27 @@
 # Changelog
 
+## [0.2.1](https://github.com/leg100/pug/compare/v0.2.0...v0.2.1) (2024-06-21)
+
+
+### Features
+
+* require approval before retrying tasks ([0f5e7e3](https://github.com/leg100/pug/commit/0f5e7e38cdf74fe6c2a5b2f55aaa9f6c46529ecf))
+
+
+### Bug Fixes
+
+* go install broken by replace directive ([8ab6fb3](https://github.com/leg100/pug/commit/8ab6fb35b8be4244edbaa990ea8e221bc492bbf9))
+* provide further info when pruning selection ([4c863e9](https://github.com/leg100/pug/commit/4c863e91114ec6b169d684d4e059fc2a5582f4f1))
+* table current row always track item ([e9c673b](https://github.com/leg100/pug/commit/e9c673b9bbb1b4bcb01dae68507ce727a6ce02a7))
+
+
+### Miscellaneous
+
+* add terminal trove badge to README.md ([3b0c0a2](https://github.com/leg100/pug/commit/3b0c0a2c5db7714165f8e6f4953d46453d3e20e5))
+* removed unused progress bar ([f5fa390](https://github.com/leg100/pug/commit/f5fa3909b880982e95f80a330db0e40210180441))
+* styling changes ([51ab14b](https://github.com/leg100/pug/commit/51ab14b241b8a1b556bb238c4db2255b2ba588ce))
+* update demo ([dbb8458](https://github.com/leg100/pug/commit/dbb845870cde3fc1c518805581119994962bc482))
+
 ## [0.2.0](https://github.com/leg100/pug/compare/v0.1.11...v0.2.0) (2024-06-20)
 
 
