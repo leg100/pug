@@ -55,12 +55,23 @@ Ctrl+a Sleep 0.5s Type "a"
 # accept confirmation
 Sleep 0.5s Type "y"
 # preview output for several tasks
-Sleep 2s Down Sleep 0.5s Down Sleep 0.5s Down Sleep 0.5s
+Sleep 2s Down Sleep 1s Down Sleep 1s Down Sleep 1s
+
+# go to workspaces
+Type "w" Sleep 1s
+# filter dev workspaces
+Type "/" Sleep 0.5s Type "dev" Sleep 0.5s Enter
+# select all dev workspaces and auto-apply
+Ctrl+a Sleep 0.5s Type "a"
+# accept confirmation
+Sleep 0.5s Type "y"
+# preview output for several tasks
+Sleep 2s Down Sleep 1s Down Sleep 1s
 
 # go back to modules
-Type "m"
+Type "m" Sleep 0.5s
 # go to state for current module
-Type "s"
+Type "s" Sleep 0.5s
 # see preview for several resources
 Sleep 0.5s Down Sleep 0.5s Down Sleep 0.5s Down Sleep 0.5s
 
@@ -108,7 +119,7 @@ Down Sleep 0.5s Down Sleep 0.5s Down Sleep 0.5s
 Escape Sleep 0.5s
 
 # select several resources
-Space Sleep 0.5s Space Sleep 0.5s Space
+Space Down Sleep 0.5s Space Down Sleep 0.5s Down Space Sleep 0.5s
 # target resources in a plan
 Type "p"
 # look at plan task page for a bit
