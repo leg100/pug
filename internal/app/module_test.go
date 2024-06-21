@@ -40,9 +40,7 @@ func TestModule_SingleInit(t *testing.T) {
 func TestModule_MultipleInit(t *testing.T) {
 	t.Parallel()
 
-	tm := setup(t, "./testdata/module_list")
-
-	initAllModules(t, tm)
+	setupAndInitModuleList(t)
 }
 
 func TestModule_MultipleFormat(t *testing.T) {
@@ -71,10 +69,7 @@ func TestModule_MultipleFormat(t *testing.T) {
 func TestModule_MultipleValidate(t *testing.T) {
 	t.Parallel()
 
-	tm := setup(t, "./testdata/module_list")
-
-	// Validate requires that module be initialised first
-	initAllModules(t, tm)
+	tm := setupAndInitModuleList(t)
 
 	// Validate all modules
 	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlA})
@@ -110,9 +105,7 @@ func TestModule_Reload(t *testing.T) {
 func TestModuleList_ReloadWorkspacesSingleModule(t *testing.T) {
 	t.Parallel()
 
-	tm := setup(t, "./testdata/module_list")
-
-	initAllModules(t, tm)
+	tm := setupAndInitModuleList(t)
 
 	// Reload workspaces for what ever module is currently selected.
 	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlW})
@@ -126,9 +119,7 @@ func TestModuleList_ReloadWorkspacesSingleModule(t *testing.T) {
 func TestModuleList_ReloadWorkspacesMultipleModules(t *testing.T) {
 	t.Parallel()
 
-	tm := setup(t, "./testdata/module_list")
-
-	initAllModules(t, tm)
+	tm := setupAndInitModuleList(t)
 
 	// Select all modules and reload workspaces for each and every module
 	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlA})
@@ -147,10 +138,7 @@ func TestModuleList_ReloadWorkspacesMultipleModules(t *testing.T) {
 func TestModule_SinglePlan(t *testing.T) {
 	t.Parallel()
 
-	tm := setup(t, "./testdata/module_list")
-
-	// Initialize all modules
-	initAllModules(t, tm)
+	tm := setupAndInitModule(t)
 
 	// Create plan on first module
 	tm.Type("p")
@@ -163,10 +151,8 @@ func TestModule_SinglePlan(t *testing.T) {
 func TestModule_MultiplePlans(t *testing.T) {
 	t.Parallel()
 
-	tm := setup(t, "./testdata/module_list")
-
 	// Initialize all modules
-	initAllModules(t, tm)
+	tm := setupAndInitModuleList(t)
 
 	// Select all modules and invoke plan.
 	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlA})
@@ -220,10 +206,8 @@ func TestModule_SingleDestroyPlan(t *testing.T) {
 func TestModule_SingleApply(t *testing.T) {
 	t.Parallel()
 
-	tm := setup(t, "./testdata/module_list")
-
-	// Initialize all modules
-	initAllModules(t, tm)
+	// Initialize single module
+	tm := setupAndInitModule(t)
 
 	// Create apply on whatever the currently highlighted module is
 	tm.Type("a")
@@ -244,10 +228,7 @@ func TestModule_SingleApply(t *testing.T) {
 func TestModule_MultipleApplies(t *testing.T) {
 	t.Parallel()
 
-	tm := setup(t, "./testdata/module_list")
-
-	// Initialize all modules
-	initAllModules(t, tm)
+	tm := setupAndInitModuleList(t)
 
 	// Select all modules and create apply on each
 	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlA})
@@ -274,9 +255,7 @@ func TestModule_MultipleApplies(t *testing.T) {
 func TestModuleList_Filter(t *testing.T) {
 	t.Parallel()
 
-	tm := setup(t, "./testdata/module_list")
-
-	initAllModules(t, tm)
+	tm := setupAndInitModuleList(t)
 
 	// Focus filter widget
 	tm.Type("/")
@@ -295,7 +274,9 @@ func TestModuleList_Filter(t *testing.T) {
 	})
 }
 
-func initAllModules(t *testing.T, tm *testModel) {
+func setupAndInitModuleList(t *testing.T) *testModel {
+	tm := setup(t, "./testdata/module_list")
+
 	// Go to modules listing
 	tm.Type("m")
 
@@ -328,4 +309,34 @@ func initAllModules(t *testing.T, tm *testModel) {
 
 	// Clear selection
 	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlBackslash})
+
+	return tm
+}
+
+func setupAndInitModule(t *testing.T) *testModel {
+	tm := setup(t, "./testdata/single_module")
+
+	// Go to modules listing
+	tm.Type("m")
+
+	// Expect single modules to be listed
+	waitFor(t, tm, func(s string) bool {
+		return strings.Contains(s, "modules/a")
+	})
+
+	// Initialize module
+	tm.Type("i")
+	waitFor(t, tm, func(s string) bool {
+		return matchPattern(t, "Task.*init.*modules/a.*exited", s)
+	})
+
+	// Go back to modules listing
+	tm.Send(tea.KeyMsg{Type: tea.KeyEsc})
+
+	// Expect singgle modules to be listed, along with its default workspace.
+	waitFor(t, tm, func(s string) bool {
+		return matchPattern(t, "modules/a.*default", s)
+	})
+
+	return tm
 }

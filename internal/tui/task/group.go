@@ -34,11 +34,10 @@ type GroupMaker struct {
 func NewGroupMaker(tasks tui.TaskService, runs tui.RunService, taskMaker *Maker, helpers *tui.Helpers) *GroupMaker {
 	return &GroupMaker{
 		taskListMaker: &ListMaker{
-			TaskService:       tasks,
-			RunService:        runs,
-			TaskMaker:         &groupTaskMaker{Maker: taskMaker},
-			Helpers:           helpers,
-			hideCommandColumn: true,
+			TaskService: tasks,
+			RunService:  runs,
+			TaskMaker:   &groupTaskMaker{Maker: taskMaker},
+			Helpers:     helpers,
 		},
 	}
 }

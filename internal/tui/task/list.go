@@ -69,24 +69,18 @@ type ListMaker struct {
 	TaskService tui.TaskService
 	TaskMaker   tui.Maker
 	Helpers     *tui.Helpers
-
-	hideCommandColumn bool
 }
 
 func (mm *ListMaker) Make(parent resource.Resource, width, height int) (tea.Model, error) {
 	columns := []table.Column{
 		table.ModuleColumn,
 		table.WorkspaceColumn,
-	}
-	if !mm.hideCommandColumn {
-		columns = append(columns, commandColumn)
-	}
-	columns = append(columns,
+		commandColumn,
 		statusColumn,
 		runStatusColumn,
 		runChangesColumn,
 		ageColumn,
-	)
+	}
 
 	renderer := func(t *task.Task) table.RenderedRow {
 		row := table.RenderedRow{

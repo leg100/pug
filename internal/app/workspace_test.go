@@ -50,10 +50,7 @@ func TestWorkspace_SetCurrentWorkspace(t *testing.T) {
 func TestWorkspace_SinglePlan(t *testing.T) {
 	t.Parallel()
 
-	tm := setup(t, "./testdata/module_list")
-
-	// Initialize all modules
-	initAllModules(t, tm)
+	tm := setupAndInitModule(t)
 
 	// Go to workspace listing
 	tm.Type("w")
@@ -77,10 +74,8 @@ func TestWorkspace_SinglePlan(t *testing.T) {
 func TestWorkspace_MultiplePlans(t *testing.T) {
 	t.Parallel()
 
-	tm := setup(t, "./testdata/module_list")
-
 	// Initialize all modules
-	initAllModules(t, tm)
+	tm := setupAndInitModuleList(t)
 
 	// Go to workspace listing
 	tm.Type("w")
@@ -111,10 +106,8 @@ func TestWorkspace_MultiplePlans(t *testing.T) {
 func TestWorkspace_SingleApply(t *testing.T) {
 	t.Parallel()
 
-	tm := setup(t, "./testdata/module_list")
-
-	// Initialize all modules
-	initAllModules(t, tm)
+	// Initialize module
+	tm := setupAndInitModule(t)
 
 	// Go to workspace listing
 	tm.Type("w")
@@ -145,10 +138,8 @@ func TestWorkspace_SingleApply(t *testing.T) {
 func TestWorkspace_MultipleApplies(t *testing.T) {
 	t.Parallel()
 
-	tm := setup(t, "./testdata/module_list")
-
 	// Initialize all modules
-	initAllModules(t, tm)
+	tm := setupAndInitModuleList(t)
 
 	// Go to workspace listing
 	tm.Type("w")
@@ -183,10 +174,8 @@ func TestWorkspace_MultipleApplies(t *testing.T) {
 func TestWorkspace_Filter(t *testing.T) {
 	t.Parallel()
 
-	tm := setup(t, "./testdata/module_list")
-
 	// Initialize all modules
-	initAllModules(t, tm)
+	tm := setupAndInitModuleList(t)
 
 	// Go to workspaces listing
 	tm.Type("w")

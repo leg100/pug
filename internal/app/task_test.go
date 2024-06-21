@@ -11,9 +11,7 @@ import (
 func TestTask_SingleApply(t *testing.T) {
 	t.Parallel()
 
-	tm := setup(t, "./testdata/module_list")
-
-	initAllModules(t, tm)
+	tm := setupAndInitModule(t)
 
 	// Create plan on first module
 	tm.Type("p")
@@ -42,9 +40,7 @@ func TestTask_SingleApply(t *testing.T) {
 func TestTask_MultipleApply(t *testing.T) {
 	t.Parallel()
 
-	tm := setup(t, "./testdata/module_list")
-
-	initAllModules(t, tm)
+	tm := setupAndInitModuleList(t)
 
 	// Create plan on all modules
 	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlA})
@@ -75,9 +71,7 @@ func TestTask_MultipleApply(t *testing.T) {
 func TestTask_Retry(t *testing.T) {
 	t.Parallel()
 
-	tm := setup(t, "./testdata/module_list")
-
-	initAllModules(t, tm)
+	tm := setupAndInitModule(t)
 
 	// Create plan on first module
 	tm.Type("p")
@@ -109,9 +103,7 @@ func TestTask_Retry(t *testing.T) {
 func TestTask_RetryMultiple(t *testing.T) {
 	t.Parallel()
 
-	tm := setup(t, "./testdata/module_list")
-
-	initAllModules(t, tm)
+	tm := setupAndInitModuleList(t)
 
 	// Create plan for all modules
 	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlA})
@@ -132,6 +124,7 @@ func TestTask_RetryMultiple(t *testing.T) {
 
 	// Expect to be taken to task page for plan and wait for it to finish.
 	waitFor(t, tm, func(s string) bool {
-		return matchPattern(t, "TaskGroup.*plan.*3/3", s)
+		t.Log(s)
+		return matchPattern(t, "TaskGroup.*retry.*3/3", s)
 	})
 }

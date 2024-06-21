@@ -37,9 +37,8 @@ type Model[V resource.Resource] struct {
 	border      lipgloss.Border
 	borderColor lipgloss.TerminalColor
 
-	cursorRow       int
-	cursorID        resource.ID
-	userMovedCursor bool
+	cursorRow int
+	cursorID  resource.ID
 
 	items    map[resource.ID]V
 	sortFunc SortFunc[V]
@@ -565,15 +564,12 @@ func (m *Model[V]) SetItems(items map[resource.ID]V) {
 	// corresponding item.
 	m.Selected = selections
 
-	// Track item corresponding to the current cursor, but only if the user has
-	// moved the cursor. Otherwise keep cursor on the first row.
+	// Track item corresponding to the current cursor.
 	m.cursorRow = -1
-	if m.userMovedCursor {
-		for i, item := range m.rows {
-			if item.ID == m.cursorID {
-				// Found item corresponding to cursor, update its position
-				m.cursorRow = i
-			}
+	for i, item := range m.rows {
+		if item.ID == m.cursorID {
+			// Found item corresponding to cursor, update its position
+			m.cursorRow = i
 		}
 	}
 	// Check if item corresponding to cursor doesn't exist, which occurs when
@@ -635,9 +631,6 @@ func (m *Model[V]) moveCursor(n int) {
 	m.cursorRow = clamp(m.cursorRow+n, 0, len(m.rows)-1)
 	if len(m.rows) > 0 {
 		m.cursorID = m.rows[m.cursorRow].ID
-	}
-	if n != 0 {
-		m.userMovedCursor = true
 	}
 }
 
