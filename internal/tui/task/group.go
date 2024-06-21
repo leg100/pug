@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/charmbracelet/bubbles/progress"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/leg100/pug/internal/resource"
 	"github.com/leg100/pug/internal/task"
@@ -48,21 +47,15 @@ func (mm *GroupMaker) Make(parent resource.Resource, width, height int) (tea.Mod
 		return nil, errors.New("expected taskgroup resource")
 	}
 
-	progress := progress.New(progress.WithDefaultGradient(), progress.WithScaledGradient("253", "#606362"))
-	progress.Width = 20
-	progress.ShowPercentage = false
-	progress.EmptyColor = "0"
-
 	list, err := mm.taskListMaker.Make(parent, width, height)
 	if err != nil {
 		return nil, fmt.Errorf("making task list model: %w", err)
 	}
 
 	m := groupModel{
-		Model:    list,
-		progress: progress,
-		group:    group,
-		helpers:  mm.Helpers,
+		Model:   list,
+		group:   group,
+		helpers: mm.Helpers,
 	}
 	return m, nil
 }
@@ -70,10 +63,6 @@ func (mm *GroupMaker) Make(parent resource.Resource, width, height int) (tea.Mod
 // groupModel is a model for a taskgroup, listing and previewing its tasks.
 type groupModel struct {
 	tea.Model
-
-	// Progress bar showing how many tasks are complete
-	progress progress.Model
-	finished bool
 
 	group   *task.Group
 	helpers *tui.Helpers
@@ -100,22 +89,13 @@ func (m groupModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch msg := msg.(type) {
 	case table.BulkInsertMsg[*task.Task]:
-		cmd, skip := m.handleTasks(([]*task.Task)(msg)...)
-		if skip {
+		if m.skip(([]*task.Task)(msg)...) {
 			return m, nil
 		}
-		cmds = append(cmds, cmd)
 	case resource.Event[*task.Task]:
-		cmd, skip := m.handleTasks(msg.Payload)
-		if skip {
+		if m.skip(msg.Payload) {
 			return m, nil
 		}
-		cmds = append(cmds, cmd)
-	case progress.FrameMsg:
-		// FrameMsg is sent when the progress bar wants to animate itself
-		progressModel, cmd := m.progress.Update(msg)
-		m.progress = progressModel.(progress.Model)
-		return m, cmd
 	}
 
 	// Forward message to wrapped task list model
@@ -125,32 +105,22 @@ func (m groupModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, tea.Batch(cmds...)
 }
 
+// skip determines whether to skip forwarding the task to the wrapped task list
+// model.
+func (m *groupModel) skip(tasks ...*task.Task) bool {
+	// If any of the tasks are not part of this task group then skip all tasks
+	for _, t := range tasks {
+		if !m.group.IncludesTask(t.ID) {
+			return true
+		}
+	}
+	return false
+}
+
 func (m groupModel) Title() string {
 	return tui.Breadcrumbs("TaskGroup", m.group)
 }
 
 func (m groupModel) Status() string {
 	return m.helpers.GroupReport(m.group, false)
-}
-
-func (m *groupModel) handleTasks(tasks ...*task.Task) (tea.Cmd, bool) {
-	if m.finished {
-		return nil, true
-	}
-
-	for _, t := range tasks {
-		// If any of the tasks are not part of this task group then skip
-		// handling all tasks
-		if !m.group.IncludesTask(t.ID) {
-			return nil, true
-		}
-	}
-
-	// Update progress bar to reflect task status
-	percentageComplete := float64(m.group.Finished()) / float64(len(m.group.Tasks))
-	if percentageComplete == 1 {
-		// no more updates to progress bar necessary after this update.
-		m.finished = true
-	}
-	return m.progress.SetPercent(percentageComplete), false
 }
