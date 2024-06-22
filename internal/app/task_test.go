@@ -124,7 +124,6 @@ func TestTask_RetryMultiple(t *testing.T) {
 
 	// Expect to be taken to task page for plan and wait for it to finish.
 	waitFor(t, tm, func(s string) bool {
-		t.Log(s)
 		return matchPattern(t, "TaskGroup.*retry.*3/3", s)
 	})
 }

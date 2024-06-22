@@ -24,7 +24,9 @@ func TestTerragrunt_SinglePlan(t *testing.T) {
 	// Create plan on first module
 	tm.Type("p")
 	waitFor(t, tm, func(s string) bool {
-		return matchPattern(t, "Task.*plan.*default.*modules/a.*exited", s)
+		return matchPattern(t, "Task.*plan.*default.*modules/a.*exited", s) &&
+			strings.Contains(s, "terragrunt plan")
+
 	})
 }
 
@@ -45,7 +47,9 @@ func TestTerragrunt_SingleApply(t *testing.T) {
 
 	// Send to apply task page
 	waitFor(t, tm, func(s string) bool {
-		return matchPattern(t, `Task.*apply.*default.*modules/a.*\+10~0-0.*exited`, s)
+		return matchPattern(t, `Task.*apply.*default.*modules/a.*\+10~0-0.*exited`, s) &&
+			strings.Contains(s, "terragrunt apply")
+
 	})
 }
 
@@ -56,7 +60,7 @@ func skipIfTerragruntNotFound(t *testing.T) {
 }
 
 func setupAndInitTerragruntModule(t *testing.T) *testModel {
-	tm := setup(t, "./testdata/single_terragrunt_module")
+	tm := setup(t, "./testdata/single_terragrunt_module", withProgram("terragrunt"))
 
 	// Expect single module to be listed
 	waitFor(t, tm, func(s string) bool {
@@ -67,6 +71,15 @@ func setupAndInitTerragruntModule(t *testing.T) *testModel {
 	tm.Type("i")
 	waitFor(t, tm, func(s string) bool {
 		return matchPattern(t, "Task.*init.*modules/a.*exited", s)
+
+	})
+
+	// Show task info sidebar so tests can check that terragrunt is indeed being
+	// executed.
+	tm.Type("I")
+	waitFor(t, tm, func(s string) bool {
+		return strings.Contains(s, "terragrunt init")
+
 	})
 
 	// Go back to modules listing
