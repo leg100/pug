@@ -32,6 +32,18 @@ func setup(t *testing.T, workdir string) *testModel {
 	mirrorConfigPath, err := filepath.Abs(mirrorConfigPath)
 	require.NoError(t, err)
 
+	// Remove all .terraform directories from testdata. These can sometimes be
+	// created outside of tests, e.g. running pug within the repo, but none the
+	// of tests should start with a .terraform directory, otherwise it can lead
+	// to tests falsely passing.
+	{
+		dirs, err := filepath.Glob("./testdata/*/modules/*/.terraform")
+		require.NoError(t, err)
+		for _, dir := range dirs {
+			os.RemoveAll(dir)
+		}
+	}
+
 	// Copy workdir to a dedicated directory for this test, to ensure any
 	// artefacts created in workdir are done so in isolation from other
 	// tests that are run in parallel, and to ensure artefacts don't persist to

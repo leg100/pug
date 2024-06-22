@@ -71,8 +71,8 @@ func NewService(opts ServiceOptions) *Service {
 // whenever:
 // * a new module is loaded into pug for the first time
 // * an existing module is updated and does not yet have a current workspace.
-func (s *Service) LoadWorkspacesUponModuleLoad(ms moduleSubscription) {
-	sub := ms.Subscribe()
+func (s *Service) LoadWorkspacesUponModuleLoad(modules moduleSubscription) {
+	sub := modules.Subscribe()
 
 	go func() {
 		for event := range sub {

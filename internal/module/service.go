@@ -95,6 +95,13 @@ func (s *Service) Init(moduleID resource.ID) (*task.Task, error) {
 		// The terraform plugin cache is not concurrency-safe, so only allow one
 		// init task to run at any given time.
 		Exclusive: s.pluginCache,
+		AfterCreate: func(*task.Task) {
+			// Trigger a workspace reload if the module doesn't yet have a
+			// current workspace
+			if mod.CurrentWorkspaceID == nil {
+				s.Publish(resource.UpdatedEvent, mod)
+			}
+		},
 	})
 	if err != nil {
 		return nil, err
