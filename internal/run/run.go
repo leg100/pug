@@ -44,8 +44,9 @@ type Run struct {
 	Changes       bool
 	ArtefactsPath string
 
-	applyOnly bool
-	runArgs   []string
+	applyOnly          bool
+	defaultArgs        []string
+	createPlanFileArgs []string
 
 	// Call this function after every status update
 	afterUpdate func(run *Run)
@@ -66,6 +67,7 @@ type factory struct {
 	modules    moduleGetter
 	workspaces workspaceGetter
 	broker     *pubsub.Broker[*Run]
+	terragrunt bool
 }
 
 func (f *factory) newRun(workspaceID resource.ID, opts CreateOptions) (*Run, error) {
@@ -95,13 +97,17 @@ func (f *factory) newRun(workspaceID resource.ID, opts CreateOptions) (*Run, err
 	}
 
 	run := &Run{
-		Common:    resource.New(resource.Run, ws),
-		Status:    Pending,
-		applyOnly: opts.applyOnly,
-		runArgs:   args,
+		Common:             resource.New(resource.Run, ws),
+		Status:             Pending,
+		applyOnly:          opts.applyOnly,
+		defaultArgs:        []string{"-input=false"},
+		createPlanFileArgs: args,
 		afterUpdate: func(run *Run) {
 			f.broker.Publish(resource.UpdatedEvent, run)
 		},
+	}
+	if f.terragrunt {
+		run.defaultArgs = append(run.defaultArgs, "--terragrunt-non-interactive")
 	}
 
 	if !opts.applyOnly {
@@ -153,7 +159,7 @@ func (r *Run) planPath() string {
 }
 
 func (r *Run) planArgs() []string {
-	args := append(r.runArgs, "-input=false")
+	args := append(r.defaultArgs, r.createPlanFileArgs...)
 	if r.applyOnly {
 		return args
 	}
@@ -193,11 +199,11 @@ func (r *Run) parsePlanOutput(out []byte) error {
 }
 
 func (r *Run) applyArgs() []string {
-	noInput := "-input=false"
 	if r.applyOnly {
-		return append(r.runArgs, noInput, "-auto-approve")
+		args := append(r.defaultArgs, r.createPlanFileArgs...)
+		return append(args, "-auto-approve")
 	}
-	return []string{noInput, r.planPath()}
+	return append(r.defaultArgs, r.planPath())
 }
 
 func (r *Run) finishApply(reader io.Reader) (err error) {

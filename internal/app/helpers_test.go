@@ -19,7 +19,15 @@ import (
 
 const mirrorConfigPath = "../../mirror/mirror.tfrc"
 
-func setup(t *testing.T, workdir string) *testModel {
+type configOption func(cfg *config)
+
+func withProgram(prog string) configOption {
+	return func(cfg *config) {
+		cfg.Program = prog
+	}
+}
+
+func setup(t *testing.T, workdir string, opts ...configOption) *testModel {
 	t.Helper()
 
 	if _, err := os.Stat(mirrorConfigPath); err != nil {
@@ -31,7 +39,6 @@ func setup(t *testing.T, workdir string) *testModel {
 	// network roundtrips to retrieve or query providers.
 	mirrorConfigPath, err := filepath.Abs(mirrorConfigPath)
 	require.NoError(t, err)
-
 	// Copy workdir to a dedicated directory for this test, to ensure any
 	// artefacts created in workdir are done so in isolation from other
 	// tests that are run in parallel, and to ensure artefacts don't persist to
@@ -41,22 +48,27 @@ func setup(t *testing.T, workdir string) *testModel {
 	require.NoError(t, err)
 	workdir = target
 
-	app, err := startApp(
-		config{
-			FirstPage: "modules",
-			Program:   "terraform",
-			WorkDir:   workdir,
-			MaxTasks:  3,
-			DataDir:   t.TempDir(),
-			Debug:     true,
-			Envs:      []string{fmt.Sprintf("TF_CLI_CONFIG_FILE=%s", mirrorConfigPath)},
-			loggingOptions: logging.Options{
-				Level: "debug",
-				AdditionalWriters: []io.Writer{
-					&testLogger{t},
-				},
+	cfg := config{
+		FirstPage: "modules",
+		Program:   "terraform",
+		WorkDir:   workdir,
+		MaxTasks:  3,
+		DataDir:   t.TempDir(),
+		Debug:     true,
+		Envs:      []string{fmt.Sprintf("TF_CLI_CONFIG_FILE=%s", mirrorConfigPath)},
+		loggingOptions: logging.Options{
+			Level: "debug",
+			AdditionalWriters: []io.Writer{
+				&testLogger{t},
 			},
 		},
+	}
+	for _, fn := range opts {
+		fn(&cfg)
+	}
+
+	app, err := startApp(
+		cfg,
 		io.Discard,
 	)
 	require.NoError(t, err)

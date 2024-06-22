@@ -24,6 +24,7 @@ type config struct {
 	WorkDir                 string
 	DataDir                 string
 	Envs                    []string
+	Terragrunt              bool
 
 	loggingOptions logging.Options
 	version        bool
@@ -69,6 +70,12 @@ func parse(stderr io.Writer, args []string) (config, error) {
 		// passed; in either case print flag usage in addition to error message.
 		fmt.Fprintln(stderr, ffhelp.Flags(fs))
 		return config{}, err
+	}
+
+	// If user has specified terragrunt as the program executable then enable
+	// terragrunt mode.
+	if cfg.Program == "terragrunt" {
+		cfg.Terragrunt = true
 	}
 
 	return cfg, nil

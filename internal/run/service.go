@@ -36,6 +36,7 @@ type ServiceOptions struct {
 	DisableReloadAfterApply bool
 	DataDir                 string
 	Logger                  logging.Interface
+	Terragrunt              bool
 }
 
 type moduleGetter interface {
@@ -62,6 +63,7 @@ func NewService(opts ServiceOptions) *Service {
 			modules:    opts.ModuleService,
 			workspaces: opts.WorkspaceService,
 			broker:     broker,
+			terragrunt: opts.Terragrunt,
 		},
 	}
 }

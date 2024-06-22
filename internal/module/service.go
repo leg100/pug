@@ -17,6 +17,7 @@ type Service struct {
 	workdir     internal.Workdir
 	pluginCache bool
 	logger      logging.Interface
+	terragrunt  bool
 
 	*pubsub.Broker[*Module]
 }
@@ -26,6 +27,7 @@ type ServiceOptions struct {
 	Workdir     internal.Workdir
 	PluginCache bool
 	Logger      logging.Interface
+	Terragrunt  bool
 }
 
 func NewService(opts ServiceOptions) *Service {
@@ -41,6 +43,7 @@ func NewService(opts ServiceOptions) *Service {
 		workdir:     opts.Workdir,
 		pluginCache: opts.PluginCache,
 		logger:      opts.Logger,
+		terragrunt:  opts.Terragrunt,
 	}
 }
 
@@ -78,19 +81,26 @@ func (s *Service) Init(moduleID resource.ID) (*task.Task, error) {
 	if err != nil {
 		return nil, fmt.Errorf("initializing module: %w", err)
 	}
+
+	args := []string{"-input=false"}
+	if s.terragrunt {
+		args = append(args, "--terragrunt-non-interactive")
+	}
+
 	// create asynchronous task that runs terraform init
 	tsk, err := s.CreateTask(mod, task.CreateOptions{
 		Command:  []string{"init"},
-		Args:     []string{"-input=false"},
+		Args:     args,
 		Blocking: true,
 		// The terraform plugin cache is not concurrency-safe, so only allow one
 		// init task to run at any given time.
 		Exclusive: s.pluginCache,
-		AfterExited: func(*task.Task) {
-			s.table.Update(moduleID, func(mod *Module) error {
-				mod.Initialized = internal.Bool(true)
-				return nil
-			})
+		AfterCreate: func(*task.Task) {
+			// Trigger a workspace reload if the module doesn't yet have a
+			// current workspace
+			if mod.CurrentWorkspaceID == nil {
+				s.Publish(resource.UpdatedEvent, mod)
+			}
 		},
 	})
 	if err != nil {

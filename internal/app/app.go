@@ -107,6 +107,7 @@ func startApp(cfg config, stdout io.Writer) (*app, error) {
 		Workdir:     workdir,
 		PluginCache: cfg.PluginCache,
 		Logger:      logger,
+		Terragrunt:  cfg.Terragrunt,
 	})
 	workspaces := workspace.NewService(workspace.ServiceOptions{
 		TaskService:   tasks,
@@ -127,6 +128,7 @@ func startApp(cfg config, stdout io.Writer) (*app, error) {
 		DisableReloadAfterApply: cfg.DisableReloadAfterApply,
 		DataDir:                 cfg.DataDir,
 		Logger:                  logger,
+		Terragrunt:              cfg.Terragrunt,
 	})
 
 	// Construct top-level TUI model.

@@ -26,28 +26,16 @@ type Module struct {
 
 	// The module's current workspace.
 	CurrentWorkspaceID *resource.ID
-
-	// Whether module has been initialized in the past. Nil means it is unknown.
-	Initialized *bool
 }
 
 // New constructs a module. Workdir is the pug working directory, and path is
 // the module path relative to the working directory.
 func New(workdir internal.Workdir, path string) *Module {
-	mod := &Module{
+	return &Module{
 		Common:  resource.New(resource.Module, resource.GlobalResource),
 		Path:    path,
 		Workdir: workdir,
 	}
-	// We can say, with certitude, that the absence of a .terraform directory
-	// means the module has not been initialized (but we cannot make the
-	// opposite case, that the presence of a .terraform directory means
-	// terraform init has successfully been run, only that it has been run in
-	// the some point in the past).
-	if _, err := os.Stat(filepath.Join(workdir.String(), path, ".terraform")); err != nil {
-		mod.Initialized = internal.Bool(false)
-	}
-	return mod
 }
 
 func (m *Module) String() string {
@@ -82,12 +70,16 @@ func findModules(logger logging.Interface, workdir internal.Workdir) (modules []
 			return err
 		}
 		if d.IsDir() {
-			if d.Name() == ".terraform" {
-				// skip walking .terraform/
+			switch d.Name() {
+			case ".terraform", ".terragrunt-cache":
 				return filepath.SkipDir
 			}
-			// Ignore directory entries
 			return nil
+		}
+		if d.Name() == "terragrunt.hcl" {
+			found[filepath.Dir(path)] = struct{}{}
+			// skip walking remainder of parent directory
+			return fs.SkipDir
 		}
 		if filepath.Ext(path) != ".tf" {
 			return nil
