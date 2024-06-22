@@ -145,11 +145,11 @@ Alternatively, you can apply a plan file (see above).
 
 ## Tofu support
 
-To use `tofu` instead of `terraform`, set `--program=tofu`.
+To use tofu, set `--program=tofu`. Ensure it is installed first.
 
 ## Terragrunt support
 
-To use `terragrunt` instead of `terraform`, set `--program=terragrunt`.
+To use terragrunt, set `--program=terragrunt`. Ensure it is installed first.
 
 When `terragrunt` is specified as the program executable, Pug enables "terragrunt mode":
 
