@@ -6,7 +6,7 @@ A TUI application for terraform power users.
 
 * Perform tasks in parallel (plan, apply, init, etc)
 * Interactively manage state resources (targeted plans, move, delete, etc)
-* Supports tofu as well as terraform
+* Supports terraform, tofu and terragrunt.
 * Supports workspaces
 * Automatically loads workspace variable files
 * Backend agnostic (s3, cloud, etc)
@@ -146,3 +146,12 @@ Alternatively, you can apply a plan file (see above).
 ## Tofu support
 
 To use `tofu` instead of `terraform`, set `--program=tofu`.
+
+## Terragrunt support
+
+To use `terragrunt` instead of `terraform`, set `--program=terragrunt`.
+
+When `terragrunt` is specified as the program executable, Pug enables "terragrunt mode":
+
+* Modules are detected via the presence of a `terragrunt.hcl` file. (You may want to rename the top-level `terragrunt.hcl` file to something else otherwise it is mis-detected as a module).
+* The flag `--terragrunt-non-interactive` is added to commands.

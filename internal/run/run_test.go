@@ -26,7 +26,7 @@ func TestRun_VarsFile(t *testing.T) {
 	run, err := f.newRun(ws.ID, CreateOptions{})
 	require.NoError(t, err)
 
-	assert.Contains(t, run.runArgs, "-var-file=dev.tfvars")
+	assert.Contains(t, run.createPlanFileArgs, "-var-file=dev.tfvars")
 }
 
 func TestRun_MakeArtefactsPath(t *testing.T) {

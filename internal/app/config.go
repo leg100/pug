@@ -33,9 +33,7 @@ type config struct {
 // set config in order of precedence:
 // 1. flags > 2. env vars > 3. config file
 func parse(stderr io.Writer, args []string) (config, error) {
-	cfg := config{
-		Terragrunt: true,
-	}
+	var cfg config
 
 	home, err := os.UserHomeDir()
 	if err != nil {
@@ -72,6 +70,12 @@ func parse(stderr io.Writer, args []string) (config, error) {
 		// passed; in either case print flag usage in addition to error message.
 		fmt.Fprintln(stderr, ffhelp.Flags(fs))
 		return config{}, err
+	}
+
+	// If user has specified terragrunt as the program executable then enable
+	// terragrunt mode.
+	if cfg.Program == "terragrunt" {
+		cfg.Terragrunt = true
 	}
 
 	return cfg, nil
