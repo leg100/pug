@@ -194,7 +194,7 @@ func (m *Model[R]) setBorderStyles() {
 			m.previewBorderColor = tui.InactivePreviewBorder
 		}
 	} else {
-		m.Table.SetBorderStyle(lipgloss.NormalBorder(), tui.White)
+		m.Table.SetBorderStyle(lipgloss.NormalBorder(), lipgloss.NoColor{})
 	}
 }
 
