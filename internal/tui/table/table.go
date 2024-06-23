@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"slices"
+	"strconv"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/key"
@@ -37,8 +38,9 @@ type Model[V resource.Resource] struct {
 	border      lipgloss.Border
 	borderColor lipgloss.TerminalColor
 
-	cursorRow int
-	cursorID  resource.ID
+	cursorRow    int
+	cursorID     resource.ID
+	renderedRows int
 
 	items    map[resource.ID]V
 	sortFunc SortFunc[V]
@@ -49,8 +51,11 @@ type Model[V resource.Resource] struct {
 	filter textinput.Model
 
 	viewport viewport.Model
-	start    int
-	end      int
+
+	// index of first visible row
+	start int
+	// cursor offset from first visible row
+	offset int
 
 	// dimensions calcs
 	width  int
@@ -292,7 +297,7 @@ func (m Model[V]) View() string {
 	components = append(components, m.viewport.View())
 	content := lipgloss.JoinVertical(lipgloss.Top, components...)
 
-	metadata := m.TotalString()
+	metadata := m.RowInfo()
 
 	// total length of top border runes, not including corners
 	topBorderLength := max(0, m.width-lipgloss.Width(metadata)-2)
@@ -315,20 +320,16 @@ func (m *Model[V]) SetBorderStyle(border lipgloss.Border, color lipgloss.Termina
 // UpdateViewport updates the list content based on the previously defined
 // columns and rows.
 func (m *Model[V]) UpdateViewport() {
-	renderedRows := make([]string, 0, len(m.rows))
+	// Render only visible rows.
+	m.start = max(0, m.cursorRow-m.offset)
+	visible := min(m.viewport.Height, len(m.rows)-m.start)
 
-	// Render only rows from: m.cursor-m.viewport.Height to: m.cursor+m.viewport.Height
-	// Constant runtime, independent of number of rows in a table.
-	// Limits the number of renderedRows to a maximum of 2*m.viewport.Height
-	if m.cursorRow >= 0 {
-		m.start = clamp(m.cursorRow-m.viewport.Height, 0, m.cursorRow)
-	} else {
-		m.start = 0
+	renderedRows := make([]string, visible)
+	for i := range visible {
+		renderedRows[i] = m.renderRow(m.start + i)
 	}
-	m.end = clamp(m.cursorRow+m.viewport.Height, m.cursorRow, len(m.rows))
-	for i := m.start; i < m.end; i++ {
-		renderedRows = append(renderedRows, m.renderRow(i))
-	}
+
+	m.renderedRows = len(renderedRows)
 
 	m.viewport.SetContent(
 		lipgloss.JoinVertical(lipgloss.Left, renderedRows...),
@@ -470,10 +471,11 @@ func (m *Model[V]) SelectRange() {
 	m.UpdateViewport()
 }
 
-func (m Model[V]) TotalString() string {
-	// Calculate the top and bottom visible row ordinal numbers, starting from 1
-	top := m.TopRowIndex() + 1
-	bottom := m.BottomRowIndex() + 1
+// RowInfo returns human-readable row information.
+func (m Model[V]) RowInfo() string {
+	// Calculate the top and bottom visible row ordinal numbers
+	top := m.start + 1
+	bottom := m.start + m.viewport.VisibleLineCount()
 
 	// Only print range of rows if there are any rows
 	var prefix string
@@ -484,17 +486,7 @@ func (m Model[V]) TotalString() string {
 	if m.filterVisible() {
 		return prefix + fmt.Sprintf("%d/%d", len(m.rows), len(m.items))
 	}
-	return prefix + fmt.Sprintf("%d", len(m.rows))
-}
-
-// TopRowNumber returns the index of the top visible row.
-func (m Model[V]) TopRowIndex() int {
-	return m.start + max(0, m.viewport.YOffset)
-}
-
-// BottomRowNumber returns the index of the bottom visible row.
-func (m Model[V]) BottomRowIndex() int {
-	return clamp(m.start+m.viewport.YOffset+m.viewport.Height-1, m.TopRowIndex(), clamp(len(m.rows)-1, 0, len(m.rows)))
+	return prefix + strconv.Itoa(len(m.rows))
 }
 
 // SetItems sets new items on the table, overwriting existing items. If the
@@ -568,29 +560,24 @@ func (m *Model[V]) SetItems(items map[resource.ID]V) {
 	m.cursorRow = -1
 	for i, item := range m.rows {
 		if item.ID == m.cursorID {
-			// Found item corresponding to cursor, update its position
+			// Found item corresponding to cursor, update its offset and
+			// position.
+			m.offset = clamp(i-m.cursorRow, 0, m.viewport.Height-1)
 			m.cursorRow = i
 		}
 	}
 	// Check if item corresponding to cursor doesn't exist, which occurs when
 	// items are removed, or the very first time the table is populated. If so,
-	// set cursor to the first row.
+	// set cursor to the first row, and reset the offset.
 	if m.cursorRow == -1 {
 		m.cursorRow = 0
+		m.offset = 0
 		if len(m.rows) > 0 {
 			m.cursorID = m.rows[m.cursorRow].ID
 		}
 	}
 
-	if m.cursorRow < m.TopRowIndex() {
-		// Cursor is above visible lines; move cursor back into view
-		m.MoveUp(0)
-	} else if m.cursorRow > m.BottomRowIndex() {
-		// Cursor is below visible lines; move cursor back into view
-		m.MoveDown(0)
-	} else {
-		m.UpdateViewport()
-	}
+	m.UpdateViewport()
 }
 
 // MoveUp moves the current row up by any number of rows.
@@ -598,14 +585,8 @@ func (m *Model[V]) SetItems(items map[resource.ID]V) {
 func (m *Model[V]) MoveUp(n int) {
 	m.moveCursor(-n)
 
-	switch {
-	case m.start == 0:
-		m.viewport.SetYOffset(clamp(m.viewport.YOffset, 0, m.cursorRow))
-	case m.start < m.viewport.Height:
-		m.viewport.YOffset = (clamp(clamp(m.viewport.YOffset+n, 0, m.cursorRow), 0, m.viewport.Height))
-	case m.viewport.YOffset >= 1:
-		m.viewport.SetYOffset(clamp(m.viewport.YOffset+n, 1, m.viewport.Height))
-	}
+	// offset cannot go below zero
+	m.offset = max(0, m.offset-n)
 
 	m.UpdateViewport()
 }
@@ -614,22 +595,16 @@ func (m *Model[V]) MoveUp(n int) {
 // It can not go below the last row.
 func (m *Model[V]) MoveDown(n int) {
 	m.moveCursor(n)
-	m.UpdateViewport()
 
-	switch {
-	case m.end == len(m.rows) && m.viewport.YOffset > 0:
-		m.viewport.SetYOffset(clamp(m.viewport.YOffset-n, 1, m.viewport.Height))
-	case m.cursorRow > (m.end-m.start)/2 && m.viewport.YOffset > 0:
-		m.viewport.SetYOffset(clamp(m.viewport.YOffset-n, 1, m.cursorRow))
-	case m.viewport.YOffset > 1:
-	case m.cursorRow > m.viewport.YOffset+m.viewport.Height-1:
-		m.viewport.SetYOffset(clamp(m.viewport.YOffset+1, 0, 1))
-	}
+	// offset cannot increase beyond viewport height
+	m.offset = min(m.viewport.Height-1, m.offset+n)
+
+	m.UpdateViewport()
 }
 
 func (m *Model[V]) moveCursor(n int) {
-	m.cursorRow = clamp(m.cursorRow+n, 0, len(m.rows)-1)
 	if len(m.rows) > 0 {
+		m.cursorRow = clamp(m.cursorRow+n, 0, len(m.rows)-1)
 		m.cursorID = m.rows[m.cursorRow].ID
 	}
 }
