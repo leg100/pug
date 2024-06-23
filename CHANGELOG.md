@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.2.2](https://github.com/leg100/pug/compare/v0.2.1...v0.2.2) (2024-06-23)
+
+
+### Features
+
+* terragrunt mode ([#77](https://github.com/leg100/pug/issues/77)) ([9be2914](https://github.com/leg100/pug/commit/9be29144fef6c1ed9c810f1393c39f44949cc06e))
+
+
+### Bug Fixes
+
+* border w/o preview nr invisible on light bg ([ba2313a](https://github.com/leg100/pug/commit/ba2313a7a7d76721309805e2d7e417c8ac01901a))
+* detect applies with no changes ([84cfb6f](https://github.com/leg100/pug/commit/84cfb6f323d75f02b915e96f50e29199f012415b))
+
+
+### Miscellaneous
+
+* remove run status from UI ([805eb6b](https://github.com/leg100/pug/commit/805eb6bc2e54a68592d4ce9ec283037a782e9bfb))
+* update tofu/terragrunt support docs ([394f173](https://github.com/leg100/pug/commit/394f173e0c72265c79f7cc0895343057cecac945))
+
 ## [0.2.1](https://github.com/leg100/pug/compare/v0.2.0...v0.2.1) (2024-06-21)
 
 
