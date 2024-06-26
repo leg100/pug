@@ -70,7 +70,6 @@ func setupAndInitTerragruntModule(t *testing.T) *testModel {
 	// Initialize module
 	tm.Type("i")
 	waitFor(t, tm, func(s string) bool {
-		t.Log(s)
 		return matchPattern(t, "Task.*init.*modules/a.*exited", s)
 
 	})
