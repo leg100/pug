@@ -139,7 +139,7 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, keys.Common.Apply):
 			workspaceIDs := m.table.SelectedOrCurrentIDs()
 			fn := func(workspaceID resource.ID) (*task.Task, error) {
-				return m.runs.ApplyOnly(workspaceID, createRunOptions)
+				return m.runs.Apply(workspaceID, createRunOptions)
 			}
 			return m, tui.YesNoPrompt(
 				fmt.Sprintf("Auto-apply %d workspaces?", len(workspaceIDs)),

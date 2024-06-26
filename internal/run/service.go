@@ -112,14 +112,58 @@ func (s *Service) plan(workspaceID resource.ID, opts CreateOptions) (*task.Task,
 	return task, nil
 }
 
-// Apply creates an apply task without an existing plan.
-func (s *Service) ApplyOnly(workspaceID resource.ID, opts CreateOptions) (*task.Task, error) {
-	opts.applyOnly = true
-	run, err := s.newRun(workspaceID, opts)
+// Apply either auto-applies a new run, or it applies the plan from an existing
+// run. To auto-apply a new run, specify the ID of the workspace on which to
+// create the new run and provide opts. If applying the plan from an existing
+// run, specify the ID of the run, and ensure opts is nil.
+func (s *Service) Apply(id resource.ID, opts *CreateOptions) (*task.Task, error) {
+	var (
+		run *Run
+		err error
+	)
+	if opts != nil {
+		// Create new run
+		opts.applyOnly = true
+		run, err = s.newRun(id, *opts)
+	} else {
+		// Apply plan from existing run.
+		run, err = s.table.Get(id)
+		if run != nil && run.Status != Planned {
+			err = fmt.Errorf("run is not in the planned state: %s", run.Status)
+		}
+	}
 	if err != nil {
 		return nil, err
 	}
-	task, err := s.createApplyTask(run)
+
+	task, err := s.createTask(run, task.CreateOptions{
+		Command:  []string{"apply"},
+		Args:     run.applyArgs(),
+		Blocking: true,
+		DependsOn: 
+		AfterQueued: func(*task.Task) {
+			run.updateStatus(ApplyQueued)
+		},
+		AfterRunning: func(*task.Task) {
+			run.updateStatus(Applying)
+		},
+		AfterError: func(*task.Task) {
+			run.updateStatus(Errored)
+		},
+		AfterCanceled: func(*task.Task) {
+			run.updateStatus(Canceled)
+		},
+		AfterExited: func(t *task.Task) {
+			if err := run.finishApply(t.NewReader()); err != nil {
+				s.logger.Error("finishing apply", "error", err, "run", run)
+				return
+			}
+
+			if !s.disableReloadAfterApply {
+				s.states.Reload(run.WorkspaceID())
+			}
+		},
+	})
 	if err != nil {
 		s.logger.Error("creating an apply task", "error", err)
 		return nil, err
@@ -128,20 +172,43 @@ func (s *Service) ApplyOnly(workspaceID resource.ID, opts CreateOptions) (*task.
 	return task, nil
 }
 
-// ApplyPlan applies an existing plan.
-func (s *Service) ApplyPlan(runID resource.ID) (*task.Task, error) {
-	run, err := s.table.Get(runID)
+// MultiApply creates multiple apply tasks. This operation is carried out in a
+// special routine because applies may depend upon other applies, in which case
+// the IDs must be ordered accordingly.
+func (s *Service) MultiApply(opts *CreateOptions, ids ...resource.ID) (*task.Group, error) {
+	for _, id := range ids {
+		switch id.Kind {
+		case resource.Workspace:
+			ws, err := h.WorkspaceService.Get(id)
+			if err != nil {
+				// report error
+			}
+			ws.Module()
+		case resource.Run:
+		}
+
+	}
+			group, err := h.TaskService.CreateGroup("apply", fn, ids...)
+	var (
+		run *Run
+		err error
+	)
+	if opts != nil {
+		// Create new run
+		opts.applyOnly = true
+		run, err = s.newRun(id, *opts)
+	} else {
+		// Apply plan from existing run.
+		run, err = s.table.Get(id)
+		if run != nil && run.Status != Planned {
+			err = fmt.Errorf("run is not in the planned state: %s", run.Status)
+		}
+	}
 	if err != nil {
 		return nil, err
 	}
-	if run.Status != Planned {
-		return nil, fmt.Errorf("run is not in the planned state: %s", run.Status)
-	}
-	return s.createApplyTask(run)
-}
 
-func (s *Service) createApplyTask(run *Run) (*task.Task, error) {
-	return s.createTask(run, task.CreateOptions{
+	task, err := s.createTask(run, task.CreateOptions{
 		Command:  []string{"apply"},
 		Args:     run.applyArgs(),
 		Blocking: true,
@@ -168,6 +235,12 @@ func (s *Service) createApplyTask(run *Run) (*task.Task, error) {
 			}
 		},
 	})
+	if err != nil {
+		s.logger.Error("creating an apply task", "error", err)
+		return nil, err
+	}
+	s.table.Add(run.ID, run)
+	return task, nil
 }
 
 func (s *Service) Get(runID resource.ID) (*Run, error) {

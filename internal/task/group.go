@@ -17,6 +17,9 @@ type Group struct {
 	CreateErrors []error
 }
 
+// newGroup creates a task group, invoking the provided function on each id to
+// each task. If the task is successfully created it is added to the group;
+// otherwise the error is added to the group.
 func newGroup(cmd string, fn Func, ids ...resource.ID) (*Group, error) {
 	g := &Group{
 		Common:  resource.New(resource.TaskGroup, resource.GlobalResource),

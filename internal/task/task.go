@@ -29,6 +29,7 @@ type Task struct {
 	JSON          bool
 	Immediate     bool
 	AdditionalEnv []string
+	DependsOn     []*Task
 
 	program   string
 	exclusive bool
@@ -107,6 +108,10 @@ type CreateOptions struct {
 	JSON bool
 	// Skip queue and immediately start task
 	Immediate bool
+	// DependsOn are other tasks that all must successfully exit before the
+	// task can be enqueued. If any of the other tasks are canceled or error
+	// then the task will be canceled.
+	DependsOn []*Task
 	// Call this function after the task has successfully finished
 	AfterExited func(*Task)
 	// Call this function after the task is enqueued.
@@ -138,6 +143,7 @@ func (f *factory) newTask(opts CreateOptions) (*Task, error) {
 		AdditionalEnv: append(f.userEnvs, opts.Env...),
 		JSON:          opts.JSON,
 		Blocking:      opts.Blocking,
+		DependsOn:     opts.DependsOn,
 		exclusive:     opts.Exclusive,
 		createOptions: opts,
 		AfterExited:   opts.AfterExited,

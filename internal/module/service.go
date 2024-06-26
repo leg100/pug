@@ -51,16 +51,21 @@ func NewService(opts ServiceOptions) *Service {
 // to the store before pruning those that are currently stored but can no longer
 // be found.
 func (s *Service) Reload() (added []string, removed []string, err error) {
-	found, err := findModules(s.logger, s.workdir)
+	var results []FindResult
+	if s.terragrunt {
+		results, err = s.findTerragruntModules()
+	} else {
+		results, err = findModules(s.logger, s.workdir)
+	}
 	if err != nil {
 		return nil, nil, err
 	}
-	for _, path := range found {
+	for _, result := range results {
 		// Add module if it isn't in pug already
-		if _, err := s.GetByPath(path); err == resource.ErrNotFound {
-			mod := New(s.workdir, path)
+		if _, err := s.GetByPath(result.path); err == resource.ErrNotFound {
+			mod := New(s.workdir, result.path)
 			s.table.Add(mod.ID, mod)
-			added = append(added, path)
+			added = append(added, result)
 		}
 	}
 
@@ -73,6 +78,18 @@ func (s *Service) Reload() (added []string, removed []string, err error) {
 	}
 	s.logger.Info("reloaded modules", "added", added, "removed", removed)
 	return
+}
+
+func (s *Service) findTerragruntModules() ([]FindResult, error) {
+	task, err := s.tasks.Create(task.CreateOptions{
+		Command:   []string{"graph-dependencies"},
+		Args:      []string{"--terragrunt-non-interactive"},
+		Immediate: true,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return findTerragruntModules(task.NewReader())
 }
 
 // Init invokes terraform init on the module.

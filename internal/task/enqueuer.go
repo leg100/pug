@@ -37,7 +37,6 @@ func (e *enqueuer) enqueuable() []*Task {
 			blocked[ab.Parent.GetID()] = struct{}{}
 		}
 	}
-
 	// Retrieve pending tasks in order of oldest first.
 	pending := e.tasks.List(ListOptions{
 		Status: []Status{Pending},
@@ -56,6 +55,23 @@ func (e *enqueuer) enqueuable() []*Task {
 			// Found blocking task in pending queue; no further tasks shall be
 			// enqueued for resources belonging to the task's parent resource
 			blocked[t.Parent.GetID()] = struct{}{}
+		}
+		// Check if task depends upon successful completion of
+		// other tasks.
+		for _, dep := range t.DependsOn {
+			switch dep.State {
+			case Exited:
+				// Is enqueuable if all dependencies have exited successfully.
+			case Canceled, Errored:
+				// Dependency failed so mark task as failed too.
+				// Write message to task output first to tell user why it failed
+				t.buf.Write([]byte("task dependency failed"))
+				t.updateState(Canceled)
+				fallthrough
+			default:
+				// Not enqueueable
+				continue
+			}
 		}
 		// Enqueueable
 		pending[i] = t

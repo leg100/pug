@@ -234,6 +234,40 @@ func (h *Helpers) CreateTasks(cmd string, fn task.Func, ids ...resource.ID) tea.
 	}
 }
 
+func (h *Helpers) CreateApplyTasks(fn task.Func, ids ...resource.ID) tea.Cmd {
+	return func() tea.Msg {
+		switch len(ids) {
+		case 0:
+			return nil
+		case 1:
+			task, err := fn(ids[0])
+			if err != nil {
+				return ReportError(fmt.Errorf("creating task: %w", err))
+			}
+			return NewNavigationMsg(TaskKind, WithParent(task))
+		default:
+			// Check if each resource ID belongs to a module with dependencies.
+			// If so, then re-order IDs accordingly.
+			for _, id := range ids {
+				switch id.Kind {
+				case resource.Workspace:
+					ws, err := h.WorkspaceService.Get(id)
+					if err != nil {
+						// report error
+					}
+					ws.Module()
+				}
+
+			}
+			group, err := h.TaskService.CreateGroup("apply", fn, ids...)
+			if err != nil {
+				return ReportError(fmt.Errorf("creating task group: %w", err))
+			}
+			return NewNavigationMsg(TaskGroupKind, WithParent(group))
+		}
+	}
+}
+
 func (h *Helpers) Move(workspaceID resource.ID, from state.ResourceAddress) tea.Cmd {
 	return CmdHandler(PromptMsg{
 		Prompt:       "Enter destination address: ",
