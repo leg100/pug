@@ -59,17 +59,23 @@ FLAGS
   -p, --program STRING               The default program to use with pug. (default: terraform)
   -w, --workdir STRING               The working directory containing modules. (default: .)
   -t, --max-tasks INT                The maximum number of parallel tasks. (default: 32)
+      --data-dir STRING              Directory in which to store plan files. (default: $HOME/.pug)
+  -e, --env STRING                   Environment variable to pass to terraform process. Can set more than once.
   -f, --first-page STRING            The first page to open on startup. (default: modules)
   -d, --debug                        Log bubbletea messages to messages.log
   -v, --version                      Print version.
   -l, --log-level STRING             Logging level. (default: info)
-  -c, --config STRING                Path to config file. (default: pug.yaml)
+  -c, --config STRING                Path to config file. (default: $HOME/.pug.yaml)
       --disable-reload-after-apply   Disable automatic reload of state following an apply.
 ```
 
-Environment variables are specified by prefixing the value with `PUG_` and appending the equivalent flag value, replacing hyphens with underscores. For example, to set the max number of tasks to 100, specify `PUG_MAX_TASKS=100`.
+Environment variables are specified by prefixing the value with `PUG_` and appending the equivalent flag value, replacing hyphens with underscores, e.g. `--max-tasks 100` is set via `PUG_MAX_TASKS=100`.
 
-The config file by default is expected to be found in the current working directory in which you invoke pug, and by default it's expected to be named `pug.yaml`. Override the default using the flag `-c` or environment variable `PUG_CONFIG`.
+The config file by default is expected to be found at `$HOME/.pug.yaml`. Override the default using the flag `-c` or environment variable `PUG_CONFIG`. The config uses YAML format. Set values in the config file by removing the `--` prefix from the equivalent flag value, e.g. `--max-tasks 100` is set like so in the config file:
+
+```yaml
+max-tasks: 100
+```
 
 ## Workspace Variables
 

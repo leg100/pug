@@ -40,6 +40,7 @@ func parse(stderr io.Writer, args []string) (config, error) {
 		return config{}, fmt.Errorf("retrieving user's home directory: %w", err)
 	}
 	defaultDataDir := filepath.Join(home, ".pug")
+	defaultConfigFile := filepath.Join(home, ".pug.yaml")
 
 	fs := ff.NewFlagSet("pug")
 	fs.StringVar(&cfg.Program, 'p', "program", "terraform", "The default program to use with pug.")
@@ -51,7 +52,7 @@ func parse(stderr io.Writer, args []string) (config, error) {
 	fs.BoolVar(&cfg.Debug, 'd', "debug", "Log bubbletea messages to messages.log")
 	fs.BoolVar(&cfg.version, 'v', "version", "Print version.")
 	fs.StringEnumVar(&cfg.loggingOptions.Level, 'l', "log-level", "Logging level.", "info", "debug", "error", "warn")
-	_ = fs.String('c', "config", "pug.yaml", "Path to config file.")
+	_ = fs.String('c', "config", defaultConfigFile, "Path to config file.")
 
 	fs.BoolVar(&cfg.DisableReloadAfterApply, 0, "disable-reload-after-apply", "Disable automatic reload of state following an apply.")
 
