@@ -17,6 +17,10 @@ const (
 	defaultListPaneHeight = 15
 	// previewVisibleDefault sets the default visibility for the preview pane.
 	previewVisibleDefault = true
+	// minimum height of the list pane inc. borders.
+	minListPaneHeight = 4
+	// minimum height of the preview pane inc. borders.
+	minPreviewPaneHeight = 3
 )
 
 type Options[R resource.Resource] struct {
@@ -30,11 +34,12 @@ type Options[R resource.Resource] struct {
 
 func New[R resource.Resource](opts Options[R]) Model[R] {
 	m := Model[R]{
-		width:          opts.Width,
-		height:         opts.Height,
-		maker:          opts.Maker,
-		cache:          newCache(),
-		previewVisible: previewVisibleDefault,
+		width:                 opts.Width,
+		height:                opts.Height,
+		maker:                 opts.Maker,
+		cache:                 newCache(),
+		previewVisible:        previewVisibleDefault,
+		desiredListPaneHeight: defaultListPaneHeight,
 	}
 	// Create table for the top list pane
 	m.Table = table.New(
@@ -61,12 +66,11 @@ type Model[R resource.Resource] struct {
 	height         int
 	width          int
 
+	// desired height of the list pane when split
+	desiredListPaneHeight int
+
 	previewBorder      lipgloss.Border
 	previewBorderColor lipgloss.TerminalColor
-
-	// userListHeightAdjustment is the adjustment the user has requested to the
-	// default height of the list pane.
-	userListHeightAdjustment int
 
 	// cache of models for the previews
 	cache *cache
@@ -89,17 +93,15 @@ func (m Model[R]) Update(msg tea.Msg) (Model[R], tea.Cmd) {
 		case key.Matches(msg, keys.Navigation.SwitchPane):
 			m.previewFocused = !m.previewFocused
 			m.setBorderStyles()
-		case key.Matches(msg, Keys.TogglePreview):
+		case key.Matches(msg, Keys.ToggleSplit):
 			m.previewVisible = !m.previewVisible
 			m.setBorderStyles()
 			m.recalculateDimensions()
-		case key.Matches(msg, Keys.GrowPreview):
-			// Grow the preview pane by shrinking the list pane
-			m.userListHeightAdjustment--
+		case key.Matches(msg, Keys.IncreaseSplit):
+			m.updateDesiredListPaneHeight(1)
 			m.recalculateDimensions()
-		case key.Matches(msg, Keys.ShrinkPreview):
-			// Shrink the preview pane by growing the list pane
-			m.userListHeightAdjustment++
+		case key.Matches(msg, Keys.DecreaseSplit):
+			m.updateDesiredListPaneHeight(-1)
 			m.recalculateDimensions()
 		}
 		if m.previewVisible && m.previewFocused {
@@ -162,24 +164,36 @@ func (m *Model[R]) recalculateDimensions() {
 	})
 }
 
-func (m Model[R]) previewWidth() int {
-	// Subtract 2 to accommodate borders
-	return m.width - 2
+// updateDesiredListPaneHeight updates the height of the list pane when split by
+// the given delta.
+func (m *Model[R]) updateDesiredListPaneHeight(delta int) {
+	m.desiredListPaneHeight = clamp(m.desiredListPaneHeight+delta, minListPaneHeight, m.maxListHeight())
 }
 
 func (m Model[R]) listHeight() int {
 	if m.previewVisible {
-		// List height cannot exceed available height - 3 is the min height of
-		// the preview pane including borders.
-		return min(defaultListPaneHeight+m.userListHeightAdjustment, m.height-3)
+		// Set height of list pane when split to the desired height, subject to
+		// a min and max.
+		return clamp(m.desiredListPaneHeight, minListPaneHeight, m.maxListHeight())
 	}
 	return m.height
 }
 
+// maximum height of the list pane when split
+func (m Model[R]) maxListHeight() int {
+	return m.height - minPreviewPaneHeight
+}
+
 // previewHeight returns the height of the preview pane, not including borders
 func (m Model[R]) previewHeight() int {
-	// Calculate height of preview pane after accommodating list and borders.
-	return max(0, m.height-m.listHeight()-2)
+	// Calculate height of preview pane after accommodating list pane and borders.
+	return max(minPreviewPaneHeight-2, m.height-m.listHeight()-2)
+}
+
+// previewWidth returns the width of the preview pane, not including borders
+func (m Model[R]) previewWidth() int {
+	// Subtract 2 to accommodate borders
+	return m.width - 2
 }
 
 func (m *Model[R]) setBorderStyles() {
@@ -221,4 +235,8 @@ func (m Model[R]) getPreviewModel() (tea.Model, bool) {
 	}
 	model := m.cache.Get(row.ID)
 	return model, model != nil
+}
+
+func clamp(v, low, high int) int {
+	return min(max(v, low), high)
 }
