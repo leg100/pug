@@ -26,6 +26,9 @@ const (
 	headerHeight = 1
 	// Height of filter widget
 	filterHeight = 2
+	// Minimum recommended height for the table widget. Respecting this minimum
+	// ensures the header and the borders and the filter widget are visible.
+	MinHeight = 6
 )
 
 // Model defines a state for the table widget.
@@ -476,11 +479,7 @@ func (m Model[V]) RowInfo() string {
 	top := m.start + 1
 	bottom := m.start + m.viewport.VisibleLineCount()
 
-	// Only print range of rows if there are any rows
-	var prefix string
-	if (bottom - top) > 0 {
-		prefix = fmt.Sprintf("%d-%d of ", top, bottom)
-	}
+	prefix := fmt.Sprintf("%d-%d of ", top, bottom)
 
 	if m.filterVisible() {
 		return prefix + fmt.Sprintf("%d/%d", len(m.rows), len(m.items))

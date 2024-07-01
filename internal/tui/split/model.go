@@ -13,12 +13,12 @@ import (
 )
 
 const (
-	// default height of the top list pane, not including borders
+	// default height of the top list pane, including borders
 	defaultListPaneHeight = 15
 	// previewVisibleDefault sets the default visibility for the preview pane.
 	previewVisibleDefault = true
 	// minimum height of the list pane inc. borders.
-	minListPaneHeight = 4
+	minListPaneHeight = table.MinHeight
 	// minimum height of the preview pane inc. borders.
 	minPreviewPaneHeight = 3
 )
