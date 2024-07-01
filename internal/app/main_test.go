@@ -33,12 +33,12 @@ func TestMain(m *testing.M) {
 			os.Remove(file)
 		}
 	}
-	// Remove all .terraform-cache directories from testdata. These can sometimes be
+	// Remove all .terragrunt-cache directories from testdata. These can sometimes be
 	// created outside of tests, e.g. running pug within the repo, but none the
-	// of tests should start with a .terraform-cache directory, otherwise it
+	// of tests should start with a .terragrunt-cache directory, otherwise it
 	// can cause unintended consequences.
 	{
-		dirs, _ := filepath.Glob("./testdata/*/modules/*/.terraform-cache")
+		dirs, _ := filepath.Glob("./testdata/*/modules/*/.terragrunt-cache")
 		for _, dir := range dirs {
 			os.RemoveAll(dir)
 		}

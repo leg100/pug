@@ -21,13 +21,14 @@ type Module struct {
 	// The module's current workspace.
 	CurrentWorkspaceID *resource.ID
 
-	// Modules that depend on this module. Only valid when using terragrunt.
+	// Dependencies are IDs of modules that this module is dependent upon. Only
+	// valid when using terragrunt.
 	Dependencies []*Module
 }
 
 // New constructs a module. Workdir is the pug working directory, and path is
 // the module path relative to the working directory.
-func New(workdir internal.Workdir, path string, deps []string) *Module {
+func New(workdir internal.Workdir, path string, deps ...*Module) *Module {
 	return &Module{
 		Common:       resource.New(resource.Module, resource.GlobalResource),
 		Path:         path,
@@ -49,4 +50,18 @@ func (m *Module) LogValue() slog.Value {
 	return slog.GroupValue(
 		slog.String("path", m.Path),
 	)
+}
+
+func (m *Module) HasDependency(mod *Module) bool {
+	for _, dep := range m.Dependencies {
+		// first check direct dependencies
+		if dep.ID == mod.ID {
+			return true
+		}
+		// then indirect dependencies
+		if dep.HasDependency(mod) {
+			return true
+		}
+	}
+	return false
 }

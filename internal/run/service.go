@@ -1,6 +1,7 @@
 package run
 
 import (
+	"errors"
 	"fmt"
 	"slices"
 
@@ -112,135 +113,124 @@ func (s *Service) plan(workspaceID resource.ID, opts CreateOptions) (*task.Task,
 	return task, nil
 }
 
-// Apply either auto-applies a new run, or it applies the plan from an existing
-// run. To auto-apply a new run, specify the ID of the workspace on which to
-// create the new run and provide opts. If applying the plan from an existing
-// run, specify the ID of the run, and ensure opts is nil.
-func (s *Service) Apply(id resource.ID, opts *CreateOptions) (*task.Task, error) {
-	var (
-		run *Run
-		err error
-	)
-	if opts != nil {
-		// Create new run
-		opts.applyOnly = true
-		run, err = s.newRun(id, *opts)
-	} else {
-		// Apply plan from existing run.
-		run, err = s.table.Get(id)
-		if run != nil && run.Status != Planned {
-			err = fmt.Errorf("run is not in the planned state: %s", run.Status)
+// Apply applies a terraform plan.
+//
+// If opts is non-nil, then a new run is created and auto-applied without creating a
+// plan file. The ID must be the workspace ID on which to create the run.
+//
+// If opts is nil, then it will apply an existing plan. The ID must specify an
+// existing run that has successfully created a plan.
+//
+// Specify additionalIDs if applying more than one plan. If terragrunt is in use
+// then any module dependencies are taken into account, ensuring each apply task
+// is enqueued only once apply tasks belonging to dependencies have finished
+// successfully.
+func (s *Service) Apply(opts *CreateOptions, ids ...resource.ID) (*task.Group, error) {
+	var groups [][]resource.ID
+
+	switch len(ids) {
+	case 0:
+		return nil, nil
+	case 1:
+		groups = [][]resource.ID{ids}
+	default:
+		// Get the module for each workspace/run.
+		moduleAndResources := make([]moduleAndResource, len(ids))
+		for i, id := range ids {
+			var modResource resource.Resource
+			switch id.Kind {
+			case resource.Workspace:
+				ws, err := s.workspaces.Get(id)
+				if err != nil {
+					return nil, err
+				}
+				modResource = ws.Module()
+			case resource.Run:
+				run, err := s.Get(id)
+				if err != nil {
+					return nil, err
+				}
+				modResource = run.Module()
+			}
+			mod, ok := modResource.(*module.Module)
+			if !ok {
+				return nil, errors.New("expected module")
+			}
+			moduleAndResources[i] = moduleAndResource{module: mod, id: id}
 		}
-	}
-	if err != nil {
-		return nil, err
+		g := newGraph(moduleAndResources...)
+		g.sort()
+		groups = g.results
 	}
 
-	task, err := s.createTask(run, task.CreateOptions{
-		Command:  []string{"apply"},
-		Args:     run.applyArgs(),
-		Blocking: true,
-		DependsOn: 
-		AfterQueued: func(*task.Task) {
-			run.updateStatus(ApplyQueued)
-		},
-		AfterRunning: func(*task.Task) {
-			run.updateStatus(Applying)
-		},
-		AfterError: func(*task.Task) {
-			run.updateStatus(Errored)
-		},
-		AfterCanceled: func(*task.Task) {
-			run.updateStatus(Canceled)
-		},
-		AfterExited: func(t *task.Task) {
-			if err := run.finishApply(t.NewReader()); err != nil {
-				s.logger.Error("finishing apply", "error", err, "run", run)
-				return
+	// Create tasks. Each group depends upon tasks created from the previous group.
+	tg := task.NewEmptyGroup("apply")
+	// Keep reference to tasks created in previous gruop
+	var prev []*task.Task
+	for _, g := range groups {
+		// Keep reference to tasks created in this group
+		var curr []*task.Task
+		// Create run for each ID in group
+		for _, id := range g {
+			var (
+				run *Run
+				err error
+			)
+			if opts != nil {
+				// Create new run
+				opts.applyOnly = true
+				run, err = s.newRun(id, *opts)
+			} else {
+				// Apply plan from existing run.
+				run, err = s.table.Get(id)
+				if run != nil && run.Status != Planned {
+					err = fmt.Errorf("run is not in the planned state: %s", run.Status)
+				}
 			}
-
-			if !s.disableReloadAfterApply {
-				s.states.Reload(run.WorkspaceID())
-			}
-		},
-	})
-	if err != nil {
-		s.logger.Error("creating an apply task", "error", err)
-		return nil, err
-	}
-	s.table.Add(run.ID, run)
-	return task, nil
-}
-
-// MultiApply creates multiple apply tasks. This operation is carried out in a
-// special routine because applies may depend upon other applies, in which case
-// the IDs must be ordered accordingly.
-func (s *Service) MultiApply(opts *CreateOptions, ids ...resource.ID) (*task.Group, error) {
-	for _, id := range ids {
-		switch id.Kind {
-		case resource.Workspace:
-			ws, err := h.WorkspaceService.Get(id)
 			if err != nil {
-				// report error
+				return nil, err
 			}
-			ws.Module()
-		case resource.Run:
+			s.table.Add(run.ID, run)
+			task, err := s.createTask(run, task.CreateOptions{
+				Command:   []string{"apply"},
+				Args:      run.applyArgs(),
+				Blocking:  true,
+				DependsOn: prev,
+				AfterQueued: func(*task.Task) {
+					run.updateStatus(ApplyQueued)
+				},
+				AfterRunning: func(*task.Task) {
+					run.updateStatus(Applying)
+				},
+				AfterError: func(*task.Task) {
+					run.updateStatus(Errored)
+				},
+				AfterCanceled: func(*task.Task) {
+					run.updateStatus(Canceled)
+				},
+				AfterExited: func(t *task.Task) {
+					if err := run.finishApply(t.NewReader()); err != nil {
+						s.logger.Error("finishing apply", "error", err, "run", run)
+						return
+					}
+
+					if !s.disableReloadAfterApply {
+						s.states.Reload(run.WorkspaceID())
+					}
+				},
+			})
+			if err != nil {
+				s.logger.Error("creating an apply task", "error", err)
+				tg.CreateErrors = append(tg.CreateErrors, err)
+				continue
+			}
+			curr = append(curr, task)
+			tg.Tasks = append(tg.Tasks, task)
 		}
-
+		prev = curr
 	}
-			group, err := h.TaskService.CreateGroup("apply", fn, ids...)
-	var (
-		run *Run
-		err error
-	)
-	if opts != nil {
-		// Create new run
-		opts.applyOnly = true
-		run, err = s.newRun(id, *opts)
-	} else {
-		// Apply plan from existing run.
-		run, err = s.table.Get(id)
-		if run != nil && run.Status != Planned {
-			err = fmt.Errorf("run is not in the planned state: %s", run.Status)
-		}
-	}
-	if err != nil {
-		return nil, err
-	}
-
-	task, err := s.createTask(run, task.CreateOptions{
-		Command:  []string{"apply"},
-		Args:     run.applyArgs(),
-		Blocking: true,
-		AfterQueued: func(*task.Task) {
-			run.updateStatus(ApplyQueued)
-		},
-		AfterRunning: func(*task.Task) {
-			run.updateStatus(Applying)
-		},
-		AfterError: func(*task.Task) {
-			run.updateStatus(Errored)
-		},
-		AfterCanceled: func(*task.Task) {
-			run.updateStatus(Canceled)
-		},
-		AfterExited: func(t *task.Task) {
-			if err := run.finishApply(t.NewReader()); err != nil {
-				s.logger.Error("finishing apply", "error", err, "run", run)
-				return
-			}
-
-			if !s.disableReloadAfterApply {
-				s.states.Reload(run.WorkspaceID())
-			}
-		},
-	})
-	if err != nil {
-		s.logger.Error("creating an apply task", "error", err)
-		return nil, err
-	}
-	s.table.Add(run.ID, run)
-	return task, nil
+	s.tasks.AddGroup(tg)
+	return tg, nil
 }
 
 func (s *Service) Get(runID resource.ID) (*Run, error) {
@@ -310,7 +300,6 @@ func (s *Service) delete(id resource.ID) error {
 	return nil
 }
 
-// TODO: move this logic into task.Create
 func (s *Service) createTask(run *Run, opts task.CreateOptions) (*task.Task, error) {
 	opts.Parent = run
 

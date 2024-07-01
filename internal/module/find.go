@@ -15,8 +15,8 @@ import (
 	"golang.org/x/exp/maps"
 )
 
-// FindResult is the result of successfully finding a module on the filesystem.
-type FindResult struct {
+// findResult is the result of successfully finding a module on the filesystem.
+type findResult struct {
 	path         string
 	dependencies []string
 }
@@ -26,7 +26,7 @@ type FindResult struct {
 //
 // A root module is deemed to be a directory that contains a .tf file that
 // contains a backend block.
-func findModules(logger logging.Interface, workdir internal.Workdir) ([]FindResult, error) {
+func findModules(logger logging.Interface, workdir internal.Workdir) ([]findResult, error) {
 	found := make(map[string]struct{})
 	walkfn := func(path string, d fs.DirEntry, walkerr error) error {
 		// skip directories that have already been identified as containing a
@@ -80,18 +80,18 @@ func findModules(logger logging.Interface, workdir internal.Workdir) ([]FindResu
 		return nil, err
 	}
 	// Strip parent prefix from paths before returning
-	results := make([]FindResult, len(found))
+	results := make([]findResult, len(found))
 	for i, f := range maps.Keys(found) {
 		stripped, err := filepath.Rel(workdir.String(), f)
 		if err != nil {
 			return nil, err
 		}
-		results[i] = FindResult{path: stripped}
+		results[i] = findResult{path: stripped}
 	}
 	return results, nil
 }
 
-func findTerragruntModules(graphOutput io.Reader) ([]FindResult, error) {
+func findTerragruntModules(graphOutput io.Reader) ([]findResult, error) {
 	b, err := io.ReadAll(graphOutput)
 	if err != nil {
 		return nil, err
@@ -106,6 +106,8 @@ func findTerragruntModules(graphOutput io.Reader) ([]FindResult, error) {
 		return nil, err
 	}
 	mods := make(map[string][]string)
+	for _, node := range graph.Nodes.Nodes {
+		node.Attrs.Add
 	for _, e := range graph.Edges.Edges {
 		// strip embedded double quotes from module name
 		name := stripDoubleQuotes(e.Src)
@@ -118,10 +120,10 @@ func findTerragruntModules(graphOutput io.Reader) ([]FindResult, error) {
 		mods[name] = append(deps, stripDoubleQuotes(e.Dst))
 	}
 	// Re-structure map into []FindResult
-	results := make([]FindResult, len(mods))
+	results := make([]findResult, len(mods))
 	var i int
 	for path, deps := range mods {
-		results[i] = FindResult{path: path, dependencies: deps}
+		results[i] = findResult{path: path, dependencies: deps}
 		i++
 	}
 	return results, nil

@@ -2,7 +2,6 @@ package module
 
 import (
 	"fmt"
-	"slices"
 
 	"github.com/leg100/pug/internal"
 	"github.com/leg100/pug/internal/logging"
@@ -51,7 +50,7 @@ func NewService(opts ServiceOptions) *Service {
 // to the store before pruning those that are currently stored but can no longer
 // be found.
 func (s *Service) Reload() (added []string, removed []string, err error) {
-	var results []FindResult
+	var results []findResult
 	if s.terragrunt {
 		results, err = s.findTerragruntModules()
 	} else {
@@ -62,16 +61,32 @@ func (s *Service) Reload() (added []string, removed []string, err error) {
 	}
 	for _, result := range results {
 		// Add module if it isn't in pug already
-		if _, err := s.GetByPath(result.path); err == resource.ErrNotFound {
-			mod := New(s.workdir, result.path)
+		if mod, err := s.GetByPath(result.path); err == resource.ErrNotFound {
+			mod = New(s.workdir, result.path)
 			s.table.Add(mod.ID, mod)
-			added = append(added, result)
+			added = append(added, result.path)
+		} else if err != nil {
+			// Unexpected error
+			return nil, nil, err
+		} else {
+			// Module exists but update in case dependencies have changed.
+			//s.table.Update(mod.ID, func(existing *Module) error {
+			//	existing.Dependencies = result.dependencies
+			//	return nil
+			//})
 		}
 	}
 
 	// Cleanup existing modules, removing those that are no longer to be found
 	for _, existing := range s.table.List() {
-		if !slices.Contains(found, existing.Path) {
+		var found bool
+		for _, current := range results {
+			if current.path == existing.Path {
+				found = true
+				break
+			}
+		}
+		if !found {
 			s.table.Delete(existing.ID)
 			removed = append(removed, existing.Path)
 		}
@@ -80,16 +95,23 @@ func (s *Service) Reload() (added []string, removed []string, err error) {
 	return
 }
 
-func (s *Service) findTerragruntModules() ([]FindResult, error) {
+func (s *Service) findTerragruntModules() ([]findResult, error) {
 	task, err := s.tasks.Create(task.CreateOptions{
-		Command:   []string{"graph-dependencies"},
-		Args:      []string{"--terragrunt-non-interactive"},
-		Immediate: true,
+		Parent:  resource.GlobalResource,
+		Command: []string{"graph-dependencies"},
+		Args:    []string{"--terragrunt-non-interactive"},
 	})
 	if err != nil {
 		return nil, err
 	}
-	return findTerragruntModules(task.NewReader())
+	if err := task.Wait(); err != nil {
+		return nil, err
+	}
+	results, err := findTerragruntModules(task.NewReader())
+	if err != nil {
+		return nil, fmt.Errorf("parsing terragrunt dependency graph: %w", err)
+	}
+	return results, nil
 }
 
 // Init invokes terraform init on the module.

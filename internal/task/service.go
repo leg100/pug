@@ -25,6 +25,7 @@ type ServiceOptions struct {
 	Logger   logging.Interface
 	Workdir  internal.Workdir
 	UserEnvs []string
+	UserArgs []string
 }
 
 func NewService(opts ServiceOptions) *Service {
@@ -39,6 +40,7 @@ func NewService(opts ServiceOptions) *Service {
 		program:   opts.Program,
 		workdir:   opts.Workdir,
 		userEnvs:  opts.UserEnvs,
+		userArgs:  opts.UserArgs,
 	}
 
 	svc := &Service{
@@ -82,6 +84,8 @@ func (s *Service) Create(opts CreateOptions) (*Task, error) {
 	return task, nil
 }
 
+// CreateGroup creates a task group, creating tasks by invoking the provided
+// func with each of the provided IDs.
 func (s *Service) CreateGroup(cmd string, fn Func, ids ...resource.ID) (*Group, error) {
 	group, err := newGroup(cmd, fn, ids...)
 	if err != nil {
@@ -91,9 +95,14 @@ func (s *Service) CreateGroup(cmd string, fn Func, ids ...resource.ID) (*Group, 
 	s.logger.Debug("created task group", "group", group)
 
 	// Add to db
-	s.groups.Add(group.ID, group)
+	s.AddGroup(group)
 
 	return group, nil
+}
+
+// AddGroup adds a task group to the DB.
+func (s *Service) AddGroup(group *Group) {
+	s.groups.Add(group.ID, group)
 }
 
 // Retry creates a new task that has all the properties of the task with the

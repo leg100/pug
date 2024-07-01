@@ -86,6 +86,8 @@ type factory struct {
 	workdir   internal.Workdir
 	// Additional user-supplied environment variables.
 	userEnvs []string
+	// Additional user-supplied CLI args.
+	userArgs []string
 }
 
 type CreateOptions struct {
@@ -139,7 +141,7 @@ func (f *factory) newTask(opts CreateOptions) (*Task, error) {
 		program:       f.program,
 		Command:       opts.Command,
 		Path:          filepath.Join(f.workdir.String(), opts.Path),
-		Args:          opts.Args,
+		Args:          append(f.userArgs, opts.Args...),
 		AdditionalEnv: append(f.userEnvs, opts.Env...),
 		JSON:          opts.JSON,
 		Blocking:      opts.Blocking,
@@ -173,7 +175,7 @@ func (t *Task) CommandString() string {
 }
 
 func (t *Task) String() string {
-	return t.CommandString()
+	return t.ID.String()
 }
 
 // NewReader provides a reader from which to read the task output from start to

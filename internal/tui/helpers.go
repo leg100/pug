@@ -234,32 +234,26 @@ func (h *Helpers) CreateTasks(cmd string, fn task.Func, ids ...resource.ID) tea.
 	}
 }
 
-func (h *Helpers) CreateApplyTasks(fn task.Func, ids ...resource.ID) tea.Cmd {
+func (h *Helpers) CreateApplyTasks(opts *run.CreateOptions, ids ...resource.ID) tea.Cmd {
 	return func() tea.Msg {
 		switch len(ids) {
 		case 0:
 			return nil
 		case 1:
-			task, err := fn(ids[0])
+			// Only one task is to be created. If successful send user directly to task
+			// page. Otherwise report an error.
+			group, err := h.RunService.Apply(opts, ids[0])
 			if err != nil {
-				return ReportError(fmt.Errorf("creating task: %w", err))
+				return ReportError(fmt.Errorf("creating apply task: %w", err))
 			}
-			return NewNavigationMsg(TaskKind, WithParent(task))
+			if len(group.CreateErrors) > 0 {
+				return ReportError(fmt.Errorf("creating apply task: %w", group.CreateErrors[0]))
+			}
+			return NewNavigationMsg(TaskKind, WithParent(group.Tasks[0]))
 		default:
-			// Check if each resource ID belongs to a module with dependencies.
-			// If so, then re-order IDs accordingly.
-			for _, id := range ids {
-				switch id.Kind {
-				case resource.Workspace:
-					ws, err := h.WorkspaceService.Get(id)
-					if err != nil {
-						// report error
-					}
-					ws.Module()
-				}
-
-			}
-			group, err := h.TaskService.CreateGroup("apply", fn, ids...)
+			// More than one task is to be created. If successful send user to
+			// task group page.
+			group, err := h.RunService.Apply(opts, ids...)
 			if err != nil {
 				return ReportError(fmt.Errorf("creating task group: %w", err))
 			}

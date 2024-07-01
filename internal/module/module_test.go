@@ -15,5 +15,4 @@ func TestNew(t *testing.T) {
 
 	got := New(workdir, "with_s3_backend")
 	assert.Equal(t, "with_s3_backend", got.Path)
-
 }

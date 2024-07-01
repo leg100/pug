@@ -148,7 +148,7 @@ func (m List) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return m, tui.YesNoPrompt(
 				fmt.Sprintf("Apply %d plans?", len(runIDs)),
-				m.helpers.CreateTasks("apply", m.runs.ApplyPlan, runIDs...),
+				m.helpers.CreateApplyTasks(nil, runIDs...),
 			)
 		case key.Matches(msg, keys.Common.State):
 			if row, ok := m.Table.CurrentRow(); ok {

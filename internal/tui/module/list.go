@@ -131,12 +131,9 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if err != nil {
 				return m, tui.ReportError(fmt.Errorf("deselected items: %w", err))
 			}
-			fn := func(workspaceID resource.ID) (*task.Task, error) {
-				return m.RunService.Apply(workspaceID, createRunOptions)
-			}
 			return m, tui.YesNoPrompt(
 				fmt.Sprintf("Auto-apply %d modules?", len(workspaceIDs)),
-				m.helpers.CreateTasks("apply", fn, workspaceIDs...),
+				m.helpers.CreateApplyTasks(&createRunOptions, workspaceIDs...),
 			)
 		}
 	}

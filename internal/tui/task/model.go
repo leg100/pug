@@ -143,7 +143,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 				return m, tui.YesNoPrompt(
 					"Apply plan?",
-					m.helpers.CreateTasks("apply", m.runs.ApplyPlan, m.run.ID),
+					m.helpers.CreateApplyTasks(nil, m.run.ID),
 				)
 			}
 		case key.Matches(msg, keys.Common.State):
@@ -252,6 +252,8 @@ func (m model) View() string {
 			envs,
 			"",
 			fmt.Sprintf("Autoscroll: %s", boolToOnOff(m.viewport.Autoscroll)),
+			"",
+			fmt.Sprintf("Dependencies: %v", m.task.DependsOn),
 		)
 		container := tui.Regular.Copy().
 			Margin(0, 1).

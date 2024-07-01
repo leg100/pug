@@ -67,7 +67,7 @@ func (e *enqueuer) enqueuable() []*Task {
 				// Write message to task output first to tell user why it failed
 				t.buf.Write([]byte("task dependency failed"))
 				t.updateState(Canceled)
-				fallthrough
+				continue
 			default:
 				// Not enqueueable
 				continue

@@ -45,9 +45,8 @@ var (
 		FlexFactor: 1,
 	}
 	ResourceCountColumn = Column{
-		Key:        "resource_count",
-		Title:      "RESOURCES",
-		Width:      len("RESOURCES"),
-		FlexFactor: 1,
+		Key:   "resource_count",
+		Title: "RESOURCES",
+		Width: len("RESOURCES"),
 	}
 )
