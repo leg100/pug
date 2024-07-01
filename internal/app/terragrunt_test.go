@@ -60,7 +60,7 @@ func skipIfTerragruntNotFound(t *testing.T) {
 }
 
 func setupAndInitTerragruntModule(t *testing.T) *testModel {
-	tm := setup(t, "./testdata/single_terragrunt_module", withProgram("terragrunt"))
+	tm := setup(t, "./testdata/single_terragrunt_module", withTerragrunt())
 
 	// Expect single module to be listed
 	waitFor(t, tm, func(s string) bool {

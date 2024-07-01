@@ -21,9 +21,10 @@ const mirrorConfigPath = "../../mirror/mirror.tfrc"
 
 type configOption func(cfg *config)
 
-func withProgram(prog string) configOption {
+func withTerragrunt() configOption {
 	return func(cfg *config) {
-		cfg.Program = prog
+		cfg.Program = "terragrunt"
+		cfg.Args = []string{"--terragrunt-tfpath", "terraform"}
 	}
 }
 

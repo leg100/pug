@@ -101,6 +101,7 @@ func startApp(cfg config, stdout io.Writer) (*app, error) {
 		Logger:   logger,
 		Workdir:  workdir,
 		UserEnvs: cfg.Envs,
+		UserArgs: cfg.Args,
 	})
 	modules := module.NewService(module.ServiceOptions{
 		TaskService: tasks,
