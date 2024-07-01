@@ -1,5 +1,30 @@
 # Changelog
 
+## [0.3.0](https://github.com/leg100/pug/compare/v0.2.2...v0.3.0) (2024-07-01)
+
+
+### ⚠ BREAKING CHANGES
+
+* change key bindings for split pane resizing ([#82](https://github.com/leg100/pug/issues/82))
+* change default config file path ([#79](https://github.com/leg100/pug/issues/79))
+
+### refactor
+
+* change default config file path ([#79](https://github.com/leg100/pug/issues/79)) ([d1d9b4e](https://github.com/leg100/pug/commit/d1d9b4ef0c8112ae57f7b7b250c8cc9ed0c9666c))
+* change key bindings for split pane resizing ([#82](https://github.com/leg100/pug/issues/82)) ([35f33d1](https://github.com/leg100/pug/commit/35f33d16786afc258ba37a642be02cc68aaa8841))
+
+
+### Bug Fixes
+
+* always ensure current row is visible ([e4ddc3a](https://github.com/leg100/pug/commit/e4ddc3a7791e1b44ad5df0684b0a2e68d5d523ac))
+* remove debug table info ([916a859](https://github.com/leg100/pug/commit/916a8591b04d3c5fa4901d444ed62b73e3545e8e))
+* use terraform for terragrunt tests ([e0cd4b3](https://github.com/leg100/pug/commit/e0cd4b38ae844c79fb6be0cfbd16698125f36f90))
+
+
+### Miscellaneous
+
+* update demo ([348c3b5](https://github.com/leg100/pug/commit/348c3b5fb5334ea12e2af88dfab16fee56ad9cfc))
+
 ## [0.2.2](https://github.com/leg100/pug/compare/v0.2.1...v0.2.2) (2024-06-23)
 
 
