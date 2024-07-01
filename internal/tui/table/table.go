@@ -319,11 +319,15 @@ func (m *Model[V]) SetBorderStyle(border lipgloss.Border, color lipgloss.Termina
 	m.borderColor = color
 }
 
-// UpdateViewport updates the list content based on the previously defined
-// columns and rows.
+// UpdateViewport populates the viewport with table rows.
 func (m *Model[V]) UpdateViewport() {
-	// Render only visible rows.
-	m.start = max(0, m.cursorRow-m.offset)
+	// In case the height has been shrunk, ensure the cursor offset is no
+	// greater than the viewport height.
+	m.offset = min(m.offset, m.viewport.Height-1)
+	// In case the height has been increased, ensure the start index is no
+	// greater than the number of rows minus the viewport height.
+	m.start = clamp(m.cursorRow-m.offset, 0, max(0, len(m.rows)-m.viewport.Height))
+	// The number of visible rows cannot exceed the viewport height.
 	visible := min(m.viewport.Height, len(m.rows)-m.start)
 
 	renderedRows := make([]string, visible)
@@ -484,7 +488,7 @@ func (m Model[V]) RowInfo() string {
 	if m.filterVisible() {
 		return prefix + fmt.Sprintf("%d/%d", len(m.rows), len(m.items))
 	}
-	return prefix + strconv.Itoa(len(m.rows))
+	return fmt.Sprintf("vph: %d; offset: %d; start: %d; cursor: %d; ", m.viewport.Height, m.offset, m.start, m.cursorRow) + prefix + strconv.Itoa(len(m.rows))
 }
 
 // SetItems sets new items on the table, overwriting existing items. If the
@@ -739,5 +743,8 @@ func (m *Model[V]) Prune(fn func(value V) (resource.ID, bool)) ([]resource.ID, e
 }
 
 func clamp(v, low, high int) int {
-	return min(max(v, low), high)
+	if high < low {
+		low, high = high, low
+	}
+	return min(high, max(low, v))
 }
