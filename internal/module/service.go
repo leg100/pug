@@ -82,15 +82,10 @@ func (s *Service) Init(moduleID resource.ID) (*task.Task, error) {
 		return nil, fmt.Errorf("initializing module: %w", err)
 	}
 
-	args := []string{"-input=false"}
-	if s.terragrunt {
-		args = append(args, "--terragrunt-non-interactive")
-	}
-
 	// create asynchronous task that runs terraform init
 	tsk, err := s.CreateTask(mod, task.CreateOptions{
 		Command:  []string{"init"},
-		Args:     args,
+		Args:     []string{"-input=false"},
 		Blocking: true,
 		// The terraform plugin cache is not concurrency-safe, so only allow one
 		// init task to run at any given time.

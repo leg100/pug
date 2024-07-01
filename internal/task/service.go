@@ -21,11 +21,12 @@ type Service struct {
 }
 
 type ServiceOptions struct {
-	Program  string
-	Logger   logging.Interface
-	Workdir  internal.Workdir
-	UserEnvs []string
-	UserArgs []string
+	Program    string
+	Logger     logging.Interface
+	Workdir    internal.Workdir
+	UserEnvs   []string
+	UserArgs   []string
+	Terragrunt bool
 }
 
 func NewService(opts ServiceOptions) *Service {
@@ -35,12 +36,13 @@ func NewService(opts ServiceOptions) *Service {
 	groupBroker := pubsub.NewBroker[*Group](opts.Logger)
 
 	factory := &factory{
-		publisher: taskBroker,
-		counter:   &counter,
-		program:   opts.Program,
-		workdir:   opts.Workdir,
-		userEnvs:  opts.UserEnvs,
-		userArgs:  opts.UserArgs,
+		publisher:  taskBroker,
+		counter:    &counter,
+		program:    opts.Program,
+		workdir:    opts.Workdir,
+		userEnvs:   opts.UserEnvs,
+		userArgs:   opts.UserArgs,
+		terragrunt: opts.Terragrunt,
 	}
 
 	svc := &Service{

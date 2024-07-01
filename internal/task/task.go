@@ -87,6 +87,8 @@ type factory struct {
 	userEnvs []string
 	// Additional user-supplied CLI args.
 	userArgs []string
+	// Terragrunt mode
+	terragrunt bool
 }
 
 type CreateOptions struct {
@@ -126,6 +128,12 @@ type CreateOptions struct {
 }
 
 func (f *factory) newTask(opts CreateOptions) (*Task, error) {
+	// In terragrunt mode add default terragrunt flags
+	args := append(f.userArgs, opts.Args...)
+	if f.terragrunt {
+		args = append(args, "--terragrunt-non-interactive")
+	}
+
 	return &Task{
 		Common:        resource.New(resource.Task, opts.Parent),
 		State:         Pending,
@@ -136,7 +144,7 @@ func (f *factory) newTask(opts CreateOptions) (*Task, error) {
 		program:       f.program,
 		Command:       opts.Command,
 		Path:          filepath.Join(f.workdir.String(), opts.Path),
-		Args:          append(f.userArgs, opts.Args...),
+		Args:          args,
 		AdditionalEnv: append(f.userEnvs, opts.Env...),
 		JSON:          opts.JSON,
 		Blocking:      opts.Blocking,

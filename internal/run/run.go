@@ -106,9 +106,6 @@ func (f *factory) newRun(workspaceID resource.ID, opts CreateOptions) (*Run, err
 			f.broker.Publish(resource.UpdatedEvent, run)
 		},
 	}
-	if f.terragrunt {
-		run.defaultArgs = append(run.defaultArgs, "--terragrunt-non-interactive")
-	}
 
 	if !opts.applyOnly {
 		run.ArtefactsPath = filepath.Join(f.dataDir, run.String())
