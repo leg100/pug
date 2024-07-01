@@ -488,7 +488,7 @@ func (m Model[V]) RowInfo() string {
 	if m.filterVisible() {
 		return prefix + fmt.Sprintf("%d/%d", len(m.rows), len(m.items))
 	}
-	return fmt.Sprintf("vph: %d; offset: %d; start: %d; cursor: %d; ", m.viewport.Height, m.offset, m.start, m.cursorRow) + prefix + strconv.Itoa(len(m.rows))
+	return prefix + strconv.Itoa(len(m.rows))
 }
 
 // SetItems sets new items on the table, overwriting existing items. If the
