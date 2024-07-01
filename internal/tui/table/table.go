@@ -26,6 +26,9 @@ const (
 	headerHeight = 1
 	// Height of filter widget
 	filterHeight = 2
+	// Minimum recommended height for the table widget. Respecting this minimum
+	// ensures the header and the borders and the filter widget are visible.
+	MinHeight = 6
 )
 
 // Model defines a state for the table widget.
@@ -164,8 +167,7 @@ func (m *Model[V]) setDimensions(width, height int) {
 		m.viewport.Height = max(0, m.viewport.Height-filterHeight)
 	}
 
-	// Set available width for table to expand into, whilst respecting a
-	// minimum width of 80, and accomodating border.
+	// Set available width for table to expand into, accomodating border.
 	m.viewport.Width = max(0, width-2)
 	m.recalculateWidth()
 
@@ -477,11 +479,7 @@ func (m Model[V]) RowInfo() string {
 	top := m.start + 1
 	bottom := m.start + m.viewport.VisibleLineCount()
 
-	// Only print range of rows if there are any rows
-	var prefix string
-	if (bottom - top) > 0 {
-		prefix = fmt.Sprintf("%d-%d of ", top, bottom)
-	}
+	prefix := fmt.Sprintf("%d-%d of ", top, bottom)
 
 	if m.filterVisible() {
 		return prefix + fmt.Sprintf("%d/%d", len(m.rows), len(m.items))
@@ -522,17 +520,17 @@ func (m *Model[V]) SetItems(items map[resource.ID]V) {
 			// the user edits the filter value, particularly as the row renderer
 			// can make data lookups on each invocation. But there is no obvious
 			// alternative at present.
-			filterMatch := func(v V) bool {
-				for _, v := range m.rowRenderer(it) {
+			filterMatch := func() bool {
+				for _, row := range m.rowRenderer(it) {
 					// Remove ANSI escapes code before filtering
-					v = internal.StripAnsi(v)
-					if strings.Contains(v, m.filter.Value()) {
+					row = internal.StripAnsi(row)
+					if strings.Contains(row, m.filter.Value()) {
 						return true
 					}
 				}
 				return false
 			}
-			if !filterMatch(it) {
+			if !filterMatch() {
 				// Skip item not matching filter
 				continue
 			}

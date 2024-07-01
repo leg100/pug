@@ -8,6 +8,44 @@ import (
 	"github.com/leg100/pug/internal"
 )
 
+func TestTaskList_Split(t *testing.T) {
+	t.Parallel()
+
+	tm := setupAndInitModule(t)
+
+	// Go to task list
+	tm.Type("t")
+
+	// Expect tasks that are automatically triggered when a module is loaded
+	waitFor(t, tm, func(s string) bool {
+		return strings.Contains(s, "Tasks") &&
+			strings.Contains(s, "1-5 of 5") &&
+			matchPattern(t, `modules/a.*init.*exited`, s) &&
+			matchPattern(t, `modules/a.*workspace list.*exited`, s) &&
+			matchPattern(t, `modules/a.*default.*state pull.*exited`, s)
+	})
+
+	// Shrink the split until only 3 tasks are visible. By default, the split
+	// view shows 12 rows of tasks. Therefore, the pane needs to be decreased in
+	// height 9 times.
+	tm.Type(strings.Repeat("-", 9))
+
+	waitFor(t, tm, func(s string) bool {
+		return strings.Contains(s, "Tasks") &&
+			strings.Contains(s, "1-3 of 5")
+	})
+
+	// Increase the split until all 5 tasks are visible. That means the split
+	// needs to be increased 2 times.
+	tm.Type(strings.Repeat("+", 2))
+
+	waitFor(t, tm, func(s string) bool {
+		return strings.Contains(s, "Tasks") &&
+			strings.Contains(s, "1-5 of 5")
+	})
+
+}
+
 func TestTask_SingleApply(t *testing.T) {
 	t.Parallel()
 

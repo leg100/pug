@@ -27,6 +27,9 @@ const (
 	normalMode mode = iota // default
 	promptMode             // confirm prompt is visible and taking input
 	filterMode             // filter is visible and taking input
+
+	// minimum height of view area.
+	minViewHeight = 10
 )
 
 type model struct {
@@ -382,6 +385,8 @@ func (m model) View() string {
 
 // viewHeight returns the height available to the current model (subordinate to
 // the top model).
+//
+// TODO: rename contentHeight
 func (m model) viewHeight() int {
 	vh := m.height - breadcrumbsHeight - messageFooterHeight
 	if m.mode == promptMode {
@@ -390,10 +395,12 @@ func (m model) viewHeight() int {
 	if m.showHelp {
 		vh -= helpWidgetHeight
 	}
-	return vh
+	return max(minViewHeight, vh)
 }
 
 // viewWidth retrieves the width available within the main view
+//
+// TODO: rename contentWidth
 func (m model) viewWidth() int {
 	return m.width
 }
