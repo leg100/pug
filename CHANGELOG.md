@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.1](https://github.com/leg100/pug/compare/v0.3.0...v0.3.1) (2024-07-02)
+
+
+### Miscellaneous
+
+* make colors somewhat less garish ([ad2bdff](https://github.com/leg100/pug/commit/ad2bdff792879b55dd7cc9453d2d7129cc8bac73))
+
 ## [0.3.0](https://github.com/leg100/pug/compare/v0.2.2...v0.3.0) (2024-07-01)
 
 
