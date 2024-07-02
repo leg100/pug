@@ -316,7 +316,7 @@ func (m model) View() string {
 		leftover -= tui.Width(status)
 	}
 	// Fill in left over space in between title and status with background color
-	header += tui.Regular.Width(leftover).Background(tui.Pink).Render()
+	header += tui.Regular.Width(leftover).Background(tui.Purple).Render()
 	header += status
 	// Style the header
 	header = lipgloss.NewStyle().

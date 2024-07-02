@@ -319,7 +319,7 @@ func setupAndInitModule(t *testing.T) *testModel {
 	// Go to modules listing
 	tm.Type("m")
 
-	// Expect single modules to be listed
+	// Expect single module to be listed
 	waitFor(t, tm, func(s string) bool {
 		return strings.Contains(s, "modules/a")
 	})
@@ -333,7 +333,7 @@ func setupAndInitModule(t *testing.T) *testModel {
 	// Go back to modules listing
 	tm.Send(tea.KeyMsg{Type: tea.KeyEsc})
 
-	// Expect singgle modules to be listed, along with its default workspace.
+	// Expect single module to be listed, along with its default workspace.
 	waitFor(t, tm, func(s string) bool {
 		return matchPattern(t, "modules/a.*default", s)
 	})

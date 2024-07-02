@@ -6,7 +6,7 @@ const (
 	Black           = lipgloss.Color("#000000")
 	DarkRed         = lipgloss.Color("#FF0000")
 	Red             = lipgloss.Color("#FF5353")
-	Pink            = lipgloss.Color("#E760FC")
+	Purple          = lipgloss.Color("135")
 	Orange          = lipgloss.Color("214")
 	Yellow          = lipgloss.Color("#DBBD70")
 	Green           = lipgloss.Color("34")
@@ -50,10 +50,10 @@ var (
 
 	CurrentBackground            = Grey
 	CurrentForeground            = White
-	SelectedBackground           = lipgloss.Color("#fcbbf0")
+	SelectedBackground           = lipgloss.Color("110")
 	SelectedForeground           = Black
-	CurrentAndSelectedBackground = lipgloss.Color("#c997c0")
-	CurrentAndSelectedForeground = White
+	CurrentAndSelectedBackground = lipgloss.Color("117")
+	CurrentAndSelectedForeground = Black
 
 	TitleColor = lipgloss.AdaptiveColor{
 		Dark:  "",
