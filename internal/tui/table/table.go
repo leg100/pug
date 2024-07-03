@@ -234,8 +234,8 @@ func (m Model[V]) Update(msg tea.Msg) (Model[V], tea.Cmd) {
 		blink := m.filter.Focus()
 		// Resize the viewport to accommodate the filter widget
 		m.setDimensions(m.width, m.height)
-		// Acknowledge the request, and start blinking the cursor.
-		return m, tea.Batch(tui.CmdHandler(tui.FilterFocusAckMsg{}), blink)
+		// Start blinking the cursor.
+		return m, blink
 	case tui.FilterBlurMsg:
 		// Blur the filter widget
 		m.filter.Blur()

@@ -139,10 +139,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	switch msg := msg.(type) {
-	case tui.FilterFocusAckMsg:
-		// The filter widget has acknowledged the focus request, so we can now
-		// enable filter mode.
-		m.mode = filterMode
 	case tui.PromptMsg:
 		// Enable prompt widget
 		m.mode = promptMode
@@ -216,9 +212,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// existing child models
 			m.resetDimensions()
 		case key.Matches(msg, keys.Global.Filter):
-			// '/' enables filter mode, but only if the current model
-			// acknowledges the message.
-			cmd = m.updateCurrent(tui.FilterFocusReqMsg{})
+			// '/' enables filter mode if the current model indicates it
+			// supports it, which it does so by sending back a non-nil command.
+			if cmd = m.updateCurrent(tui.FilterFocusReqMsg{}); cmd != nil {
+				m.mode = filterMode
+			}
 			return m, cmd
 		case key.Matches(msg, keys.Global.Logs):
 			// show logs
