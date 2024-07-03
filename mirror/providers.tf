@@ -6,5 +6,8 @@ terraform {
     time = {
       version = "= 0.11.1"
     }
+    http = {
+      version = "= 3.4.3"
+    }
   }
 }
