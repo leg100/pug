@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.2](https://github.com/leg100/pug/compare/v0.3.1...v0.3.2) (2024-07-03)
+
+
+### Bug Fixes
+
+* cancelling multiple tasks ([#84](https://github.com/leg100/pug/issues/84)) ([17d2c13](https://github.com/leg100/pug/commit/17d2c13b51a967fabcdaad394e7488270bbb755a))
+
 ## [0.3.1](https://github.com/leg100/pug/compare/v0.3.0...v0.3.1) (2024-07-02)
 
 
