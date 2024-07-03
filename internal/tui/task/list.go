@@ -159,13 +159,22 @@ func (m List) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 		case key.Matches(msg, keys.Common.Retry):
-			taskIDs := m.Table.SelectedOrCurrentIDs()
-			if len(taskIDs) == 0 {
-				return m, nil
+			// Determine the command string to assign to task group. If all
+			// tasks to be retried have the same command, then use that. If
+			// they have different commands, then use the string "multi".
+			var cmd string
+			for _, task := range m.Table.SelectedOrCurrent() {
+				if cmd == "" {
+					cmd = task.Value.CommandString()
+				} else if cmd != task.Value.CommandString() {
+					cmd = "multi"
+					break
+				}
 			}
+			taskIDs := m.Table.SelectedOrCurrentIDs()
 			return m, tui.YesNoPrompt(
 				fmt.Sprintf("Retry %d tasks?", len(taskIDs)),
-				m.helpers.CreateTasks("retry", m.tasks.Retry, taskIDs...),
+				m.helpers.CreateTasks(cmd, m.tasks.Retry, taskIDs...),
 			)
 		}
 	}

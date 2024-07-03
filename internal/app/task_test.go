@@ -25,7 +25,7 @@ func TestTaskList_Split(t *testing.T) {
 	// Expect tasks that are automatically triggered when a module is loaded
 	waitFor(t, tm, func(s string) bool {
 		return strings.Contains(s, "Tasks") &&
-			strings.Contains(s, "1-5 of 5") &&
+			strings.Contains(s, "1-4 of 4") &&
 			matchPattern(t, `modules/a.*init.*exited`, s) &&
 			matchPattern(t, `modules/a.*workspace list.*exited`, s) &&
 			matchPattern(t, `modules/a.*default.*state pull.*exited`, s)
@@ -38,16 +38,16 @@ func TestTaskList_Split(t *testing.T) {
 
 	waitFor(t, tm, func(s string) bool {
 		return strings.Contains(s, "Tasks") &&
-			strings.Contains(s, "1-3 of 5")
+			strings.Contains(s, "1-3 of 4")
 	})
 
-	// Increase the split until all 5 tasks are visible. That means the split
-	// needs to be increased 2 times.
-	tm.Type(strings.Repeat("+", 2))
+	// Increase the split until all 4 tasks are visible. That means the split
+	// needs to be increased once.
+	tm.Type(strings.Repeat("+", 1))
 
 	waitFor(t, tm, func(s string) bool {
 		return strings.Contains(s, "Tasks") &&
-			strings.Contains(s, "1-5 of 5")
+			strings.Contains(s, "1-4 of 4")
 	})
 
 }
@@ -158,7 +158,7 @@ func TestTask_RetryMultiple(t *testing.T) {
 		return matchPattern(t, "TaskGroup.*plan.*3/3", s)
 	})
 
-	// Retry all tasks.
+	// Retry all plan tasks.
 	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlA})
 	tm.Type("r")
 	waitFor(t, tm, func(s string) bool {
@@ -166,11 +166,12 @@ func TestTask_RetryMultiple(t *testing.T) {
 	})
 	tm.Type("y")
 
-	// Expect to be taken to task page for plan and wait for it to finish.
+	// Expect to be taken to task group page for plan and wait for it to finish.
 	waitFor(t, tm, func(s string) bool {
-		return matchPattern(t, "TaskGroup.*retry.*3/3", s)
+		return matchPattern(t, "TaskGroup.*plan.*3/3", s)
 	})
 }
+
 func TestTask_Cancel(t *testing.T) {
 	t.Parallel()
 
