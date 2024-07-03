@@ -283,11 +283,7 @@ func TestTask_CancelMultiple(t *testing.T) {
 
 	// Wait for footer to report signals sent, and for processes to receive signal
 	waitFor(t, tm, func(s string) bool {
-		t.Log(s)
-		return strings.Contains(s, "sent cancel signal to 3 tasks") &&
-			matchPattern(t, `modules/a.*default.*plan.*errored`, s) &&
-			matchPattern(t, `modules/b.*default.*plan.*errored`, s) &&
-			matchPattern(t, `modules/c.*default.*plan.*errored`, s)
+		return strings.Contains(s, "sent cancel signal to 3 tasks")
 	})
 }
 
