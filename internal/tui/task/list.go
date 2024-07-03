@@ -136,7 +136,7 @@ func (m List) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch {
 		case key.Matches(msg, keys.Common.Cancel):
 			taskIDs := m.Table.SelectedOrCurrentIDs()
-			return m, m.helpers.CreateTasks("cancel", m.tasks.Cancel, taskIDs...)
+			return m, cancel(m.tasks, taskIDs...)
 		case key.Matches(msg, keys.Global.Enter):
 			if row, ok := m.Table.CurrentRow(); ok {
 				return m, tui.NavigateTo(tui.TaskKind, tui.WithParent(row.Value))

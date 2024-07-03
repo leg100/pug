@@ -233,7 +233,7 @@ func (t *Task) LogValue() slog.Value {
 
 // cancel the task - if it is queued it'll skip the running state and enter the
 // exited state
-func (t *Task) cancel() {
+func (t *Task) cancel() error {
 	// lock task state so that cancelation can atomically both inspect current
 	// state and update state
 	t.mu.Lock()
@@ -241,16 +241,12 @@ func (t *Task) cancel() {
 
 	switch t.State {
 	case Exited, Errored, Canceled:
-		// silently take no action if already finished
-		return
+		return errors.New("task has already finished")
 	case Pending, Queued:
 		t.updateState(Canceled)
-		return
+		return nil
 	default: // running
-		// ignore any errors from signal; instead take a "best effort" approach
-		// to canceling
-		_ = t.proc.Signal(os.Interrupt)
-		return
+		return t.proc.Signal(os.Interrupt)
 	}
 }
 
