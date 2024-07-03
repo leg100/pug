@@ -210,13 +210,17 @@ func (s *Service) Get(taskID resource.ID) (*Task, error) {
 }
 
 func (s *Service) Cancel(taskID resource.ID) (*Task, error) {
-	task, err := s.tasks.Get(taskID)
+	task, err := func() (*Task, error) {
+		task, err := s.tasks.Get(taskID)
+		if err != nil {
+			return nil, err
+		}
+		return task, task.cancel()
+	}()
 	if err != nil {
-		s.logger.Error("canceling task", "id", taskID)
+		s.logger.Error("canceling task", "id", taskID, "error", err)
 		return nil, err
 	}
-
-	task.cancel()
 
 	s.logger.Info("canceled task", "task", task)
 	return task, nil
