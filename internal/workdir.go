@@ -43,12 +43,6 @@ func NewWorkdir(path string) (Workdir, error) {
 	return wd, nil
 }
 
-func NewTestWorkdir(t *testing.T) Workdir {
-	wd, err := NewWorkdir(t.TempDir())
-	require.NoError(t, err)
-	return wd
-}
-
 func (wd Workdir) String() string {
 	return wd.path
 }
@@ -58,4 +52,10 @@ func (wd Workdir) PrettyString() string {
 		return wd.prettyPath
 	}
 	return wd.path
+}
+
+func NewTestWorkdir(t *testing.T) Workdir {
+	wd, err := NewWorkdir(t.TempDir())
+	require.NoError(t, err)
+	return wd
 }

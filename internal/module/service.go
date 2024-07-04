@@ -2,7 +2,6 @@ package module
 
 import (
 	"fmt"
-	"slices"
 
 	"github.com/leg100/pug/internal"
 	"github.com/leg100/pug/internal/logging"
@@ -55,18 +54,33 @@ func (s *Service) Reload() (added []string, removed []string, err error) {
 	if err != nil {
 		return nil, nil, err
 	}
-	for _, path := range found {
-		// Add module if it isn't in pug already
-		if _, err := s.GetByPath(path); err == resource.ErrNotFound {
-			mod := New(s.workdir, path)
+	for _, opts := range found {
+		// Add module if it isn't in pug already, otherwise update in-place
+		if mod, err := s.GetByPath(opts.Path); err == resource.ErrNotFound {
+			mod := New(s.workdir, opts)
 			s.table.Add(mod.ID, mod)
-			added = append(added, path)
+			added = append(added, opts.Path)
+		} else if err != nil {
+			return nil, nil, fmt.Errorf("retrieving module: %w", err)
+		} else {
+			// Update in-place; the backend may have changed.
+			s.table.Update(mod.ID, func(existing *Module) error {
+				existing.Backend = opts.Backend
+				return nil
+			})
 		}
 	}
 
 	// Cleanup existing modules, removing those that are no longer to be found
 	for _, existing := range s.table.List() {
-		if !slices.Contains(found, existing.Path) {
+		var keep bool
+		for _, opts := range found {
+			if opts.Path == existing.Path {
+				keep = true
+				break
+			}
+		}
+		if !keep {
 			s.table.Delete(existing.ID)
 			removed = append(removed, existing.Path)
 		}

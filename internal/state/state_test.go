@@ -13,7 +13,7 @@ import (
 )
 
 func Test_newState(t *testing.T) {
-	mod := module.New(internal.NewTestWorkdir(t), "a/b/c")
+	mod := module.New(internal.NewTestWorkdir(t), module.Options{Path: "a/b/c"})
 	ws, err := workspace.New(mod, "dev")
 	require.NoError(t, err)
 
@@ -50,7 +50,7 @@ func Test_newState(t *testing.T) {
 }
 
 func Test_newState_empty(t *testing.T) {
-	mod := module.New(internal.NewTestWorkdir(t), "a/b/c")
+	mod := module.New(internal.NewTestWorkdir(t), module.Options{Path: "a/b/c"})
 	ws, err := workspace.New(mod, "dev")
 	require.NoError(t, err)
 

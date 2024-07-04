@@ -18,6 +18,19 @@ func TestModule_Loaded(t *testing.T) {
 	})
 }
 
+func TestModule_Backend(t *testing.T) {
+	t.Parallel()
+
+	tm := setup(t, "./testdata/module_list")
+
+	// Expect three modules, each with a local backend
+	waitFor(t, tm, func(s string) bool {
+		return matchPattern(t, `modules/a.*local`, s) &&
+			matchPattern(t, `modules/b.*local`, s) &&
+			matchPattern(t, `modules/c.*local`, s)
+	})
+}
+
 func TestModule_SingleInit(t *testing.T) {
 	t.Parallel()
 

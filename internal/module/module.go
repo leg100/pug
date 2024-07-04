@@ -3,15 +3,14 @@ package module
 import (
 	"io/fs"
 	"log/slog"
-	"os"
 	"path/filepath"
 
 	"github.com/hashicorp/hcl/v2"
-	"github.com/hashicorp/hcl/v2/hclwrite"
+	"github.com/hashicorp/hcl/v2/gohcl"
+	"github.com/hashicorp/hcl/v2/hclparse"
 	"github.com/leg100/pug/internal"
 	"github.com/leg100/pug/internal/logging"
 	"github.com/leg100/pug/internal/resource"
-	"golang.org/x/exp/maps"
 )
 
 // Module is a terraform root module.
@@ -26,15 +25,26 @@ type Module struct {
 
 	// The module's current workspace.
 	CurrentWorkspaceID *resource.ID
+
+	// The module's backend type
+	Backend string
+}
+
+type Options struct {
+	// Path is the module path relative to the working directory.
+	Path string
+	// Backend is the type of terraform backend
+	Backend string
 }
 
 // New constructs a module. Workdir is the pug working directory, and path is
 // the module path relative to the working directory.
-func New(workdir internal.Workdir, path string) *Module {
+func New(workdir internal.Workdir, opts Options) *Module {
 	return &Module{
 		Common:  resource.New(resource.Module, resource.GlobalResource),
-		Path:    path,
 		Workdir: workdir,
+		Path:    opts.Path,
+		Backend: opts.Backend,
 	}
 }
 
@@ -54,18 +64,13 @@ func (m *Module) LogValue() slog.Value {
 }
 
 // findModules finds root modules that are descendents of the workdir and
-// returns their paths relative to the workdir.
+// returns options for creating equivalent pug modules.
 //
 // A root module is deemed to be a directory that contains a .tf file that
-// contains a backend block.
-func findModules(logger logging.Interface, workdir internal.Workdir) (modules []string, err error) {
-	found := make(map[string]struct{})
+// contains a backend or cloud block, or in the case of terragrunt, a
+// terragrunt.hcl file containing a remote_state block.
+func findModules(logger logging.Interface, workdir internal.Workdir) (modules []Options, err error) {
 	walkfn := func(path string, d fs.DirEntry, walkerr error) error {
-		// skip directories that have already been identified as containing a
-		// root module
-		if _, ok := found[filepath.Dir(path)]; ok {
-			return nil
-		}
 		if walkerr != nil {
 			return err
 		}
@@ -76,49 +81,92 @@ func findModules(logger logging.Interface, workdir internal.Workdir) (modules []
 			}
 			return nil
 		}
-		if d.Name() == "terragrunt.hcl" {
-			found[filepath.Dir(path)] = struct{}{}
+		if filepath.Ext(path) == ".tf" || d.Name() == "terragrunt.hcl" {
+			backend, found, err := detectBackend(path)
+			if err != nil {
+				logger.Error("reloading modules: parsing hcl", "path", path, "error", err)
+				return nil
+			}
+			if !found {
+				return nil
+			}
+			// Strip workdir from module path
+			stripped, err := filepath.Rel(workdir.String(), filepath.Dir(path))
+			if err != nil {
+				return err
+			}
+			modules = append(modules, Options{
+				Path:    stripped,
+				Backend: backend,
+			})
 			// skip walking remainder of parent directory
 			return fs.SkipDir
-		}
-		if filepath.Ext(path) != ".tf" {
-			return nil
-		}
-		cfg, err := os.ReadFile(path)
-		if err != nil {
-			return nil
-		}
-		// only the hclwrite pkg seems to have the ability to walk HCL blocks,
-		// so this is what is used even though no writing is performed.
-		file, diags := hclwrite.ParseConfig(cfg, path, hcl.Pos{Line: 1, Column: 1})
-		if diags.HasErrors() {
-			logger.Error("reloading modules: parsing hcl", "path", path, "error", diags)
-			return nil
-		}
-		for _, block := range file.Body().Blocks() {
-			if block.Type() == "terraform" {
-				for _, nested := range block.Body().Blocks() {
-					if nested.Type() == "backend" || nested.Type() == "cloud" {
-						found[filepath.Dir(path)] = struct{}{}
-						// skip walking remainder of parent directory
-						return fs.SkipDir
-					}
-				}
-			}
 		}
 		return nil
 	}
 	if err := filepath.WalkDir(workdir.String(), walkfn); err != nil {
 		return nil, err
 	}
-	// Strip parent prefix from paths before returning
-	modules = make([]string, len(found))
-	for i, f := range maps.Keys(found) {
-		stripped, err := filepath.Rel(workdir.String(), f)
-		if err != nil {
-			return nil, err
-		}
-		modules[i] = stripped
+	return
+}
+
+type terragrunt struct {
+	RemoteState *terragruntRemoteState `hcl:"remote_state,block"`
+	Remain      hcl.Body               `hcl:",remain"`
+}
+
+type terragruntRemoteState struct {
+	Backend string   `hcl:"backend,attr"`
+	Remain  hcl.Body `hcl:",remain"`
+}
+
+type terraform struct {
+	Terraform *terraformBlock `hcl:"terraform,block"`
+	Remain    hcl.Body        `hcl:",remain"`
+}
+
+type terraformBlock struct {
+	Backend *terraformBackend `hcl:"backend,block"`
+	Cloud   *terraformCloud   `hcl:"cloud,block"`
+	Remain  hcl.Body          `hcl:",remain"`
+}
+
+type terraformBackend struct {
+	Type   string   `hcl:"type,label"`
+	Remain hcl.Body `hcl:",remain"`
+}
+
+type terraformCloud struct {
+	Remain hcl.Body `hcl:",remain"`
+}
+
+// detectBackend parses the HCL file at the given path and detects whether it
+// found a backend configuration, together with the type of backend it found.
+func detectBackend(path string) (string, bool, error) {
+	f, err := hclparse.NewParser().ParseHCLFile(path)
+	if err != nil {
+		return "", false, err
 	}
-	return modules, nil
+	// Detect terraform backend
+	var terraform terraform
+	if diags := gohcl.DecodeBody(f.Body, nil, &terraform); diags != nil {
+		return "", false, diags
+	}
+	if terraform.Terraform != nil {
+		if terraform.Terraform.Backend != nil {
+			return terraform.Terraform.Backend.Type, true, nil
+		}
+		if terraform.Terraform.Cloud != nil {
+			return "cloud", true, nil
+		}
+	}
+	// Detect terragrunt remote state configuration
+	var remoteStateBlock terragrunt
+	if diags := gohcl.DecodeBody(f.Body, nil, &remoteStateBlock); diags != nil {
+		return "", false, diags
+	}
+	if remoteStateBlock.RemoteState != nil {
+		return remoteStateBlock.RemoteState.Backend, true, nil
+	}
+	return "", false, nil
 }
