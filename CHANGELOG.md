@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.3.3](https://github.com/leg100/pug/compare/v0.3.2...v0.3.3) (2024-07-04)
+
+
+### Features
+
+* identify backend type ([c23e9c6](https://github.com/leg100/pug/commit/c23e9c65ad3362284860c5956703e038903a7032))
+
+
+### Bug Fixes
+
+* if possible use command string for retry task group ([10fbeca](https://github.com/leg100/pug/commit/10fbeca9c460803368291b0b3e196600ffc93522))
+* simplify filter mode logic ([40a1dff](https://github.com/leg100/pug/commit/40a1dffdfe70bc1fd0faa4d108793a95161a36bc))
+
+
+### Miscellaneous
+
+* update demo ([013b9b8](https://github.com/leg100/pug/commit/013b9b869e3470e1600c6ebdabe10692f01d7d45))
+
 ## [0.3.2](https://github.com/leg100/pug/compare/v0.3.1...v0.3.2) (2024-07-03)
 
 
