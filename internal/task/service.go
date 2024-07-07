@@ -240,6 +240,10 @@ func (s *Service) Get(taskID resource.ID) (*Task, error) {
 	return s.tasks.Get(taskID)
 }
 
+func (s *Service) GetGroup(groupID resource.ID) (*Group, error) {
+	return s.groups.Get(groupID)
+}
+
 func (s *Service) Cancel(taskID resource.ID) (*Task, error) {
 	task, err := func() (*Task, error) {
 		task, err := s.tasks.Get(taskID)

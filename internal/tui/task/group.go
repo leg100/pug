@@ -1,7 +1,6 @@
 package task
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/charmbracelet/bubbles/key"
@@ -19,16 +18,12 @@ type groupTaskMaker struct {
 	*Maker
 }
 
-func (m *groupTaskMaker) Make(res resource.Resource, width, height int) (tea.Model, error) {
-	return m.make(res, width, height, false)
+func (m *groupTaskMaker) Make(id resource.ID, width, height int) (tea.Model, error) {
+	return m.make(id, width, height, false)
 }
 
 // GroupMaker makes taskgroup models
 type GroupMaker struct {
-	TaskService tui.TaskService
-	RunService  tui.RunService
-	Helpers     *tui.Helpers
-
 	taskListMaker *ListMaker
 }
 
@@ -44,13 +39,13 @@ func NewGroupMaker(tasks tui.TaskService, runs tui.RunService, taskMaker *Maker,
 	}
 }
 
-func (mm *GroupMaker) Make(parent resource.Resource, width, height int) (tea.Model, error) {
-	group, ok := parent.(*task.Group)
-	if !ok {
-		return nil, errors.New("expected taskgroup resource")
+func (mm *GroupMaker) Make(id resource.ID, width, height int) (tea.Model, error) {
+	group, err := mm.taskListMaker.TaskService.GetGroup(id)
+	if err != nil {
+		return nil, err
 	}
 
-	list, err := mm.taskListMaker.Make(parent, width, height)
+	list, err := mm.taskListMaker.Make(id, width, height)
 	if err != nil {
 		return nil, fmt.Errorf("making task list model: %w", err)
 	}
@@ -58,7 +53,7 @@ func (mm *GroupMaker) Make(parent resource.Resource, width, height int) (tea.Mod
 	m := groupModel{
 		Model:   list,
 		group:   group,
-		helpers: mm.Helpers,
+		helpers: mm.taskListMaker.Helpers,
 	}
 	return m, nil
 }

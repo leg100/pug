@@ -30,6 +30,7 @@ type WorkspaceService interface {
 type StateService interface {
 	Reload(workspaceID resource.ID) (*task.Task, error)
 	Get(workspaceID resource.ID) (*state.State, error)
+	GetResource(resourceID resource.ID) (*state.Resource, error)
 	Delete(workspaceID resource.ID, addrs ...state.ResourceAddress) (*task.Task, error)
 	Taint(workspaceID resource.ID, addr state.ResourceAddress) (*task.Task, error)
 	Untaint(workspaceID resource.ID, addr state.ResourceAddress) (*task.Task, error)
@@ -50,6 +51,7 @@ type TaskService interface {
 	Retry(taskID resource.ID) (*task.Task, error)
 	Counter() int
 	Get(taskID resource.ID) (*task.Task, error)
+	GetGroup(groupID resource.ID) (*task.Group, error)
 	List(opts task.ListOptions) []*task.Task
 	ListGroups() []*task.Group
 	Cancel(taskID resource.ID) (*task.Task, error)

@@ -3,6 +3,7 @@ package module
 import (
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/spinner"
@@ -27,6 +28,11 @@ var (
 		Title: "BACKEND",
 		Width: len("BACKEND"),
 	}
+	dependencies = table.Column{
+		Key:        "moduleDependencies",
+		Title:      "DEPENDENCIES",
+		FlexFactor: 2,
+	}
 )
 
 // ListMaker makes module list models
@@ -39,21 +45,29 @@ type ListMaker struct {
 	Helpers          *tui.Helpers
 }
 
-func (m *ListMaker) Make(_ resource.Resource, width, height int) (tea.Model, error) {
+func (m *ListMaker) Make(_ resource.ID, width, height int) (tea.Model, error) {
 	columns := []table.Column{
 		table.ModuleColumn,
+		dependencies,
 		backendType,
 		currentWorkspace,
 		table.ResourceCountColumn,
 	}
 
 	renderer := func(mod *module.Module) table.RenderedRow {
-		return table.RenderedRow{
+		row := table.RenderedRow{
 			table.ModuleColumn.Key:        mod.Path,
 			backendType.Key:               mod.Backend,
 			currentWorkspace.Key:          m.Helpers.CurrentWorkspaceName(mod.CurrentWorkspaceID),
 			table.ResourceCountColumn.Key: m.Helpers.ModuleCurrentResourceCount(mod),
 		}
+		dependencyNames := make([]string, len(mod.Dependencies()))
+		for i, id := range mod.Dependencies() {
+			mod, _ := m.ModuleService.Get(id)
+			dependencyNames[i] = mod.Path
+		}
+		row[dependencies.Key] = strings.Join(dependencyNames, ",")
+		return row
 	}
 	table := table.New(columns, renderer, width, height,
 		table.WithSortFunc(module.ByPath),

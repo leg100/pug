@@ -34,8 +34,8 @@ type Maker struct {
 	Logger *logging.Logger
 }
 
-func (mm *Maker) Make(r resource.Resource, width, height int) (tea.Model, error) {
-	msg, err := mm.Logger.Get(r.GetID())
+func (mm *Maker) Make(id resource.ID, width, height int) (tea.Model, error) {
+	msg, err := mm.Logger.Get(id)
 	if err != nil {
 		return model{}, err
 	}

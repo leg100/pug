@@ -2,7 +2,6 @@ package tui
 
 import (
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/leg100/pug/internal/resource"
 )
 
 // page Cache: not so much for performance but to retain memory of user actions,
@@ -10,31 +9,26 @@ import (
 // page and later return to the page, and they would expect the same row still
 // to be selected.
 type Cache struct {
-	cache map[cacheKey]tea.Model
+	cache map[Page]tea.Model
 }
 
 func NewCache() *Cache {
 	return &Cache{
-		cache: make(map[cacheKey]tea.Model),
+		cache: make(map[Page]tea.Model),
 	}
 }
 
-type cacheKey struct {
-	kind Kind
-	id   resource.ID
-}
-
 func (c *Cache) Exists(page Page) bool {
-	_, ok := c.cache[NewCacheKey(page)]
+	_, ok := c.cache[page]
 	return ok
 }
 
 func (c *Cache) Get(page Page) tea.Model {
-	return c.cache[NewCacheKey(page)]
+	return c.cache[page]
 }
 
 func (c *Cache) Put(page Page, model tea.Model) {
-	c.cache[NewCacheKey(page)] = model
+	c.cache[page] = model
 }
 
 func (c *Cache) UpdateAll(msg tea.Msg) []tea.Cmd {
@@ -47,16 +41,8 @@ func (c *Cache) UpdateAll(msg tea.Msg) []tea.Cmd {
 	return cmds
 }
 
-func (c *Cache) Update(key cacheKey, msg tea.Msg) tea.Cmd {
+func (c *Cache) Update(key Page, msg tea.Msg) tea.Cmd {
 	updated, cmd := c.cache[key].Update(msg)
 	c.cache[key] = updated
 	return cmd
-}
-
-func NewCacheKey(page Page) cacheKey {
-	key := cacheKey{kind: page.Kind}
-	if page.Resource != nil {
-		key.id = page.Resource.GetID()
-	}
-	return key
 }

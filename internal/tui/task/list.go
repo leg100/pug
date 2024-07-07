@@ -44,8 +44,8 @@ type ListTaskMaker struct {
 	*Maker
 }
 
-func (m *ListTaskMaker) Make(res resource.Resource, width, height int) (tea.Model, error) {
-	return m.make(res, width, height, false)
+func (m *ListTaskMaker) Make(id resource.ID, width, height int) (tea.Model, error) {
+	return m.make(id, width, height, false)
 }
 
 // NewListMaker constructs a task list model maker
@@ -66,7 +66,7 @@ type ListMaker struct {
 	Helpers     *tui.Helpers
 }
 
-func (mm *ListMaker) Make(parent resource.Resource, width, height int) (tea.Model, error) {
+func (mm *ListMaker) Make(_ resource.ID, width, height int) (tea.Model, error) {
 	columns := []table.Column{
 		table.ModuleColumn,
 		table.WorkspaceColumn,

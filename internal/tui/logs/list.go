@@ -36,7 +36,7 @@ type ListMaker struct {
 	Logger *logging.Logger
 }
 
-func (m *ListMaker) Make(_ resource.Resource, width, height int) (tea.Model, error) {
+func (m *ListMaker) Make(_ resource.ID, width, height int) (tea.Model, error) {
 	columns := []table.Column{
 		timeColumn,
 		levelColumn,

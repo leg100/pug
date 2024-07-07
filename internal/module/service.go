@@ -112,7 +112,6 @@ func (s *Service) loadTerragruntDependencies() error {
 	task, err := s.tasks.Create(task.CreateOptions{
 		Parent:  resource.GlobalResource,
 		Command: []string{"graph-dependencies"},
-		Args:    []string{"--terragrunt-non-interactive"},
 		Wait:    true,
 	})
 	if err != nil {

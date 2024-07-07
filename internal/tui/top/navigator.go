@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/leg100/pug/internal/resource"
 	"github.com/leg100/pug/internal/tui"
 )
 
@@ -35,7 +34,7 @@ func newNavigator(opts Options, makers map[tui.Kind]tui.Maker) (*navigator, erro
 	}
 
 	// ignore returned init cmd; instead the main model should invoke it
-	if _, err = n.setCurrent(tui.Page{Kind: firstKind, Resource: resource.GlobalResource}); err != nil {
+	if _, err = n.setCurrent(tui.Page{Kind: firstKind}); err != nil {
 		return nil, err
 	}
 	return n, nil
@@ -61,7 +60,7 @@ func (n *navigator) setCurrent(page tui.Page) (created bool, err error) {
 		if !ok {
 			return false, fmt.Errorf("no maker could be found for %s", page.Kind)
 		}
-		model, err := maker.Make(page.Resource, n.width, n.height)
+		model, err := maker.Make(page.ID, n.width, n.height)
 		if err != nil {
 			return false, fmt.Errorf("making page: %w", err)
 		}
@@ -74,7 +73,7 @@ func (n *navigator) setCurrent(page tui.Page) (created bool, err error) {
 }
 
 func (n *navigator) updateCurrent(msg tea.Msg) tea.Cmd {
-	return n.cache.Update(tui.NewCacheKey(n.currentPage()), msg)
+	return n.cache.Update(n.currentPage(), msg)
 }
 
 func (n *navigator) goBack() {

@@ -186,7 +186,7 @@ func (t *Task) CommandString() string {
 }
 
 func (t *Task) String() string {
-	return t.ID.String()
+	return t.CommandString()
 }
 
 // NewReader provides a reader from which to read the task output from start to
