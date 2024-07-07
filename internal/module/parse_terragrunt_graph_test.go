@@ -2,22 +2,14 @@ package module
 
 import (
 	"bytes"
-	"os/exec"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-func TestFindTerragruntModules(t *testing.T) {
-	buf := new(bytes.Buffer)
-
-	cmd := exec.Command("terragrunt", "graph-dependencies")
-	cmd.Dir = "./testdata/terragrunt"
-	cmd.Stdout = buf
-	err := cmd.Run()
-	require.NoError(t, err)
-
+func TestParseTerragruntGraph(t *testing.T) {
+	buf := bytes.NewBufferString(terragruntGraphDigraph)
 	got, err := parseTerragruntGraph(buf)
 	require.NoError(t, err)
 

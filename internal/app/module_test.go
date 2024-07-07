@@ -211,7 +211,6 @@ func TestModule_SingleDestroyPlan(t *testing.T) {
 
 	// Expect 10 resources to be proposed for deletion
 	waitFor(t, tm, func(s string) bool {
-		//s = internal.StripAnsi(s)
 		return matchPattern(t, `Task.*plan.*default.*modules/a.*\+0~0\-10.*exited`, s)
 	})
 }
