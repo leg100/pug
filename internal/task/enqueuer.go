@@ -7,7 +7,13 @@ import (
 // enqueuer determines which tasks should be added to the global queue for
 // processing
 type enqueuer struct {
-	tasks taskLister
+	tasks enqueuerTaskService
+}
+
+type enqueuerTaskService interface {
+	taskLister
+
+	Get(taskID resource.ID) (*Task, error)
 }
 
 func StartEnqueuer(tasks *Service) {
@@ -58,8 +64,14 @@ func (e *enqueuer) enqueuable() []*Task {
 		}
 		// Check if task depends upon successful completion of
 		// other tasks.
-		for _, dep := range t.DependsOn {
-			switch dep.State {
+		for _, id := range t.DependsOn {
+			dependency, err := e.tasks.Get(id)
+			if err != nil {
+				// TODO: decide what to do in case of error
+				continue
+			}
+
+			switch dependency.State {
 			case Exited:
 				// Is enqueuable if all dependencies have exited successfully.
 			case Canceled, Errored:

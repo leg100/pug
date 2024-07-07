@@ -22,6 +22,11 @@ var (
 		Title:      "CURRENT WORKSPACE",
 		FlexFactor: 2,
 	}
+	backendType = table.Column{
+		Key:   "backendType",
+		Title: "BACKEND",
+		Width: len("BACKEND"),
+	}
 )
 
 // ListMaker makes module list models
@@ -37,6 +42,7 @@ type ListMaker struct {
 func (m *ListMaker) Make(_ resource.Resource, width, height int) (tea.Model, error) {
 	columns := []table.Column{
 		table.ModuleColumn,
+		backendType,
 		currentWorkspace,
 		table.ResourceCountColumn,
 	}
@@ -44,6 +50,7 @@ func (m *ListMaker) Make(_ resource.Resource, width, height int) (tea.Model, err
 	renderer := func(mod *module.Module) table.RenderedRow {
 		return table.RenderedRow{
 			table.ModuleColumn.Key:        mod.Path,
+			backendType.Key:               mod.Backend,
 			currentWorkspace.Key:          m.Helpers.CurrentWorkspaceName(mod.CurrentWorkspaceID),
 			table.ResourceCountColumn.Key: m.Helpers.ModuleCurrentResourceCount(mod),
 		}

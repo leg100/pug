@@ -1,5 +1,62 @@
 # Changelog
 
+## [0.3.3](https://github.com/leg100/pug/compare/v0.3.2...v0.3.3) (2024-07-04)
+
+
+### Features
+
+* identify backend type ([c23e9c6](https://github.com/leg100/pug/commit/c23e9c65ad3362284860c5956703e038903a7032))
+
+
+### Bug Fixes
+
+* if possible use command string for retry task group ([10fbeca](https://github.com/leg100/pug/commit/10fbeca9c460803368291b0b3e196600ffc93522))
+* simplify filter mode logic ([40a1dff](https://github.com/leg100/pug/commit/40a1dffdfe70bc1fd0faa4d108793a95161a36bc))
+
+
+### Miscellaneous
+
+* update demo ([013b9b8](https://github.com/leg100/pug/commit/013b9b869e3470e1600c6ebdabe10692f01d7d45))
+
+## [0.3.2](https://github.com/leg100/pug/compare/v0.3.1...v0.3.2) (2024-07-03)
+
+
+### Bug Fixes
+
+* cancelling multiple tasks ([#84](https://github.com/leg100/pug/issues/84)) ([17d2c13](https://github.com/leg100/pug/commit/17d2c13b51a967fabcdaad394e7488270bbb755a))
+
+## [0.3.1](https://github.com/leg100/pug/compare/v0.3.0...v0.3.1) (2024-07-02)
+
+
+### Miscellaneous
+
+* make colors somewhat less garish ([ad2bdff](https://github.com/leg100/pug/commit/ad2bdff792879b55dd7cc9453d2d7129cc8bac73))
+
+## [0.3.0](https://github.com/leg100/pug/compare/v0.2.2...v0.3.0) (2024-07-01)
+
+
+### ⚠ BREAKING CHANGES
+
+* change key bindings for split pane resizing ([#82](https://github.com/leg100/pug/issues/82))
+* change default config file path ([#79](https://github.com/leg100/pug/issues/79))
+
+### refactor
+
+* change default config file path ([#79](https://github.com/leg100/pug/issues/79)) ([d1d9b4e](https://github.com/leg100/pug/commit/d1d9b4ef0c8112ae57f7b7b250c8cc9ed0c9666c))
+* change key bindings for split pane resizing ([#82](https://github.com/leg100/pug/issues/82)) ([35f33d1](https://github.com/leg100/pug/commit/35f33d16786afc258ba37a642be02cc68aaa8841))
+
+
+### Bug Fixes
+
+* always ensure current row is visible ([e4ddc3a](https://github.com/leg100/pug/commit/e4ddc3a7791e1b44ad5df0684b0a2e68d5d523ac))
+* remove debug table info ([916a859](https://github.com/leg100/pug/commit/916a8591b04d3c5fa4901d444ed62b73e3545e8e))
+* use terraform for terragrunt tests ([e0cd4b3](https://github.com/leg100/pug/commit/e0cd4b38ae844c79fb6be0cfbd16698125f36f90))
+
+
+### Miscellaneous
+
+* update demo ([348c3b5](https://github.com/leg100/pug/commit/348c3b5fb5334ea12e2af88dfab16fee56ad9cfc))
+
 ## [0.2.2](https://github.com/leg100/pug/compare/v0.2.1...v0.2.2) (2024-06-23)
 
 

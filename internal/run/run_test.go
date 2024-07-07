@@ -42,7 +42,7 @@ func setupTest(t *testing.T) (*factory, *module.Module, *workspace.Workspace) {
 	workdir := internal.NewTestWorkdir(t)
 	testutils.ChTempDir(t, workdir.String())
 
-	mod := module.New(workdir, "a/b/c")
+	mod := module.New(workdir, module.Options{Path: "a/b/c"})
 	ws, err := workspace.New(mod, "dev")
 	require.NoError(t, err)
 	factory := factory{

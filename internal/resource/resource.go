@@ -30,4 +30,7 @@ type Resource interface {
 	// Run retrieves the resource's run. Returns nil if the resource does
 	// not have a run ancestor.
 	Run() Resource
+	// Dependencies returns both direct dependencies and indirect dependencies that
+	// ancestor resources have.
+	Dependencies() []ID
 }

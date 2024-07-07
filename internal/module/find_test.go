@@ -5,23 +5,9 @@ import (
 	"os/exec"
 	"testing"
 
-	"github.com/leg100/pug/internal"
-	"github.com/leg100/pug/internal/logging"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
-
-func TestFindModules(t *testing.T) {
-	workdir, _ := internal.NewWorkdir("./testdata/modules")
-	got, err := findModules(logging.Discard, workdir)
-	require.NoError(t, err)
-
-	assert.Equal(t, 3, len(got))
-	assert.Contains(t, got, findResult{path: "with_local_backend"})
-	assert.Contains(t, got, findResult{path: "with_s3_backend"})
-	assert.Contains(t, got, findResult{path: "with_cloud_backend"})
-	assert.NotContains(t, got, "broken")
-}
 
 func TestFindTerragruntModules(t *testing.T) {
 	buf := new(bytes.Buffer)
@@ -32,56 +18,36 @@ func TestFindTerragruntModules(t *testing.T) {
 	err := cmd.Run()
 	require.NoError(t, err)
 
-	got, err := findTerragruntModules(buf)
+	got, err := parseTerragruntGraph(buf)
 	require.NoError(t, err)
 
-	// Should find 4 modules
-	assert.Len(t, got, 4)
+	// Should find 5 modules
+	assert.Len(t, got, 5)
 
-	hasFindResult(t, got, findResult{
-		path: "root/backend-app",
-		dependencies: []string{
-			"root/mysql",
-			"root/redis",
-			"root/vpc",
-		},
-	})
-	hasFindResult(t, got, findResult{
-		path: "root/frontend-app",
-		dependencies: []string{
-			"root/backend-app",
-			"root/vpc",
-		},
-	})
-	hasFindResult(t, got, findResult{
-		path: "root/mysql",
-		dependencies: []string{
-			"root/vpc",
-		},
-	})
-	hasFindResult(t, got, findResult{
-		path: "root/redis",
-		dependencies: []string{
-			"root/vpc",
-		},
-	})
-	hasFindResult(t, got, findResult{
-		path: "root/vpc",
-	})
-}
-
-func hasFindResult(t *testing.T, gotResults []findResult, want findResult) {
-	t.Helper()
-
-	for _, got := range gotResults {
-		if want.path == got.path {
-			if assert.Equal(t, len(want.dependencies), len(got.dependencies)) {
-				for _, wantDep := range want.dependencies {
-					assert.Contains(t, got.dependencies, wantDep)
-				}
-				return
-			}
+	if assert.Contains(t, got, "root/backend-app") {
+		if assert.Len(t, got["root/backend-app"], 3) {
+			assert.Contains(t, got["root/backend-app"], "root/mysql")
+			assert.Contains(t, got["root/backend-app"], "root/redis")
+			assert.Contains(t, got["root/backend-app"], "root/vpc")
 		}
 	}
-	t.Errorf("failed to find %v in %v", want, gotResults)
+	if assert.Contains(t, got, "root/frontend-app") {
+		if assert.Len(t, got["root/frontend-app"], 2) {
+			assert.Contains(t, got["root/frontend-app"], "root/backend-app")
+			assert.Contains(t, got["root/frontend-app"], "root/vpc")
+		}
+	}
+	if assert.Contains(t, got, "root/mysql") {
+		if assert.Len(t, got["root/mysql"], 1) {
+			assert.Contains(t, got["root/mysql"], "root/vpc")
+		}
+	}
+	if assert.Contains(t, got, "root/redis") {
+		if assert.Len(t, got["root/redis"], 1) {
+			assert.Contains(t, got["root/redis"], "root/vpc")
+		}
+	}
+	if assert.Contains(t, got, "root/vpc") {
+		assert.Empty(t, got["root/vpc"])
+	}
 }

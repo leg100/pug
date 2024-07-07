@@ -30,7 +30,7 @@ func TestWorkspace_parseList(t *testing.T) {
 }
 
 func TestWorkspace_resetWorkspaces(t *testing.T) {
-	mod := module.New(internal.NewTestWorkdir(t), "a/b/c")
+	mod := module.New(internal.NewTestWorkdir(t), module.Options{Path: "a/b/c"})
 	dev, err := New(mod, "dev")
 	require.NoError(t, err)
 	staging, err := New(mod, "staging")

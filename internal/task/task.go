@@ -29,7 +29,7 @@ type Task struct {
 	JSON          bool
 	Immediate     bool
 	AdditionalEnv []string
-	DependsOn     []*Task
+	DependsOn     []resource.ID
 
 	program   string
 	exclusive bool
@@ -88,6 +88,8 @@ type factory struct {
 	userEnvs []string
 	// Additional user-supplied CLI args.
 	userArgs []string
+	// Terragrunt mode
+	terragrunt bool
 }
 
 type CreateOptions struct {
@@ -110,10 +112,12 @@ type CreateOptions struct {
 	JSON bool
 	// Skip queue and immediately start task
 	Immediate bool
+	// Wait blocks until the task has finished
+	Wait bool
 	// DependsOn are other tasks that all must successfully exit before the
 	// task can be enqueued. If any of the other tasks are canceled or error
 	// then the task will be canceled.
-	DependsOn []*Task
+	DependsOn []resource.ID
 	// Call this function after the task has successfully finished
 	AfterExited func(*Task)
 	// Call this function after the task is enqueued.
@@ -130,7 +134,14 @@ type CreateOptions struct {
 	AfterFinish func(*Task)
 }
 
+// TODO: check presence of mandatory options
 func (f *factory) newTask(opts CreateOptions) (*Task, error) {
+	// In terragrunt mode add default terragrunt flags
+	args := append(f.userArgs, opts.Args...)
+	if f.terragrunt {
+		args = append(args, "--terragrunt-non-interactive")
+	}
+
 	return &Task{
 		Common:        resource.New(resource.Task, opts.Parent),
 		State:         Pending,
@@ -141,7 +152,7 @@ func (f *factory) newTask(opts CreateOptions) (*Task, error) {
 		program:       f.program,
 		Command:       opts.Command,
 		Path:          filepath.Join(f.workdir.String(), opts.Path),
-		Args:          append(f.userArgs, opts.Args...),
+		Args:          args,
 		AdditionalEnv: append(f.userEnvs, opts.Env...),
 		JSON:          opts.JSON,
 		Blocking:      opts.Blocking,
@@ -231,7 +242,7 @@ func (t *Task) LogValue() slog.Value {
 
 // cancel the task - if it is queued it'll skip the running state and enter the
 // exited state
-func (t *Task) cancel() {
+func (t *Task) cancel() error {
 	// lock task state so that cancelation can atomically both inspect current
 	// state and update state
 	t.mu.Lock()
@@ -239,16 +250,12 @@ func (t *Task) cancel() {
 
 	switch t.State {
 	case Exited, Errored, Canceled:
-		// silently take no action if already finished
-		return
+		return errors.New("task has already finished")
 	case Pending, Queued:
 		t.updateState(Canceled)
-		return
+		return nil
 	default: // running
-		// ignore any errors from signal; instead take a "best effort" approach
-		// to canceling
-		_ = t.proc.Signal(os.Interrupt)
-		return
+		return t.proc.Signal(os.Interrupt)
 	}
 }
 

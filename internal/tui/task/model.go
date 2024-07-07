@@ -134,7 +134,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, keys.Common.Cancel):
-			return m, m.helpers.CreateTasks("cancel", m.svc.Cancel, m.task.ID)
+			return m, cancel(m.svc, m.task.ID)
 		case key.Matches(msg, keys.Common.Apply):
 			if m.run != nil {
 				// Only trigger an apply if run is in the planned state

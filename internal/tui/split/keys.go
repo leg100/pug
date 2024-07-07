@@ -3,22 +3,22 @@ package split
 import "github.com/charmbracelet/bubbles/key"
 
 type keyMap struct {
-	TogglePreview key.Binding
-	GrowPreview   key.Binding
-	ShrinkPreview key.Binding
+	ToggleSplit   key.Binding
+	IncreaseSplit key.Binding
+	DecreaseSplit key.Binding
 }
 
 var Keys = keyMap{
-	TogglePreview: key.NewBinding(
-		key.WithKeys("P"),
-		key.WithHelp("P", "toggle preview"),
+	ToggleSplit: key.NewBinding(
+		key.WithKeys("S"),
+		key.WithHelp("S", "toggle split"),
 	),
-	GrowPreview: key.NewBinding(
-		key.WithKeys("+"),
-		key.WithHelp("+", "grow preview"),
-	),
-	ShrinkPreview: key.NewBinding(
+	DecreaseSplit: key.NewBinding(
 		key.WithKeys("-"),
-		key.WithHelp("-", "shrink preview"),
+		key.WithHelp("-", "decrease split"),
+	),
+	IncreaseSplit: key.NewBinding(
+		key.WithKeys("+"),
+		key.WithHelp("+", "increase split"),
 	),
 }

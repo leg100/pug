@@ -4,10 +4,13 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/leg100/pug/internal/resource"
 	"github.com/leg100/pug/internal/task"
 	"github.com/leg100/pug/internal/tui"
+	"github.com/leg100/pug/internal/tui/keys"
+	"github.com/leg100/pug/internal/tui/split"
 	"github.com/leg100/pug/internal/tui/table"
 )
 
@@ -123,4 +126,14 @@ func (m groupModel) Title() string {
 
 func (m groupModel) Status() string {
 	return m.helpers.GroupReport(m.group, false)
+}
+
+func (m groupModel) HelpBindings() []key.Binding {
+	bindings := []key.Binding{
+		keys.Common.Cancel,
+		keys.Common.Apply,
+		keys.Common.State,
+		keys.Common.Retry,
+	}
+	return append(bindings, keys.KeyMapToSlice(split.Keys)...)
 }

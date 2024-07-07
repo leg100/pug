@@ -26,6 +26,9 @@ const (
 	headerHeight = 1
 	// Height of filter widget
 	filterHeight = 2
+	// Minimum recommended height for the table widget. Respecting this minimum
+	// ensures the header and the borders and the filter widget are visible.
+	MinHeight = 6
 )
 
 // Model defines a state for the table widget.
@@ -164,8 +167,7 @@ func (m *Model[V]) setDimensions(width, height int) {
 		m.viewport.Height = max(0, m.viewport.Height-filterHeight)
 	}
 
-	// Set available width for table to expand into, whilst respecting a
-	// minimum width of 80, and accomodating border.
+	// Set available width for table to expand into, accomodating border.
 	m.viewport.Width = max(0, width-2)
 	m.recalculateWidth()
 
@@ -232,8 +234,8 @@ func (m Model[V]) Update(msg tea.Msg) (Model[V], tea.Cmd) {
 		blink := m.filter.Focus()
 		// Resize the viewport to accommodate the filter widget
 		m.setDimensions(m.width, m.height)
-		// Acknowledge the request, and start blinking the cursor.
-		return m, tea.Batch(tui.CmdHandler(tui.FilterFocusAckMsg{}), blink)
+		// Start blinking the cursor.
+		return m, blink
 	case tui.FilterBlurMsg:
 		// Blur the filter widget
 		m.filter.Blur()
@@ -317,11 +319,15 @@ func (m *Model[V]) SetBorderStyle(border lipgloss.Border, color lipgloss.Termina
 	m.borderColor = color
 }
 
-// UpdateViewport updates the list content based on the previously defined
-// columns and rows.
+// UpdateViewport populates the viewport with table rows.
 func (m *Model[V]) UpdateViewport() {
-	// Render only visible rows.
-	m.start = max(0, m.cursorRow-m.offset)
+	// In case the height has been shrunk, ensure the cursor offset is no
+	// greater than the viewport height.
+	m.offset = min(m.offset, m.viewport.Height-1)
+	// In case the height has been increased, ensure the start index is no
+	// greater than the number of rows minus the viewport height.
+	m.start = clamp(m.cursorRow-m.offset, 0, max(0, len(m.rows)-m.viewport.Height))
+	// The number of visible rows cannot exceed the viewport height.
 	visible := min(m.viewport.Height, len(m.rows)-m.start)
 
 	renderedRows := make([]string, visible)
@@ -477,11 +483,7 @@ func (m Model[V]) RowInfo() string {
 	top := m.start + 1
 	bottom := m.start + m.viewport.VisibleLineCount()
 
-	// Only print range of rows if there are any rows
-	var prefix string
-	if (bottom - top) > 0 {
-		prefix = fmt.Sprintf("%d-%d of ", top, bottom)
-	}
+	prefix := fmt.Sprintf("%d-%d of ", top, bottom)
 
 	if m.filterVisible() {
 		return prefix + fmt.Sprintf("%d/%d", len(m.rows), len(m.items))
@@ -522,17 +524,17 @@ func (m *Model[V]) SetItems(items map[resource.ID]V) {
 			// the user edits the filter value, particularly as the row renderer
 			// can make data lookups on each invocation. But there is no obvious
 			// alternative at present.
-			filterMatch := func(v V) bool {
-				for _, v := range m.rowRenderer(it) {
+			filterMatch := func() bool {
+				for _, row := range m.rowRenderer(it) {
 					// Remove ANSI escapes code before filtering
-					v = internal.StripAnsi(v)
-					if strings.Contains(v, m.filter.Value()) {
+					row = internal.StripAnsi(row)
+					if strings.Contains(row, m.filter.Value()) {
 						return true
 					}
 				}
 				return false
 			}
-			if !filterMatch(it) {
+			if !filterMatch() {
 				// Skip item not matching filter
 				continue
 			}
@@ -741,5 +743,8 @@ func (m *Model[V]) Prune(fn func(value V) (resource.ID, bool)) ([]resource.ID, e
 }
 
 func clamp(v, low, high int) int {
-	return min(max(v, low), high)
+	if high < low {
+		low, high = high, low
+	}
+	return min(high, max(low, v))
 }

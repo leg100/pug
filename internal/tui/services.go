@@ -40,11 +40,13 @@ type RunService interface {
 	Get(id resource.ID) (*run.Run, error)
 	List(opts run.ListOptions) []*run.Run
 	Plan(workspaceID resource.ID, opts run.CreateOptions) (*task.Task, error)
-	Apply(opts *run.CreateOptions, ids ...resource.ID) (*task.Group, error)
+	Apply(id resource.ID, opts *run.CreateOptions) (task.CreateOptions, error)
 }
 
 type TaskService interface {
+	Create(opts task.CreateOptions) (*task.Task, error)
 	CreateGroup(cmd string, fn task.Func, ids ...resource.ID) (*task.Group, error)
+	CreateDependencyGroup(cmd string, opts ...task.CreateOptions) (*task.Group, error)
 	Retry(taskID resource.ID) (*task.Task, error)
 	Counter() int
 	Get(taskID resource.ID) (*task.Task, error)

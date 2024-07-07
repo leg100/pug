@@ -2,6 +2,7 @@ package module
 
 import (
 	"fmt"
+	"io"
 
 	"github.com/leg100/pug/internal"
 	"github.com/leg100/pug/internal/logging"
@@ -11,8 +12,8 @@ import (
 )
 
 type Service struct {
-	table       *resource.Table[*Module]
-	tasks       *task.Service
+	table       moduleTable
+	tasks       taskCreator
 	workdir     internal.Workdir
 	pluginCache bool
 	logger      logging.Interface
@@ -27,6 +28,18 @@ type ServiceOptions struct {
 	PluginCache bool
 	Logger      logging.Interface
 	Terragrunt  bool
+}
+
+type taskCreator interface {
+	Create(spec task.CreateOptions) (*task.Task, error)
+}
+
+type moduleTable interface {
+	Add(id resource.ID, row *Module)
+	Update(id resource.ID, updater func(existing *Module) error) (*Module, error)
+	Delete(id resource.ID)
+	Get(id resource.ID) (*Module, error)
+	List() []*Module
 }
 
 func NewService(opts ServiceOptions) *Service {
@@ -50,68 +63,88 @@ func NewService(opts ServiceOptions) *Service {
 // to the store before pruning those that are currently stored but can no longer
 // be found.
 func (s *Service) Reload() (added []string, removed []string, err error) {
-	var results []findResult
-	if s.terragrunt {
-		results, err = s.findTerragruntModules()
-	} else {
-		results, err = findModules(s.logger, s.workdir)
-	}
+	found, err := findModules(s.logger, s.workdir)
 	if err != nil {
 		return nil, nil, err
 	}
-	for _, result := range results {
-		// Add module if it isn't in pug already
-		if mod, err := s.GetByPath(result.path); err == resource.ErrNotFound {
-			mod = New(s.workdir, result.path)
+	for _, opts := range found {
+		// Add module if it isn't in pug already, otherwise update in-place
+		if mod, err := s.GetByPath(opts.Path); err == resource.ErrNotFound {
+			mod := New(s.workdir, opts)
 			s.table.Add(mod.ID, mod)
-			added = append(added, result.path)
+			added = append(added, opts.Path)
 		} else if err != nil {
-			// Unexpected error
-			return nil, nil, err
+			return nil, nil, fmt.Errorf("retrieving module: %w", err)
 		} else {
-			// Module exists but update in case dependencies have changed.
-			//s.table.Update(mod.ID, func(existing *Module) error {
-			//	existing.Dependencies = result.dependencies
-			//	return nil
-			//})
+			// Update in-place; the backend may have changed.
+			s.table.Update(mod.ID, func(existing *Module) error {
+				existing.Backend = opts.Backend
+				return nil
+			})
 		}
 	}
 
 	// Cleanup existing modules, removing those that are no longer to be found
 	for _, existing := range s.table.List() {
-		var found bool
-		for _, current := range results {
-			if current.path == existing.Path {
-				found = true
+		var keep bool
+		for _, opts := range found {
+			if opts.Path == existing.Path {
+				keep = true
 				break
 			}
 		}
-		if !found {
+		if !keep {
 			s.table.Delete(existing.ID)
 			removed = append(removed, existing.Path)
 		}
 	}
 	s.logger.Info("reloaded modules", "added", added, "removed", removed)
+
+	if s.terragrunt {
+		if err := s.loadTerragruntDependencies(); err != nil {
+			s.logger.Error("loading terragrunt dependencies: %w", err)
+		}
+	}
 	return
 }
 
-func (s *Service) findTerragruntModules() ([]findResult, error) {
+func (s *Service) loadTerragruntDependencies() error {
 	task, err := s.tasks.Create(task.CreateOptions{
 		Parent:  resource.GlobalResource,
 		Command: []string{"graph-dependencies"},
 		Args:    []string{"--terragrunt-non-interactive"},
+		Wait:    true,
 	})
 	if err != nil {
-		return nil, err
+		return err
 	}
-	if err := task.Wait(); err != nil {
-		return nil, err
-	}
-	results, err := findTerragruntModules(task.NewReader())
+	return s.loadTerragruntDependenciesFromDigraph(task.NewReader())
+}
+
+func (s *Service) loadTerragruntDependenciesFromDigraph(r io.Reader) error {
+	results, err := parseTerragruntGraph(r)
 	if err != nil {
-		return nil, fmt.Errorf("parsing terragrunt dependency graph: %w", err)
+		return fmt.Errorf("parsing terragrunt dependency graph: %w", err)
 	}
-	return results, nil
+	for path, depPaths := range results {
+		if mod, err := s.GetByPath(path); err == nil {
+			// Convert dependency paths to modules
+			dependencyResources := make([]resource.Resource, len(depPaths))
+			for i, path := range depPaths {
+				mod, err := s.GetByPath(path)
+				if err != nil {
+					// TODO: gracefully handle error
+					return err
+				}
+				dependencyResources[i] = mod
+			}
+			s.table.Update(mod.ID, func(existing *Module) error {
+				existing.Common = existing.WithDependencies(dependencyResources...)
+				return nil
+			})
+		}
+	}
+	return nil
 }
 
 // Init invokes terraform init on the module.
@@ -121,15 +154,10 @@ func (s *Service) Init(moduleID resource.ID) (*task.Task, error) {
 		return nil, fmt.Errorf("initializing module: %w", err)
 	}
 
-	args := []string{"-input=false"}
-	if s.terragrunt {
-		args = append(args, "--terragrunt-non-interactive")
-	}
-
 	// create asynchronous task that runs terraform init
 	tsk, err := s.CreateTask(mod, task.CreateOptions{
 		Command:  []string{"init"},
-		Args:     args,
+		Args:     []string{"-input=false"},
 		Blocking: true,
 		// The terraform plugin cache is not concurrency-safe, so only allow one
 		// init task to run at any given time.

@@ -10,7 +10,7 @@ import (
 )
 
 func TestWorkspace_TerraformEnv(t *testing.T) {
-	mod := module.New(internal.NewTestWorkdir(t), "a/b/c")
+	mod := module.New(internal.NewTestWorkdir(t), module.Options{Path: "a/b/c"})
 	ws, err := New(mod, "dev")
 	require.NoError(t, err)
 

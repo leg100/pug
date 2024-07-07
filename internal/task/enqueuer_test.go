@@ -79,7 +79,7 @@ func TestEnqueuer(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			e := enqueuer{
-				tasks: &fakeEnqueuerLister{
+				tasks: &fakeEnqueuerTaskService{
 					pending: tt.pending,
 					active:  tt.active,
 				},
@@ -89,11 +89,13 @@ func TestEnqueuer(t *testing.T) {
 	}
 }
 
-type fakeEnqueuerLister struct {
+type fakeEnqueuerTaskService struct {
 	pending, active []*Task
+
+	enqueuerTaskService
 }
 
-func (f *fakeEnqueuerLister) List(opts ListOptions) []*Task {
+func (f *fakeEnqueuerTaskService) List(opts ListOptions) []*Task {
 	if slices.Equal(opts.Status, []Status{Queued, Running}) {
 		return f.active
 	}

@@ -97,11 +97,12 @@ func startApp(cfg config, stdout io.Writer) (*app, error) {
 
 	// Instantiate services
 	tasks := task.NewService(task.ServiceOptions{
-		Program:  cfg.Program,
-		Logger:   logger,
-		Workdir:  workdir,
-		UserEnvs: cfg.Envs,
-		UserArgs: cfg.Args,
+		Program:    cfg.Program,
+		Logger:     logger,
+		Workdir:    workdir,
+		UserEnvs:   cfg.Envs,
+		UserArgs:   cfg.Args,
+		Terragrunt: cfg.Terragrunt,
 	})
 	modules := module.NewService(module.ServiceOptions{
 		TaskService: tasks,

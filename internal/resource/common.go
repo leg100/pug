@@ -4,6 +4,9 @@ package resource
 type Common struct {
 	ID
 	Parent Resource
+
+	// direct dependencies
+	dependencies []Resource
 }
 
 func New(kind Kind, parent Resource) Common {
@@ -43,7 +46,10 @@ func (r Common) Ancestors() (ancestors []Resource) {
 	return append(ancestors, r.Parent.Ancestors()...)
 }
 
-func (r Common) getAncestorKind(k Kind) Resource {
+func (r Common) getCurrentOrAncestorKind(k Kind) Resource {
+	if r.GetKind() == k {
+		return r
+	}
 	for _, parent := range r.Ancestors() {
 		if parent.GetKind() == k {
 			return parent
@@ -53,13 +59,31 @@ func (r Common) getAncestorKind(k Kind) Resource {
 }
 
 func (r Common) Module() Resource {
-	return r.getAncestorKind(Module)
+	return r.getCurrentOrAncestorKind(Module)
 }
 
 func (r Common) Workspace() Resource {
-	return r.getAncestorKind(Workspace)
+	return r.getCurrentOrAncestorKind(Workspace)
 }
 
 func (r Common) Run() Resource {
-	return r.getAncestorKind(Run)
+	return r.getCurrentOrAncestorKind(Run)
+}
+
+func (r Common) Dependencies() []ID {
+	var deps []ID
+	// Direct dependencies
+	for _, res := range r.dependencies {
+		deps = append(deps, res.GetID())
+	}
+	// Indirect dependencies
+	for _, parent := range r.Ancestors() {
+		deps = append(deps, parent.Dependencies()...)
+	}
+	return deps
+}
+
+func (r Common) WithDependencies(deps ...Resource) Common {
+	r.dependencies = deps
+	return r
 }

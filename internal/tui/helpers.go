@@ -242,20 +242,29 @@ func (h *Helpers) CreateApplyTasks(opts *run.CreateOptions, ids ...resource.ID) 
 		case 1:
 			// Only one task is to be created. If successful send user directly to task
 			// page. Otherwise report an error.
-			group, err := h.RunService.Apply(opts, ids[0])
+			spec, err := h.RunService.Apply(ids[0], opts)
+			if err != nil {
+				return ReportError(fmt.Errorf("creating apply task spec: %w", err))
+			}
+			task, err := h.TaskService.Create(spec)
 			if err != nil {
 				return ReportError(fmt.Errorf("creating apply task: %w", err))
 			}
-			if len(group.CreateErrors) > 0 {
-				return ReportError(fmt.Errorf("creating apply task: %w", group.CreateErrors[0]))
-			}
-			return NewNavigationMsg(TaskKind, WithParent(group.Tasks[0]))
+			return NewNavigationMsg(TaskKind, WithParent(task))
 		default:
 			// More than one task is to be created. If successful send user to
 			// task group page.
-			group, err := h.RunService.Apply(opts, ids...)
+			specs := make([]task.CreateOptions, 0, len(ids))
+			for _, id := range ids {
+				spec, err := h.RunService.Apply(id, opts)
+				if err != nil {
+					return ReportError(fmt.Errorf("creating apply task spec: %w", err))
+				}
+				specs = append(specs, spec)
+			}
+			group, err := h.TaskService.CreateDependencyGroup("apply", specs...)
 			if err != nil {
-				return ReportError(fmt.Errorf("creating task group: %w", err))
+				return ReportError(fmt.Errorf("creating apply task group: %w", err))
 			}
 			return NewNavigationMsg(TaskGroupKind, WithParent(group))
 		}

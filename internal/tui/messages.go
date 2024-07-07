@@ -29,12 +29,8 @@ func WithParent(parent resource.Resource) NavigateOption {
 
 type InfoMsg string
 
-// FilterFocusReqMsg is a request to focus the filter widget. FilterFocusAckMsg
-// should be sent in response to ackowledge the request.
+// FilterFocusReqMsg is a request to focus the filter widget.
 type FilterFocusReqMsg struct{}
-
-// FilterFocusAckMsg acknowledges a request to focus the filter widget
-type FilterFocusAckMsg struct{}
 
 // FilterBlurMsg is a request to unfocus the filter widget. It is not
 // acknowledged.

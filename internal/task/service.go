@@ -1,6 +1,7 @@
 package task
 
 import (
+	"errors"
 	"slices"
 
 	"github.com/leg100/pug/internal"
@@ -21,11 +22,12 @@ type Service struct {
 }
 
 type ServiceOptions struct {
-	Program  string
-	Logger   logging.Interface
-	Workdir  internal.Workdir
-	UserEnvs []string
-	UserArgs []string
+	Program    string
+	Logger     logging.Interface
+	Workdir    internal.Workdir
+	UserEnvs   []string
+	UserArgs   []string
+	Terragrunt bool
 }
 
 func NewService(opts ServiceOptions) *Service {
@@ -35,12 +37,13 @@ func NewService(opts ServiceOptions) *Service {
 	groupBroker := pubsub.NewBroker[*Group](opts.Logger)
 
 	factory := &factory{
-		publisher: taskBroker,
-		counter:   &counter,
-		program:   opts.Program,
-		workdir:   opts.Workdir,
-		userEnvs:  opts.UserEnvs,
-		userArgs:  opts.UserArgs,
+		publisher:  taskBroker,
+		counter:    &counter,
+		program:    opts.Program,
+		workdir:    opts.Workdir,
+		userEnvs:   opts.UserEnvs,
+		userArgs:   opts.UserArgs,
+		terragrunt: opts.Terragrunt,
 	}
 
 	svc := &Service{
@@ -74,13 +77,19 @@ func (s *Service) Create(opts CreateOptions) (*Task, error) {
 		opts.AfterCreate(task)
 	}
 
+	wait := make(chan error, 1)
 	go func() {
-		if err := task.Wait(); err != nil {
+		err := task.Wait()
+		wait <- err
+		if err != nil {
 			s.logger.Error("task failed", "error", err, "task", task)
 			return
 		}
 		s.logger.Debug("completed task", "task", task)
 	}()
+	if opts.Wait {
+		return task, <-wait
+	}
 	return task, nil
 }
 
@@ -92,6 +101,23 @@ func (s *Service) CreateGroup(cmd string, fn Func, ids ...resource.ID) (*Group, 
 		return nil, err
 	}
 
+	s.logger.Debug("created task group", "group", group)
+
+	// Add to db
+	s.AddGroup(group)
+
+	return group, nil
+}
+
+func (s *Service) CreateDependencyGroup(cmd string, opts ...CreateOptions) (*Group, error) {
+	if len(opts) == 0 {
+		return nil, errors.New("no specs provided")
+	}
+
+	group, err := NewGroupWithDependencies(s, cmd, opts...)
+	if err != nil {
+		return nil, err
+	}
 	s.logger.Debug("created task group", "group", group)
 
 	// Add to db
@@ -215,13 +241,17 @@ func (s *Service) Get(taskID resource.ID) (*Task, error) {
 }
 
 func (s *Service) Cancel(taskID resource.ID) (*Task, error) {
-	task, err := s.tasks.Get(taskID)
+	task, err := func() (*Task, error) {
+		task, err := s.tasks.Get(taskID)
+		if err != nil {
+			return nil, err
+		}
+		return task, task.cancel()
+	}()
 	if err != nil {
-		s.logger.Error("canceling task", "id", taskID)
+		s.logger.Error("canceling task", "id", taskID, "error", err)
 		return nil, err
 	}
-
-	task.cancel()
 
 	s.logger.Info("canceled task", "task", task)
 	return task, nil
