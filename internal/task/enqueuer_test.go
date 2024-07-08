@@ -4,6 +4,7 @@ import (
 	"slices"
 	"testing"
 
+	"github.com/leg100/pug/internal"
 	"github.com/leg100/pug/internal/resource"
 	"github.com/stretchr/testify/assert"
 )
@@ -11,18 +12,26 @@ import (
 func TestEnqueuer(t *testing.T) {
 	t.Parallel()
 
+	f := &factory{counter: internal.Int(0)}
+
 	mod1 := resource.New(resource.Module, resource.GlobalResource)
 	ws1 := resource.New(resource.Workspace, mod1)
 
-	mod1Task1 := &Task{Common: resource.New(resource.Task, mod1)}
-	mod1TaskBlocking1 := &Task{Common: resource.New(resource.Task, mod1), Blocking: true}
+	mod1Task1 := f.newTask(CreateOptions{Parent: mod1})
+	mod1TaskBlocking1 := f.newTask(CreateOptions{Parent: mod1, Blocking: true})
 
-	ws1Task1 := &Task{Common: resource.New(resource.Task, ws1)}
-	ws1Task2 := &Task{Common: resource.New(resource.Task, ws1)}
-	ws1TaskBlocking1 := &Task{Common: resource.New(resource.Task, ws1), Blocking: true}
-	ws1TaskBlocking2 := &Task{Common: resource.New(resource.Task, ws1), Blocking: true}
-	ws1TaskBlocking3 := &Task{Common: resource.New(resource.Task, ws1), Blocking: true}
-	ws1Immediate := &Task{Common: resource.New(resource.Task, ws1), Immediate: true}
+	ws1Task1 := f.newTask(CreateOptions{Parent: ws1})
+	ws1Task2 := f.newTask(CreateOptions{Parent: ws1})
+	ws1TaskBlocking1 := f.newTask(CreateOptions{Parent: ws1, Blocking: true})
+	ws1TaskBlocking2 := f.newTask(CreateOptions{Parent: ws1, Blocking: true})
+	ws1TaskBlocking3 := f.newTask(CreateOptions{Parent: ws1, Blocking: true})
+	ws1TaskImmediate := f.newTask(CreateOptions{Parent: ws1, Immediate: true})
+	ws1TaskDependOnTask1 := f.newTask(CreateOptions{Parent: ws1, DependsOn: []resource.ID{ws1Task1.ID}})
+
+	ws1TaskCompleted := f.newTask(CreateOptions{Parent: ws1})
+	ws1TaskCompleted.updateState(Exited)
+
+	ws1TaskDependOnCompletedTask := f.newTask(CreateOptions{Parent: ws1, DependsOn: []resource.ID{ws1TaskCompleted.ID}})
 
 	tests := []struct {
 		name string
@@ -30,6 +39,8 @@ func TestEnqueuer(t *testing.T) {
 		active []*Task
 		// Pending tasks
 		pending []*Task
+		// Other tasks for retrieval via their ID
+		other []*Task
 		// Want these tasks enqueued
 		want []*Task
 	}{
@@ -72,8 +83,20 @@ func TestEnqueuer(t *testing.T) {
 		{
 			name:    "enqueue immediate task despite being blocked",
 			active:  []*Task{ws1TaskBlocking1},
-			pending: []*Task{ws1Immediate},
-			want:    []*Task{ws1Immediate},
+			pending: []*Task{ws1TaskImmediate},
+			want:    []*Task{ws1TaskImmediate},
+		},
+		{
+			name:    "don't enqueue task with a dependency on an incomplete task",
+			active:  []*Task{ws1Task1},
+			pending: []*Task{ws1TaskDependOnTask1},
+			want:    []*Task{},
+		},
+		{
+			name:    "enqueue task with a dependency on a completed task",
+			other:   []*Task{ws1TaskCompleted},
+			pending: []*Task{ws1TaskDependOnCompletedTask},
+			want:    []*Task{ws1TaskDependOnCompletedTask},
 		},
 	}
 	for _, tt := range tests {
@@ -82,6 +105,7 @@ func TestEnqueuer(t *testing.T) {
 				tasks: &fakeEnqueuerTaskService{
 					pending: tt.pending,
 					active:  tt.active,
+					other:   tt.other,
 				},
 			}
 			assert.Equal(t, tt.want, e.enqueuable())
@@ -90,9 +114,7 @@ func TestEnqueuer(t *testing.T) {
 }
 
 type fakeEnqueuerTaskService struct {
-	pending, active []*Task
-
-	enqueuerTaskService
+	pending, active, other []*Task
 }
 
 func (f *fakeEnqueuerTaskService) List(opts ListOptions) []*Task {
@@ -103,4 +125,13 @@ func (f *fakeEnqueuerTaskService) List(opts ListOptions) []*Task {
 		return f.pending
 	}
 	return nil
+}
+
+func (f *fakeEnqueuerTaskService) Get(id resource.ID) (*Task, error) {
+	for _, task := range append(append(f.pending, f.active...), f.other...) {
+		if id == task.ID {
+			return task, nil
+		}
+	}
+	return nil, resource.ErrNotFound
 }

@@ -135,7 +135,7 @@ type CreateOptions struct {
 }
 
 // TODO: check presence of mandatory options
-func (f *factory) newTask(opts CreateOptions) (*Task, error) {
+func (f *factory) newTask(opts CreateOptions) *Task {
 	// In terragrunt mode add default terragrunt flags
 	args := append(f.userArgs, opts.Args...)
 	if f.terragrunt {
@@ -157,6 +157,7 @@ func (f *factory) newTask(opts CreateOptions) (*Task, error) {
 		JSON:          opts.JSON,
 		Blocking:      opts.Blocking,
 		DependsOn:     opts.DependsOn,
+		Immediate:     opts.Immediate,
 		exclusive:     opts.Exclusive,
 		createOptions: opts,
 		AfterExited:   opts.AfterExited,
@@ -167,7 +168,9 @@ func (f *factory) newTask(opts CreateOptions) (*Task, error) {
 		AfterFinish:   opts.AfterFinish,
 		// Publish an event whenever task state is updated
 		afterUpdate: func(t *Task) {
-			f.publisher.Publish(resource.UpdatedEvent, t)
+			if f.publisher != nil {
+				f.publisher.Publish(resource.UpdatedEvent, t)
+			}
 		},
 		// Decrement live task counter whenever task terminates
 		afterFinish: func(t *Task) {
@@ -178,7 +181,7 @@ func (f *factory) newTask(opts CreateOptions) (*Task, error) {
 				started: time.Now(),
 			},
 		},
-	}, nil
+	}
 }
 
 func (t *Task) CommandString() string {
@@ -237,6 +240,7 @@ func (t *Task) LogValue() slog.Value {
 		slog.String("id", t.ID.String()),
 		slog.Any("command", t.Command),
 		slog.Any("args", t.Args),
+		slog.Any("deps", t.DependsOn),
 	)
 }
 
@@ -320,13 +324,17 @@ func (t *Task) updateState(state Status) {
 	}
 
 	t.State = state
-	t.afterUpdate(t)
+	if t.afterUpdate != nil {
+		t.afterUpdate(t)
+	}
 
 	if t.IsFinished() {
 		t.recordStatusEndTime(now)
 		t.buf.Close()
 		close(t.finished)
-		t.afterFinish(t)
+		if t.afterFinish != nil {
+			t.afterFinish(t)
+		}
 		if t.AfterFinish != nil {
 			t.AfterFinish(t)
 		}

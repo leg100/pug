@@ -25,6 +25,7 @@ func withTerragrunt() configOption {
 	return func(cfg *config) {
 		cfg.Program = "terragrunt"
 		cfg.Args = []string{"--terragrunt-tfpath", "terraform"}
+		cfg.Terragrunt = true
 	}
 }
 

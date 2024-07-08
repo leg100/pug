@@ -61,10 +61,7 @@ func NewService(opts ServiceOptions) *Service {
 // Create a task. The task is placed into a pending state and requires enqueuing
 // before it'll be processed.
 func (s *Service) Create(opts CreateOptions) (*Task, error) {
-	task, err := s.newTask(opts)
-	if err != nil {
-		return nil, err
-	}
+	task := s.newTask(opts)
 
 	s.logger.Debug("created task", "task", task)
 
@@ -114,7 +111,7 @@ func (s *Service) CreateDependencyGroup(cmd string, reverse bool, opts ...Create
 		return nil, errors.New("no specs provided")
 	}
 
-	group, err := NewGroupWithDependencies(s, cmd, reverse, opts...)
+	group, err := newGroupWithDependencies(s, cmd, reverse, opts...)
 	if err != nil {
 		return nil, err
 	}

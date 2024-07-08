@@ -62,28 +62,10 @@ func (e *enqueuer) enqueuable() []*Task {
 			// enqueued for resources belonging to the task's parent resource
 			blocked[t.Parent.GetID()] = struct{}{}
 		}
-		// Check if task depends upon successful completion of
-		// other tasks.
-		for _, id := range t.DependsOn {
-			dependency, err := e.tasks.Get(id)
-			if err != nil {
-				// TODO: decide what to do in case of error
-				continue
-			}
-
-			switch dependency.State {
-			case Exited:
-				// Is enqueuable if all dependencies have exited successfully.
-			case Canceled, Errored:
-				// Dependency failed so mark task as failed too.
-				// Write message to task output first to tell user why it failed
-				t.buf.Write([]byte("task dependency failed"))
-				t.updateState(Canceled)
-				continue
-			default:
-				// Not enqueueable
-				continue
-			}
+		// If task depends upon other tasks then only enqueue task if they have
+		// all successfully completed.
+		if !e.enqueueDependentTask(t) {
+			continue
 		}
 		// Enqueueable
 		pending[i] = t
@@ -91,6 +73,31 @@ func (e *enqueuer) enqueuable() []*Task {
 	}
 	// Enqueue filtered pending tasks
 	return pending[:i]
+}
+
+func (e *enqueuer) enqueueDependentTask(t *Task) bool {
+	for _, id := range t.DependsOn {
+		dependency, err := e.tasks.Get(id)
+		if err != nil {
+			// TODO: decide what to do in case of error
+			return false
+		}
+
+		switch dependency.State {
+		case Exited:
+			// Is enqueuable if all dependencies have exited successfully.
+		case Canceled, Errored:
+			// Dependency failed so mark task as failed too by cancelling it
+			// along with a reason why it was canceled.
+			t.buf.Write([]byte("task dependency failed"))
+			t.updateState(Canceled)
+			return false
+		default:
+			// Not enqueueable
+			return false
+		}
+	}
+	return true
 }
 
 func hasBlockedAncestor(blocked map[resource.ID]struct{}, parent resource.Resource) bool {

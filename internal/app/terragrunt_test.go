@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/leg100/pug/internal"
 )
 
 func TestTerragrunt_SingleInit(t *testing.T) {
@@ -53,6 +54,106 @@ func TestTerragrunt_SingleApply(t *testing.T) {
 	})
 }
 
+// TestTerragrunt_Dependencies tests that terragrunt dependencies are
+// respected.
+func TestTerragrunt_Dependencies(t *testing.T) {
+	t.Parallel()
+	skipIfTerragruntNotFound(t)
+
+	tm := setupAndInitTerragruntModulesWithDependencies(t)
+
+	// Select all modules and create apply on each
+	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlA})
+	tm.Type("a")
+
+	// Give approval
+	waitFor(t, tm, func(s string) bool {
+		return strings.Contains(s, "Auto-apply 6 modules? (y/N):")
+	})
+	tm.Type("y")
+
+	// Expect 6 applies. The "." module fails because it doesn't have any config
+	// files.
+	waitFor(t, tm, func(s string) bool {
+		return matchPattern(t, "TaskGroup.*apply.*1/5/6", s) &&
+			matchPattern(t, `modules/vpc.*default.*\+0~0-0`, s) &&
+			matchPattern(t, `modules/redis.*default.*\+0~0-0`, s) &&
+			matchPattern(t, `modules/mysql.*default.*\+0~0-0`, s) &&
+			matchPattern(t, `modules/backend-app.*default.*\+0~0-0`, s) &&
+			matchPattern(t, `modules/frontend-app.*default.*\+0~0-0`, s) &&
+			matchPattern(t, `\..*default.*errored`, s)
+	})
+
+	// Go back to modules listing
+	tm.Type("m")
+
+	// Expect several modules to now have some resources
+	waitFor(t, tm, func(s string) bool {
+		return matchPattern(t, "modules/vpc.*default.*0", s) &&
+			matchPattern(t, `modules/mysql.*default.*1`, s) &&
+			matchPattern(t, "modules/redis.*default.*1", s) &&
+			matchPattern(t, "modules/backend-app.*default.*3", s) &&
+			matchPattern(t, "modules/frontend-app.*default.*2", s)
+	})
+
+	// Create a destroy plan on all modules (they should still all be selected).
+	tm.Type("d")
+
+	// Expect 6 plan tasks.
+	waitFor(t, tm, func(s string) bool {
+		return matchPattern(t, "TaskGroup.*plan.*6/6", s) &&
+			matchPattern(t, `modules/vpc.*default.*\+0~0-0`, s) &&
+			matchPattern(t, `modules/redis.*default.*\+0~0-0`, s) &&
+			matchPattern(t, `modules/mysql.*default.*\+0~0-0`, s) &&
+			matchPattern(t, `modules/backend-app.*default.*\+0~0-0`, s) &&
+			matchPattern(t, `modules/frontend-app.*default.*\+0~0-0`, s) &&
+			matchPattern(t, `\..*default.*exited`, s)
+	})
+
+	// Select all tasks and apply their plans
+	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlA})
+	tm.Type("a")
+
+	// The "." module should be de-selected because it doesn't have a plan to
+	// apply.
+	waitFor(t, tm, func(s string) bool {
+		// Remove bold formatting from error message
+		s = internal.StripAnsi(s)
+		return strings.Contains(s, "Error: applying tasks: de-selected 1 inapplicable rows out of 6")
+	})
+
+	// Apply 5 remaining tasks.
+	tm.Type("a")
+
+	// Give approval
+	waitFor(t, tm, func(s string) bool {
+		return strings.Contains(s, "Apply 5 plans? (y/N):")
+	})
+	tm.Type("y")
+
+	// Expect 5 apply tasks.
+	waitFor(t, tm, func(s string) bool {
+		return matchPattern(t, "TaskGroup.*apply.*5/5", s) &&
+			matchPattern(t, `modules/vpc.*default.*\+0~0-0`, s) &&
+			matchPattern(t, `modules/redis.*default.*\+0~0-0`, s) &&
+			matchPattern(t, `modules/mysql.*default.*\+0~0-0`, s) &&
+			matchPattern(t, `modules/backend-app.*default.*\+0~0-0`, s) &&
+			matchPattern(t, `modules/frontend-app.*default.*\+0~0-0`, s)
+	})
+
+	// Go to modules listing
+	tm.Type("m")
+
+	// Expect modules to now have some 0 resources
+	waitFor(t, tm, func(s string) bool {
+		return matchPattern(t, "modules/vpc.*default.*0", s) &&
+			matchPattern(t, `modules/mysql.*default.*0`, s) &&
+			matchPattern(t, "modules/redis.*default.*0", s) &&
+			matchPattern(t, "modules/backend-app.*default.*0", s) &&
+			matchPattern(t, "modules/frontend-app.*default.*0", s)
+	})
+}
+
 func skipIfTerragruntNotFound(t *testing.T) {
 	if _, err := exec.LookPath("terragrunt"); err != nil {
 		t.Skip("skipping test: terragrunt not found")
@@ -89,6 +190,52 @@ func setupAndInitTerragruntModule(t *testing.T) *testModel {
 	waitFor(t, tm, func(s string) bool {
 		return matchPattern(t, "modules/a.*default", s)
 	})
+
+	return tm
+}
+
+func setupAndInitTerragruntModulesWithDependencies(t *testing.T) *testModel {
+	tm := setup(t, "./testdata/terragrunt_modules_with_dependencies", withTerragrunt())
+
+	// Expect several modules to be listed, along with dependencies.
+	//
+	// NOTE: the integration test terminal width is limited, therefore
+	// the dependencies column is cut short with an ellipsis, preventing full
+	// assertion of all dependencies.
+	waitFor(t, tm, func(s string) bool {
+		return strings.Contains(s, "modules/vpc") &&
+			matchPattern(t, `modules/mysql.*modules/vpc`, s) &&
+			matchPattern(t, "modules/redis.*modules/vpc", s) &&
+			strings.Contains(s, "modules/backend-app") &&
+			strings.Contains(s, "modules/frontend-app")
+	})
+
+	// Select all modules and init
+	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlA})
+	tm.Type("i")
+	waitFor(t, tm, func(s string) bool {
+		return matchPattern(t, "TaskGroup.*init", s) &&
+			matchPattern(t, `modules/vpc.*exited`, s) &&
+			matchPattern(t, `modules/redis.*exited`, s) &&
+			matchPattern(t, `modules/mysql.*exited`, s) &&
+			matchPattern(t, `modules/frontend-app.*exited`, s) &&
+			matchPattern(t, `modules/backend-app.*exited`, s)
+	})
+
+	// Go back to modules listing
+	tm.Send(tea.KeyMsg{Type: tea.KeyEsc})
+
+	// Expect modules to be listed along with their default workspace.
+	waitFor(t, tm, func(s string) bool {
+		return matchPattern(t, "modules/vpc.*default", s) &&
+			matchPattern(t, `modules/mysql.*default`, s) &&
+			matchPattern(t, "modules/redis.*default", s) &&
+			matchPattern(t, "modules/backend-app.*default", s) &&
+			matchPattern(t, "modules/frontend-app.*default", s)
+	})
+
+	// Clear selection
+	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlBackslash})
 
 	return tm
 }

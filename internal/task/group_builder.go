@@ -10,8 +10,8 @@ type taskCreator interface {
 	Create(spec CreateOptions) (*Task, error)
 }
 
-// NewGroupWithDependencies constructs a graph from the given task specs.
-func NewGroupWithDependencies(svc taskCreator, cmd string, reverse bool, specs ...CreateOptions) (*Group, error) {
+// newGroupWithDependencies constructs a graph from the given task specs.
+func newGroupWithDependencies(svc taskCreator, cmd string, reverse bool, specs ...CreateOptions) (*Group, error) {
 	b := groupBuilder{
 		g:     NewEmptyGroup(cmd),
 		nodes: make(map[resource.ID]*groupBuilderNode),
@@ -105,7 +105,7 @@ func (b *groupBuilder) visitAndCreateTasks(n *groupBuilderNode) {
 		dependsOn = append(dependsOn, out.created...)
 	}
 	// For each spec, add dependencies on other tasks before creating task and
-	// adding its ID to the vertex
+	// adding its ID to the node
 	for _, spec := range n.specs {
 		spec.DependsOn = dependsOn
 		if task := b.createTask(spec); task != nil {
@@ -125,7 +125,7 @@ func (b *groupBuilder) visitAndCreateTasksInReverse(n *groupBuilderNode) {
 		dependsOn = append(dependsOn, in.created...)
 	}
 	// For each spec, add dependencies on other tasks before creating task and
-	// adding its ID to the vertex
+	// adding its ID to the node
 	for _, spec := range n.specs {
 		spec.DependsOn = dependsOn
 		if task := b.createTask(spec); task != nil {

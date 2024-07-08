@@ -11,7 +11,7 @@ import (
 type fakeTaskCreator struct{}
 
 func (f *fakeTaskCreator) Create(spec CreateOptions) (*Task, error) {
-	return (&factory{}).newTask(spec)
+	return (&factory{}).newTask(spec), nil
 }
 
 func TestNewGroupWithDependencies(t *testing.T) {
@@ -31,7 +31,7 @@ func TestNewGroupWithDependencies(t *testing.T) {
 	mqSpec := CreateOptions{Parent: mq, Path: "mq"}
 
 	t.Run("normal order", func(t *testing.T) {
-		got, err := NewGroupWithDependencies(&fakeTaskCreator{}, "apply", false,
+		got, err := newGroupWithDependencies(&fakeTaskCreator{}, "apply", false,
 			vpcSpec,
 			mysqlSpec,
 			redisSpec,
@@ -52,7 +52,7 @@ func TestNewGroupWithDependencies(t *testing.T) {
 	})
 
 	t.Run("reverse order", func(t *testing.T) {
-		got, err := NewGroupWithDependencies(&fakeTaskCreator{}, "apply", true,
+		got, err := newGroupWithDependencies(&fakeTaskCreator{}, "apply", true,
 			vpcSpec,
 			mysqlSpec,
 			redisSpec,
