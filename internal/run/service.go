@@ -1,6 +1,7 @@
 package run
 
 import (
+	"errors"
 	"fmt"
 	"slices"
 
@@ -84,8 +85,9 @@ func (s *Service) plan(workspaceID resource.ID, opts CreateOptions) (*task.Task,
 		return nil, err
 	}
 	task, err := s.createTask(run, task.CreateOptions{
-		Command:  []string{"plan"},
-		Args:     run.planArgs(),
+		Command: []string{"plan"},
+		Args:    run.planArgs(),
+		// TODO: explain why plan is blocking (?)
 		Blocking: true,
 		AfterQueued: func(*task.Task) {
 			run.updateStatus(PlanQueued)
@@ -119,7 +121,42 @@ func (s *Service) plan(workspaceID resource.ID, opts CreateOptions) (*task.Task,
 //
 // If opts is nil, then it will apply an existing plan. The ID must specify an
 // existing run that has successfully created a plan.
-func (s *Service) Apply(id resource.ID, opts *CreateOptions) (task.CreateOptions, error) {
+func (s *Service) Apply(id resource.ID, opts *CreateOptions) (*task.Task, error) {
+	spec, _, err := s.createApplySpec(id, opts)
+	if err != nil {
+		return nil, err
+	}
+	return s.tasks.Create(spec)
+}
+
+// MultiApply creates a task group of one or more apply tasks. See Apply() for
+// info on parameters.
+//
+// You cannot apply a combination of destory and non-destroy plans, because that
+// is incompatible with the dependency graph that is created to order the tasks.
+func (s *Service) MultiApply(opts *CreateOptions, ids ...resource.ID) (*task.Group, error) {
+	if len(ids) == 0 {
+		return nil, errors.New("no ids specified")
+	}
+	var destroy *bool
+	specs := make([]task.CreateOptions, 0, len(ids))
+	for _, id := range ids {
+		spec, run, err := s.createApplySpec(id, opts)
+		if err != nil {
+			return nil, err
+		}
+		if destroy == nil {
+			destroy = &run.Destroy
+		} else if *destroy != run.Destroy {
+			return nil, errors.New("cannot apply a combination of destroy and non-destroy plans")
+		}
+
+		specs = append(specs, spec)
+	}
+	return s.tasks.CreateDependencyGroup("apply", *destroy, specs...)
+}
+
+func (s *Service) createApplySpec(id resource.ID, opts *CreateOptions) (task.CreateOptions, *Run, error) {
 	// Create or retrieve existing run.
 	var (
 		run *Run
@@ -137,12 +174,11 @@ func (s *Service) Apply(id resource.ID, opts *CreateOptions) (task.CreateOptions
 		}
 	}
 	if err != nil {
-		return task.CreateOptions{}, err
+		return task.CreateOptions{}, nil, err
 	}
 	s.table.Add(run.ID, run)
 
 	spec := task.CreateOptions{
-		Parent:   run,
 		Command:  []string{"apply"},
 		Args:     run.applyArgs(),
 		Blocking: true,
@@ -170,9 +206,9 @@ func (s *Service) Apply(id resource.ID, opts *CreateOptions) (task.CreateOptions
 		},
 	}
 	if err := s.addWorkspaceAndPathToTaskSpec(run, &spec); err != nil {
-		return task.CreateOptions{}, err
+		return task.CreateOptions{}, nil, err
 	}
-	return spec, nil
+	return spec, run, nil
 }
 
 func (s *Service) Get(runID resource.ID) (*Run, error) {

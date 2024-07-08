@@ -109,12 +109,12 @@ func (s *Service) CreateGroup(cmd string, fn Func, ids ...resource.ID) (*Group, 
 	return group, nil
 }
 
-func (s *Service) CreateDependencyGroup(cmd string, opts ...CreateOptions) (*Group, error) {
+func (s *Service) CreateDependencyGroup(cmd string, reverse bool, opts ...CreateOptions) (*Group, error) {
 	if len(opts) == 0 {
 		return nil, errors.New("no specs provided")
 	}
 
-	group, err := NewGroupWithDependencies(s, cmd, opts...)
+	group, err := NewGroupWithDependencies(s, cmd, reverse, opts...)
 	if err != nil {
 		return nil, err
 	}

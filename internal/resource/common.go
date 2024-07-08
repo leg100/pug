@@ -6,7 +6,7 @@ type Common struct {
 	Parent Resource
 
 	// direct dependencies
-	dependencies []Resource
+	dependencies []ID
 }
 
 func New(kind Kind, parent Resource) Common {
@@ -71,11 +71,8 @@ func (r Common) Run() Resource {
 }
 
 func (r Common) Dependencies() []ID {
-	var deps []ID
 	// Direct dependencies
-	for _, res := range r.dependencies {
-		deps = append(deps, res.GetID())
-	}
+	deps := r.dependencies
 	// Indirect dependencies
 	for _, parent := range r.Ancestors() {
 		deps = append(deps, parent.Dependencies()...)
@@ -83,7 +80,7 @@ func (r Common) Dependencies() []ID {
 	return deps
 }
 
-func (r Common) WithDependencies(deps ...Resource) Common {
+func (r Common) WithDependencies(deps ...ID) Common {
 	r.dependencies = deps
 	return r
 }

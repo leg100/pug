@@ -9,7 +9,24 @@ import (
 )
 
 func TestParseTerragruntGraph(t *testing.T) {
-	buf := bytes.NewBufferString(terragruntGraphDigraph)
+	var terragruntGraphDependenciesOutput = `
+digraph {
+		"root/backend-app" ;
+		"root/backend-app" -> "root/mysql";
+		"root/backend-app" -> "root/redis";
+		"root/backend-app" -> "root/vpc";
+		"root/frontend-app" ;
+		"root/frontend-app" -> "root/backend-app";
+		"root/frontend-app" -> "root/vpc";
+		"root/mysql" ;
+		"root/mysql" -> "root/vpc";
+		"root/redis" ;
+		"root/redis" -> "root/vpc";
+		"root/vpc" ;
+}
+	`
+
+	buf := bytes.NewBufferString(terragruntGraphDependenciesOutput)
 	got, err := parseTerragruntGraph(buf)
 	require.NoError(t, err)
 

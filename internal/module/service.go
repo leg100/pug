@@ -1,8 +1,10 @@
 package module
 
 import (
+	"errors"
 	"fmt"
 	"io"
+	"path/filepath"
 
 	"github.com/leg100/pug/internal"
 	"github.com/leg100/pug/internal/logging"
@@ -69,7 +71,7 @@ func (s *Service) Reload() (added []string, removed []string, err error) {
 	}
 	for _, opts := range found {
 		// Add module if it isn't in pug already, otherwise update in-place
-		if mod, err := s.GetByPath(opts.Path); err == resource.ErrNotFound {
+		if mod, err := s.GetByPath(opts.Path); errors.Is(err, resource.ErrNotFound) {
 			mod := New(s.workdir, opts)
 			s.table.Add(mod.ID, mod)
 			added = append(added, opts.Path)
@@ -126,24 +128,69 @@ func (s *Service) loadTerragruntDependenciesFromDigraph(r io.Reader) error {
 		return fmt.Errorf("parsing terragrunt dependency graph: %w", err)
 	}
 	for path, depPaths := range results {
-		if mod, err := s.GetByPath(path); err == nil {
-			// Convert dependency paths to modules
-			dependencyResources := make([]resource.Resource, len(depPaths))
-			for i, path := range depPaths {
-				mod, err := s.GetByPath(path)
-				if err != nil {
-					// TODO: gracefully handle error
+		// If absolute path then convert to path relative to pug's working
+		// directory.
+		if filepath.IsAbs(path) {
+			var err error
+			if path, err = s.stripWorkdirFromPath(path); err != nil {
+				s.logger.Error("loading terragrunt dependencies", "error", err)
+				// Skip loading dependencies for this module
+				continue
+			}
+		}
+		// Retrieve module. If it cannot be found it is probably because the
+		// module is outside of pug's working directory, in which case classify
+		// it as a warning rather than an error.
+		mod, err := s.GetByPath(path)
+		if err != nil {
+			if errors.Is(err, resource.ErrNotFound) {
+				s.logger.Warn("loading terragrunt dependencies", "error", err)
+			} else {
+				s.logger.Error("loading terragrunt dependencies", "error", err)
+			}
+			// Skip handling dependencies for this module.
+			continue
+		}
+		// Convert dependency paths to module IDs
+		dependencyIDs := make([]resource.ID, len(depPaths))
+		for i, path := range depPaths {
+			// If absolute path then convert to path relative to pug's working
+			// directory.
+			if filepath.IsAbs(path) {
+				var err error
+				if path, err = s.stripWorkdirFromPath(path); err != nil {
+					// Skip loading this dependency
 					return err
 				}
-				dependencyResources[i] = mod
 			}
-			s.table.Update(mod.ID, func(existing *Module) error {
-				existing.Common = existing.WithDependencies(dependencyResources...)
-				return nil
-			})
+			// Retrieve module. If it cannot be found it is probably because the
+			// module is outside of pug's working directory, in which case classify
+			// it as a warning rather than an error.
+			mod, err := s.GetByPath(path)
+			if err != nil {
+				if errors.Is(err, resource.ErrNotFound) {
+					s.logger.Warn("loading terragrunt dependency", "error", err)
+				} else {
+					s.logger.Error("loading terragrunt dependency", "error", err)
+				}
+				// Skip loading this dependency
+				continue
+			}
+			dependencyIDs[i] = mod.ID
 		}
+		s.table.Update(mod.ID, func(existing *Module) error {
+			existing.Common = existing.WithDependencies(dependencyIDs...)
+			return nil
+		})
 	}
 	return nil
+}
+
+func (s *Service) stripWorkdirFromPath(path string) (string, error) {
+	if filepath.IsAbs(path) {
+		return filepath.Rel(s.workdir.String(), path)
+	}
+	return path, nil
 }
 
 // Init invokes terraform init on the module.
@@ -189,7 +236,7 @@ func (s *Service) GetByPath(path string) (*Module, error) {
 			return mod, nil
 		}
 	}
-	return nil, resource.ErrNotFound
+	return nil, fmt.Errorf("%s: %w", path, resource.ErrNotFound)
 }
 
 func (s *Service) SetCurrent(moduleID, workspaceID resource.ID) error {

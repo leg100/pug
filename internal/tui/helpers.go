@@ -242,11 +242,7 @@ func (h *Helpers) CreateApplyTasks(opts *run.CreateOptions, ids ...resource.ID) 
 		case 1:
 			// Only one task is to be created. If successful send user directly to task
 			// page. Otherwise report an error.
-			spec, err := h.RunService.Apply(ids[0], opts)
-			if err != nil {
-				return ReportError(fmt.Errorf("creating apply task spec: %w", err))
-			}
-			task, err := h.TaskService.Create(spec)
+			task, err := h.RunService.Apply(ids[0], opts)
 			if err != nil {
 				return ReportError(fmt.Errorf("creating apply task: %w", err))
 			}
@@ -254,15 +250,7 @@ func (h *Helpers) CreateApplyTasks(opts *run.CreateOptions, ids ...resource.ID) 
 		default:
 			// More than one task is to be created. If successful send user to
 			// task group page.
-			specs := make([]task.CreateOptions, 0, len(ids))
-			for _, id := range ids {
-				spec, err := h.RunService.Apply(id, opts)
-				if err != nil {
-					return ReportError(fmt.Errorf("creating apply task spec: %w", err))
-				}
-				specs = append(specs, spec)
-			}
-			group, err := h.TaskService.CreateDependencyGroup("apply", specs...)
+			group, err := h.RunService.MultiApply(opts, ids...)
 			if err != nil {
 				return ReportError(fmt.Errorf("creating apply task group: %w", err))
 			}
