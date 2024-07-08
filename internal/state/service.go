@@ -56,6 +56,20 @@ func (s *Service) Get(workspaceID resource.ID) (*State, error) {
 	return s.cache.Get(workspaceID)
 }
 
+// GetResource retrieves a state resource.
+//
+// TODO: this is massively inefficient
+func (s *Service) GetResource(resourceID resource.ID) (*Resource, error) {
+	for _, state := range s.cache.List() {
+		for _, res := range state.Resources {
+			if res.ID == resourceID {
+				return res, nil
+			}
+		}
+	}
+	return nil, resource.ErrNotFound
+}
+
 // Reload creates a task to repopulate the local cache of the state of the given
 // workspace.
 func (s *Service) Reload(workspaceID resource.ID) (*task.Task, error) {

@@ -30,6 +30,7 @@ type WorkspaceService interface {
 type StateService interface {
 	Reload(workspaceID resource.ID) (*task.Task, error)
 	Get(workspaceID resource.ID) (*state.State, error)
+	GetResource(resourceID resource.ID) (*state.Resource, error)
 	Delete(workspaceID resource.ID, addrs ...state.ResourceAddress) (*task.Task, error)
 	Taint(workspaceID resource.ID, addr state.ResourceAddress) (*task.Task, error)
 	Untaint(workspaceID resource.ID, addr state.ResourceAddress) (*task.Task, error)
@@ -40,15 +41,18 @@ type RunService interface {
 	Get(id resource.ID) (*run.Run, error)
 	List(opts run.ListOptions) []*run.Run
 	Plan(workspaceID resource.ID, opts run.CreateOptions) (*task.Task, error)
-	ApplyOnly(workspaceID resource.ID, opts run.CreateOptions) (*task.Task, error)
-	ApplyPlan(runID resource.ID) (*task.Task, error)
+	Apply(id resource.ID, opts *run.CreateOptions) (*task.Task, error)
+	MultiApply(opts *run.CreateOptions, ids ...resource.ID) (*task.Group, error)
 }
 
 type TaskService interface {
+	Create(opts task.CreateOptions) (*task.Task, error)
 	CreateGroup(cmd string, fn task.Func, ids ...resource.ID) (*task.Group, error)
+	CreateDependencyGroup(cmd string, reverse bool, opts ...task.CreateOptions) (*task.Group, error)
 	Retry(taskID resource.ID) (*task.Task, error)
 	Counter() int
 	Get(taskID resource.ID) (*task.Task, error)
+	GetGroup(groupID resource.ID) (*task.Group, error)
 	List(opts task.ListOptions) []*task.Task
 	ListGroups() []*task.Group
 	Cancel(taskID resource.ID) (*task.Task, error)

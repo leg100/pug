@@ -29,6 +29,7 @@ type Task struct {
 	JSON          bool
 	Immediate     bool
 	AdditionalEnv []string
+	DependsOn     []resource.ID
 
 	program   string
 	exclusive bool
@@ -111,6 +112,12 @@ type CreateOptions struct {
 	JSON bool
 	// Skip queue and immediately start task
 	Immediate bool
+	// Wait blocks until the task has finished
+	Wait bool
+	// DependsOn are other tasks that all must successfully exit before the
+	// task can be enqueued. If any of the other tasks are canceled or error
+	// then the task will be canceled.
+	DependsOn []resource.ID
 	// Call this function after the task has successfully finished
 	AfterExited func(*Task)
 	// Call this function after the task is enqueued.
@@ -127,7 +134,8 @@ type CreateOptions struct {
 	AfterFinish func(*Task)
 }
 
-func (f *factory) newTask(opts CreateOptions) (*Task, error) {
+// TODO: check presence of mandatory options
+func (f *factory) newTask(opts CreateOptions) *Task {
 	// In terragrunt mode add default terragrunt flags
 	args := append(f.userArgs, opts.Args...)
 	if f.terragrunt {
@@ -148,6 +156,8 @@ func (f *factory) newTask(opts CreateOptions) (*Task, error) {
 		AdditionalEnv: append(f.userEnvs, opts.Env...),
 		JSON:          opts.JSON,
 		Blocking:      opts.Blocking,
+		DependsOn:     opts.DependsOn,
+		Immediate:     opts.Immediate,
 		exclusive:     opts.Exclusive,
 		createOptions: opts,
 		AfterExited:   opts.AfterExited,
@@ -158,7 +168,9 @@ func (f *factory) newTask(opts CreateOptions) (*Task, error) {
 		AfterFinish:   opts.AfterFinish,
 		// Publish an event whenever task state is updated
 		afterUpdate: func(t *Task) {
-			f.publisher.Publish(resource.UpdatedEvent, t)
+			if f.publisher != nil {
+				f.publisher.Publish(resource.UpdatedEvent, t)
+			}
 		},
 		// Decrement live task counter whenever task terminates
 		afterFinish: func(t *Task) {
@@ -169,7 +181,7 @@ func (f *factory) newTask(opts CreateOptions) (*Task, error) {
 				started: time.Now(),
 			},
 		},
-	}, nil
+	}
 }
 
 func (t *Task) CommandString() string {
@@ -228,6 +240,7 @@ func (t *Task) LogValue() slog.Value {
 		slog.String("id", t.ID.String()),
 		slog.Any("command", t.Command),
 		slog.Any("args", t.Args),
+		slog.Any("deps", t.DependsOn),
 	)
 }
 
@@ -311,13 +324,17 @@ func (t *Task) updateState(state Status) {
 	}
 
 	t.State = state
-	t.afterUpdate(t)
+	if t.afterUpdate != nil {
+		t.afterUpdate(t)
+	}
 
 	if t.IsFinished() {
 		t.recordStatusEndTime(now)
 		t.buf.Close()
 		close(t.finished)
-		t.afterFinish(t)
+		if t.afterFinish != nil {
+			t.afterFinish(t)
+		}
 		if t.AfterFinish != nil {
 			t.AfterFinish(t)
 		}

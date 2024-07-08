@@ -2,7 +2,6 @@ package workspace
 
 import (
 	"encoding/json"
-	"fmt"
 
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
@@ -22,10 +21,10 @@ type ResourceMaker struct {
 	disableBorders bool
 }
 
-func (mm *ResourceMaker) Make(res resource.Resource, width, height int) (tea.Model, error) {
-	stateResource, ok := res.(*state.Resource)
-	if !ok {
-		return nil, fmt.Errorf("constructing state resource model: unexpected resource type: %T", res)
+func (mm *ResourceMaker) Make(id resource.ID, width, height int) (tea.Model, error) {
+	stateResource, err := mm.StateService.GetResource(id)
+	if err != nil {
+		return nil, err
 	}
 
 	m := resourceModel{

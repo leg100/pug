@@ -30,7 +30,7 @@ type GroupListMaker struct {
 	Helpers     *tui.Helpers
 }
 
-func (m *GroupListMaker) Make(_ resource.Resource, width, height int) (tea.Model, error) {
+func (m *GroupListMaker) Make(_ resource.ID, width, height int) (tea.Model, error) {
 	columns := []table.Column{
 		commandColumn,
 		taskGroupID,

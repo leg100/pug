@@ -31,14 +31,14 @@ type Maker struct {
 	showInfo          bool
 }
 
-func (mm *Maker) Make(res resource.Resource, width, height int) (tea.Model, error) {
-	return mm.make(res, width, height, true)
+func (mm *Maker) Make(id resource.ID, width, height int) (tea.Model, error) {
+	return mm.make(id, width, height, true)
 }
 
-func (mm *Maker) make(res resource.Resource, width, height int, border bool) (tea.Model, error) {
-	task, ok := res.(*task.Task)
-	if !ok {
-		return model{}, errors.New("fatal: cannot make task model with a non-task resource")
+func (mm *Maker) make(id resource.ID, width, height int, border bool) (tea.Model, error) {
+	task, err := mm.TaskService.Get(id)
+	if err != nil {
+		return model{}, err
 	}
 
 	m := model{
@@ -143,7 +143,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 				return m, tui.YesNoPrompt(
 					"Apply plan?",
-					m.helpers.CreateTasks("apply", m.runs.ApplyPlan, m.run.ID),
+					m.helpers.CreateApplyTasks(nil, m.run.ID),
 				)
 			}
 		case key.Matches(msg, keys.Common.State):
@@ -252,6 +252,8 @@ func (m model) View() string {
 			envs,
 			"",
 			fmt.Sprintf("Autoscroll: %s", boolToOnOff(m.viewport.Autoscroll)),
+			"",
+			fmt.Sprintf("Dependencies: %v", m.task.DependsOn),
 		)
 		container := tui.Regular.Copy().
 			Margin(0, 1).

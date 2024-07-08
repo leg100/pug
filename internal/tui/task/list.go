@@ -44,8 +44,8 @@ type ListTaskMaker struct {
 	*Maker
 }
 
-func (m *ListTaskMaker) Make(res resource.Resource, width, height int) (tea.Model, error) {
-	return m.make(res, width, height, false)
+func (m *ListTaskMaker) Make(id resource.ID, width, height int) (tea.Model, error) {
+	return m.make(id, width, height, false)
 }
 
 // NewListMaker constructs a task list model maker
@@ -66,7 +66,7 @@ type ListMaker struct {
 	Helpers     *tui.Helpers
 }
 
-func (mm *ListMaker) Make(parent resource.Resource, width, height int) (tea.Model, error) {
+func (mm *ListMaker) Make(_ resource.ID, width, height int) (tea.Model, error) {
 	columns := []table.Column{
 		table.ModuleColumn,
 		table.WorkspaceColumn,
@@ -148,7 +148,7 @@ func (m List) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return m, tui.YesNoPrompt(
 				fmt.Sprintf("Apply %d plans?", len(runIDs)),
-				m.helpers.CreateTasks("apply", m.runs.ApplyPlan, runIDs...),
+				m.helpers.CreateApplyTasks(nil, runIDs...),
 			)
 		case key.Matches(msg, keys.Common.State):
 			if row, ok := m.Table.CurrentRow(); ok {

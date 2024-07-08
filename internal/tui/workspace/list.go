@@ -30,17 +30,13 @@ type ListMaker struct {
 	Helpers          *tui.Helpers
 }
 
-func (m *ListMaker) Make(parent resource.Resource, width, height int) (tea.Model, error) {
-	var columns []table.Column
-	if parent.GetKind() == resource.Global {
-		// Show module column in global workspaces table
-		columns = append(columns, table.ModuleColumn)
-	}
-	columns = append(columns,
+func (m *ListMaker) Make(_ resource.ID, width, height int) (tea.Model, error) {
+	columns := []table.Column{
+		table.ModuleColumn,
 		table.WorkspaceColumn,
 		currentColumn,
 		table.ResourceCountColumn,
-	)
+	}
 
 	renderer := func(ws *workspace.Workspace) table.RenderedRow {
 		return table.RenderedRow{
@@ -53,7 +49,6 @@ func (m *ListMaker) Make(parent resource.Resource, width, height int) (tea.Model
 
 	table := table.New(columns, renderer, width, height,
 		table.WithSortFunc(workspace.Sort(m.ModuleService)),
-		table.WithParent[*workspace.Workspace](parent),
 	)
 
 	return list{
@@ -61,7 +56,6 @@ func (m *ListMaker) Make(parent resource.Resource, width, height int) (tea.Model
 		svc:     m.WorkspaceService,
 		modules: m.ModuleService,
 		runs:    m.RunService,
-		parent:  parent,
 		helpers: m.Helpers,
 	}, nil
 }
@@ -71,15 +65,12 @@ type list struct {
 	svc     tui.WorkspaceService
 	modules tui.ModuleService
 	runs    tui.RunService
-	parent  resource.Resource
 	helpers *tui.Helpers
 }
 
 func (m list) Init() tea.Cmd {
 	return func() tea.Msg {
-		workspaces := m.svc.List(workspace.ListOptions{
-			ModuleID: m.parent.GetID(),
-		})
+		workspaces := m.svc.List(workspace.ListOptions{})
 		return table.BulkInsertMsg[*workspace.Workspace](workspaces)
 	}
 }
@@ -138,12 +129,9 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, m.helpers.CreateTasks("plan", fn, workspaceIDs...)
 		case key.Matches(msg, keys.Common.Apply):
 			workspaceIDs := m.table.SelectedOrCurrentIDs()
-			fn := func(workspaceID resource.ID) (*task.Task, error) {
-				return m.runs.ApplyOnly(workspaceID, createRunOptions)
-			}
 			return m, tui.YesNoPrompt(
 				fmt.Sprintf("Auto-apply %d workspaces?", len(workspaceIDs)),
-				m.helpers.CreateTasks("apply", fn, workspaceIDs...),
+				m.helpers.CreateApplyTasks(&createRunOptions, workspaceIDs...),
 			)
 		case key.Matches(msg, keys.Common.State):
 			if row, ok := m.table.CurrentRow(); ok {

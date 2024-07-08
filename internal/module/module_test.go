@@ -17,7 +17,6 @@ func TestNew(t *testing.T) {
 
 	got := New(workdir, Options{Path: "with_s3_backend", Backend: "s3"})
 	assert.Equal(t, "with_s3_backend", got.Path)
-
 }
 
 func TestFindModules(t *testing.T) {

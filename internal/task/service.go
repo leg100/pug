@@ -1,6 +1,7 @@
 package task
 
 import (
+	"errors"
 	"slices"
 
 	"github.com/leg100/pug/internal"
@@ -60,10 +61,7 @@ func NewService(opts ServiceOptions) *Service {
 // Create a task. The task is placed into a pending state and requires enqueuing
 // before it'll be processed.
 func (s *Service) Create(opts CreateOptions) (*Task, error) {
-	task, err := s.newTask(opts)
-	if err != nil {
-		return nil, err
-	}
+	task := s.newTask(opts)
 
 	s.logger.Debug("created task", "task", task)
 
@@ -76,16 +74,24 @@ func (s *Service) Create(opts CreateOptions) (*Task, error) {
 		opts.AfterCreate(task)
 	}
 
+	wait := make(chan error, 1)
 	go func() {
-		if err := task.Wait(); err != nil {
+		err := task.Wait()
+		wait <- err
+		if err != nil {
 			s.logger.Error("task failed", "error", err, "task", task)
 			return
 		}
 		s.logger.Debug("completed task", "task", task)
 	}()
+	if opts.Wait {
+		return task, <-wait
+	}
 	return task, nil
 }
 
+// CreateGroup creates a task group, creating tasks by invoking the provided
+// func with each of the provided IDs.
 func (s *Service) CreateGroup(cmd string, fn Func, ids ...resource.ID) (*Group, error) {
 	group, err := newGroup(cmd, fn, ids...)
 	if err != nil {
@@ -95,9 +101,31 @@ func (s *Service) CreateGroup(cmd string, fn Func, ids ...resource.ID) (*Group, 
 	s.logger.Debug("created task group", "group", group)
 
 	// Add to db
-	s.groups.Add(group.ID, group)
+	s.AddGroup(group)
 
 	return group, nil
+}
+
+func (s *Service) CreateDependencyGroup(cmd string, reverse bool, opts ...CreateOptions) (*Group, error) {
+	if len(opts) == 0 {
+		return nil, errors.New("no specs provided")
+	}
+
+	group, err := newGroupWithDependencies(s, cmd, reverse, opts...)
+	if err != nil {
+		return nil, err
+	}
+	s.logger.Debug("created task group", "group", group)
+
+	// Add to db
+	s.AddGroup(group)
+
+	return group, nil
+}
+
+// AddGroup adds a task group to the DB.
+func (s *Service) AddGroup(group *Group) {
+	s.groups.Add(group.ID, group)
 }
 
 // Retry creates a new task that has all the properties of the task with the
@@ -207,6 +235,10 @@ func (s *Service) ListGroups() []*Group {
 
 func (s *Service) Get(taskID resource.ID) (*Task, error) {
 	return s.tasks.Get(taskID)
+}
+
+func (s *Service) GetGroup(groupID resource.ID) (*Group, error) {
+	return s.groups.Get(groupID)
 }
 
 func (s *Service) Cancel(taskID resource.ID) (*Task, error) {

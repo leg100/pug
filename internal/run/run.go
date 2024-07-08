@@ -43,6 +43,7 @@ type Run struct {
 	ApplyReport   *Report
 	Changes       bool
 	ArtefactsPath string
+	Destroy       bool
 
 	applyOnly          bool
 	defaultArgs        []string
@@ -99,6 +100,7 @@ func (f *factory) newRun(workspaceID resource.ID, opts CreateOptions) (*Run, err
 	run := &Run{
 		Common:             resource.New(resource.Run, ws),
 		Status:             Pending,
+		Destroy:            opts.Destroy,
 		applyOnly:          opts.applyOnly,
 		defaultArgs:        []string{"-input=false"},
 		createPlanFileArgs: args,

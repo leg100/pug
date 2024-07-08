@@ -25,13 +25,19 @@ var resourceColumn = table.Column{
 }
 
 type ResourceListMaker struct {
-	StateService tui.StateService
-	RunService   tui.RunService
-	Spinner      *spinner.Model
-	Helpers      *tui.Helpers
+	WorkspaceService tui.WorkspaceService
+	StateService     tui.StateService
+	RunService       tui.RunService
+	Spinner          *spinner.Model
+	Helpers          *tui.Helpers
 }
 
-func (m *ResourceListMaker) Make(ws resource.Resource, width, height int) (tea.Model, error) {
+func (m *ResourceListMaker) Make(id resource.ID, width, height int) (tea.Model, error) {
+	ws, err := m.WorkspaceService.Get(id)
+	if err != nil {
+		return nil, err
+	}
+
 	columns := []table.Column{resourceColumn}
 	renderer := func(resource *state.Resource) table.RenderedRow {
 		addr := string(resource.Address)

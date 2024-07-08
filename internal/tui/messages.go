@@ -12,7 +12,7 @@ type NavigationMsg struct {
 }
 
 func NewNavigationMsg(kind Kind, opts ...NavigateOption) NavigationMsg {
-	msg := NavigationMsg{Page: Page{Kind: kind, Resource: resource.GlobalResource}}
+	msg := NavigationMsg{Page: Page{Kind: kind}}
 	for _, fn := range opts {
 		fn(&msg)
 	}
@@ -23,7 +23,7 @@ type NavigateOption func(msg *NavigationMsg)
 
 func WithParent(parent resource.Resource) NavigateOption {
 	return func(msg *NavigationMsg) {
-		msg.Page.Resource = parent
+		msg.Page.ID = parent.GetID()
 	}
 }
 

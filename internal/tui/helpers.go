@@ -234,6 +234,31 @@ func (h *Helpers) CreateTasks(cmd string, fn task.Func, ids ...resource.ID) tea.
 	}
 }
 
+func (h *Helpers) CreateApplyTasks(opts *run.CreateOptions, ids ...resource.ID) tea.Cmd {
+	return func() tea.Msg {
+		switch len(ids) {
+		case 0:
+			return nil
+		case 1:
+			// Only one task is to be created. If successful send user directly to task
+			// page. Otherwise report an error.
+			task, err := h.RunService.Apply(ids[0], opts)
+			if err != nil {
+				return ReportError(fmt.Errorf("creating apply task: %w", err))
+			}
+			return NewNavigationMsg(TaskKind, WithParent(task))
+		default:
+			// More than one task is to be created. If successful send user to
+			// task group page.
+			group, err := h.RunService.MultiApply(opts, ids...)
+			if err != nil {
+				return ReportError(fmt.Errorf("creating apply task group: %w", err))
+			}
+			return NewNavigationMsg(TaskGroupKind, WithParent(group))
+		}
+	}
+}
+
 func (h *Helpers) Move(workspaceID resource.ID, from state.ResourceAddress) tea.Cmd {
 	return CmdHandler(PromptMsg{
 		Prompt:       "Enter destination address: ",
