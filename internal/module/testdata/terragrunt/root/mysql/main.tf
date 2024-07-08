@@ -2,14 +2,14 @@ terraform {
   backend "local" {}
 }
 
-resource "random_pet" "pet" {
-  count = 10
+data "terraform_remote_state" "vpc" {
+  backend = "local"
 
-  keepers = {
-    now = timestamp()
+  config = {
+    path = "../vpc"
   }
 }
 
-output "pets" {
-  value = random_pet.pet[*].id
+output "name" {
+  value = "mysql depends on ${terraform_remote_state.vpc.outputs.name}"
 }

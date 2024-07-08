@@ -114,7 +114,7 @@ func (s *Service) plan(workspaceID resource.ID, opts CreateOptions) (*task.Task,
 	return task, nil
 }
 
-// Apply creates a task spec for a terraform apply.
+// Apply creates a task for a terraform apply.
 //
 // If opts is non-nil, then a new run is created and auto-applied without creating a
 // plan file. The ID must be the workspace ID on which to create the run.
@@ -136,7 +136,7 @@ func (s *Service) Apply(id resource.ID, opts *CreateOptions) (*task.Task, error)
 // is incompatible with the dependency graph that is created to order the tasks.
 func (s *Service) MultiApply(opts *CreateOptions, ids ...resource.ID) (*task.Group, error) {
 	if len(ids) == 0 {
-		return nil, errors.New("no ids specified")
+		return nil, errors.New("no IDs specified")
 	}
 	var destroy *bool
 	specs := make([]task.CreateOptions, 0, len(ids))
