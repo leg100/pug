@@ -47,3 +47,8 @@ debug:
 .PHONY: connect
 connect:
 	dlv connect 127.0.0.1:4300 .
+
+.PHONY: install-terragrunt
+install-terragrunt:
+	  curl -L https://github.com/gruntwork-io/terragrunt/releases/download/v0.60.0/terragrunt_linux_amd64 -o ~/bin/terragrunt
+	  chmod +x ~/bin/terragrunt
