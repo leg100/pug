@@ -9,9 +9,6 @@ import (
 
 // parseTerragruntGraph parses the output from `terragrunt graph-dependencies`
 // and returns a graph of module paths and their dependencies on one another.
-//
-// TODO: `terragrunt graph-dependencies` can return "external dependencies" i.e.
-// those outside of pug's working directory, which we want to exclude.
 func parseTerragruntGraph(r io.Reader) (map[string][]string, error) {
 	b, err := io.ReadAll(r)
 	if err != nil {

@@ -2,6 +2,7 @@ package module
 
 import (
 	"bytes"
+	"fmt"
 	"testing"
 
 	"github.com/leg100/pug/internal"
@@ -12,8 +13,7 @@ import (
 
 func TestLoadTerragruntDependenciesFromDigraph(t *testing.T) {
 	// Setup modules and load into table
-	workdir, err := internal.NewWorkdir("/home/louis/co/pug/internal/module/testdata/terragrunt/")
-	require.NoError(t, err)
+	workdir := internal.NewTestWorkdir(t)
 	vpc := New(workdir, Options{Path: "root/vpc"})
 	redis := New(workdir, Options{Path: "root/redis"})
 	mysql := New(workdir, Options{Path: "root/mysql"})
@@ -44,19 +44,19 @@ digraph {
         "root/vpc" ;
 }
 `
-		absolutePaths = `
+		absolutePaths = fmt.Sprintf(`
 digraph {
-        "/home/louis/co/pug/internal/module/testdata/terragrunt/root/backend-app" ;
-        "/home/louis/co/pug/internal/module/testdata/terragrunt/root/backend-app" -> "/home/louis/co/pug/internal/module/testdata/terragrunt/root/mysql";
-        "/home/louis/co/pug/internal/module/testdata/terragrunt/root/backend-app" -> "/home/louis/co/pug/internal/module/testdata/terragrunt/root/redis";
-        "/home/louis/co/pug/internal/module/testdata/terragrunt/root/backend-app" -> "/home/louis/co/pug/internal/module/testdata/terragrunt/root/vpc";
-        "/home/louis/co/pug/internal/module/testdata/terragrunt/root/mysql" ;
-        "/home/louis/co/pug/internal/module/testdata/terragrunt/root/mysql" -> "/home/louis/co/pug/internal/module/testdata/terragrunt/root/vpc";
-        "/home/louis/co/pug/internal/module/testdata/terragrunt/root/redis" ;
-        "/home/louis/co/pug/internal/module/testdata/terragrunt/root/redis" -> "/home/louis/co/pug/internal/module/testdata/terragrunt/root/vpc";
-        "/home/louis/co/pug/internal/module/testdata/terragrunt/root/vpc" ;
+        "%[1]s/root/backend-app" ;
+        "%[1]s/root/backend-app" -> "%[1]s/root/mysql";
+        "%[1]s/root/backend-app" -> "%[1]s/root/redis";
+        "%[1]s/root/backend-app" -> "%[1]s/root/vpc";
+        "%[1]s/root/mysql" ;
+        "%[1]s/root/mysql" -> "%[1]s/root/vpc";
+        "%[1]s/root/redis" ;
+        "%[1]s/root/redis" -> "%[1]s/root/vpc";
+        "%[1]s/root/vpc" ;
 }
-`
+`, workdir)
 	)
 
 	for _, output := range []string{relativePaths, absolutePaths} {
