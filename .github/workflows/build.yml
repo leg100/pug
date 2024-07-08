@@ -27,8 +27,6 @@ jobs:
         run: make vet
       - name: Setup provider mirror for tests
         run: ./hacks/setup_mirror.sh
-      - name: Check system path
-        run: echo "$PATH"
       - name: Install terragrunt for tests
         run: make install-terragrunt
       - name: Tests
