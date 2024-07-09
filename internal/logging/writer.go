@@ -12,15 +12,13 @@ import (
 // writer is a slog TextHandler writer that both keeps the log records in
 // memory and emits and them as pug events.
 type writer struct {
-	table  *resource.Table[Message]
-	serial uint
+	table *resource.Table[Message]
 }
 
 func (w *writer) Write(p []byte) (int, error) {
 	d := logfmt.NewDecoder(bytes.NewReader(p))
 	for d.ScanRecord() {
 		msg := Message{
-			Serial: w.serial,
 			Common: resource.New(resource.Log, resource.GlobalResource),
 		}
 		for d.ScanKeyval() {
@@ -43,7 +41,6 @@ func (w *writer) Write(p []byte) (int, error) {
 			}
 		}
 		w.table.Add(msg.ID, msg)
-		w.serial++
 	}
 	if d.Err() != nil {
 		return 0, d.Err()

@@ -21,7 +21,7 @@ var (
 	taskGroupID = table.Column{
 		Key:   "task_group_id",
 		Title: "TASK GROUP ID",
-		Width: resource.IDEncodedMaxLen,
+		Width: len("TASK GROUP ID"),
 	}
 )
 
@@ -32,8 +32,8 @@ type GroupListMaker struct {
 
 func (m *GroupListMaker) Make(_ resource.ID, width, height int) (tea.Model, error) {
 	columns := []table.Column{
-		commandColumn,
 		taskGroupID,
+		commandColumn,
 		taskGroupCount,
 		ageColumn,
 	}

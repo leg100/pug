@@ -2,34 +2,40 @@ package resource
 
 import (
 	"fmt"
-
-	"github.com/btcsuite/btcutil/base58"
-	"github.com/google/uuid"
+	"sync"
 )
 
-// GlobalID is the zero value of ID, representing the ID of the abstract
-// top-level "global" entity to which all resources belong.
-var GlobalID = ID{}
+var (
+	// GlobalID is the zero value of ID, representing the ID of the abstract
+	// top-level "global" entity to which all resources belong.
+	GlobalID = ID{}
 
-// IDEncodedMaxLen is the max length of an encoded ID (it can sometimes encode
-// to something shorter).
-const IDEncodedMaxLen = 27
+	// nextID provides the next ID for each kind
+	nextID map[Kind]uint = make(map[Kind]uint)
+	mu     sync.Mutex
+)
 
 // ID is a unique identifier for a pug entity.
 type ID struct {
-	id   uuid.UUID
-	Kind Kind
+	Serial uint
+	Kind   Kind
 }
 
 func NewID(kind Kind) ID {
+	mu.Lock()
+	defer mu.Unlock()
+
+	id := nextID[kind]
+	nextID[kind]++
+
 	return ID{
-		id:   uuid.New(),
-		Kind: kind,
+		Serial: id,
+		Kind:   kind,
 	}
 }
 
 func (id ID) String() string {
-	return fmt.Sprintf("%s-%s", id.Kind.String(), base58.Encode(id.id[:]))
+	return fmt.Sprintf("#%d", id.Serial)
 }
 
 // GetID allows ID to be accessed via an interface value.
