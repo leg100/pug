@@ -63,6 +63,7 @@ type Options struct {
 	MaxTasks         int
 	Debug            bool
 	Program          string
+	Terragrunt       bool
 }
 
 // New constructs the top-level TUI model.

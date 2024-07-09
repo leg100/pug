@@ -146,6 +146,7 @@ func startApp(cfg config, stdout io.Writer) (*app, error) {
 		MaxTasks:         cfg.MaxTasks,
 		Debug:            cfg.Debug,
 		Program:          cfg.Program,
+		Terragrunt:       cfg.Terragrunt,
 	})
 	if err != nil {
 		return nil, err

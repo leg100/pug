@@ -43,16 +43,22 @@ type ListMaker struct {
 	Spinner          *spinner.Model
 	Workdir          string
 	Helpers          *tui.Helpers
+	Terragrunt       bool
 }
 
 func (m *ListMaker) Make(_ resource.ID, width, height int) (tea.Model, error) {
 	columns := []table.Column{
 		table.ModuleColumn,
-		dependencies,
+	}
+	// Only include dependencies column if using terragrunt
+	if m.Terragrunt {
+		columns = append(columns, dependencies)
+	}
+	columns = append(columns,
 		backendType,
 		currentWorkspace,
 		table.ResourceCountColumn,
-	}
+	)
 
 	renderer := func(mod *module.Module) table.RenderedRow {
 		row := table.RenderedRow{

@@ -55,6 +55,7 @@ func makeMakers(opts Options, spinner *spinner.Model) map[tui.Kind]tui.Maker {
 			Spinner:          spinner,
 			Workdir:          opts.Workdir.PrettyString(),
 			Helpers:          helpers,
+			Terragrunt:       opts.Terragrunt,
 		},
 		tui.WorkspaceListKind: workspaceListMaker,
 		tui.TaskListKind:      taskListMaker,
