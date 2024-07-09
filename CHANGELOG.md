@@ -1,5 +1,25 @@
 # Changelog
 
+## [0.3.4](https://github.com/leg100/pug/compare/v0.3.3...v0.3.4) (2024-07-09)
+
+
+### Features
+
+* support terragrunt dependencies ([#87](https://github.com/leg100/pug/issues/87)) ([39fb423](https://github.com/leg100/pug/commit/39fb42322004d5df43ec9a3a5d8ac26a625465a1))
+* switch to using serials for IDs ([#89](https://github.com/leg100/pug/issues/89)) ([f99ebe8](https://github.com/leg100/pug/commit/f99ebe886b8868d8e2a616b658fb951100f5249c))
+
+
+### Bug Fixes
+
+* don't use pound sign in artefact paths ([0329d79](https://github.com/leg100/pug/commit/0329d79ffe8a1c813632f01e1023ba772799933a))
+* only show dependencies when using terragrunt ([8fb0336](https://github.com/leg100/pug/commit/8fb033671363919ea2c6ad22c351baf6c6ce8547))
+
+
+### Miscellaneous
+
+* copy table columns using copy func ([38de2fd](https://github.com/leg100/pug/commit/38de2fd82e051b4a5d3ae25014309947419b2520))
+* show task args in array brackets ([473b209](https://github.com/leg100/pug/commit/473b209ca562c3b8b98df5022eef76585f24e010))
+
 ## [0.3.3](https://github.com/leg100/pug/compare/v0.3.2...v0.3.3) (2024-07-04)
 
 
