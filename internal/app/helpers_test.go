@@ -79,7 +79,7 @@ func setup(t *testing.T, workdir string, opts ...configOption) *testModel {
 	tm := teatest.NewTestModel(
 		t,
 		app.model,
-		teatest.WithInitialTermSize(100, 50),
+		teatest.WithInitialTermSize(120, 50),
 	)
 	t.Cleanup(func() {
 		tm.Quit()

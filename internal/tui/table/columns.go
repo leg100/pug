@@ -1,16 +1,10 @@
 package table
 
 import (
-	"github.com/leg100/pug/internal/resource"
 	"github.com/leg100/pug/internal/run"
 )
 
 var (
-	IDColumn = Column{
-		Key:   "id",
-		Title: "ID", Width: resource.IDEncodedMaxLen,
-		FlexFactor: 1,
-	}
 	ModuleColumn = Column{
 		Key:            "module",
 		Title:          "MODULE",
@@ -20,18 +14,6 @@ var (
 	WorkspaceColumn = Column{
 		Key:        "workspace",
 		Title:      "WORKSPACE",
-		FlexFactor: 1,
-	}
-	RunColumn = Column{
-		Key:        "run",
-		Title:      "RUN",
-		Width:      resource.IDEncodedMaxLen,
-		FlexFactor: 1,
-	}
-	TaskColumn = Column{
-		Key:        "task",
-		Title:      "TASK",
-		Width:      resource.IDEncodedMaxLen,
 		FlexFactor: 1,
 	}
 	RunStatusColumn = Column{

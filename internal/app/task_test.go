@@ -24,6 +24,7 @@ func TestTaskList_Split(t *testing.T) {
 
 	// Expect tasks that are automatically triggered when a module is loaded
 	waitFor(t, tm, func(s string) bool {
+		t.Log(s)
 		return strings.Contains(s, "Tasks") &&
 			strings.Contains(s, "1-4 of 4") &&
 			matchPattern(t, `modules/a.*init.*exited`, s) &&

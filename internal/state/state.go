@@ -83,7 +83,6 @@ func newState(ws resource.Resource, r io.Reader) (*State, error) {
 func (s *State) LogValue() slog.Value {
 	return slog.GroupValue(
 		slog.Int("resources", len(s.Resources)),
-		slog.Any("workspace", s.WorkspaceID),
 		slog.Int64("serial", s.Serial),
 	)
 }
