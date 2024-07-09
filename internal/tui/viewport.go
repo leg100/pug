@@ -66,11 +66,11 @@ const percentWidth = 6 // 6 = 4 for xxx% + 2 for padding
 func (m Viewport) View() string {
 	// scroll percent container occupies a fixed width section to the right of
 	// the viewport.
-	percent := Regular.Copy().
+	percent := Regular.
 		Background(ScrollPercentageBackground).
 		Padding(0, 1).
 		Render(fmt.Sprintf("%3.f%%", m.viewport.ScrollPercent()*100))
-	percentContainer := Regular.Copy().
+	percentContainer := Regular.
 		Height(m.viewport.Height).
 		Width(percentWidth).
 		AlignVertical(lipgloss.Bottom).
@@ -82,7 +82,7 @@ func (m Viewport) View() string {
 		if m.spinner != nil {
 			msg += " " + m.spinner.View()
 		}
-		output = Regular.Copy().
+		output = Regular.
 			Height(m.viewport.Height).
 			Width(m.viewport.Width).
 			Render(msg)

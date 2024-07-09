@@ -346,28 +346,28 @@ func (m model) View() string {
 	}
 
 	// Compose footer
-	footer := tui.Padded.Copy().Background(tui.Grey).Foreground(tui.White).Render("? help")
+	footer := tui.Padded.Background(tui.Grey).Foreground(tui.White).Render("? help")
 	if m.err != nil {
-		footer += tui.Padded.Copy().
+		footer += tui.Padded.
 			Bold(true).
 			Background(tui.Red).
 			Foreground(tui.White).
 			Render("Error:")
-		footer += tui.Regular.Copy().Padding(0, 1, 0, 0).
+		footer += tui.Regular.Padding(0, 1, 0, 0).
 			Background(tui.Red).
 			Foreground(tui.White).
 			Render(m.err.Error())
 	} else if m.info != "" {
-		footer += tui.Padded.Copy().
+		footer += tui.Padded.
 			Foreground(tui.Black).
 			Background(tui.EvenLighterGrey).
 			Render(m.info)
 	}
-	workdir := tui.Padded.Copy().Background(tui.LightGrey).Foreground(tui.White).Render(m.workdir)
-	version := tui.Padded.Copy().Background(tui.DarkGrey).Foreground(tui.White).Render(version.Version)
+	workdir := tui.Padded.Background(tui.LightGrey).Foreground(tui.White).Render(m.workdir)
+	version := tui.Padded.Background(tui.DarkGrey).Foreground(tui.White).Render(version.Version)
 	// Fill in left over space with background color
 	leftover = m.width - tui.Width(footer) - tui.Width(workdir) - tui.Width(version)
-	footer += tui.Regular.Copy().Width(leftover).Background(tui.EvenLighterGrey).Render()
+	footer += tui.Regular.Width(leftover).Background(tui.EvenLighterGrey).Render()
 	footer += workdir
 	footer += version
 
@@ -405,8 +405,8 @@ func (m model) viewWidth() int {
 }
 
 var (
-	helpKeyStyle  = tui.Bold.Copy().Foreground(tui.HelpKey).Margin(0, 1, 0, 0)
-	helpDescStyle = tui.Regular.Copy().Foreground(tui.HelpDesc)
+	helpKeyStyle  = tui.Bold.Foreground(tui.HelpKey).Margin(0, 1, 0, 0)
+	helpDescStyle = tui.Regular.Foreground(tui.HelpDesc)
 	// Height of help widget, including borders
 	helpWidgetHeight = 12
 )
@@ -468,7 +468,7 @@ func (m model) help() string {
 	}
 	// Join pairs of columns and enclose in a border
 	content := lipgloss.JoinHorizontal(lipgloss.Top, pairs...)
-	return tui.Border.Copy().Height(rows).Width(m.width - 2).Render(content)
+	return tui.Border.Height(rows).Width(m.width - 2).Render(content)
 }
 
 // removeDuplicateBindings removes duplicate bindings from a list of bindings. A

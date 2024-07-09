@@ -268,7 +268,7 @@ func (m model) View() string {
 		wrapper.Write([]byte(content))
 		wrapped := wrapper.String()
 
-		container := tui.Regular.Copy().
+		container := tui.Regular.
 			Padding(0, 1).
 			// Border to the right, dividing the info from the viewport
 			Border(lipgloss.NormalBorder(), false, true, false, false).
