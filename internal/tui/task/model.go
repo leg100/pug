@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"path/filepath"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/key"
@@ -17,6 +18,7 @@ import (
 	"github.com/leg100/pug/internal/task"
 	"github.com/leg100/pug/internal/tui"
 	"github.com/leg100/pug/internal/tui/keys"
+	"github.com/leg100/reflow/wordwrap"
 )
 
 type Maker struct {
@@ -215,7 +217,10 @@ func (m *model) setHeight(height int) {
 const (
 	// infoWidth is the width of the optional task info sidebar to the left of the
 	// viewport.
-	infoWidth = 35
+	infoWidth = 40
+	// infoContentWidth is the width available to the content inside the task
+	// info sidebar, after subtracting 2 to account for margins, and 1 for border
+	infoContentWidth = infoWidth - 2 - 1
 )
 
 // View renders the viewport
@@ -228,7 +233,7 @@ func (m model) View() string {
 			envs = "-"
 		)
 		if len(m.task.Args) > 0 {
-			args = fmt.Sprintf("%v", m.task.Args)
+			args = strings.Join(m.task.Args, "\n")
 		}
 		if len(m.task.AdditionalEnv) > 0 {
 			envs = strings.Join(m.task.AdditionalEnv, "\n")
@@ -255,18 +260,24 @@ func (m model) View() string {
 			"",
 			fmt.Sprintf("Dependencies: %v", m.task.DependsOn),
 		)
+
+		// Word wrap task info to ensure it wraps "cleanly".
+		wrapper := wordwrap.NewWriter(infoContentWidth)
+		// Wrap on spaces and path separator
+		wrapper.Breakpoints = []rune{' ', filepath.Separator}
+		wrapper.Write([]byte(content))
+		wrapped := wrapper.String()
+
 		container := tui.Regular.Copy().
-			Margin(0, 1).
+			Padding(0, 1).
 			// Border to the right, dividing the info from the viewport
 			Border(lipgloss.NormalBorder(), false, true, false, false).
 			BorderForeground(tui.LighterGrey).
-			// Subtract 2 to account for margins, and 1 for border
 			Height(m.height).
 			// Crop content exceeding height
 			MaxHeight(m.height).
-			// Subtract 2 to account for margins, and 1 for border
-			Width(max(infoWidth - 2 - 1)).
-			Render(content)
+			Width(infoContentWidth).
+			Render(wrapped)
 		components = append(components, container)
 	}
 	components = append(components, m.viewport.View())
