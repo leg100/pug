@@ -110,7 +110,7 @@ func (f *factory) newRun(workspaceID resource.ID, opts CreateOptions) (*Run, err
 	}
 
 	if !opts.applyOnly {
-		run.ArtefactsPath = filepath.Join(f.dataDir, run.String())
+		run.ArtefactsPath = filepath.Join(f.dataDir, fmt.Sprintf("%d", run.Serial))
 		if err := os.MkdirAll(run.ArtefactsPath, 0o755); err != nil {
 			return nil, fmt.Errorf("creating run artefacts directory: %w", err)
 		}
