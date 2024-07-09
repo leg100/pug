@@ -41,9 +41,8 @@ type Model[V resource.Resource] struct {
 	border      lipgloss.Border
 	borderColor lipgloss.TerminalColor
 
-	cursorRow    int
-	cursorID     resource.ID
-	renderedRows int
+	cursorRow int
+	cursorID  resource.ID
 
 	items    map[resource.ID]V
 	sortFunc SortFunc[V]
@@ -92,7 +91,7 @@ type RenderedRow map[ColumnKey]string
 type SortFunc[V any] func(V, V) int
 
 // New creates a new model for the table widget.
-func New[V resource.Resource](columns []Column, fn RowRenderer[V], width, height int, opts ...Option[V]) Model[V] {
+func New[V resource.Resource](cols []Column, fn RowRenderer[V], width, height int, opts ...Option[V]) Model[V] {
 	filter := textinput.New()
 	filter.Prompt = "Filter: "
 
@@ -110,13 +109,11 @@ func New[V resource.Resource](columns []Column, fn RowRenderer[V], width, height
 		fn(&m)
 	}
 
-	// Deliberately use range to copy column structs onto receiver, because the
-	// caller may be using columns in multiple tables and columns are modified
-	// by each table.
-	//
-	// TODO: use copy, which is more explicit
-	for _, col := range columns {
-		// Set default truncation function if unset
+	// Copy column structs onto receiver, because the caller may modify columns.
+	copy(m.cols, cols)
+
+	// For each column, set default truncation function if unset.
+	for _, col := range cols {
 		if col.TruncationFunc == nil {
 			col.TruncationFunc = defaultTruncationFunc
 		}
@@ -334,8 +331,6 @@ func (m *Model[V]) UpdateViewport() {
 	for i := range visible {
 		renderedRows[i] = m.renderRow(m.start + i)
 	}
-
-	m.renderedRows = len(renderedRows)
 
 	m.viewport.SetContent(
 		lipgloss.JoinVertical(lipgloss.Left, renderedRows...),
