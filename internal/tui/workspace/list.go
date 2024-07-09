@@ -127,6 +127,9 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m.runs.Plan(workspaceID, createRunOptions)
 			}
 			return m, m.helpers.CreateTasks("plan", fn, workspaceIDs...)
+		case key.Matches(msg, keys.Common.Destroy):
+			createRunOptions.Destroy = true
+			fallthrough
 		case key.Matches(msg, keys.Common.Apply):
 			workspaceIDs := m.table.SelectedOrCurrentIDs()
 			return m, tui.YesNoPrompt(

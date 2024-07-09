@@ -141,7 +141,7 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return m, tui.NavigateTo(tui.ResourceListKind, tui.WithParent(ws))
 				}
 			}
-		case key.Matches(msg, keys.Common.Destroy):
+		case key.Matches(msg, keys.Common.PlanDestroy):
 			createRunOptions.Destroy = true
 			fallthrough
 		case key.Matches(msg, keys.Common.Plan):
@@ -153,6 +153,9 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m.RunService.Plan(workspaceID, createRunOptions)
 			}
 			return m, m.helpers.CreateTasks("plan", fn, workspaceIDs...)
+		case key.Matches(msg, keys.Common.Destroy):
+			createRunOptions.Destroy = true
+			fallthrough
 		case key.Matches(msg, keys.Common.Apply):
 			workspaceIDs, err := m.pruneModulesWithoutCurrentWorkspace()
 			if err != nil {

@@ -3,20 +3,21 @@ package keys
 import "github.com/charmbracelet/bubbles/key"
 
 type common struct {
-	Plan      key.Binding
-	Apply     key.Binding
-	Destroy   key.Binding
-	Cancel    key.Binding
-	Delete    key.Binding
-	State     key.Binding
-	Retry     key.Binding
-	Reload    key.Binding
-	Module    key.Binding
-	Workspace key.Binding
-	Edit      key.Binding
-	Init      key.Binding
-	Validate  key.Binding
-	Format    key.Binding
+	Plan        key.Binding
+	PlanDestroy key.Binding
+	Apply       key.Binding
+	Destroy     key.Binding
+	Cancel      key.Binding
+	Delete      key.Binding
+	State       key.Binding
+	Retry       key.Binding
+	Reload      key.Binding
+	Module      key.Binding
+	Workspace   key.Binding
+	Edit        key.Binding
+	Init        key.Binding
+	Validate    key.Binding
+	Format      key.Binding
 }
 
 // Keys shared by several models.
@@ -24,6 +25,10 @@ var Common = common{
 	Plan: key.NewBinding(
 		key.WithKeys("p"),
 		key.WithHelp("p", "plan"),
+	),
+	PlanDestroy: key.NewBinding(
+		key.WithKeys("P"),
+		key.WithHelp("P", "plan destroy"),
 	),
 	Apply: key.NewBinding(
 		key.WithKeys("a"),
