@@ -210,7 +210,7 @@ func (m resourceList) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m resourceList) View() string {
-	border := tui.Regular.Copy().
+	border := tui.Regular.
 		Padding(0, 1).
 		Border(lipgloss.NormalBorder()).
 		// Subtract 2 to accomodate borders
@@ -228,10 +228,10 @@ func (m resourceList) View() string {
 	return lipgloss.JoinVertical(lipgloss.Left,
 		m.Model.View(),
 		//strings.Repeat("─", m.width),
-		//tui.Regular.Copy().
+		//tui.Regular.
 		//	Margin(0, 1).
 		//	Render(
-		//		tui.Regular.Copy().
+		//		tui.Regular.
 		//			Inline(true).
 		//			Render(metadata),
 		//	),

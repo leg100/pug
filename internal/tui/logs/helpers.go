@@ -17,5 +17,5 @@ func coloredLogLevel(level string) string {
 	case "INFO":
 		levelColor = tui.InfoLogLevel
 	}
-	return tui.Bold.Copy().Foreground(levelColor).Render(level)
+	return tui.Bold.Foreground(levelColor).Render(level)
 }

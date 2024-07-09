@@ -105,7 +105,7 @@ func (p *Prompt) HandleBlink(msg tea.Msg) (cmd tea.Cmd) {
 func (p *Prompt) View(width int) string {
 	// Render a prompt, surrounded by a red border, spanning the width of the
 	// terminal, subtracting 2 to account for width of border.
-	return ThickBorder.Copy().BorderForeground(Red).Width(width - 2).Render(
+	return ThickBorder.BorderForeground(Red).Width(width - 2).Render(
 		Regular.Margin(0, 1).Render(p.model.View()),
 	)
 }

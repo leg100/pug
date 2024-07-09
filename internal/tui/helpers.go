@@ -156,9 +156,9 @@ func (h *Helpers) TaskStatus(t *task.Task, background bool) string {
 	}
 
 	if background {
-		return Padded.Copy().Background(color).Foreground(White).Render(string(t.State))
+		return Padded.Background(color).Foreground(White).Render(string(t.State))
 	} else {
-		return Regular.Copy().Foreground(color).Render(string(t.State))
+		return Regular.Foreground(color).Render(string(t.State))
 	}
 }
 
@@ -179,13 +179,13 @@ func (h *Helpers) RunReport(report run.Report, table bool) string {
 	if !table {
 		background = RunReportBackgroundColor
 	}
-	additions := Regular.Copy().Background(background).Foreground(Green).Render(fmt.Sprintf("+%d", report.Additions))
-	changes := Regular.Copy().Background(background).Foreground(Blue).Render(fmt.Sprintf("~%d", report.Changes))
-	destructions := Regular.Copy().Background(background).Foreground(Red).Render(fmt.Sprintf("-%d", report.Destructions))
+	additions := Regular.Background(background).Foreground(Green).Render(fmt.Sprintf("+%d", report.Additions))
+	changes := Regular.Background(background).Foreground(Blue).Render(fmt.Sprintf("~%d", report.Changes))
+	destructions := Regular.Background(background).Foreground(Red).Render(fmt.Sprintf("-%d", report.Destructions))
 
 	s := fmt.Sprintf("%s%s%s", additions, changes, destructions)
 	if !table {
-		s = Padded.Copy().Background(background).Render(s)
+		s = Padded.Background(background).Render(s)
 	}
 	return s
 }
@@ -197,18 +197,18 @@ func (h *Helpers) GroupReport(group *task.Group, table bool) string {
 	if !table {
 		background = GroupReportBackgroundColor
 	}
-	slash := Regular.Copy().Background(background).Foreground(Black).Render("/")
-	exited := Regular.Copy().Background(background).Foreground(Green).Render(fmt.Sprintf("%d", group.Exited()))
-	total := Regular.Copy().Background(background).Foreground(Black).Render(fmt.Sprintf("%d", len(group.Tasks)))
+	slash := Regular.Background(background).Foreground(Black).Render("/")
+	exited := Regular.Background(background).Foreground(Green).Render(fmt.Sprintf("%d", group.Exited()))
+	total := Regular.Background(background).Foreground(Black).Render(fmt.Sprintf("%d", len(group.Tasks)))
 
 	s := fmt.Sprintf("%s%s%s", exited, slash, total)
 	if errored := group.Errored(); errored > 0 {
-		erroredString := Regular.Copy().Background(background).Foreground(Red).Render(fmt.Sprintf("%d", errored))
+		erroredString := Regular.Background(background).Foreground(Red).Render(fmt.Sprintf("%d", errored))
 		s = fmt.Sprintf("%s%s%s", erroredString, slash, s)
 	}
 
 	if !table {
-		s = Padded.Copy().Background(background).Render(s)
+		s = Padded.Background(background).Render(s)
 	}
 	return s
 }
