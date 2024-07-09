@@ -207,7 +207,7 @@ func TestModule_SingleDestroyPlan(t *testing.T) {
 	})
 
 	// Create destroy plan
-	tm.Type("d")
+	tm.Type("P")
 
 	// Expect 10 resources to be proposed for deletion
 	waitFor(t, tm, func(s string) bool {
@@ -233,6 +233,49 @@ func TestModule_SingleApply(t *testing.T) {
 	// Send to apply task page
 	waitFor(t, tm, func(s string) bool {
 		return matchPattern(t, `Task.*apply.*default.*modules/a.*\+10~0-0.*exited`, s)
+	})
+
+}
+
+func TestModule_SingleDestroy(t *testing.T) {
+	t.Parallel()
+
+	// Setup test with pre-existing state
+	tm := setup(t, "./testdata/module_destroy")
+
+	// Wait for module to be loaded
+	waitFor(t, tm, func(s string) bool {
+		return strings.Contains(s, "modules/a")
+	})
+
+	// Initialize module
+	tm.Type("i")
+
+	// Expect user to be taken to init's task page.
+	waitFor(t, tm, func(s string) bool {
+		return strings.Contains(s, "Terraform has been successfully initialized!")
+	})
+
+	// Go back to module listing
+	tm.Type("m")
+
+	// Module should have 10 resources in its state loaded.
+	waitFor(t, tm, func(s string) bool {
+		return matchPattern(t, `modules/a.*default.*10`, s)
+	})
+
+	// Create destroy plan
+	tm.Type("d")
+
+	// Give approval
+	waitFor(t, tm, func(s string) bool {
+		return strings.Contains(s, "Destroy resources of 1 modules? (y/N):")
+	})
+	tm.Type("y")
+
+	// Send to apply task page
+	waitFor(t, tm, func(s string) bool {
+		return matchPattern(t, `Task.*apply.*default.*modules/a.*\+0~0-10.*exited`, s)
 	})
 
 }

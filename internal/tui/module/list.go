@@ -112,6 +112,7 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmd              tea.Cmd
 		cmds             []tea.Cmd
 		createRunOptions run.CreateOptions
+		applyPrompt      = "Auto-apply %d modules?"
 	)
 
 	switch msg := msg.(type) {
@@ -155,6 +156,7 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, m.helpers.CreateTasks("plan", fn, workspaceIDs...)
 		case key.Matches(msg, keys.Common.Destroy):
 			createRunOptions.Destroy = true
+			applyPrompt = "Destroy resources of %d modules?"
 			fallthrough
 		case key.Matches(msg, keys.Common.Apply):
 			workspaceIDs, err := m.pruneModulesWithoutCurrentWorkspace()
@@ -162,7 +164,7 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, tui.ReportError(fmt.Errorf("deselected items: %w", err))
 			}
 			return m, tui.YesNoPrompt(
-				fmt.Sprintf("Auto-apply %d modules?", len(workspaceIDs)),
+				fmt.Sprintf(applyPrompt, len(workspaceIDs)),
 				m.helpers.CreateApplyTasks(&createRunOptions, workspaceIDs...),
 			)
 		}
@@ -200,6 +202,7 @@ func (m list) HelpBindings() (bindings []key.Binding) {
 		keys.Common.Format,
 		keys.Common.Validate,
 		keys.Common.Plan,
+		keys.Common.PlanDestroy,
 		keys.Common.Apply,
 		keys.Common.Destroy,
 		keys.Common.Edit,

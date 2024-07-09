@@ -80,6 +80,7 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmd              tea.Cmd
 		cmds             []tea.Cmd
 		createRunOptions run.CreateOptions
+		applyPrompt      = "Auto-apply %d workspaces?"
 	)
 
 	switch msg := msg.(type) {
@@ -129,11 +130,12 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, m.helpers.CreateTasks("plan", fn, workspaceIDs...)
 		case key.Matches(msg, keys.Common.Destroy):
 			createRunOptions.Destroy = true
+			applyPrompt = "Destroy resources of %d workspaces?"
 			fallthrough
 		case key.Matches(msg, keys.Common.Apply):
 			workspaceIDs := m.table.SelectedOrCurrentIDs()
 			return m, tui.YesNoPrompt(
-				fmt.Sprintf("Auto-apply %d workspaces?", len(workspaceIDs)),
+				fmt.Sprintf(applyPrompt, len(workspaceIDs)),
 				m.helpers.CreateApplyTasks(&createRunOptions, workspaceIDs...),
 			)
 		case key.Matches(msg, keys.Common.State):
@@ -164,6 +166,7 @@ func (m list) HelpBindings() []key.Binding {
 		keys.Common.Format,
 		keys.Common.Validate,
 		keys.Common.Plan,
+		keys.Common.PlanDestroy,
 		keys.Common.Apply,
 		keys.Common.Destroy,
 		localKeys.SetCurrent,

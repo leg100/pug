@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/leg100/pug/internal"
 )
 
 func TestTerragrunt_SingleInit(t *testing.T) {
@@ -96,49 +95,25 @@ func TestTerragrunt_Dependencies(t *testing.T) {
 			matchPattern(t, "modules/frontend-app.*default.*2", s)
 	})
 
-	// Create a destroy plan on all modules (they should still all be selected).
+	// Destroy resources in all modules (they should still all be selected).
 	tm.Type("d")
 
-	// Expect 6 plan tasks.
+	// Give approval
 	waitFor(t, tm, func(s string) bool {
-		return matchPattern(t, "TaskGroup.*plan.*6/6", s) &&
+		return strings.Contains(s, "Destroy resources of 6 modules? (y/N):")
+	})
+	tm.Type("y")
+
+	// Expect 6 apply tasks.
+	waitFor(t, tm, func(s string) bool {
+		t.Log(s)
+		return matchPattern(t, "TaskGroup.*apply.*6/6", s) &&
 			matchPattern(t, `modules/vpc.*default.*\+0~0-0`, s) &&
 			matchPattern(t, `modules/redis.*default.*\+0~0-0`, s) &&
 			matchPattern(t, `modules/mysql.*default.*\+0~0-0`, s) &&
 			matchPattern(t, `modules/backend-app.*default.*\+0~0-0`, s) &&
 			matchPattern(t, `modules/frontend-app.*default.*\+0~0-0`, s) &&
 			matchPattern(t, `\..*default.*exited`, s)
-	})
-
-	// Select all tasks and apply their plans
-	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlA})
-	tm.Type("a")
-
-	// The "." module should be de-selected because it doesn't have a plan to
-	// apply.
-	waitFor(t, tm, func(s string) bool {
-		// Remove bold formatting from error message
-		s = internal.StripAnsi(s)
-		return strings.Contains(s, "Error: applying tasks: de-selected 1 inapplicable rows out of 6")
-	})
-
-	// Apply 5 remaining tasks.
-	tm.Type("a")
-
-	// Give approval
-	waitFor(t, tm, func(s string) bool {
-		return strings.Contains(s, "Apply 5 plans? (y/N):")
-	})
-	tm.Type("y")
-
-	// Expect 5 apply tasks.
-	waitFor(t, tm, func(s string) bool {
-		return matchPattern(t, "TaskGroup.*apply.*5/5", s) &&
-			matchPattern(t, `modules/vpc.*default.*\+0~0-0`, s) &&
-			matchPattern(t, `modules/redis.*default.*\+0~0-0`, s) &&
-			matchPattern(t, `modules/mysql.*default.*\+0~0-0`, s) &&
-			matchPattern(t, `modules/backend-app.*default.*\+0~0-0`, s) &&
-			matchPattern(t, `modules/frontend-app.*default.*\+0~0-0`, s)
 	})
 
 	// Go to modules listing
