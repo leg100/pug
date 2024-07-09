@@ -228,7 +228,7 @@ func (m model) View() string {
 			envs = "-"
 		)
 		if len(m.task.Args) > 0 {
-			args = strings.Join(m.task.Args, "\n")
+			args = fmt.Sprintf("%v", m.task.Args)
 		}
 		if len(m.task.AdditionalEnv) > 0 {
 			envs = strings.Join(m.task.AdditionalEnv, "\n")
