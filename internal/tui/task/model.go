@@ -262,6 +262,8 @@ func (m model) View() string {
 			BorderForeground(tui.LighterGrey).
 			// Subtract 2 to account for margins, and 1 for border
 			Height(m.height).
+			// Crop content exceeding height
+			MaxHeight(m.height).
 			// Subtract 2 to account for margins, and 1 for border
 			Width(max(infoWidth - 2 - 1)).
 			Render(content)
