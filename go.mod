@@ -3,7 +3,6 @@ module github.com/leg100/pug
 go 1.22
 
 require (
-	github.com/btcsuite/btcutil v1.0.2
 	github.com/google/uuid v1.6.0
 	github.com/hashicorp/hcl/v2 v2.20.1
 	golang.org/x/sync v0.7.0 // indirect
