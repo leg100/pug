@@ -621,7 +621,7 @@ func (m Model[V]) headersView() string {
 	for _, col := range m.cols {
 		style := lipgloss.NewStyle().Width(col.Width).MaxWidth(col.Width).Inline(true)
 		renderedCell := style.Render(runewidth.Truncate(col.Title, col.Width, "…"))
-		s = append(s, tui.Regular.Copy().Padding(0, 1).Render(renderedCell))
+		s = append(s, tui.Regular.Padding(0, 1).Render(renderedCell))
 	}
 	return lipgloss.JoinHorizontal(lipgloss.Left, s...)
 }

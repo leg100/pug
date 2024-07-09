@@ -49,14 +49,14 @@ func (m *ListMaker) Make(_ resource.ID, width, height int) (tea.Model, error) {
 		b.WriteString(msg.Message)
 		b.WriteRune(' ')
 		for _, attr := range msg.Attributes {
-			b.WriteString(tui.Regular.Copy().Faint(true).Render(attr.Key + "="))
-			b.WriteString(tui.Regular.Copy().Render(attr.Value + " "))
+			b.WriteString(tui.Regular.Faint(true).Render(attr.Key + "="))
+			b.WriteString(tui.Regular.Render(attr.Value + " "))
 		}
 
 		return table.RenderedRow{
 			timeColumn.Key:  msg.Time.Format(timeFormat),
 			levelColumn.Key: coloredLogLevel(msg.Level),
-			msgColumn.Key:   tui.Regular.Copy().Render(b.String()),
+			msgColumn.Key:   tui.Regular.Render(b.String()),
 		}
 	}
 	table := table.New(columns, renderer, width, height,
