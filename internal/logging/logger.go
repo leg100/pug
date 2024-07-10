@@ -3,16 +3,40 @@ package logging
 import (
 	"io"
 	"log/slog"
+	"slices"
 
 	"github.com/leg100/pug/internal/pubsub"
 	"github.com/leg100/pug/internal/resource"
+	"golang.org/x/exp/maps"
 )
 
+const DefaultLevel = "info"
+
 var levels = map[string]slog.Level{
-	"debug": slog.LevelDebug,
-	"info":  slog.LevelInfo,
-	"warn":  slog.LevelWarn,
-	"error": slog.LevelError,
+	"debug":      slog.LevelDebug,
+	DefaultLevel: slog.LevelInfo,
+	"warn":       slog.LevelWarn,
+	"error":      slog.LevelError,
+}
+
+// ValidLevels returns valid strings for choosing a log level. Returns the
+// default log level first.
+func ValidLevels() []string {
+	keys := maps.Keys(levels)
+	slices.SortFunc(keys, func(a, b string) int {
+		if a == DefaultLevel {
+			return -1
+		}
+		if b == DefaultLevel {
+			return 1
+		}
+		// Sort remaining in alphabetical order.
+		if a < b {
+			return -1
+		}
+		return 1
+	})
+	return keys
 }
 
 // NewLogger constructs Logger, a slog wrapper with additional functionality.

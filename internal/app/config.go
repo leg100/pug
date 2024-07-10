@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 
 	"github.com/hashicorp/terraform/command/cliconfig"
 	"github.com/leg100/pug/internal/logging"
@@ -53,10 +54,14 @@ func parse(stderr io.Writer, args []string) (config, error) {
 	fs.StringEnumVar(&cfg.FirstPage, 'f', "first-page", "The first page to open on startup.", "modules", "workspaces", "runs", "tasks", "logs")
 	fs.BoolVar(&cfg.Debug, 'd', "debug", "Log bubbletea messages to messages.log")
 	fs.BoolVar(&cfg.version, 'v', "version", "Print version.")
-	fs.StringEnumVar(&cfg.loggingOptions.Level, 'l', "log-level", "Logging level.", "info", "debug", "error", "warn")
 	_ = fs.String('c', "config", defaultConfigFile, "Path to config file.")
 
 	fs.BoolVar(&cfg.DisableReloadAfterApply, 0, "disable-reload-after-apply", "Disable automatic reload of state following an apply.")
+
+	{
+		usage := fmt.Sprintf("Logging level (valid: %s).", strings.Join(logging.ValidLevels(), ","))
+		fs.StringEnumVar(&cfg.loggingOptions.Level, 'l', "log-level", usage, logging.ValidLevels()...)
+	}
 
 	// Plugin cache is enabled not via pug flags but via terraform config
 	tfcfg, _ := cliconfig.LoadConfig()

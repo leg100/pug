@@ -1,6 +1,7 @@
 package app
 
 import (
+	"bytes"
 	"io"
 	"os"
 	"path/filepath"
@@ -176,4 +177,14 @@ func TestConfig(t *testing.T) {
 			tt.want(t, got)
 		})
 	}
+}
+
+func TestHelpFlag(t *testing.T) {
+	got := new(bytes.Buffer)
+	_, err := parse(got, []string{"--help"})
+	// Help flag should return error
+	require.Error(t, err)
+
+	want := "-l, --log-level STRING             Logging level (valid: info,debug,error,warn). (default: info)"
+	assert.Contains(t, got.String(), want)
 }
