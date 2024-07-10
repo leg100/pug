@@ -112,6 +112,7 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmd              tea.Cmd
 		cmds             []tea.Cmd
 		createRunOptions run.CreateOptions
+		applyPrompt      = "Auto-apply %d modules?"
 	)
 
 	switch msg := msg.(type) {
@@ -141,7 +142,7 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return m, tui.NavigateTo(tui.ResourceListKind, tui.WithParent(ws))
 				}
 			}
-		case key.Matches(msg, keys.Common.Destroy):
+		case key.Matches(msg, keys.Common.PlanDestroy):
 			createRunOptions.Destroy = true
 			fallthrough
 		case key.Matches(msg, keys.Common.Plan):
@@ -152,14 +153,19 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			fn := func(workspaceID resource.ID) (*task.Task, error) {
 				return m.RunService.Plan(workspaceID, createRunOptions)
 			}
-			return m, m.helpers.CreateTasks("plan", fn, workspaceIDs...)
+			desc := run.PlanTaskDescription(createRunOptions.Destroy)
+			return m, m.helpers.CreateTasks(desc, fn, workspaceIDs...)
+		case key.Matches(msg, keys.Common.Destroy):
+			createRunOptions.Destroy = true
+			applyPrompt = "Destroy resources of %d modules?"
+			fallthrough
 		case key.Matches(msg, keys.Common.Apply):
 			workspaceIDs, err := m.pruneModulesWithoutCurrentWorkspace()
 			if err != nil {
 				return m, tui.ReportError(fmt.Errorf("deselected items: %w", err))
 			}
 			return m, tui.YesNoPrompt(
-				fmt.Sprintf("Auto-apply %d modules?", len(workspaceIDs)),
+				fmt.Sprintf(applyPrompt, len(workspaceIDs)),
 				m.helpers.CreateApplyTasks(&createRunOptions, workspaceIDs...),
 			)
 		}
@@ -197,6 +203,7 @@ func (m list) HelpBindings() (bindings []key.Binding) {
 		keys.Common.Format,
 		keys.Common.Validate,
 		keys.Common.Plan,
+		keys.Common.PlanDestroy,
 		keys.Common.Apply,
 		keys.Common.Destroy,
 		keys.Common.Edit,

@@ -235,3 +235,17 @@ func (r *Run) finishApply(reader io.Reader) (err error) {
 
 	return nil
 }
+
+func PlanTaskDescription(destroy bool) string {
+	if destroy {
+		return "plan (destroy)"
+	}
+	return "plan"
+}
+
+func ApplyTaskDescription(destroy bool) string {
+	if destroy {
+		return "apply (destroy)"
+	}
+	return "apply"
+}

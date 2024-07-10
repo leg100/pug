@@ -87,3 +87,18 @@ func Test_ParseApplyReport_NoChanges(t *testing.T) {
 	}
 	assert.Equal(t, want, got)
 }
+
+func Test_ParseDestroyReport(t *testing.T) {
+	logs, err := os.ReadFile("testdata/destroy.txt")
+	require.NoError(t, err)
+
+	got, err := parseApplyReport(string(logs))
+
+	require.NoError(t, err)
+	want := Report{
+		Additions:    0,
+		Changes:      0,
+		Destructions: 10,
+	}
+	assert.Equal(t, want, got)
+}

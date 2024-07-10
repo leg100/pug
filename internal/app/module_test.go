@@ -207,11 +207,11 @@ func TestModule_SingleDestroyPlan(t *testing.T) {
 	})
 
 	// Create destroy plan
-	tm.Type("d")
+	tm.Type("P")
 
 	// Expect 10 resources to be proposed for deletion
 	waitFor(t, tm, func(s string) bool {
-		return matchPattern(t, `Task.*plan.*default.*modules/a.*\+0~0\-10.*exited`, s)
+		return matchPattern(t, `Task.*plan \(destroy\).*default.*modules/a.*\+0~0\-10.*exited`, s)
 	})
 }
 
@@ -237,6 +237,49 @@ func TestModule_SingleApply(t *testing.T) {
 
 }
 
+func TestModule_SingleDestroy(t *testing.T) {
+	t.Parallel()
+
+	// Setup test with pre-existing state
+	tm := setup(t, "./testdata/module_destroy")
+
+	// Wait for module to be loaded
+	waitFor(t, tm, func(s string) bool {
+		return strings.Contains(s, "modules/a")
+	})
+
+	// Initialize module
+	tm.Type("i")
+
+	// Expect user to be taken to init's task page.
+	waitFor(t, tm, func(s string) bool {
+		return strings.Contains(s, "Terraform has been successfully initialized!")
+	})
+
+	// Go back to module listing
+	tm.Type("m")
+
+	// Module should have 10 resources in its state loaded.
+	waitFor(t, tm, func(s string) bool {
+		return matchPattern(t, `modules/a.*default.*10`, s)
+	})
+
+	// Create destroy
+	tm.Type("d")
+
+	// Give approval
+	waitFor(t, tm, func(s string) bool {
+		return strings.Contains(s, "Destroy resources of 1 modules? (y/N):")
+	})
+	tm.Type("y")
+
+	// Send to apply task page
+	waitFor(t, tm, func(s string) bool {
+		return matchPattern(t, `Task.*apply \(destroy\).*default.*modules/a.*\+0~0-10.*exited`, s)
+	})
+
+}
+
 func TestModule_MultipleApplies(t *testing.T) {
 	t.Parallel()
 
@@ -257,6 +300,58 @@ func TestModule_MultipleApplies(t *testing.T) {
 			matchPattern(t, `modules/a.*default.*\+10~0-0`, s) &&
 			matchPattern(t, `modules/b.*default.*\+10~0-0`, s) &&
 			matchPattern(t, `modules/c.*default.*\+10~0-0`, s)
+	})
+}
+
+func TestModule_MultipleDestroy(t *testing.T) {
+	t.Parallel()
+
+	// Setup test with modules with pre-existing state
+	tm := setup(t, "./testdata/multiple_destroy")
+
+	// Expect three modules to be listed
+	waitFor(t, tm, func(s string) bool {
+		return strings.Contains(s, "modules/a") &&
+			strings.Contains(s, "modules/b") &&
+			strings.Contains(s, "modules/c")
+	})
+
+	// Select all modules and init
+	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlA})
+	tm.Type("i")
+	waitFor(t, tm, func(s string) bool {
+		t.Log(s)
+		return matchPattern(t, "TaskGroup.*init", s) &&
+			matchPattern(t, `modules/a.*exited`, s) &&
+			matchPattern(t, `modules/b.*exited`, s) &&
+			matchPattern(t, `modules/c.*exited`, s)
+	})
+
+	// Go back to modules listing
+	tm.Send(tea.KeyMsg{Type: tea.KeyEsc})
+
+	// Expect three modules to be listed, along with their default workspace.
+	waitFor(t, tm, func(s string) bool {
+		t.Log(s)
+		return matchPattern(t, "modules/a.*default", s) &&
+			matchPattern(t, "modules/b.*default", s) &&
+			matchPattern(t, "modules/c.*default", s)
+	})
+
+	// Destroy resources of all 3 modules (all modules should still be selected)
+	tm.Type("d")
+
+	// Give approval
+	waitFor(t, tm, func(s string) bool {
+		return strings.Contains(s, "Destroy resources of 3 modules? (y/N):")
+	})
+	tm.Type("y")
+
+	waitFor(t, tm, func(s string) bool {
+		return matchPattern(t, `TaskGroup.*apply \(destroy\).*3/3`, s) &&
+			matchPattern(t, `modules/a.*default.*\+0~0-10`, s) &&
+			matchPattern(t, `modules/b.*default.*\+0~0-10`, s) &&
+			matchPattern(t, `modules/c.*default.*\+0~0-10`, s)
 	})
 }
 

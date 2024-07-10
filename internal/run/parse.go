@@ -14,6 +14,7 @@ var (
 	planOutputChangesRegex = regexp.MustCompile(`Changes to Outputs:`)
 	noChangesRegex         = regexp.MustCompile(`No changes. Your infrastructure matches the configuration.`)
 	applyChangesRegex      = regexp.MustCompile(`(?m)^Apply complete! Resources: (\d+) added, (\d+) changed, (\d+) destroyed.`)
+	destroyChangesRegex    = regexp.MustCompile(`Destroy complete! Resources: (\d+) destroyed.`)
 )
 
 // parsePlanReport reads the logs from `terraform plan` and detects whether
@@ -67,32 +68,37 @@ func parsePlanReport(logs string) (bool, Report, error) {
 func parseApplyReport(logs string) (Report, error) {
 	raw := internal.StripAnsi(logs)
 
-	// No changes
 	if noChangesRegex.MatchString(raw) {
+		// No changes
 		return Report{}, nil
 	}
-
-	matches := applyChangesRegex.FindStringSubmatch(raw)
-	if matches == nil {
-		return Report{}, fmt.Errorf("regexes unexpectedly did not match apply output")
+	if matches := destroyChangesRegex.FindStringSubmatch(raw); len(matches) > 1 {
+		// Destroy op
+		deletions, err := strconv.Atoi(matches[1])
+		if err != nil {
+			return Report{}, err
+		}
+		return Report{Destructions: deletions}, nil
 	}
-
-	adds, err := strconv.ParseInt(matches[1], 10, 0)
-	if err != nil {
-		return Report{}, err
+	if matches := applyChangesRegex.FindStringSubmatch(raw); len(matches) > 3 {
+		// Apply op
+		adds, err := strconv.Atoi(matches[1])
+		if err != nil {
+			return Report{}, err
+		}
+		changes, err := strconv.Atoi(matches[2])
+		if err != nil {
+			return Report{}, err
+		}
+		deletions, err := strconv.Atoi(matches[3])
+		if err != nil {
+			return Report{}, err
+		}
+		return Report{
+			Additions:    adds,
+			Changes:      changes,
+			Destructions: deletions,
+		}, nil
 	}
-	changes, err := strconv.ParseInt(matches[2], 10, 0)
-	if err != nil {
-		return Report{}, err
-	}
-	deletions, err := strconv.ParseInt(matches[3], 10, 0)
-	if err != nil {
-		return Report{}, err
-	}
-
-	return Report{
-		Additions:    int(adds),
-		Changes:      int(changes),
-		Destructions: int(deletions),
-	}, nil
+	return Report{}, fmt.Errorf("regexes unexpectedly did not match apply output")
 }
