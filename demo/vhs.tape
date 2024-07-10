@@ -75,8 +75,9 @@ Sleep 2s Down Sleep 1s Down Sleep 1s
 
 # go back to modules
 Type "m" Sleep 0.5s
-# take screen shot of modules
-Screenshot demo/modules.png
+# take screen shot of modules (sleep to ensure page doesn't switch too soon)
+Screenshot demo/modules.png Sleep 0.5s
+
 # go to state for current module
 Type "s" Sleep 0.5s
 # see preview for several resources

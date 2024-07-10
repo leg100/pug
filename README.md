@@ -101,14 +101,14 @@ If you add/remove modules outside of Pug, you can instruct Pug to reload modules
 
 | Key | Description |
 |--|--|
-| <kbd>i</kbd>|terraform init|
-| <kbd>f</kbd>|terraform fmt|
-| <kbd>v</kbd>|terraform validate|
-| <kbd>p</kbd>|terraform plan|
-| <kbd>P</kbd>|terraform plan -destroy|
-| <kbd>e</kbd>|Open module path in editor|
-| <kbd>Ctrl+r</kbd>|Reload all modules|
-| <kbd>Ctrl+w</kbd>|Reload module's workspaces|
+| `i`|terraform init|
+| `f`|terraform fmt|
+| `v`|terraform validate|
+| `p`|terraform plan|
+| `P`|terraform plan -destroy|
+| `e`|Open module path in editor|
+| `Ctrl+r`|Reload all modules|
+| `Ctrl+w`|Reload module's workspaces|
 
 ### Workspaces
 
@@ -122,16 +122,16 @@ If you add/remove workspaces outside of Pug, you can instruct Pug to reload work
 
 #### Key bindings
 
-| Key | Description |
+| Key | Description | Multi-select |
 |--|--|
-|`i`|Run `terraform init` on workspace's module|
+|`i`|Run `terraform init` on workspace's module|[ ]|
 |`f`|Run `terraform fmt` on workspace's module|
 |`v`|Run `terraform validate` on workspace's module|
 |`p`|Run `terraform plan`|
 |`P`|Run `terraform plan -destroy`|
 |`a`|Run `terraform apply`|
 |`d`|Run `terraform apply -destroy`|
-|`C`|Set as current workspace for module (via `terraform workspace select`)|
+|`C`|Run `terraform workspace select` |
 
 ### State
 
