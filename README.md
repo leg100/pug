@@ -124,14 +124,14 @@ If you add/remove workspaces outside of Pug, you can instruct Pug to reload work
 
 | Key | Description | Multi-select |
 |--|--|--|
-|`i`|Run `terraform init` on workspace's module|[ ]|
-|`f`|Run `terraform fmt` on workspace's module|
-|`v`|Run `terraform validate` on workspace's module|
-|`p`|Run `terraform plan`|
-|`P`|Run `terraform plan -destroy`|
-|`a`|Run `terraform apply`|
-|`d`|Run `terraform apply -destroy`|
-|`C`|Run `terraform workspace select` |
+|`i`|Run `terraform init` on workspace's module|&check;|
+|`f`|Run `terraform fmt` on workspace's module|&check;|
+|`v`|Run `terraform validate` on workspace's module|&check;|
+|`p`|Run `terraform plan`|&check;|
+|`P`|Run `terraform plan -destroy`|&check;|
+|`a`|Run `terraform apply`|&check;|
+|`d`|Run `terraform apply -destroy`|&check;|
+|`C`|Run `terraform workspace select`|&check;|
 
 ### State
 

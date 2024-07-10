@@ -57,8 +57,8 @@ Ctrl+a Sleep 0.5s Type "a"
 Sleep 0.5s Type "y"
 # preview output for several tasks
 Sleep 2s Down Sleep 1s Down Sleep 1s Down Sleep 1s
-# take screen shot of task groups
-Screenshot demo/task_groups.png
+# take screen shot of apply task group
+Screenshot demo/task_group.png
 
 # go to workspaces
 Type "w" Sleep 1s
@@ -140,3 +140,9 @@ Type "a"
 Sleep 0.5s Type "y"
 # look at apply task page for a bit
 Sleep 1.5s
+
+# take screenshot of task groups
+Hide
+Type "T"
+Screenshot demo/task_groups.png
+Sleep 0.5s
