@@ -171,6 +171,103 @@ func TestWorkspace_MultipleApplies(t *testing.T) {
 	})
 }
 
+func TestWorkspace_SingleDestroy(t *testing.T) {
+	t.Parallel()
+
+	// Setup test with pre-existing state
+	tm := setup(t, "./testdata/module_destroy")
+
+	// Wait for module to be loaded
+	waitFor(t, tm, func(s string) bool {
+		return strings.Contains(s, "modules/a")
+	})
+
+	// Initialize module
+	tm.Type("i")
+
+	// Expect user to be taken to init's task page.
+	waitFor(t, tm, func(s string) bool {
+		return strings.Contains(s, "Terraform has been successfully initialized!")
+	})
+
+	// Go to workspace listing
+	tm.Type("w")
+
+	// Workspace should have 10 resources in its state loaded.
+	waitFor(t, tm, func(s string) bool {
+		return strings.Contains(s, "Workspaces") &&
+			matchPattern(t, `modules/a.*default.*10`, s)
+	})
+
+	// Destroy all resources in workspace
+	tm.Type("d")
+
+	// Give approval
+	waitFor(t, tm, func(s string) bool {
+		return strings.Contains(s, "Destroy resources of 1 workspaces? (y/N):")
+	})
+	tm.Type("y")
+
+	// Send to apply task page
+	waitFor(t, tm, func(s string) bool {
+		return matchPattern(t, `Task.*apply.*default.*modules/a.*\+0~0-10.*exited`, s)
+	})
+}
+
+func TestWorkspace_MultipleDestroy(t *testing.T) {
+	t.Parallel()
+
+	// Setup test with modules with pre-existing state
+	tm := setup(t, "./testdata/multiple_destroy")
+
+	// Expect three modules to be listed
+	waitFor(t, tm, func(s string) bool {
+		return strings.Contains(s, "modules/a") &&
+			strings.Contains(s, "modules/b") &&
+			strings.Contains(s, "modules/c")
+	})
+
+	// Select all modules and init
+	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlA})
+	tm.Type("i")
+	waitFor(t, tm, func(s string) bool {
+		t.Log(s)
+		return matchPattern(t, "TaskGroup.*init", s) &&
+			matchPattern(t, `modules/a.*exited`, s) &&
+			matchPattern(t, `modules/b.*exited`, s) &&
+			matchPattern(t, `modules/c.*exited`, s)
+	})
+
+	// Go to workspace listing
+	tm.Type("w")
+
+	// Expect three workspaces to be listed, each with 10 resources
+	waitFor(t, tm, func(s string) bool {
+		return strings.Contains(s, "Workspaces") &&
+			matchPattern(t, `modules/a.*default.*10`, s) &&
+			matchPattern(t, `modules/b.*default.*10`, s) &&
+			matchPattern(t, `modules/c.*default.*10`, s)
+	})
+
+	// Destroy all resources in all three workspaces
+	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlA})
+	tm.Type("d")
+
+	// Give approval
+	waitFor(t, tm, func(s string) bool {
+		return strings.Contains(s, "Destroy resources of 3 workspaces? (y/N):")
+	})
+	tm.Type("y")
+
+	// Send to task group page
+	waitFor(t, tm, func(s string) bool {
+		return matchPattern(t, "TaskGroup.*apply.*3/3", s) &&
+			matchPattern(t, `modules/a.*default.*\+0~0-10`, s) &&
+			matchPattern(t, `modules/b.*default.*\+0~0-10`, s) &&
+			matchPattern(t, `modules/c.*default.*\+0~0-10`, s)
+	})
+}
+
 func TestWorkspace_Filter(t *testing.T) {
 	t.Parallel()
 

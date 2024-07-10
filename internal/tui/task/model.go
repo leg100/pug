@@ -245,7 +245,7 @@ func (m model) View() string {
 			m.task.ID.String(),
 			"",
 			tui.Bold.Render("Command"),
-			fmt.Sprintf("%s %s", m.program, m.task.CommandString()),
+			fmt.Sprintf("%s %s", m.program, strings.Join(m.task.Command, " ")),
 			"",
 			tui.Bold.Render("Arguments"),
 			args,

@@ -88,7 +88,8 @@ func (s *Service) plan(workspaceID resource.ID, opts CreateOptions) (*task.Task,
 		Command: []string{"plan"},
 		Args:    run.planArgs(),
 		// TODO: explain why plan is blocking (?)
-		Blocking: true,
+		Blocking:    true,
+		Description: PlanTaskDescription(opts.Destroy),
 		AfterQueued: func(*task.Task) {
 			run.updateStatus(PlanQueued)
 		},
@@ -153,7 +154,9 @@ func (s *Service) MultiApply(opts *CreateOptions, ids ...resource.ID) (*task.Gro
 
 		specs = append(specs, spec)
 	}
-	return s.tasks.CreateDependencyGroup("apply", *destroy, specs...)
+	// All tasks should have the same description, so use the first one.
+	desc := specs[0].Description
+	return s.tasks.CreateDependencyGroup(desc, *destroy, specs...)
 }
 
 func (s *Service) createApplySpec(id resource.ID, opts *CreateOptions) (task.CreateOptions, *Run, error) {
@@ -179,9 +182,10 @@ func (s *Service) createApplySpec(id resource.ID, opts *CreateOptions) (task.Cre
 	s.table.Add(run.ID, run)
 
 	spec := task.CreateOptions{
-		Command:  []string{"apply"},
-		Args:     run.applyArgs(),
-		Blocking: true,
+		Command:     []string{"apply"},
+		Args:        run.applyArgs(),
+		Blocking:    true,
+		Description: ApplyTaskDescription(run.Destroy),
 		AfterQueued: func(*task.Task) {
 			run.updateStatus(ApplyQueued)
 		},

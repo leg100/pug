@@ -30,6 +30,7 @@ type Task struct {
 	Immediate     bool
 	AdditionalEnv []string
 	DependsOn     []resource.ID
+	description   string
 
 	program   string
 	exclusive bool
@@ -118,6 +119,9 @@ type CreateOptions struct {
 	// task can be enqueued. If any of the other tasks are canceled or error
 	// then the task will be canceled.
 	DependsOn []resource.ID
+	// Description assigns an optional description to the task to display to the
+	// user, overriding the default of displaying the command.
+	Description string
 	// Call this function after the task has successfully finished
 	AfterExited func(*Task)
 	// Call this function after the task is enqueued.
@@ -159,6 +163,7 @@ func (f *factory) newTask(opts CreateOptions) *Task {
 		DependsOn:     opts.DependsOn,
 		Immediate:     opts.Immediate,
 		exclusive:     opts.Exclusive,
+		description:   opts.Description,
 		createOptions: opts,
 		AfterExited:   opts.AfterExited,
 		AfterError:    opts.AfterError,
@@ -184,12 +189,11 @@ func (f *factory) newTask(opts CreateOptions) *Task {
 	}
 }
 
-func (t *Task) CommandString() string {
-	return strings.Join(t.Command, " ")
-}
-
 func (t *Task) String() string {
-	return t.CommandString()
+	if t.description != "" {
+		return t.description
+	}
+	return strings.Join(t.Command, " ")
 }
 
 // NewReader provides a reader from which to read the task output from start to

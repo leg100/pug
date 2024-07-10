@@ -153,7 +153,8 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			fn := func(workspaceID resource.ID) (*task.Task, error) {
 				return m.RunService.Plan(workspaceID, createRunOptions)
 			}
-			return m, m.helpers.CreateTasks("plan", fn, workspaceIDs...)
+			desc := run.PlanTaskDescription(createRunOptions.Destroy)
+			return m, m.helpers.CreateTasks(desc, fn, workspaceIDs...)
 		case key.Matches(msg, keys.Common.Destroy):
 			createRunOptions.Destroy = true
 			applyPrompt = "Destroy resources of %d modules?"

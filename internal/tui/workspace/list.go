@@ -119,7 +119,7 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return nil
 				}
 			}
-		case key.Matches(msg, keys.Common.Destroy):
+		case key.Matches(msg, keys.Common.PlanDestroy):
 			createRunOptions.Destroy = true
 			fallthrough
 		case key.Matches(msg, keys.Common.Plan):
@@ -127,7 +127,8 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			fn := func(workspaceID resource.ID) (*task.Task, error) {
 				return m.runs.Plan(workspaceID, createRunOptions)
 			}
-			return m, m.helpers.CreateTasks("plan", fn, workspaceIDs...)
+			desc := run.PlanTaskDescription(createRunOptions.Destroy)
+			return m, m.helpers.CreateTasks(desc, fn, workspaceIDs...)
 		case key.Matches(msg, keys.Common.Destroy):
 			createRunOptions.Destroy = true
 			applyPrompt = "Destroy resources of %d workspaces?"

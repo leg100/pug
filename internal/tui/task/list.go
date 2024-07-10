@@ -87,16 +87,16 @@ func (mm *ListMaker) Make(_ resource.ID, width, height int) (tea.Model, error) {
 			taskIDColumn.Key:          t.ID.String(),
 			table.ModuleColumn.Key:    mm.Helpers.ModulePath(t),
 			table.WorkspaceColumn.Key: mm.Helpers.WorkspaceName(t),
-			commandColumn.Key:         t.CommandString(),
+			commandColumn.Key:         t.String(),
 			ageColumn.Key:             tui.Ago(time.Now(), t.Updated),
 			statusColumn.Key:          mm.Helpers.TaskStatus(t, false),
 		}
 
 		if rr := t.Run(); rr != nil {
 			run := rr.(*runpkg.Run)
-			if t.CommandString() == "plan" && run.PlanReport != nil {
+			if t.Command[0] == "plan" && run.PlanReport != nil {
 				row[runChangesColumn.Key] = mm.Helpers.RunReport(*run.PlanReport, true)
-			} else if t.CommandString() == "apply" && run.ApplyReport != nil {
+			} else if t.Command[0] == "apply" && run.ApplyReport != nil {
 				row[runChangesColumn.Key] = mm.Helpers.RunReport(*run.ApplyReport, true)
 			}
 		}
@@ -165,14 +165,14 @@ func (m List) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 		case key.Matches(msg, keys.Common.Retry):
-			// Determine the command string to assign to task group. If all
-			// tasks to be retried have the same command, then use that. If
-			// they have different commands, then use the string "multi".
+			// If all tasks have the same stringified identifier (which reveals
+			// the underlying command), then use that. Otherwise use the string
+			// "multi".
 			var cmd string
 			for _, task := range m.Table.SelectedOrCurrent() {
 				if cmd == "" {
-					cmd = task.Value.CommandString()
-				} else if cmd != task.Value.CommandString() {
+					cmd = task.Value.String()
+				} else if cmd != task.Value.String() {
 					cmd = "multi"
 					break
 				}
