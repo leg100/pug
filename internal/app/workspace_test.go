@@ -10,28 +10,7 @@ import (
 func TestWorkspace_SetCurrentWorkspace(t *testing.T) {
 	t.Parallel()
 
-	tm := setup(t, "./testdata/set_current_workspace")
-
-	// Wait for module to be loaded
-	waitFor(t, tm, func(s string) bool {
-		return strings.Contains(s, "modules/a")
-	})
-
-	// Initialize module
-	tm.Type("i")
-	waitFor(t, tm, func(s string) bool {
-		return strings.Contains(s, "Terraform has been successfully initialized!")
-	})
-
-	// Go to workspace listing
-	tm.Type("w")
-
-	// Expect two workspaces to be listed, and expect default to be the current
-	// workspace
-	waitFor(t, tm, func(s string) bool {
-		return matchPattern(t, `modules/a.*default.*✓`, s) &&
-			matchPattern(t, `modules/a.*dev`, s)
-	})
+	tm := setupAndInitModuleWithTwoWorkspaces(t)
 
 	// Navigate one row down to the dev workspace (default should be the first
 	// row because it is lexicographically before dev).
@@ -300,4 +279,71 @@ func TestWorkspace_Filter(t *testing.T) {
 	waitFor(t, tm, func(s string) bool {
 		return strings.Contains(s, "2/4")
 	})
+}
+
+func TestWorkspace_Delete(t *testing.T) {
+	t.Parallel()
+
+	tm := setupAndInitModuleWithTwoWorkspaces(t)
+
+	// Filter workspaces to only show dev workspace. This is the only to ensure
+	// the dev workspace is currently highlighted.
+
+	// Focus filter widget
+	tm.Type("/")
+
+	// Expect filter prompt
+	waitFor(t, tm, func(s string) bool {
+		return strings.Contains(s, "Filter:")
+	})
+
+	// Filter to only show dev workspace
+	tm.Type("dev")
+
+	// Expect title to show 1 workspaces filtered out of a total of 2.
+	waitFor(t, tm, func(s string) bool {
+		return strings.Contains(s, "1/2")
+	})
+
+	// Exit filter
+	tm.Send(tea.KeyMsg{Type: tea.KeyEnter})
+
+	// Now the dev workspace should be highlighted.
+
+	// Delete dev workspace
+	tm.Type("D")
+
+	// Give approval
+	waitFor(t, tm, func(s string) bool {
+		return strings.Contains(s, "Delete 1 workspace(s)? (y/N):")
+	})
+	tm.Type("y")
+
+}
+
+func setupAndInitModuleWithTwoWorkspaces(t *testing.T) *testModel {
+	tm := setup(t, "./testdata/module_with_two_workspaces")
+
+	// Wait for module to be loaded
+	waitFor(t, tm, func(s string) bool {
+		return strings.Contains(s, "modules/a")
+	})
+
+	// Initialize module
+	tm.Type("i")
+	waitFor(t, tm, func(s string) bool {
+		return strings.Contains(s, "Terraform has been successfully initialized!")
+	})
+
+	// Go to workspace listing
+	tm.Type("w")
+
+	// Expect two workspaces to be listed, and expect default to be the current
+	// workspace
+	waitFor(t, tm, func(s string) bool {
+		return matchPattern(t, `modules/a.*default.*✓`, s) &&
+			matchPattern(t, `modules/a.*dev`, s)
+	})
+
+	return tm
 }

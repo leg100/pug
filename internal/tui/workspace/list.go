@@ -170,6 +170,7 @@ func (m list) HelpBindings() []key.Binding {
 		keys.Common.PlanDestroy,
 		keys.Common.Apply,
 		keys.Common.Destroy,
+		keys.Common.Delete,
 		localKeys.SetCurrent,
 	}
 }
