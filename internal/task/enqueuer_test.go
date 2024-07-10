@@ -16,6 +16,8 @@ func TestEnqueuer(t *testing.T) {
 
 	mod1 := resource.New(resource.Module, resource.GlobalResource)
 	ws1 := resource.New(resource.Workspace, mod1)
+	run1 := resource.New(resource.Run, ws1)
+	run2 := resource.New(resource.Run, ws1)
 
 	mod1Task1 := f.newTask(CreateOptions{Parent: mod1})
 	mod1TaskBlocking1 := f.newTask(CreateOptions{Parent: mod1, Blocking: true})
@@ -33,6 +35,9 @@ func TestEnqueuer(t *testing.T) {
 
 	ws1TaskDependOnCompletedTask := f.newTask(CreateOptions{Parent: ws1, DependsOn: []resource.ID{ws1TaskCompleted.ID}})
 
+	run1TaskBlocking1 := f.newTask(CreateOptions{Parent: run1, Blocking: true})
+	run2Task1 := f.newTask(CreateOptions{Parent: run2})
+
 	tests := []struct {
 		name string
 		// Active tasks
@@ -45,37 +50,55 @@ func TestEnqueuer(t *testing.T) {
 		want []*Task
 	}{
 		{
-			name:    "enqueue task for parent resource with no active tasks",
+			name:    "enqueue pending workspace task",
 			active:  []*Task{},
 			pending: []*Task{ws1Task1},
 			want:    []*Task{ws1Task1},
 		},
 		{
-			name:    "enqueue task for parent resource with non-blocking active task",
+			name:    "enqueue pending workspace task alongside non-blocking active workspace task",
 			active:  []*Task{ws1Task2},
 			pending: []*Task{ws1Task1},
 			want:    []*Task{ws1Task1},
 		},
 		{
-			name:    "enqueue task for parent resource with non-blocking active grand-parent task",
+			name:    "enqueue pending workspace task alongside non-blocking active module task",
 			active:  []*Task{mod1Task1},
 			pending: []*Task{ws1Task1},
 			want:    []*Task{ws1Task1},
 		},
 		{
-			name:    "don't enqueue tasks for blocked parent resource",
+			name:    "don't enqueue workspace task when there is an active blocking workspace task sharing same workspace",
 			active:  []*Task{ws1TaskBlocking1},
 			pending: []*Task{ws1Task1},
 			want:    []*Task{},
 		},
 		{
-			name:    "don't enqueue tasks for blocked grand-parent resource",
+			name:    "don't enqueue workspace task when there is an active blocking module task sharing same module",
 			active:  []*Task{mod1TaskBlocking1},
 			pending: []*Task{ws1Task1},
 			want:    []*Task{},
 		},
 		{
-			name:    "only enqueue one of three tasks which block same parent",
+			name:    "don't enqueue run task when there is an active blocking run task sharing same workspace",
+			active:  []*Task{run1TaskBlocking1},
+			pending: []*Task{run2Task1},
+			want:    []*Task{},
+		},
+		{
+			name:    "don't enqueue module task when there is an older blocking pending module task",
+			active:  []*Task{},
+			pending: []*Task{mod1TaskBlocking1, mod1Task1},
+			want:    []*Task{mod1TaskBlocking1},
+		},
+		{
+			name:    "don't enqueue run task when there is an older blocking pending run task sharing same workspace",
+			active:  []*Task{},
+			pending: []*Task{run1TaskBlocking1, run2Task1},
+			want:    []*Task{run1TaskBlocking1},
+		},
+		{
+			name:    "only enqueue one of three blocking workspace tasks sharing same module",
 			active:  []*Task{},
 			pending: []*Task{ws1TaskBlocking1, ws1TaskBlocking2, ws1TaskBlocking3},
 			want:    []*Task{ws1TaskBlocking1},

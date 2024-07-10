@@ -36,11 +36,11 @@ func (e *enqueuer) enqueuable() []*Task {
 	active := e.tasks.List(ListOptions{
 		Status: []Status{Queued, Running},
 	})
-	// Construct set of task owners that are currently blocked.
+	// Populate set of currently blocked workspaces/modules.
 	blocked := make(map[resource.ID]struct{}, len(active))
-	for _, ab := range active {
-		if ab.Blocking {
-			blocked[ab.Parent.GetID()] = struct{}{}
+	for _, t := range active {
+		if t.Blocking {
+			addBlockedResource(blocked, t.Parent)
 		}
 	}
 	// Retrieve pending tasks in order of oldest first.
@@ -51,16 +51,17 @@ func (e *enqueuer) enqueuable() []*Task {
 	// Filter pending tasks, keeping only those that are enqueuable
 	var i int
 	for _, t := range pending {
-		// Recursively walk task's ancestors and check if they are currently
-		// blocked; if so then task cannot be enqueued. The exception to this
-		// rule is an immediate task, which is always enqueuable
+		// Check whether task's workspace/module is currently blocked; if so
+		// then task cannot be enqueued. The exception to this rule is an
+		// immediate task, which is always enqueuable
 		if !t.Immediate && hasBlockedAncestor(blocked, t.GetParent()) {
 			// Not enqueuable
 			continue
 		} else if t.Blocking {
 			// Found blocking task in pending queue; no further tasks shall be
-			// enqueued for resources belonging to the task's parent resource
-			blocked[t.Parent.GetID()] = struct{}{}
+			// enqueued for resources belonging to any of the blocking task's
+			// ancestor resources
+			addBlockedResource(blocked, t.Parent)
 		}
 		// If task depends upon other tasks then only enqueue task if they have
 		// all successfully completed.
@@ -98,6 +99,19 @@ func (e *enqueuer) enqueueDependentTask(t *Task) bool {
 		}
 	}
 	return true
+}
+
+func addBlockedResource(blocked map[resource.ID]struct{}, parent resource.Resource) {
+	if parent != nil {
+		switch parent.GetKind() {
+		case resource.Module, resource.Workspace:
+			blocked[parent.GetID()] = struct{}{}
+			return
+		}
+	}
+	if parent.GetParent() != nil {
+		addBlockedResource(blocked, parent.GetParent())
+	}
 }
 
 func hasBlockedAncestor(blocked map[resource.ID]struct{}, parent resource.Resource) bool {
