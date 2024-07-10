@@ -97,15 +97,18 @@ Each module has zero or more workspaces. Following successful initialization the
 
 If you add/remove modules outside of Pug, you can instruct Pug to reload modules by pressing `Ctrl-r` on the modules listing.
 
-| Key | Description|
+#### Key bindings
+
+| Key | Description |
 |--|--|
 | <kbd>i</kbd>|terraform init|
 | <kbd>f</kbd>|terraform fmt|
 | <kbd>v</kbd>|terraform validate|
 | <kbd>p</kbd>|terraform plan|
 | <kbd>P</kbd>|terraform plan -destroy|
-| <kbd>Ctrl+r</kbd>|Reload modules (detects changes made outside Pug)|
-| <kbd>Ctrl+r</kbd>|Reload modules (detects changes made outside Pug)|
+| <kbd>e</kbd>|Open module path in editor|
+| <kbd>Ctrl+r</kbd>|Reload all modules|
+| <kbd>Ctrl+w</kbd>|Reload module's workspaces|
 
 ### Workspaces
 
@@ -116,6 +119,19 @@ A workspace is directly equivalent to a [terraform workspace](https://developer.
 When a module is loaded for the first time, Pug automatically creates a task to run `terraform workspace list`, to retrieve the list of workspaces for the module.
 
 If you add/remove workspaces outside of Pug, you can instruct Pug to reload workspaces by pressing `Ctrl-w` on a module.
+
+#### Key bindings
+
+| Key | Description |
+|--|--|
+|`i`|Run `terraform init` on workspace's module|
+|`f`|Run `terraform fmt` on workspace's module|
+|`v`|Run `terraform validate` on workspace's module|
+|`p`|Run `terraform plan`|
+|`P`|Run `terraform plan -destroy`|
+|`a`|Run `terraform apply`|
+|`d`|Run `terraform apply -destroy`|
+|`C`|Set as current workspace for module (via `terraform workspace select`)|
 
 ### State
 
