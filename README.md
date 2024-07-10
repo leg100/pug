@@ -60,14 +60,15 @@ FLAGS
   -p, --program STRING               The default program to use with pug. (default: terraform)
   -w, --workdir STRING               The working directory containing modules. (default: .)
   -t, --max-tasks INT                The maximum number of parallel tasks. (default: 32)
-      --data-dir STRING              Directory in which to store plan files. (default: $HOME/.pug)
+      --data-dir STRING              Directory in which to store plan files. (default: /home/louis/.pug)
   -e, --env STRING                   Environment variable to pass to terraform process. Can set more than once.
+  -a, --arg STRING                   CLI arg to pass to terraform process. Can set more than once.
   -f, --first-page STRING            The first page to open on startup. (default: modules)
   -d, --debug                        Log bubbletea messages to messages.log
   -v, --version                      Print version.
-  -l, --log-level STRING             Logging level. (default: info)
-  -c, --config STRING                Path to config file. (default: $HOME/.pug.yaml)
+  -c, --config STRING                Path to config file. (default: /home/louis/.pug.yaml)
       --disable-reload-after-apply   Disable automatic reload of state following an apply.
+  -l, --log-level STRING             Logging level (valid: info,debug,error,warn). (default: info)
 ```
 
 Environment variables are specified by prefixing the value with `PUG_` and appending the equivalent flag value, replacing hyphens with underscores, e.g. `--max-tasks 100` is set via `PUG_MAX_TASKS=100`.
@@ -82,16 +83,11 @@ max-tasks: 100
 
 Pug automatically loads variables from a .tfvars file. It looks for a file named `<workspace>.tfvars` in the module directory, where `<workspace>` is the name of the workspace. For example, if the workspace is named `dev` then it'll look for `dev.tfvars`. If the file exists then it'll pass the name to `terraform plan`, e.g. for a workspace named `dev`, it'll invoke `terraform plan -vars-file=dev.tfvars`.
 
-## Resource hierarchy
-
-There are several types of resources in pug:
-
-* modules
-* workspaces
-* states
-* tasks
+## Pages
 
 ### Modules
+
+![Modules screenshot](./demo/modules.png)
  
 *Note: what Pug calls a module is equivalent to a [root module](https://developer.hashicorp.com/terraform/language/modules#the-root-module), i.e. a directory containing terraform configuration, including a state backend. It is not to be confused with a [child module](https://developer.hashicorp.com/terraform/language/modules#child-modules).*
 
@@ -101,7 +97,19 @@ Each module has zero or more workspaces. Following successful initialization the
 
 If you add/remove modules outside of Pug, you can instruct Pug to reload modules by pressing `Ctrl-r` on the modules listing.
 
+| Key | Description|
+|--|--|
+| <kbd>i</kbd>|terraform init|
+| <kbd>f</kbd>|terraform fmt|
+| <kbd>v</kbd>|terraform validate|
+| <kbd>p</kbd>|terraform plan|
+| <kbd>P</kbd>|terraform plan -destroy|
+| <kbd>Ctrl+r</kbd>|Reload modules (detects changes made outside Pug)|
+| <kbd>Ctrl+r</kbd>|Reload modules (detects changes made outside Pug)|
+
 ### Workspaces
+
+![Workspaces screenshot](./demo/workspaces.png)
 
 A workspace is directly equivalent to a [terraform workspace](https://developer.hashicorp.com/terraform/language/state/workspaces).
 
@@ -109,11 +117,13 @@ When a module is loaded for the first time, Pug automatically creates a task to 
 
 If you add/remove workspaces outside of Pug, you can instruct Pug to reload workspaces by pressing `Ctrl-w` on a module.
 
-### States
+### State
+
+![State screenshot](./demo/state.png)
 
 Each workspace has state. Type `s` on a workspace to see its state, or type `s` on a module to see the state of its current workspace. You can also type `s` on a task, and it'll take you to the state of the task's workspace, or its module's current workspace.
 
-When a workspace is loaded into Pug for the first time, a task is created to invoke `terraform state pull`, to retrieve the workspace's state. The task is also triggered after any task that alters the state, such as an apply or a state action.
+When a workspace is loaded into Pug for the first time, a task is created to invoke `terraform state pull`, which retrieves workspace's state, and then the state is loaded into Pug. The task is also triggered after any task that alters the state, such as an apply or a moving a resource in the state.
 
 Various actions can be carried out on state:
 
@@ -126,6 +136,8 @@ Various actions can be carried out on state:
 
 ### Tasks
 
+![Tasks screenshot](./demo/tasks.png)
+
 Each invocation of terraform is represented as a task. A task belongs either to a workspace or a module.
 
 A task is either non-blocking or blocking. If it is blocking then it blocks tasks created after it that belong either to the same resource, or to a child resource. For example, an `init` task, which is a blocking task, runs on module "A". Another `init` task for module "A", created immediately afterwards, would be blocked until the former task has completed. Or a `plan` task created afterwards on workspace "default" on module "A", would also be blocked.
@@ -137,6 +149,23 @@ An exception to this rule are tasks which are classified as *immediate*. Immedia
 A task can further be classed as *exclusive*. These tasks are globally mutually exclusive and cannot run concurrently. The only task classified as such is the `init` task, and only when you have enabled the [provider plugin cache](https://developer.hashicorp.com/terraform/cli/config/config-file#provider-plugin-cache) (the plugin cache does not permit concurrent writes).
 
 A task can be canceled at any stage. If it is `running` then the current terraform process is sent a termination signal. Otherwise, in any other non-terminated state, the task is immediately set as `canceled`.
+
+### Task Groups
+
+![Task groups screenshot](./demo/task_groups.png)
+
+Each invocation of terraform is represented as a task. A task belongs either to a workspace or a module.
+
+A task is either non-blocking or blocking. If it is blocking then it blocks tasks created after it that belong either to the same resource, or to a child resource. For example, an `init` task, which is a blocking task, runs on module "A". Another `init` task for module "A", created immediately afterwards, would be blocked until the former task has completed. Or a `plan` task created afterwards on workspace "default" on module "A", would also be blocked.
+
+A task starts in the `pending` state. It enters the `queued` state only if it is unblocked (see above). It remains in the `queued` state until there is available capacity, at which point it enters the `running` state. Capacity determines the maximum number of running tasks, and defaults to twice the number of cores on your system and can be overridden using `--max-tasks`.
+
+An exception to this rule are tasks which are classified as *immediate*. Immediate tasks enter the running state regardless of available capacity. At time of writing only the `terraform workspace select` task is classified as such.
+
+A task can further be classed as *exclusive*. These tasks are globally mutually exclusive and cannot run concurrently. The only task classified as such is the `init` task, and only when you have enabled the [provider plugin cache](https://developer.hashicorp.com/terraform/cli/config/config-file#provider-plugin-cache) (the plugin cache does not permit concurrent writes).
+
+A task can be canceled at any stage. If it is `running` then the current terraform process is sent a termination signal. Otherwise, in any other non-terminated state, the task is immediately set as `canceled`.
+
 
 #### Plans
 

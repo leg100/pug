@@ -11,7 +11,6 @@ Hide
 Type "demo/reset.sh" Enter
 Type `TF_CLI_CONFIG_FILE=$PWD/mirror/mirror.tfrc go run main.go -w demo/configs` Enter
 Sleep 1s
-Screenshot demo/modules_listing.png
 Show
 
 # show unintialized modules
@@ -32,6 +31,8 @@ Type "v"
 Sleep 0.5s
 # enable task info side panel
 Type "I"
+# take screen shot of tasks
+Screenshot demo/tasks.png
 # preview output for several tasks
 Down Sleep 0.5s Down Sleep 0.5s Down Sleep 0.5s
 # disable task info side panel
@@ -56,9 +57,13 @@ Ctrl+a Sleep 0.5s Type "a"
 Sleep 0.5s Type "y"
 # preview output for several tasks
 Sleep 2s Down Sleep 1s Down Sleep 1s Down Sleep 1s
+# take screen shot of task groups
+Screenshot demo/task_groups.png
 
 # go to workspaces
 Type "w" Sleep 1s
+# take screen shot of workspaces
+Screenshot demo/workspaces.png
 # filter dev workspaces
 Type "/" Sleep 0.5s Type "dev" Sleep 0.5s Enter
 # select all dev workspaces and auto-apply
@@ -70,6 +75,8 @@ Sleep 2s Down Sleep 1s Down Sleep 1s
 
 # go back to modules
 Type "m" Sleep 0.5s
+# take screen shot of modules
+Screenshot demo/modules.png
 # go to state for current module
 Type "s" Sleep 0.5s
 # see preview for several resources
@@ -82,6 +89,8 @@ Sleep 1s
 
 # go back to state
 Escape Sleep 0.5s
+# take screen shot of state
+Screenshot demo/state.png
 
 # delete another resource
 Down Sleep 0.5s
