@@ -123,7 +123,7 @@ If you add/remove workspaces outside of Pug, you can instruct Pug to reload work
 #### Key bindings
 
 | Key | Description | Multi-select |
-|--|--|
+|--|--|--|
 |`i`|Run `terraform init` on workspace's module|[ ]|
 |`f`|Run `terraform fmt` on workspace's module|
 |`v`|Run `terraform validate` on workspace's module|
@@ -169,6 +169,8 @@ A task can be canceled at any stage. If it is `running` then the current terrafo
 ### Task Groups
 
 ![Task groups screenshot](./demo/task_groups.png)
+
+Creating multiple tasks - via a selection - creates a task group. The status of the tasks is 
 
 Each invocation of terraform is represented as a task. A task belongs either to a workspace or a module.
 

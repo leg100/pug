@@ -30,7 +30,7 @@ Type "v"
 # we're taken to the validate task group page
 Sleep 0.5s
 # enable task info side panel
-Type "I"
+Type "I" Sleep 0.5s
 # take screen shot of tasks
 Screenshot demo/tasks.png
 # preview output for several tasks
