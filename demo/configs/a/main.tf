@@ -8,7 +8,7 @@ terraform {
 }
 
 resource "time_sleep" "wait_three_seconds" {
-  create_duration = "20s"
+  create_duration = "3s"
 }
 
 resource "random_pet" "pet" {
