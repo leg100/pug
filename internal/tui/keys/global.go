@@ -81,6 +81,6 @@ var Global = global{
 	),
 	Help: key.NewBinding(
 		key.WithKeys("?"),
-		key.WithHelp("?", "help"),
+		key.WithHelp("?", "close help"),
 	),
 }

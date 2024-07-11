@@ -13,7 +13,6 @@ type navigation struct {
 	HalfPageDown key.Binding
 	GotoTop      key.Binding
 	GotoBottom   key.Binding
-	SwitchPane   key.Binding
 }
 
 // Navigation returns key bindings for navigation.
@@ -49,9 +48,5 @@ var Navigation = navigation{
 	GotoBottom: key.NewBinding(
 		key.WithKeys("end", "G"),
 		key.WithHelp("G/end", "go to end"),
-	),
-	SwitchPane: key.NewBinding(
-		key.WithKeys("tab"),
-		key.WithHelp("tab", "switch pane"),
 	),
 }
