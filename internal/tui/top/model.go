@@ -414,7 +414,7 @@ var (
 // help renders key bindings
 func (m model) help() string {
 	// Compile list of bindings to render
-	bindings := []key.Binding{keys.Global.Help}
+	bindings := []key.Binding{keys.Global.Help, keys.Global.Quit}
 	switch m.mode {
 	case promptMode:
 		bindings = append(bindings, m.prompt.HelpBindings()...)

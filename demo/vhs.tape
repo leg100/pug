@@ -66,6 +66,8 @@ Type "w" Sleep 1s
 Screenshot demo/workspaces.png
 # filter dev workspaces
 Type "/" Sleep 0.5s Type "dev" Sleep 0.5s Enter
+# take screen shot of filter mode
+Screenshot demo/filter.png Sleep 0.5s
 # select all dev workspaces and auto-apply
 Ctrl+a Sleep 0.5s Type "a"
 # accept confirmation

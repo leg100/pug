@@ -103,13 +103,13 @@ If you add/remove modules outside of Pug, you can instruct Pug to reload modules
 
 | Key | Description | Multi-select |
 |--|--|--|
-| `i`|terraform init|&check;|
-| `f`|terraform fmt|&check;|
-| `v`|terraform validate|&check;|
-| `p`|terraform plan|&check;|
-| `P`|terraform plan -destroy|&check;|
-| `e`|Open module path in editor|&check;|
-| `Ctrl+r`|Reload all modules|&check;|
+| `i`|Run `terraform init`|&check;|
+| `f`|Run `terraform fmt`|&check;|
+| `v`|Run `terraform validate`|&check;|
+| `p`|Run `terraform plan`|&check;|
+| `P`|Run `terraform plan -destroy`|&check;|
+| `e`|Open module in editor|&cross;|
+| `Ctrl+r`|Reload all modules|-|
 | `Ctrl+w`|Reload module's workspaces|&check;|
 
 ### Workspaces
@@ -179,9 +179,17 @@ A task can be canceled at any stage. If it is `running` then the current terrafo
 |`r`|Retry task|&check;|
 |`Enter`|Full screen task output|&cross;|
 |`S`|Toggle split screen|-|
-|`+`|Increase split screen top pane size|-|
-|`-`|Decrease split screen top pane size|-|
+|`+`|Increase split screen top pane|-|
+|`-`|Decrease split screen top pane|-|
 |`tab`|Switch split screen pane focus|-|
+
+### Task Group
+
+![Task group screenshot](./demo/task_group.png)
+
+Press `T` to go to the tasks groups page.
+
+Creating multiple tasks, via a selection, creates a task group, and takes you to the task group page.
 
 ### Task Groups
 
@@ -189,7 +197,54 @@ A task can be canceled at any stage. If it is `running` then the current terrafo
 
 Press `T` to go to the tasks groups page.
 
-Creating multiple tasks - via a selection - creates a task group. The status of the tasks is 
+Creating multiple tasks, via a selection, creates a task group, and takes you to the task group page.
+
+### Global
+
+These keys are valid on any page.
+
+| Key | Description |
+|--|--|
+|`?`|Open help pane|
+|`Ctrl+c`|Quit|
+|`Esc`|Go to previous page|
+|`Ctrl+s`|Toggle auto-scrolling of terraform output|
+
+### Selections
+
+Items can be added or removed from a selection. Once selected, actions are carried out on the selected items if the action supports multiple selection.
+
+| Key | Description |
+|--|--|
+|`<space>`|Toggle selection|
+|`Ctrl+a`|Select all|
+|`Ctrl+\`|Clear selection|
+|`Ctrl+<space>`|Select range|
+
+### Filtering
+
+![Filter mode screenshot](./demo/filter.png)
+
+Items can be filtered to those containing a sub-string.
+
+| Key | Description |
+|--|--|
+|`/`|Open and focus filter prompt|
+|`Enter`|Unfocus filter prompt|
+|`Esc`|Clear and close filter prompt|
+
+### Navigation
+
+Common vim key bindings are supported for navigation.
+
+| Key | Description |
+|--|--|
+|`Up/k`|Up one row|
+|`Down/j`|Down one row|
+|`PgUp/b`|Up one page|
+|`PgDown/f`|Down one page|
+|`Home/g`|Go to top|
+|`End/G`|Go to bottom|
 
 ## Tofu support
 

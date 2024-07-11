@@ -189,10 +189,6 @@ func (m Model[V]) Update(msg tea.Msg) (Model[V], tea.Cmd) {
 			m.MoveUp(m.viewport.Height)
 		case key.Matches(msg, keys.Navigation.PageDown):
 			m.MoveDown(m.viewport.Height)
-		case key.Matches(msg, keys.Navigation.HalfPageUp):
-			m.MoveUp(m.viewport.Height / 2)
-		case key.Matches(msg, keys.Navigation.HalfPageDown):
-			m.MoveDown(m.viewport.Height / 2)
 		case key.Matches(msg, keys.Navigation.GotoTop):
 			m.GotoTop()
 		case key.Matches(msg, keys.Navigation.GotoBottom):
