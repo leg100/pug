@@ -8,7 +8,6 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/leg100/pug/internal/resource"
 	"github.com/leg100/pug/internal/tui"
-	"github.com/leg100/pug/internal/tui/keys"
 	"github.com/leg100/pug/internal/tui/table"
 )
 
@@ -90,7 +89,7 @@ func (m Model[R]) Update(msg tea.Msg) (Model[R], tea.Cmd) {
 	case tea.KeyMsg:
 		// Key handlers regardless of which pane is focused
 		switch {
-		case key.Matches(msg, keys.Navigation.SwitchPane):
+		case key.Matches(msg, Keys.SwitchPane):
 			m.previewFocused = !m.previewFocused
 			m.setBorderStyles()
 		case key.Matches(msg, Keys.ToggleSplit):

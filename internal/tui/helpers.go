@@ -197,9 +197,9 @@ func (h *Helpers) GroupReport(group *task.Group, table bool) string {
 	if !table {
 		background = GroupReportBackgroundColor
 	}
-	slash := Regular.Background(background).Foreground(Black).Render("/")
+	slash := Regular.Background(background).Foreground(Grey).Render("/")
 	exited := Regular.Background(background).Foreground(Green).Render(fmt.Sprintf("%d", group.Exited()))
-	total := Regular.Background(background).Foreground(Black).Render(fmt.Sprintf("%d", len(group.Tasks)))
+	total := Regular.Background(background).Foreground(Blue).Render(fmt.Sprintf("%d", len(group.Tasks)))
 
 	s := fmt.Sprintf("%s%s%s", exited, slash, total)
 	if errored := group.Errored(); errored > 0 {

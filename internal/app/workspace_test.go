@@ -319,6 +319,10 @@ func TestWorkspace_Delete(t *testing.T) {
 	})
 	tm.Type("y")
 
+	waitFor(t, tm, func(s string) bool {
+		return matchPattern(t, `Task.*workspace delete.*dev.*modules/a.*exited`, s) &&
+			strings.Contains(s, `Deleted workspace "dev"!`)
+	})
 }
 
 func setupAndInitModuleWithTwoWorkspaces(t *testing.T) *testModel {

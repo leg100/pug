@@ -6,6 +6,7 @@ type keyMap struct {
 	ToggleSplit   key.Binding
 	IncreaseSplit key.Binding
 	DecreaseSplit key.Binding
+	SwitchPane    key.Binding
 }
 
 var Keys = keyMap{
@@ -20,5 +21,9 @@ var Keys = keyMap{
 	IncreaseSplit: key.NewBinding(
 		key.WithKeys("+"),
 		key.WithHelp("+", "increase split"),
+	),
+	SwitchPane: key.NewBinding(
+		key.WithKeys("tab"),
+		key.WithHelp("tab", "switch pane"),
 	),
 }

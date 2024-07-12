@@ -166,7 +166,7 @@ func (m resourceList) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				from := row.Value.Address
 				return m, m.helpers.Move(m.workspace.GetID(), from)
 			}
-		case key.Matches(msg, keys.Common.Destroy):
+		case key.Matches(msg, keys.Common.PlanDestroy):
 			// Create a targeted destroy plan.
 			createRunOptions.Destroy = true
 			fallthrough

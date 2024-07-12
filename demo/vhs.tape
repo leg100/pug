@@ -9,9 +9,8 @@ Set Padding 5
 
 Hide
 Type "demo/reset.sh" Enter
-Type `TF_CLI_CONFIG_FILE=$PWD/mirror/mirror.tfrc go run main.go -w demo/configs` Enter
+Type `TF_CLI_CONFIG_FILE=$PWD/mirror/mirror.tfrc go run main.go -w demo` Enter
 Sleep 1s
-Screenshot demo/modules_listing.png
 Show
 
 # show unintialized modules
@@ -31,7 +30,9 @@ Type "v"
 # we're taken to the validate task group page
 Sleep 0.5s
 # enable task info side panel
-Type "I"
+Type "I" Sleep 0.5s
+# take screen shot of tasks
+Screenshot demo/tasks.png
 # preview output for several tasks
 Down Sleep 0.5s Down Sleep 0.5s Down Sleep 0.5s
 # disable task info side panel
@@ -56,11 +57,17 @@ Ctrl+a Sleep 0.5s Type "a"
 Sleep 0.5s Type "y"
 # preview output for several tasks
 Sleep 2s Down Sleep 1s Down Sleep 1s Down Sleep 1s
+# take screen shot of apply task group
+Screenshot demo/task_group.png
 
 # go to workspaces
 Type "w" Sleep 1s
+# take screen shot of workspaces
+Screenshot demo/workspaces.png
 # filter dev workspaces
 Type "/" Sleep 0.5s Type "dev" Sleep 0.5s Enter
+# take screen shot of filter mode
+Screenshot demo/filter.png Sleep 0.5s
 # select all dev workspaces and auto-apply
 Ctrl+a Sleep 0.5s Type "a"
 # accept confirmation
@@ -70,6 +77,9 @@ Sleep 2s Down Sleep 1s Down Sleep 1s
 
 # go back to modules
 Type "m" Sleep 0.5s
+# take screen shot of modules (sleep to ensure page doesn't switch too soon)
+Screenshot demo/modules.png Sleep 0.5s
+
 # go to state for current module
 Type "s" Sleep 0.5s
 # see preview for several resources
@@ -82,6 +92,8 @@ Sleep 1s
 
 # go back to state
 Escape Sleep 0.5s
+# take screen shot of state
+Screenshot demo/state.png
 
 # delete another resource
 Down Sleep 0.5s
@@ -130,3 +142,15 @@ Type "a"
 Sleep 0.5s Type "y"
 # look at apply task page for a bit
 Sleep 1.5s
+
+# go to task groups listing
+Type "T"
+# take screenshot of task groups
+Screenshot demo/task_groups.png
+Sleep 2s
+
+# go to logs
+Type "l"
+# take screenshot of logs
+Screenshot demo/logs.png
+Sleep 2s
