@@ -1,5 +1,32 @@
 # Changelog
 
+## [0.4.0](https://github.com/leg100/pug/compare/v0.3.4...v0.4.0) (2024-07-12)
+
+
+### ⚠ BREAKING CHANGES
+
+* terraform destroy ([#92](https://github.com/leg100/pug/issues/92))
+
+### Features
+
+* terraform destroy ([#92](https://github.com/leg100/pug/issues/92)) ([60a29a1](https://github.com/leg100/pug/commit/60a29a193478ea43cbc39eefa47c9c3d11144c73))
+
+
+### Bug Fixes
+
+* add missing help entry for delete workspace ([b913600](https://github.com/leg100/pug/commit/b913600a4ff367d339f40b2f07df5fd86814492e))
+* crop task info sidebar content ([29e551f](https://github.com/leg100/pug/commit/29e551f80bd931f6ea9b772701969fbe581f165f))
+* show valid log levels in help ([d8fb3ca](https://github.com/leg100/pug/commit/d8fb3cab5e39e88b6e5166ee9fdd1c385ca28a84))
+* state locked error with parallel tasks ([06ce27d](https://github.com/leg100/pug/commit/06ce27ddf7303e3d185c70046ca442b04d030915))
+
+
+### Miscellaneous
+
+* go mod tidy ([87ebcc7](https://github.com/leg100/pug/commit/87ebcc71989f171e13391491ff6444ebd03b656c))
+* make task info sidebar more readable ([9a29990](https://github.com/leg100/pug/commit/9a29990564da04d364b3238884be8b47a1c11530))
+* update readme, keybindings, colors. ([#94](https://github.com/leg100/pug/issues/94)) ([37c5cad](https://github.com/leg100/pug/commit/37c5cad15bab80d32b8756a2dda71611a39191e6))
+* upgrade lipgloss ([#91](https://github.com/leg100/pug/issues/91)) ([ff68ccb](https://github.com/leg100/pug/commit/ff68ccbea067d3b3bf6b02552db19386c8dfc04d))
+
 ## [0.3.4](https://github.com/leg100/pug/compare/v0.3.3...v0.3.4) (2024-07-09)
 
 
