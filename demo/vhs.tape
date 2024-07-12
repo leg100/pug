@@ -148,3 +148,9 @@ Type "T"
 # take screenshot of task groups
 Screenshot demo/task_groups.png
 Sleep 2s
+
+# go to logs
+Type "l"
+# take screenshot of logs
+Screenshot demo/logs.png
+Sleep 2s

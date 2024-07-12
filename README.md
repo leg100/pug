@@ -102,6 +102,8 @@ Press `m` to go to the modules page.
 | `v`|Run `terraform validate`|&check;|
 | `p`|Run `terraform plan`|&check;|
 | `P`|Run `terraform plan -destroy`|&check;|
+| `a`|Run `terraform apply`|&check;|
+| `d`|Run `terraform apply -destroy`|&check;|
 | `e`|Open module in editor|&cross;|
 | `Ctrl+r`|Reload all modules|-|
 | `Ctrl+w`|Reload module's workspaces|&check;|
@@ -142,7 +144,7 @@ Press `s` to go to the state page, listing a workspace's resources.
 |`D`|Run `terraform state rm`|&check;|
 |`M`|Run `terraform state mv`|&cross;|
 |`Ctrl+t`|Run `terraform taint`|&check;|
-|`Ctrl+u`|Run `terraform untaint -destroy`|&check;|
+|`Ctrl+u`|Run `terraform untaint`|&check;|
 |`Ctrl+r`|Run `terraform state pull`|-|
 
 ### Tasks
@@ -189,6 +191,12 @@ Creating multiple tasks, via a selection, creates a task group, and takes you to
 
 Press `T` to go to the tasks groups page, which lists all task groups.
 
+### Logs
+
+![Logs screenshot](./demo/logs.png)
+
+Press `l` to go to the logs page.
+
 ## Common Key bindings
 
 ### Global
@@ -200,7 +208,15 @@ These keys are valid on any page.
 |`?`|Open help pane|
 |`Ctrl+c`|Quit|
 |`Esc`|Go to previous page|
+|`m`|Go to modules page|
+|`w`|Go to workspaces page|
+|`s`|Go to state page\*|
+|`t`|Go to tasks page|
+|`T`|Go to task groups page|
+|`l`|Go to logs|
 |`Ctrl+s`|Toggle auto-scrolling of terraform output|
+
+\* Only where the workspace can be ascertained.
 
 ### Selections
 
