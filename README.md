@@ -83,54 +83,7 @@ max-tasks: 100
 
 Pug automatically loads variables from a .tfvars file. It looks for a file named `<workspace>.tfvars` in the module directory, where `<workspace>` is the name of the workspace. For example, if the workspace is named `dev` then it'll look for `dev.tfvars`. If the file exists then it'll pass the name to `terraform plan`, e.g. for a workspace named `dev`, it'll invoke `terraform plan -vars-file=dev.tfvars`.
 
-## Key bindings
-
-### Global
-
-These keys are valid on any page.
-
-| Key | Description |
-|--|--|
-|`?`|Open help pane|
-|`Ctrl+c`|Quit|
-|`Esc`|Go to previous page|
-|`Ctrl+s`|Toggle auto-scrolling of terraform output|
-
-### Selections
-
-Items can be added or removed from a selection. Once selected, actions are carried out on the selected items if the action supports multiple selection.
-
-| Key | Description |
-|--|--|
-|`<space>`|Toggle selection|
-|`Ctrl+a`|Select all|
-|`Ctrl+\`|Clear selection|
-|`Ctrl+<space>`|Select range|
-
-### Filtering
-
-![Filter mode screenshot](./demo/filter.png)
-
-Items can be filtered to those containing a sub-string.
-
-| Key | Description |
-|--|--|
-|`/`|Open and focus filter prompt|
-|`Enter`|Unfocus filter prompt|
-|`Esc`|Clear and close filter prompt|
-
-### Navigation
-
-Common vim key bindings are supported for navigation.
-
-| Key | Description |
-|--|--|
-|`Up/k`|Up one row|
-|`Down/j`|Down one row|
-|`PgUp/b`|Up one page|
-|`PgDown/f`|Down one page|
-|`Home/g`|Go to top|
-|`End/G`|Go to bottom|
+## Pages
 
 ### Modules
 
@@ -198,6 +151,8 @@ Press `s` to go to the state page, listing a workspace's resources.
 
 Press `t` to go to the tasks page.
 
+#### Key bindings
+
 | Key | Description | Multi-select |
 |--|--|--|
 |`c`|Cancel task|&check;|
@@ -215,6 +170,8 @@ Press `t` to go to the tasks page.
 
 Creating multiple tasks, via a selection, creates a task group, and takes you to the task group page.
 
+#### Key bindings
+
 | Key | Description | Multi-select |
 |--|--|--|
 |`c`|Cancel task|&check;|
@@ -231,6 +188,55 @@ Creating multiple tasks, via a selection, creates a task group, and takes you to
 ![Task groups screenshot](./demo/task_groups.png)
 
 Press `T` to go to the tasks groups page, which lists all task groups.
+
+## Common Key bindings
+
+### Global
+
+These keys are valid on any page.
+
+| Key | Description |
+|--|--|
+|`?`|Open help pane|
+|`Ctrl+c`|Quit|
+|`Esc`|Go to previous page|
+|`Ctrl+s`|Toggle auto-scrolling of terraform output|
+
+### Selections
+
+Items can be added or removed from a selection. Once selected, actions are carried out on the selected items if the action supports multiple selection.
+
+| Key | Description |
+|--|--|
+|`<space>`|Toggle selection|
+|`Ctrl+a`|Select all|
+|`Ctrl+\`|Clear selection|
+|`Ctrl+<space>`|Select range|
+
+### Filtering
+
+![Filter mode screenshot](./demo/filter.png)
+
+Items can be filtered to those containing a sub-string.
+
+| Key | Description |
+|--|--|
+|`/`|Open and focus filter prompt|
+|`Enter`|Unfocus filter prompt|
+|`Esc`|Clear and close filter prompt|
+
+### Navigation
+
+Common vim key bindings are supported for navigation.
+
+| Key | Description |
+|--|--|
+|`Up/k`|Up one row|
+|`Down/j`|Down one row|
+|`PgUp/b`|Up one page|
+|`PgDown/f`|Down one page|
+|`Home/g`|Go to top|
+|`End/G`|Go to bottom|
 
 ## Reference
 
