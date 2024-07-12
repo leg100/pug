@@ -92,7 +92,7 @@ func (m resourceModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				"Delete resource?",
 				m.helpers.CreateTasks("state-rm", fn, m.resource.Workspace().GetID()),
 			)
-		case key.Matches(msg, keys.Common.Destroy):
+		case key.Matches(msg, keys.Common.PlanDestroy):
 			// Create a targeted destroy plan.
 			createRunOptions.Destroy = true
 			fallthrough
@@ -148,7 +148,7 @@ func (m resourceModel) Title() string {
 func (m resourceModel) HelpBindings() []key.Binding {
 	return []key.Binding{
 		keys.Common.Plan,
-		keys.Common.Destroy,
+		keys.Common.PlanDestroy,
 		keys.Common.Delete,
 		resourcesKeys.Move,
 		resourcesKeys.Taint,
