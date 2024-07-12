@@ -143,8 +143,8 @@ Sleep 0.5s Type "y"
 # look at apply task page for a bit
 Sleep 1.5s
 
-# take screenshot of task groups
-Hide
+# go to task groups listing
 Type "T"
+# take screenshot of task groups
 Screenshot demo/task_groups.png
-Sleep 0.5s
+Sleep 2s
