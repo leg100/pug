@@ -31,8 +31,8 @@ Type "v"
 Sleep 0.5s
 # enable task info side panel
 Type "I" Sleep 0.5s
-# take screen shot of tasks
-Screenshot demo/tasks.png
+# take screen shot of task group page
+Screenshot demo/task_group.png
 # preview output for several tasks
 Down Sleep 0.5s Down Sleep 0.5s Down Sleep 0.5s
 # disable task info side panel
@@ -57,8 +57,6 @@ Ctrl+a Sleep 0.5s Type "a"
 Sleep 0.5s Type "y"
 # preview output for several tasks
 Sleep 2s Down Sleep 1s Down Sleep 1s Down Sleep 1s
-# take screen shot of apply task group
-Screenshot demo/task_group.png
 
 # go to workspaces
 Type "w" Sleep 1s
@@ -142,6 +140,14 @@ Type "a"
 Sleep 0.5s Type "y"
 # look at apply task page for a bit
 Sleep 1.5s
+
+# go to task listing
+Type "t"
+# enable task info sidebar
+Type "I"
+# take screenshot of task listing along with sidebar
+Screenshot demo/tasks.png
+Sleep 2s
 
 # go to task groups listing
 Type "T"
