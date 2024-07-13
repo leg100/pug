@@ -325,6 +325,26 @@ func (s *Service) Delete(id resource.ID) (*task.Task, error) {
 	})
 }
 
+// Cost creates a task that retrieves a breakdown of the costs of the
+// infrastructure deployed by the workspace.
+func (s *Service) Cost(workspaceID resource.ID) (*task.Task, error) {
+	ws, err := s.table.Get(workspaceID)
+	if err != nil {
+		return nil, fmt.Errorf("costing workspace: %w", err)
+	}
+	return s.createTask(ws, task.CreateOptions{
+		Command: []string{"infracost"},
+		Args:    []string{"breakdown", "-p", ws.ModulePath(), "--terraform-workspace", ws.Name},
+		AfterExited: func(t *task.Task) {
+			cost, err := parseInfracostOutput(t.NewReader())
+			if err != nil {
+				s.logger.Error("parsing infracost output", "error", err, "workspace", ws)
+			}
+			t.SetSummary(cost)
+		},
+	})
+}
+
 // TODO: move this logic into task.Create
 func (s *Service) createTask(ws *Workspace, opts task.CreateOptions) (*task.Task, error) {
 	opts.Parent = ws

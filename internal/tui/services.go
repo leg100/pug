@@ -25,6 +25,7 @@ type WorkspaceService interface {
 	List(opts workspace.ListOptions) []*workspace.Workspace
 	SelectWorkspace(moduleID, workspaceID resource.ID) error
 	Delete(id resource.ID) (*task.Task, error)
+	Cost(id resource.ID) (*task.Task, error)
 }
 
 type StateService interface {

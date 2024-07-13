@@ -99,6 +99,12 @@ func (mm *ListMaker) Make(_ resource.ID, width, height int) (tea.Model, error) {
 			} else if t.Command[0] == "apply" && run.ApplyReport != nil {
 				row[runChangesColumn.Key] = mm.Helpers.RunReport(*run.ApplyReport, true)
 			}
+		} else {
+			// If task doesn't belong to a run, then set the content of the
+			// "changes" column to the task summary.
+			//
+			// TODO: use task summary for run changes too.
+			row[runChangesColumn.Key] = t.Summary()
 		}
 
 		return row

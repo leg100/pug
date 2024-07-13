@@ -32,6 +32,9 @@ type Task struct {
 	DependsOn     []resource.ID
 	description   string
 
+	// summary provides a summary the final result of the task.
+	summary string
+
 	program   string
 	exclusive bool
 
@@ -315,6 +318,17 @@ func (t *Task) recordStatusEndTime(now time.Time) {
 	currentStateTimestamps := t.timestamps[t.State]
 	currentStateTimestamps.ended = now
 	t.timestamps[t.State] = currentStateTimestamps
+}
+
+func (t *Task) SetSummary(summary string) {
+	t.summary = summary
+	if t.afterUpdate != nil {
+		t.afterUpdate(t)
+	}
+}
+
+func (t *Task) Summary() string {
+	return t.summary
 }
 
 func (t *Task) updateState(state Status) {
