@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/leg100/pug/internal"
+	"github.com/leg100/pug/internal/logging"
 	"github.com/leg100/pug/internal/resource"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -22,6 +23,7 @@ func TestLoadTerragruntDependenciesFromDigraph(t *testing.T) {
 	svc := &Service{
 		table:   &fakeModuleTable{modules: []*Module{vpc, redis, mysql, backend, frontend}},
 		workdir: workdir,
+		logger:  logging.Discard,
 	}
 
 	// Check it can handle both relative and absolute paths - `terragrunt
@@ -50,11 +52,13 @@ digraph {
         "%[1]s/root/backend-app" -> "%[1]s/root/mysql";
         "%[1]s/root/backend-app" -> "%[1]s/root/redis";
         "%[1]s/root/backend-app" -> "%[1]s/root/vpc";
+        "%[1]s/root/backend-app" -> "/outside_workdir/kafka";
         "%[1]s/root/mysql" ;
         "%[1]s/root/mysql" -> "%[1]s/root/vpc";
         "%[1]s/root/redis" ;
         "%[1]s/root/redis" -> "%[1]s/root/vpc";
         "%[1]s/root/vpc" ;
+        "/outside_workdir/kafka" ;
 }
 `, workdir)
 	)

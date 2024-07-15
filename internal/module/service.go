@@ -152,8 +152,8 @@ func (s *Service) loadTerragruntDependenciesFromDigraph(r io.Reader) error {
 			continue
 		}
 		// Convert dependency paths to module IDs
-		dependencyIDs := make([]resource.ID, len(depPaths))
-		for i, path := range depPaths {
+		dependencyIDs := make([]resource.ID, 0, len(depPaths))
+		for _, path := range depPaths {
 			// If absolute path then convert to path relative to pug's working
 			// directory.
 			if filepath.IsAbs(path) {
@@ -176,7 +176,7 @@ func (s *Service) loadTerragruntDependenciesFromDigraph(r io.Reader) error {
 				// Skip loading this dependency
 				continue
 			}
-			dependencyIDs[i] = mod.ID
+			dependencyIDs = append(dependencyIDs, mod.ID)
 		}
 		s.table.Update(mod.ID, func(existing *Module) error {
 			existing.Common = existing.WithDependencies(dependencyIDs...)
