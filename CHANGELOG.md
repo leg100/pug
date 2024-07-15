@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.2](https://github.com/leg100/pug/compare/v0.4.1...v0.4.2) (2024-07-15)
+
+
+### Bug Fixes
+
+* handle external terragrunt dep without panic ([#101](https://github.com/leg100/pug/issues/101)) ([518b60f](https://github.com/leg100/pug/commit/518b60f570f9b0d8cb4087fa976f55eeadfbe82c))
+
 ## [0.4.1](https://github.com/leg100/pug/compare/v0.4.0...v0.4.1) (2024-07-15)
 
 
