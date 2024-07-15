@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.4.1](https://github.com/leg100/pug/compare/v0.4.0...v0.4.1) (2024-07-15)
+
+
+### Bug Fixes
+
+* panic when pressing enter on state resource ([#98](https://github.com/leg100/pug/issues/98)) ([142dde7](https://github.com/leg100/pug/commit/142dde7df8af36914f573bf5edc52dec8f04997a))
+* state parsing string index keys ([#99](https://github.com/leg100/pug/issues/99)) ([dd0b91f](https://github.com/leg100/pug/commit/dd0b91fc6ba148d9eaa35068f78f5e61c3cb89f4))
+
+
+### Miscellaneous
+
+* update readme ([66cf084](https://github.com/leg100/pug/commit/66cf084ddfb2a09591f9e0c8c4ba90068933b369))
+* update readme ([6e6f2a5](https://github.com/leg100/pug/commit/6e6f2a5dd72911ce6a07d846a1237dc5d3be012c))
+
 ## [0.4.0](https://github.com/leg100/pug/compare/v0.3.4...v0.4.0) (2024-07-12)
 
 
