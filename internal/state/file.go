@@ -41,7 +41,7 @@ type (
 	}
 
 	StateFileResourceInstance struct {
-		IndexKey   *int `json:"index_key"`
+		IndexKey   any `json:"index_key"`
 		Status     StateFileResourceInstanceStatus
 		Attributes json.RawMessage
 	}
