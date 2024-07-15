@@ -67,10 +67,15 @@ func (m *ListMaker) Make(_ resource.ID, width, height int) (tea.Model, error) {
 			currentWorkspace.Key:          m.Helpers.CurrentWorkspaceName(mod.CurrentWorkspaceID),
 			table.ResourceCountColumn.Key: m.Helpers.ModuleCurrentResourceCount(mod),
 		}
-		dependencyNames := make([]string, len(mod.Dependencies()))
-		for i, id := range mod.Dependencies() {
-			mod, _ := m.ModuleService.Get(id)
-			dependencyNames[i] = mod.Path
+		dependencyNames := make([]string, 0, len(mod.Dependencies()))
+		for _, id := range mod.Dependencies() {
+			mod, err := m.ModuleService.Get(id)
+			if err != nil {
+				// Should never happen
+				dependencyNames = append(dependencyNames, fmt.Sprintf("error: %s", err.Error()))
+				continue
+			}
+			dependencyNames = append(dependencyNames, mod.Path)
 		}
 		row[dependencies.Key] = strings.Join(dependencyNames, ",")
 		return row
