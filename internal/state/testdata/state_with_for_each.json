@@ -1,0 +1,29 @@
+{
+  "version": 4,
+  "terraform_version": "1.8.2",
+  "serial": 1,
+  "lineage": "b4352e07-940e-38cb-2a4a-2d8144aa32ed",
+  "outputs": {},
+  "resources": [
+    {
+      "mode": "managed",
+      "type": "time_sleep",
+      "name": "wait_three_seconds",
+      "provider": "provider[\"registry.terraform.io/hashicorp/time\"]",
+      "instances": [
+        {
+          "index_key": "duration",
+          "schema_version": 0,
+          "attributes": {
+            "create_duration": "3s",
+            "destroy_duration": null,
+            "id": "2024-07-15T06:12:24Z",
+            "triggers": null
+          },
+          "sensitive_attributes": []
+        }
+      ]
+    }
+  ],
+  "check_results": null
+}
