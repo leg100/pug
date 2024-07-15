@@ -301,6 +301,44 @@ func TestState_NoState(t *testing.T) {
 	})
 }
 
+func TestState_ViewResource(t *testing.T) {
+	t.Parallel()
+
+	tm := setupState(t)
+
+	// Press enter to view resource, which should be random_pet.pet[0]
+	tm.Send(tea.KeyMsg{Type: tea.KeyEnter})
+
+	waitFor(t, tm, func(s string) bool {
+		return matchPattern(t, `Resource.*random_pet\.pet\[0\].*default.*modules/a`, s)
+	})
+}
+
+func TestState_ViewResourceTargetPlan(t *testing.T) {
+	t.Parallel()
+
+	tm := setupState(t)
+
+	// Press enter to view resource, which should be random_pet.pet[0]
+	tm.Send(tea.KeyMsg{Type: tea.KeyEnter})
+
+	waitFor(t, tm, func(s string) bool {
+		return matchPattern(t, `Resource.*random_pet\.pet\[0\].*default.*modules/a`, s)
+	})
+
+	// Create targeted plan for resource
+	tm.Type("p")
+
+	// Expect to be taken to the task page for the plan, with a completed plan, and a warning
+	// that resource targeting is in effect
+	waitFor(t, tm, func(s string) bool {
+		// Strip ANSI formatting from output
+		s = internal.StripAnsi(s)
+		return matchPattern(t, `Task.*plan.*default.*modules/a.*\+1~0\-1.*exited`, s) &&
+			strings.Contains(s, "Warning: Resource targeting is in effect")
+	})
+}
+
 func setupState(t *testing.T) *testModel {
 	// Setup test with pre-existing state
 	tm := setup(t, "./testdata/state")

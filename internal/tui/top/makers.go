@@ -84,7 +84,9 @@ func makeMakers(opts Options, spinner *spinner.Model) map[tui.Kind]tui.Maker {
 			Helpers:          helpers,
 		},
 		tui.ResourceKind: &workspacetui.ResourceMaker{
-			Helpers: helpers,
+			StateService: opts.StateService,
+			RunService:   opts.RunService,
+			Helpers:      helpers,
 		},
 	}
 	return makers

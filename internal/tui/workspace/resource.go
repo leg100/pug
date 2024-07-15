@@ -29,6 +29,7 @@ func (mm *ResourceMaker) Make(id resource.ID, width, height int) (tea.Model, err
 
 	m := resourceModel{
 		StateService: mm.StateService,
+		RunService:   mm.RunService,
 		helpers:      mm.Helpers,
 		resource:     stateResource,
 		border:       !mm.disableBorders,
