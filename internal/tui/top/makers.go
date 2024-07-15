@@ -18,55 +18,55 @@ type updateableMaker interface {
 // makeMakers makes model makers for making models
 func makeMakers(opts Options, spinner *spinner.Model) map[tui.Kind]tui.Maker {
 	helpers := &tui.Helpers{
-		ModuleService:    opts.ModuleService,
-		WorkspaceService: opts.WorkspaceService,
-		RunService:       opts.RunService,
-		StateService:     opts.StateService,
-		TaskService:      opts.TaskService,
-		Logger:           opts.Logger,
+		Modules:    opts.Modules,
+		Workspaces: opts.Workspaces,
+		Runs:       opts.Runs,
+		States:     opts.States,
+		Tasks:      opts.Tasks,
+		Logger:     opts.Logger,
 	}
 
 	workspaceListMaker := &workspacetui.ListMaker{
-		WorkspaceService: opts.WorkspaceService,
-		ModuleService:    opts.ModuleService,
-		RunService:       opts.RunService,
-		Helpers:          helpers,
+		Workspaces: opts.Workspaces,
+		Modules:    opts.Modules,
+		Runs:       opts.Runs,
+		Helpers:    helpers,
 	}
 	taskMaker := &tasktui.Maker{
-		RunService:  opts.RunService,
-		TaskService: opts.TaskService,
-		Spinner:     spinner,
-		Helpers:     helpers,
-		Logger:      opts.Logger,
-		Program:     opts.Program,
+		Runs:    opts.Runs,
+		Tasks:   opts.Tasks,
+		Spinner: spinner,
+		Helpers: helpers,
+		Logger:  opts.Logger,
+		Program: opts.Program,
 	}
 	taskListMaker := tasktui.NewListMaker(
-		opts.TaskService,
-		opts.RunService,
+		opts.Tasks,
+		opts.Runs,
 		taskMaker,
 		helpers,
 	)
 
 	makers := map[tui.Kind]tui.Maker{
 		tui.ModuleListKind: &moduletui.ListMaker{
-			ModuleService:    opts.ModuleService,
-			WorkspaceService: opts.WorkspaceService,
-			RunService:       opts.RunService,
-			Spinner:          spinner,
-			Workdir:          opts.Workdir.PrettyString(),
-			Helpers:          helpers,
-			Terragrunt:       opts.Terragrunt,
+			Modules:    opts.Modules,
+			Workspaces: opts.Workspaces,
+			Runs:       opts.Runs,
+			Spinner:    spinner,
+			Workdir:    opts.Workdir.PrettyString(),
+			Helpers:    helpers,
+			Terragrunt: opts.Terragrunt,
 		},
 		tui.WorkspaceListKind: workspaceListMaker,
 		tui.TaskListKind:      taskListMaker,
 		tui.TaskKind:          taskMaker,
 		tui.TaskGroupListKind: &tasktui.GroupListMaker{
-			TaskService: opts.TaskService,
-			Helpers:     helpers,
+			Tasks:   opts.Tasks,
+			Helpers: helpers,
 		},
 		tui.TaskGroupKind: tasktui.NewGroupMaker(
-			opts.TaskService,
-			opts.RunService,
+			opts.Tasks,
+			opts.Runs,
 			taskMaker,
 			helpers,
 		),
@@ -77,16 +77,16 @@ func makeMakers(opts Options, spinner *spinner.Model) map[tui.Kind]tui.Maker {
 			Logger: opts.Logger,
 		},
 		tui.ResourceListKind: &workspacetui.ResourceListMaker{
-			WorkspaceService: opts.WorkspaceService,
-			StateService:     opts.StateService,
-			RunService:       opts.RunService,
-			Spinner:          spinner,
-			Helpers:          helpers,
+			Workspaces: opts.Workspaces,
+			States:     opts.States,
+			Runs:       opts.Runs,
+			Spinner:    spinner,
+			Helpers:    helpers,
 		},
 		tui.ResourceKind: &workspacetui.ResourceMaker{
-			StateService: opts.StateService,
-			RunService:   opts.RunService,
-			Helpers:      helpers,
+			States:  opts.States,
+			Runs:    opts.Runs,
+			Helpers: helpers,
 		},
 	}
 	return makers

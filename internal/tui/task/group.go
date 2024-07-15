@@ -31,16 +31,16 @@ type GroupMaker struct {
 func NewGroupMaker(tasks tui.TaskService, runs tui.RunService, taskMaker *Maker, helpers *tui.Helpers) *GroupMaker {
 	return &GroupMaker{
 		taskListMaker: &ListMaker{
-			TaskService: tasks,
-			RunService:  runs,
-			TaskMaker:   &groupTaskMaker{Maker: taskMaker},
-			Helpers:     helpers,
+			Tasks:     tasks,
+			Runs:      runs,
+			TaskMaker: &groupTaskMaker{Maker: taskMaker},
+			Helpers:   helpers,
 		},
 	}
 }
 
 func (mm *GroupMaker) Make(id resource.ID, width, height int) (tea.Model, error) {
-	group, err := mm.taskListMaker.TaskService.GetGroup(id)
+	group, err := mm.taskListMaker.Tasks.GetGroup(id)
 	if err != nil {
 		return nil, err
 	}

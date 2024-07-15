@@ -24,10 +24,10 @@ var currentColumn = table.Column{
 }
 
 type ListMaker struct {
-	ModuleService    tui.ModuleService
-	WorkspaceService tui.WorkspaceService
-	RunService       tui.RunService
-	Helpers          *tui.Helpers
+	Modules    tui.ModuleService
+	Workspaces tui.WorkspaceService
+	Runs       tui.RunService
+	Helpers    *tui.Helpers
 }
 
 func (m *ListMaker) Make(_ resource.ID, width, height int) (tea.Model, error) {
@@ -48,29 +48,31 @@ func (m *ListMaker) Make(_ resource.ID, width, height int) (tea.Model, error) {
 	}
 
 	table := table.New(columns, renderer, width, height,
-		table.WithSortFunc(workspace.Sort(m.ModuleService)),
+		table.WithSortFunc(workspace.Sort(m.Modules)),
 	)
 
 	return list{
-		table:   table,
-		svc:     m.WorkspaceService,
-		modules: m.ModuleService,
-		runs:    m.RunService,
-		helpers: m.Helpers,
+		Workspaces: m.Workspaces,
+		Modules:    m.Modules,
+		Runs:       m.Runs,
+		table:      table,
+		helpers:    m.Helpers,
 	}, nil
 }
 
 type list struct {
-	table   table.Model[*workspace.Workspace]
-	svc     tui.WorkspaceService
-	modules tui.ModuleService
-	runs    tui.RunService
+	Modules    tui.ModuleService
+	Workspaces tui.WorkspaceService
+	Runs       tui.RunService
+
+	table table.Model[*workspace.Workspace]
+
 	helpers *tui.Helpers
 }
 
 func (m list) Init() tea.Cmd {
 	return func() tea.Msg {
-		workspaces := m.svc.List(workspace.ListOptions{})
+		workspaces := m.Workspaces.List(workspace.ListOptions{})
 		return table.BulkInsertMsg[*workspace.Workspace](workspaces)
 	}
 }
@@ -99,21 +101,21 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return m, tui.YesNoPrompt(
 				fmt.Sprintf("Delete %d workspace(s)?", len(workspaceIDs)),
-				m.helpers.CreateTasks("delete-workspace", m.svc.Delete, workspaceIDs...),
+				m.helpers.CreateTasks("delete-workspace", m.Workspaces.Delete, workspaceIDs...),
 			)
 		case key.Matches(msg, keys.Common.Init):
-			cmd := m.helpers.CreateTasks("init", m.modules.Init, m.selectedOrCurrentModuleIDs()...)
+			cmd := m.helpers.CreateTasks("init", m.Modules.Init, m.selectedOrCurrentModuleIDs()...)
 			return m, cmd
 		case key.Matches(msg, keys.Common.Format):
-			cmd := m.helpers.CreateTasks("format", m.modules.Format, m.selectedOrCurrentModuleIDs()...)
+			cmd := m.helpers.CreateTasks("format", m.Modules.Format, m.selectedOrCurrentModuleIDs()...)
 			return m, cmd
 		case key.Matches(msg, keys.Common.Validate):
-			cmd := m.helpers.CreateTasks("validate", m.modules.Validate, m.selectedOrCurrentModuleIDs()...)
+			cmd := m.helpers.CreateTasks("validate", m.Modules.Validate, m.selectedOrCurrentModuleIDs()...)
 			return m, cmd
 		case key.Matches(msg, localKeys.SetCurrent):
 			if row, ok := m.table.CurrentRow(); ok {
 				return m, func() tea.Msg {
-					if err := m.svc.SelectWorkspace(row.Value.ModuleID(), row.Value.ID); err != nil {
+					if err := m.Workspaces.SelectWorkspace(row.Value.ModuleID(), row.Value.ID); err != nil {
 						return tui.ReportError(fmt.Errorf("setting current workspace: %w", err))()
 					}
 					return nil
@@ -125,7 +127,7 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, keys.Common.Plan):
 			workspaceIDs := m.table.SelectedOrCurrentIDs()
 			fn := func(workspaceID resource.ID) (*task.Task, error) {
-				return m.runs.Plan(workspaceID, createRunOptions)
+				return m.Runs.Plan(workspaceID, createRunOptions)
 			}
 			desc := run.PlanTaskDescription(createRunOptions.Destroy)
 			return m, m.helpers.CreateTasks(desc, fn, workspaceIDs...)

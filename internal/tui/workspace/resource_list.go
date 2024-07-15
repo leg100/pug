@@ -25,15 +25,15 @@ var resourceColumn = table.Column{
 }
 
 type ResourceListMaker struct {
-	WorkspaceService tui.WorkspaceService
-	StateService     tui.StateService
-	RunService       tui.RunService
-	Spinner          *spinner.Model
-	Helpers          *tui.Helpers
+	Workspaces tui.WorkspaceService
+	States     tui.StateService
+	Runs       tui.RunService
+	Spinner    *spinner.Model
+	Helpers    *tui.Helpers
 }
 
 func (m *ResourceListMaker) Make(id resource.ID, width, height int) (tea.Model, error) {
-	ws, err := m.WorkspaceService.Get(id)
+	ws, err := m.Workspaces.Get(id)
 	if err != nil {
 		return nil, err
 	}
@@ -57,16 +57,16 @@ func (m *ResourceListMaker) Make(id resource.ID, width, height int) (tea.Model, 
 		Width:        width,
 		Height:       height,
 		Maker: &ResourceMaker{
-			StateService:   m.StateService,
-			RunService:     m.RunService,
+			States:         m.States,
+			Runs:           m.Runs,
 			Helpers:        m.Helpers,
 			disableBorders: true,
 		},
 	})
 	return resourceList{
 		Model:     splitModel,
-		states:    m.StateService,
-		runs:      m.RunService,
+		states:    m.States,
+		runs:      m.Runs,
 		workspace: ws,
 		spinner:   m.Spinner,
 		width:     width,

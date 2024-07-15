@@ -61,7 +61,7 @@ func TestWorkspace_resetWorkspaces(t *testing.T) {
 type fakeModuleService struct {
 	current *resource.ID
 
-	moduleService
+	modules
 }
 
 func (f *fakeModuleService) SetCurrent(moduleID, workspaceID resource.ID) error {

@@ -37,13 +37,13 @@ var (
 
 // ListMaker makes module list models
 type ListMaker struct {
-	ModuleService    tui.ModuleService
-	WorkspaceService tui.WorkspaceService
-	RunService       tui.RunService
-	Spinner          *spinner.Model
-	Workdir          string
-	Helpers          *tui.Helpers
-	Terragrunt       bool
+	Modules    tui.ModuleService
+	Workspaces tui.WorkspaceService
+	Runs       tui.RunService
+	Spinner    *spinner.Model
+	Workdir    string
+	Helpers    *tui.Helpers
+	Terragrunt bool
 }
 
 func (m *ListMaker) Make(_ resource.ID, width, height int) (tea.Model, error) {
@@ -69,7 +69,7 @@ func (m *ListMaker) Make(_ resource.ID, width, height int) (tea.Model, error) {
 		}
 		dependencyNames := make([]string, 0, len(mod.Dependencies()))
 		for _, id := range mod.Dependencies() {
-			mod, err := m.ModuleService.Get(id)
+			mod, err := m.Modules.Get(id)
 			if err != nil {
 				// Should never happen
 				dependencyNames = append(dependencyNames, fmt.Sprintf("error: %s", err.Error()))
@@ -85,20 +85,20 @@ func (m *ListMaker) Make(_ resource.ID, width, height int) (tea.Model, error) {
 	)
 
 	return list{
-		table:            table,
-		spinner:          m.Spinner,
-		ModuleService:    m.ModuleService,
-		WorkspaceService: m.WorkspaceService,
-		RunService:       m.RunService,
-		workdir:          m.Workdir,
-		helpers:          m.Helpers,
+		table:      table,
+		spinner:    m.Spinner,
+		Modules:    m.Modules,
+		Workspaces: m.Workspaces,
+		Runs:       m.Runs,
+		workdir:    m.Workdir,
+		helpers:    m.Helpers,
 	}, nil
 }
 
 type list struct {
-	ModuleService    tui.ModuleService
-	WorkspaceService tui.WorkspaceService
-	RunService       tui.RunService
+	Modules    tui.ModuleService
+	Workspaces tui.WorkspaceService
+	Runs       tui.RunService
 
 	table   table.Model[*module.Module]
 	spinner *spinner.Model
@@ -108,7 +108,7 @@ type list struct {
 
 func (m list) Init() tea.Cmd {
 	return func() tea.Msg {
-		return table.BulkInsertMsg[*module.Module](m.ModuleService.List())
+		return table.BulkInsertMsg[*module.Module](m.Modules.List())
 	}
 }
 
@@ -124,22 +124,22 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, localKeys.ReloadModules):
-			return m, ReloadModules(false, m.ModuleService)
+			return m, ReloadModules(false, m.Modules)
 		case key.Matches(msg, keys.Common.Edit):
 			if row, ok := m.table.CurrentRow(); ok {
 				return m, tui.OpenEditor(row.Value.FullPath())
 			}
 		case key.Matches(msg, keys.Common.Init):
-			cmd := m.helpers.CreateTasks("init", m.ModuleService.Init, m.table.SelectedOrCurrentIDs()...)
+			cmd := m.helpers.CreateTasks("init", m.Modules.Init, m.table.SelectedOrCurrentIDs()...)
 			return m, cmd
 		case key.Matches(msg, keys.Common.Validate):
-			cmd := m.helpers.CreateTasks("validate", m.ModuleService.Validate, m.table.SelectedOrCurrentIDs()...)
+			cmd := m.helpers.CreateTasks("validate", m.Modules.Validate, m.table.SelectedOrCurrentIDs()...)
 			return m, cmd
 		case key.Matches(msg, keys.Common.Format):
-			cmd := m.helpers.CreateTasks("format", m.ModuleService.Format, m.table.SelectedOrCurrentIDs()...)
+			cmd := m.helpers.CreateTasks("format", m.Modules.Format, m.table.SelectedOrCurrentIDs()...)
 			return m, cmd
 		case key.Matches(msg, localKeys.ReloadWorkspaces):
-			cmd := m.helpers.CreateTasks("reload-workspace", m.WorkspaceService.Reload, m.table.SelectedOrCurrentIDs()...)
+			cmd := m.helpers.CreateTasks("reload-workspace", m.Workspaces.Reload, m.table.SelectedOrCurrentIDs()...)
 			return m, cmd
 		case key.Matches(msg, keys.Common.State):
 			if row, ok := m.table.CurrentRow(); ok {
@@ -156,7 +156,7 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, tui.ReportError(fmt.Errorf("deselected items: %w", err))
 			}
 			fn := func(workspaceID resource.ID) (*task.Task, error) {
-				return m.RunService.Plan(workspaceID, createRunOptions)
+				return m.Runs.Plan(workspaceID, createRunOptions)
 			}
 			desc := run.PlanTaskDescription(createRunOptions.Destroy)
 			return m, m.helpers.CreateTasks(desc, fn, workspaceIDs...)

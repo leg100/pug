@@ -14,25 +14,25 @@ import (
 )
 
 type ResourceMaker struct {
-	StateService tui.StateService
-	RunService   tui.RunService
-	Helpers      *tui.Helpers
+	States  tui.StateService
+	Runs    tui.RunService
+	Helpers *tui.Helpers
 
 	disableBorders bool
 }
 
 func (mm *ResourceMaker) Make(id resource.ID, width, height int) (tea.Model, error) {
-	stateResource, err := mm.StateService.GetResource(id)
+	stateResource, err := mm.States.GetResource(id)
 	if err != nil {
 		return nil, err
 	}
 
 	m := resourceModel{
-		StateService: mm.StateService,
-		RunService:   mm.RunService,
-		helpers:      mm.Helpers,
-		resource:     stateResource,
-		border:       !mm.disableBorders,
+		states:   mm.States,
+		runs:     mm.Runs,
+		helpers:  mm.Helpers,
+		resource: stateResource,
+		border:   !mm.disableBorders,
 	}
 
 	marshaled, err := json.MarshalIndent(stateResource.Attributes, "", "\t")
@@ -50,8 +50,8 @@ func (mm *ResourceMaker) Make(id resource.ID, width, height int) (tea.Model, err
 }
 
 type resourceModel struct {
-	StateService tui.StateService
-	RunService   tui.RunService
+	states tui.StateService
+	runs   tui.RunService
 
 	viewport tui.Viewport
 	resource *state.Resource
@@ -75,19 +75,19 @@ func (m resourceModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch {
 		case key.Matches(msg, resourcesKeys.Taint):
 			fn := func(workspaceID resource.ID) (*task.Task, error) {
-				return m.StateService.Taint(workspaceID, m.resource.Address)
+				return m.states.Taint(workspaceID, m.resource.Address)
 			}
 			return m, m.helpers.CreateTasks("taint", fn, m.resource.Workspace().GetID())
 		case key.Matches(msg, resourcesKeys.Untaint):
 			fn := func(workspaceID resource.ID) (*task.Task, error) {
-				return m.StateService.Untaint(workspaceID, m.resource.Address)
+				return m.states.Untaint(workspaceID, m.resource.Address)
 			}
 			return m, m.helpers.CreateTasks("untaint", fn, m.resource.Workspace().GetID())
 		case key.Matches(msg, resourcesKeys.Move):
 			return m, m.helpers.Move(m.resource.Workspace().GetID(), m.resource.Address)
 		case key.Matches(msg, keys.Common.Delete):
 			fn := func(workspaceID resource.ID) (*task.Task, error) {
-				return m.StateService.Delete(workspaceID, m.resource.Address)
+				return m.states.Delete(workspaceID, m.resource.Address)
 			}
 			return m, tui.YesNoPrompt(
 				"Delete resource?",
@@ -101,7 +101,7 @@ func (m resourceModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// Create a targeted plan.
 			createRunOptions.TargetAddrs = []state.ResourceAddress{m.resource.Address}
 			fn := func(workspaceID resource.ID) (*task.Task, error) {
-				return m.RunService.Plan(workspaceID, createRunOptions)
+				return m.runs.Plan(workspaceID, createRunOptions)
 			}
 			return m, m.helpers.CreateTasks("plan", fn, m.resource.Workspace().GetID())
 		}

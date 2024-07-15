@@ -18,16 +18,16 @@ type Service struct {
 	table  workspaceTable
 	logger logging.Interface
 
-	modules moduleService
+	modules modules
 	tasks   *task.Service
 
 	*pubsub.Broker[*Workspace]
 }
 
 type ServiceOptions struct {
-	TaskService   *task.Service
-	ModuleService *module.Service
-	Logger        logging.Interface
+	Tasks   *task.Service
+	Modules *module.Service
+	Logger  logging.Interface
 }
 
 type workspaceTable interface {
@@ -38,7 +38,7 @@ type workspaceTable interface {
 	List() []*Workspace
 }
 
-type moduleService interface {
+type modules interface {
 	Get(id resource.ID) (*module.Module, error)
 	GetByPath(path string) (*module.Module, error)
 	SetCurrent(moduleID, workspaceID resource.ID) error
@@ -57,14 +57,13 @@ func NewService(opts ServiceOptions) *Service {
 
 	opts.Logger.AddEnricher(&logEnricher{table: table})
 
-	svc := &Service{
+	return &Service{
 		Broker:  broker,
 		table:   table,
-		modules: opts.ModuleService,
-		tasks:   opts.TaskService,
+		modules: opts.Modules,
+		tasks:   opts.Tasks,
 		logger:  opts.Logger,
 	}
-	return svc
 }
 
 // LoadWorkspacesUponModuleLoad automatically loads workspaces for a module

@@ -35,35 +35,35 @@ const (
 type model struct {
 	*navigator
 
-	moduleService tui.ModuleService
-	width         int
-	height        int
-	mode          mode
-	showHelp      bool
-	prompt        *tui.Prompt
-	dump          *os.File
-	workdir       string
-	err           error
-	info          string
-	tasks         tui.TaskService
-	spinner       *spinner.Model
-	spinning      bool
-	maxTasks      int
+	modules  tui.ModuleService
+	width    int
+	height   int
+	mode     mode
+	showHelp bool
+	prompt   *tui.Prompt
+	dump     *os.File
+	workdir  string
+	err      error
+	info     string
+	tasks    tui.TaskService
+	spinner  *spinner.Model
+	spinning bool
+	maxTasks int
 }
 
 type Options struct {
-	ModuleService    tui.ModuleService
-	WorkspaceService tui.WorkspaceService
-	StateService     tui.StateService
-	RunService       tui.RunService
-	TaskService      tui.TaskService
-	Logger           *logging.Logger
-	Workdir          internal.Workdir
-	FirstPage        string
-	MaxTasks         int
-	Debug            bool
-	Program          string
-	Terragrunt       bool
+	Modules    tui.ModuleService
+	Workspaces tui.WorkspaceService
+	States     tui.StateService
+	Runs       tui.RunService
+	Tasks      tui.TaskService
+	Logger     *logging.Logger
+	Workdir    internal.Workdir
+	FirstPage  string
+	MaxTasks   int
+	Debug      bool
+	Program    string
+	Terragrunt bool
 }
 
 // New constructs the top-level TUI model.
@@ -81,12 +81,12 @@ func New(opts Options) (model, error) {
 	makers := makeMakers(opts, &spinner)
 
 	m := model{
-		moduleService: opts.ModuleService,
-		spinner:       &spinner,
-		tasks:         opts.TaskService,
-		maxTasks:      opts.MaxTasks,
-		dump:          dump,
-		workdir:       opts.Workdir.PrettyString(),
+		modules:  opts.Modules,
+		spinner:  &spinner,
+		tasks:    opts.Tasks,
+		maxTasks: opts.MaxTasks,
+		dump:     dump,
+		workdir:  opts.Workdir.PrettyString(),
 	}
 
 	var err error
@@ -101,7 +101,7 @@ func New(opts Options) (model, error) {
 func (m model) Init() tea.Cmd {
 	return tea.Batch(
 		m.currentModel().Init(),
-		module.ReloadModules(true, m.moduleService),
+		module.ReloadModules(true, m.modules),
 	)
 }
 

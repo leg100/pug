@@ -56,19 +56,20 @@ func (m *ListTaskMaker) Make(id resource.ID, width, height int) (tea.Model, erro
 // NewListMaker constructs a task list model maker
 func NewListMaker(tasks tui.TaskService, runs tui.RunService, taskMaker *Maker, helpers *tui.Helpers) *ListMaker {
 	return &ListMaker{
-		TaskService: tasks,
-		RunService:  runs,
-		TaskMaker:   &ListTaskMaker{Maker: taskMaker},
-		Helpers:     helpers,
+		Tasks:     tasks,
+		Runs:      runs,
+		TaskMaker: &ListTaskMaker{Maker: taskMaker},
+		Helpers:   helpers,
 	}
 }
 
 // ListMaker makes task list models
 type ListMaker struct {
-	RunService  tui.RunService
-	TaskService tui.TaskService
-	TaskMaker   tui.Maker
-	Helpers     *tui.Helpers
+	Runs  tui.RunService
+	Tasks tui.TaskService
+
+	TaskMaker tui.Maker
+	Helpers   *tui.Helpers
 }
 
 func (mm *ListMaker) Make(_ resource.ID, width, height int) (tea.Model, error) {
@@ -114,8 +115,8 @@ func (mm *ListMaker) Make(_ resource.ID, width, height int) (tea.Model, error) {
 	})
 	m := List{
 		Model:   splitModel,
-		runs:    mm.RunService,
-		tasks:   mm.TaskService,
+		runs:    mm.Runs,
+		tasks:   mm.Tasks,
 		helpers: mm.Helpers,
 	}
 	return m, nil

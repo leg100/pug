@@ -15,7 +15,7 @@ func newGroupWithDependencies(svc taskCreator, cmd string, reverse bool, specs .
 	b := groupBuilder{
 		g:     NewEmptyGroup(cmd),
 		nodes: make(map[resource.ID]*groupBuilderNode),
-		svc:   svc,
+		tasks: svc,
 	}
 	// Build dependency graph. Each node in the graph is a module and the specs
 	// that belong to that module. Once the graph is built and dependencies are
@@ -64,7 +64,7 @@ func newGroupWithDependencies(svc taskCreator, cmd string, reverse bool, specs .
 // groupBuilder builds a task group.
 type groupBuilder struct {
 	g     *Group
-	svc   taskCreator
+	tasks taskCreator
 	nodes map[resource.ID]*groupBuilderNode
 }
 
@@ -135,7 +135,7 @@ func (b *groupBuilder) visitAndCreateTasksInReverse(n *groupBuilderNode) {
 }
 
 func (b *groupBuilder) createTask(spec CreateOptions) *Task {
-	task, err := b.svc.Create(spec)
+	task, err := b.tasks.Create(spec)
 	if err != nil {
 		b.g.CreateErrors = append(b.g.CreateErrors, err)
 	} else {

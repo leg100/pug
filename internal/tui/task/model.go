@@ -22,12 +22,12 @@ import (
 )
 
 type Maker struct {
-	RunService  tui.RunService
-	TaskService tui.TaskService
-	Spinner     *spinner.Model
-	Helpers     *tui.Helpers
-	Logger      *logging.Logger
-	Program     string
+	Runs    tui.RunService
+	Tasks   tui.TaskService
+	Spinner *spinner.Model
+	Helpers *tui.Helpers
+	Logger  *logging.Logger
+	Program string
 
 	disableAutoscroll bool
 	showInfo          bool
@@ -38,15 +38,15 @@ func (mm *Maker) Make(id resource.ID, width, height int) (tea.Model, error) {
 }
 
 func (mm *Maker) make(id resource.ID, width, height int, border bool) (tea.Model, error) {
-	task, err := mm.TaskService.Get(id)
+	task, err := mm.Tasks.Get(id)
 	if err != nil {
 		return model{}, err
 	}
 
 	m := model{
 		id:      uuid.New(),
-		svc:     mm.TaskService,
-		runs:    mm.RunService,
+		tasks:   mm.Tasks,
+		runs:    mm.Runs,
 		task:    task,
 		output:  task.NewReader(),
 		spinner: mm.Spinner,
@@ -101,10 +101,10 @@ func (mm *Maker) Update(msg tea.Msg) tea.Cmd {
 type model struct {
 	id uuid.UUID
 
-	svc  tui.TaskService
-	task *task.Task
-	run  *run.Run
-	runs tui.RunService
+	tasks tui.TaskService
+	task  *task.Task
+	runs  tui.RunService
+	run   *run.Run
 
 	output io.Reader
 	buf    []byte
@@ -136,7 +136,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, keys.Common.Cancel):
-			return m, cancel(m.svc, m.task.ID)
+			return m, cancel(m.tasks, m.task.ID)
 		case key.Matches(msg, keys.Common.Apply):
 			if m.run != nil {
 				// Only trigger an apply if run is in the planned state
@@ -157,7 +157,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, keys.Common.Retry):
 			return m, tui.YesNoPrompt(
 				"Retry task?",
-				m.helpers.CreateTasks("retry", m.svc.Retry, m.task.ID),
+				m.helpers.CreateTasks("retry", m.tasks.Retry, m.task.ID),
 			)
 		}
 	case toggleAutoscrollMsg:

@@ -105,28 +105,28 @@ func startApp(cfg config, stdout io.Writer) (*app, error) {
 		Terragrunt: cfg.Terragrunt,
 	})
 	modules := module.NewService(module.ServiceOptions{
-		TaskService: tasks,
+		Tasks:       tasks,
 		Workdir:     workdir,
 		PluginCache: cfg.PluginCache,
 		Logger:      logger,
 		Terragrunt:  cfg.Terragrunt,
 	})
 	workspaces := workspace.NewService(workspace.ServiceOptions{
-		TaskService:   tasks,
-		ModuleService: modules,
-		Logger:        logger,
+		Tasks:   tasks,
+		Modules: modules,
+		Logger:  logger,
 	})
 	states := state.NewService(state.ServiceOptions{
-		ModuleService:    modules,
-		WorkspaceService: workspaces,
-		TaskService:      tasks,
-		Logger:           logger,
+		Modules:    modules,
+		Workspaces: workspaces,
+		Tasks:      tasks,
+		Logger:     logger,
 	})
 	runs := run.NewService(run.ServiceOptions{
-		TaskService:             tasks,
-		ModuleService:           modules,
-		WorkspaceService:        workspaces,
-		StateService:            states,
+		Tasks:                   tasks,
+		Modules:                 modules,
+		Workspaces:              workspaces,
+		States:                  states,
 		DisableReloadAfterApply: cfg.DisableReloadAfterApply,
 		DataDir:                 cfg.DataDir,
 		Logger:                  logger,
@@ -135,18 +135,18 @@ func startApp(cfg config, stdout io.Writer) (*app, error) {
 
 	// Construct top-level TUI model.
 	model, err := top.New(top.Options{
-		TaskService:      tasks,
-		ModuleService:    modules,
-		WorkspaceService: workspaces,
-		StateService:     states,
-		RunService:       runs,
-		Logger:           logger,
-		FirstPage:        cfg.FirstPage,
-		Workdir:          workdir,
-		MaxTasks:         cfg.MaxTasks,
-		Debug:            cfg.Debug,
-		Program:          cfg.Program,
-		Terragrunt:       cfg.Terragrunt,
+		Modules:    modules,
+		Workspaces: workspaces,
+		Runs:       runs,
+		States:     states,
+		Tasks:      tasks,
+		Logger:     logger,
+		FirstPage:  cfg.FirstPage,
+		Workdir:    workdir,
+		MaxTasks:   cfg.MaxTasks,
+		Debug:      cfg.Debug,
+		Program:    cfg.Program,
+		Terragrunt: cfg.Terragrunt,
 	})
 	if err != nil {
 		return nil, err

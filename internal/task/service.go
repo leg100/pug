@@ -46,7 +46,7 @@ func NewService(opts ServiceOptions) *Service {
 		terragrunt: opts.Terragrunt,
 	}
 
-	svc := &Service{
+	return &Service{
 		tasks:       resource.NewTable(taskBroker),
 		groups:      resource.NewTable(groupBroker),
 		TaskBroker:  taskBroker,
@@ -55,7 +55,6 @@ func NewService(opts ServiceOptions) *Service {
 		counter:     &counter,
 		logger:      opts.Logger,
 	}
-	return svc
 }
 
 // Create a task. The task is placed into a pending state and requires enqueuing

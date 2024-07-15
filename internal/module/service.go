@@ -25,7 +25,7 @@ type Service struct {
 }
 
 type ServiceOptions struct {
-	TaskService *task.Service
+	Tasks       *task.Service
 	Workdir     internal.Workdir
 	PluginCache bool
 	Logger      logging.Interface
@@ -53,7 +53,7 @@ func NewService(opts ServiceOptions) *Service {
 	return &Service{
 		table:       table,
 		Broker:      broker,
-		tasks:       opts.TaskService,
+		tasks:       opts.Tasks,
 		workdir:     opts.Workdir,
 		pluginCache: opts.PluginCache,
 		logger:      opts.Logger,

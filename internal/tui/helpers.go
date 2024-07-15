@@ -25,12 +25,12 @@ import (
 // table with, say 40 visible rows, means they are invoked 40 times a render,
 // which is 40 lookups.
 type Helpers struct {
-	ModuleService    ModuleService
-	WorkspaceService WorkspaceService
-	RunService       RunService
-	TaskService      TaskService
-	StateService     StateService
-	Logger           logging.Interface
+	Modules    ModuleService
+	Workspaces WorkspaceService
+	Runs       RunService
+	Tasks      TaskService
+	States     StateService
+	Logger     logging.Interface
 }
 
 func (h *Helpers) ModulePath(res resource.Resource) string {
@@ -52,7 +52,7 @@ func (h *Helpers) ModuleCurrentWorkspace(mod *module.Module) *workspace.Workspac
 		h.Logger.Error("module does not have a current workspace", "module", mod)
 		return nil
 	}
-	ws, err := h.WorkspaceService.Get(*mod.CurrentWorkspaceID)
+	ws, err := h.Workspaces.Get(*mod.CurrentWorkspaceID)
 	if err != nil {
 		h.Logger.Error("retrieving current workspace for module", "error", err, "module", mod)
 		return nil
@@ -76,7 +76,7 @@ func (h *Helpers) CurrentWorkspaceName(workspaceID *resource.ID) string {
 	if workspaceID == nil {
 		return "-"
 	}
-	ws, err := h.WorkspaceService.Get(*workspaceID)
+	ws, err := h.Workspaces.Get(*workspaceID)
 	if err != nil {
 		h.Logger.Error("rendering current workspace name", "error", err)
 		return ""
@@ -88,7 +88,7 @@ func (h *Helpers) ModuleCurrentResourceCount(mod *module.Module) string {
 	if mod.CurrentWorkspaceID == nil {
 		return ""
 	}
-	ws, err := h.WorkspaceService.Get(*mod.CurrentWorkspaceID)
+	ws, err := h.Workspaces.Get(*mod.CurrentWorkspaceID)
 	if err != nil {
 		h.Logger.Error("rendering module current workspace resource count", "error", err)
 		return ""
@@ -99,7 +99,7 @@ func (h *Helpers) ModuleCurrentResourceCount(mod *module.Module) string {
 // WorkspaceCurrentCheckmark returns a check mark if the workspace is the
 // current workspace for its module.
 func (h *Helpers) WorkspaceCurrentCheckmark(ws *workspace.Workspace) string {
-	mod, err := h.ModuleService.Get(ws.ModuleID())
+	mod, err := h.Modules.Get(ws.ModuleID())
 	if err != nil {
 		h.Logger.Error("rendering current workspace checkmark", "error", err)
 		return ""
@@ -111,7 +111,7 @@ func (h *Helpers) WorkspaceCurrentCheckmark(ws *workspace.Workspace) string {
 }
 
 func (h *Helpers) WorkspaceResourceCount(ws *workspace.Workspace) string {
-	state, err := h.StateService.Get(ws.ID)
+	state, err := h.States.Get(ws.ID)
 	if errors.Is(err, resource.ErrNotFound) {
 		// not found most likely means state not loaded yet
 		return ""
@@ -225,7 +225,7 @@ func (h *Helpers) CreateTasks(cmd string, fn task.Func, ids ...resource.ID) tea.
 			}
 			return NewNavigationMsg(TaskKind, WithParent(task))
 		default:
-			group, err := h.TaskService.CreateGroup(cmd, fn, ids...)
+			group, err := h.Tasks.CreateGroup(cmd, fn, ids...)
 			if err != nil {
 				return ReportError(fmt.Errorf("creating task group: %w", err))
 			}
@@ -242,7 +242,7 @@ func (h *Helpers) CreateApplyTasks(opts *run.CreateOptions, ids ...resource.ID) 
 		case 1:
 			// Only one task is to be created. If successful send user directly to task
 			// page. Otherwise report an error.
-			task, err := h.RunService.Apply(ids[0], opts)
+			task, err := h.Runs.Apply(ids[0], opts)
 			if err != nil {
 				return ReportError(fmt.Errorf("creating apply task: %w", err))
 			}
@@ -250,7 +250,7 @@ func (h *Helpers) CreateApplyTasks(opts *run.CreateOptions, ids ...resource.ID) 
 		default:
 			// More than one task is to be created. If successful send user to
 			// task group page.
-			group, err := h.RunService.MultiApply(opts, ids...)
+			group, err := h.Runs.MultiApply(opts, ids...)
 			if err != nil {
 				return ReportError(fmt.Errorf("creating apply task group: %w", err))
 			}
@@ -268,7 +268,7 @@ func (h *Helpers) Move(workspaceID resource.ID, from state.ResourceAddress) tea.
 				return nil
 			}
 			fn := func(workspaceID resource.ID) (*task.Task, error) {
-				return h.StateService.Move(workspaceID, from, state.ResourceAddress(v))
+				return h.States.Move(workspaceID, from, state.ResourceAddress(v))
 			}
 			return h.CreateTasks("state-mv", fn, workspaceID)
 		},

@@ -30,10 +30,10 @@ type Service struct {
 }
 
 type ServiceOptions struct {
-	TaskService             *task.Service
-	ModuleService           *module.Service
-	WorkspaceService        *workspace.Service
-	StateService            *state.Service
+	Tasks                   *task.Service
+	Modules                 *module.Service
+	Workspaces              *workspace.Service
+	States                  *state.Service
 	DisableReloadAfterApply bool
 	DataDir                 string
 	Logger                  logging.Interface
@@ -53,16 +53,16 @@ func NewService(opts ServiceOptions) *Service {
 	return &Service{
 		table:                   resource.NewTable(broker),
 		Broker:                  broker,
-		tasks:                   opts.TaskService,
-		modules:                 opts.ModuleService,
-		workspaces:              opts.WorkspaceService,
-		states:                  opts.StateService,
+		tasks:                   opts.Tasks,
+		modules:                 opts.Modules,
+		workspaces:              opts.Workspaces,
+		states:                  opts.States,
 		disableReloadAfterApply: opts.DisableReloadAfterApply,
 		logger:                  opts.Logger,
 		factory: &factory{
 			dataDir:    opts.DataDir,
-			modules:    opts.ModuleService,
-			workspaces: opts.WorkspaceService,
+			modules:    opts.Modules,
+			workspaces: opts.Workspaces,
 			broker:     broker,
 			terragrunt: opts.Terragrunt,
 		},
