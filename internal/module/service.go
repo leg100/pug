@@ -119,7 +119,7 @@ func (s *Service) loadTerragruntDependencies() error {
 	if err != nil {
 		return err
 	}
-	return s.loadTerragruntDependenciesFromDigraph(task.NewReader())
+	return s.loadTerragruntDependenciesFromDigraph(task.NewReader(false))
 }
 
 func (s *Service) loadTerragruntDependenciesFromDigraph(r io.Reader) error {

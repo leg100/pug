@@ -104,7 +104,7 @@ func (s *Service) Reload(moduleID resource.ID) (*task.Task, error) {
 			s.logger.Error("reloading workspaces", "error", t.Err, "module", mod, "task", t)
 		},
 		AfterExited: func(t *task.Task) {
-			found, current, err := parseList(t.NewReader())
+			found, current, err := parseList(t.NewReader(false))
 			if err != nil {
 				s.logger.Error("reloading workspaces", "error", err, "module", mod, "task", t)
 				return
@@ -169,28 +169,24 @@ func (s *Service) resetWorkspaces(mod *module.Module, discovered []string, curre
 }
 
 // Parse workspaces from the output of `terraform workspace list`.
+//
+// The output should contain something like this:
+//
+//	<asterisk> default
+//	  non-default-1
+//	  non-default-2
 func parseList(r io.Reader) (list []string, current string, err error) {
-	// Reader should output something like this:
-	//
-	//   default
-	//   non-default-1
-	// * non-default-2
 	scanner := bufio.NewScanner(r)
 	for scanner.Scan() {
-		out := strings.TrimSpace(scanner.Text())
-		if out == "" {
+		if _, name, found := strings.Cut(scanner.Text(), "* "); found {
+			// An asterisk prefix means this is the current workspace.
+			current = name
+			list = append(list, name)
+		} else if _, name, found := strings.Cut(scanner.Text(), "  "); found {
+			list = append(list, name)
+		} else {
 			continue
 		}
-		// Handle current workspace denoted with a "*" prefix
-		if strings.HasPrefix(out, "*") {
-			var found bool
-			_, current, found = strings.Cut(out, "* ")
-			if !found {
-				return nil, "", fmt.Errorf("malformed output: %s", out)
-			}
-			out = current
-		}
-		list = append(list, out)
 	}
 	if err := scanner.Err(); err != nil {
 		return nil, "", err

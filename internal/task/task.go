@@ -44,7 +44,10 @@ type Task struct {
 	// Nil until task finishes with an error
 	Err error
 
-	buf *buffer
+	// stdout contains only the stdout stream
+	stdout *buffer
+	// combined contains both the stderr and stdout streams
+	combined *buffer
 
 	// lock to ensure task state is switched atomically.
 	mu sync.Mutex
@@ -152,7 +155,8 @@ func (f *factory) newTask(opts CreateOptions) *Task {
 		Created:       time.Now(),
 		Updated:       time.Now(),
 		finished:      make(chan struct{}),
-		buf:           newBuffer(),
+		stdout:        newBuffer(),
+		combined:      newBuffer(),
 		program:       f.program,
 		Command:       opts.Command,
 		Path:          filepath.Join(f.workdir.String(), opts.Path),
@@ -197,9 +201,12 @@ func (t *Task) String() string {
 }
 
 // NewReader provides a reader from which to read the task output from start to
-// end.
-func (t *Task) NewReader() io.Reader {
-	return &reader{buf: t.buf}
+// end. Set combined to true to receieve stderr as well as stdout.
+func (t *Task) NewReader(combined bool) io.Reader {
+	if combined {
+		return &reader{buf: t.combined}
+	}
+	return &reader{buf: t.stdout}
 }
 
 func (t *Task) IsActive() bool {
@@ -276,8 +283,8 @@ func (t *Task) start(ctx context.Context) (func(), error) {
 		return cmd.Process.Signal(os.Interrupt)
 	}
 	cmd.Dir = t.Path
-	cmd.Stdout = t.buf
-	cmd.Stderr = t.buf
+	cmd.Stdout = io.MultiWriter(t.stdout, t.combined)
+	cmd.Stderr = t.combined
 	cmd.Env = append(t.AdditionalEnv, os.Environ()...)
 
 	t.mu.Lock()
@@ -334,7 +341,8 @@ func (t *Task) updateState(state Status) {
 
 	if t.IsFinished() {
 		t.recordStatusEndTime(now)
-		t.buf.Close()
+		t.stdout.Close()
+		t.combined.Close()
 		close(t.finished)
 		if t.afterFinish != nil {
 			t.afterFinish(t)

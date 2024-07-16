@@ -103,7 +103,7 @@ func (s *Service) plan(workspaceID resource.ID, opts CreateOptions) (*task.Task,
 			run.updateStatus(Canceled)
 		},
 		AfterExited: func(t *task.Task) {
-			if err := run.finishPlan(t.NewReader()); err != nil {
+			if err := run.finishPlan(t.NewReader(false)); err != nil {
 				s.logger.Error("finishing plan", "error", err, "run", run)
 			}
 		},
@@ -199,7 +199,7 @@ func (s *Service) createApplySpec(id resource.ID, opts *CreateOptions) (task.Cre
 			run.updateStatus(Canceled)
 		},
 		AfterExited: func(t *task.Task) {
-			if err := run.finishApply(t.NewReader()); err != nil {
+			if err := run.finishApply(t.NewReader(false)); err != nil {
 				s.logger.Error("finishing apply", "error", err, "run", run)
 				return
 			}
