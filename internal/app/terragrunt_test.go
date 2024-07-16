@@ -67,6 +67,7 @@ func TestTerragrunt_Dependencies(t *testing.T) {
 
 	// Give approval
 	waitFor(t, tm, func(s string) bool {
+		t.Log(s)
 		return strings.Contains(s, "Auto-apply 6 modules? (y/N):")
 	})
 	tm.Type("y")
