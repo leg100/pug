@@ -182,7 +182,8 @@ func setupAndInitTerragruntModulesWithDependencies(t *testing.T) *testModel {
 			matchPattern(t, `modules/mysql.*modules/vpc`, s) &&
 			matchPattern(t, "modules/redis.*modules/vpc", s) &&
 			strings.Contains(s, "modules/backend-app") &&
-			strings.Contains(s, "modules/frontend-app")
+			strings.Contains(s, "modules/frontend-app") &&
+			matchPattern(t, `\..*local.*default`, s)
 	})
 
 	// Select all modules and init
@@ -190,11 +191,12 @@ func setupAndInitTerragruntModulesWithDependencies(t *testing.T) *testModel {
 	tm.Type("i")
 	waitFor(t, tm, func(s string) bool {
 		return matchPattern(t, "TaskGroup.*init", s) &&
-			matchPattern(t, `modules/vpc.*exited`, s) &&
-			matchPattern(t, `modules/redis.*exited`, s) &&
-			matchPattern(t, `modules/mysql.*exited`, s) &&
-			matchPattern(t, `modules/frontend-app.*exited`, s) &&
-			matchPattern(t, `modules/backend-app.*exited`, s)
+			matchPattern(t, `modules/vpc.*init.*exited`, s) &&
+			matchPattern(t, `modules/redis.*init.*exited`, s) &&
+			matchPattern(t, `modules/mysql.*init.*exited`, s) &&
+			matchPattern(t, `modules/frontend-app.*init.*exited`, s) &&
+			matchPattern(t, `modules/backend-app.*init.*exited`, s) &&
+			matchPattern(t, `\..*init.*exited`, s)
 	})
 
 	// Go back to modules listing
@@ -206,7 +208,8 @@ func setupAndInitTerragruntModulesWithDependencies(t *testing.T) *testModel {
 			matchPattern(t, `modules/mysql.*default`, s) &&
 			matchPattern(t, "modules/redis.*default", s) &&
 			matchPattern(t, "modules/backend-app.*default", s) &&
-			matchPattern(t, "modules/frontend-app.*default", s)
+			matchPattern(t, "modules/frontend-app.*default", s) &&
+			matchPattern(t, `\..*local.*default`, s)
 	})
 
 	// Clear selection

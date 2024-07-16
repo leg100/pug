@@ -24,7 +24,13 @@ type configOption func(cfg *config)
 func withTerragrunt() configOption {
 	return func(cfg *config) {
 		cfg.Program = "terragrunt"
-		cfg.Args = []string{"--terragrunt-tfpath", "terraform"}
+		// Use terraform to ensure the provider mirror is valid (terraform and
+		// tofu use different registry hosts, which forms part of the provider
+		// mirror path).
+		// And disable auto-init otherwise multiple init's may be running
+		// concurrently, which causes issues when writing the provider lock
+		// file.
+		cfg.Args = []string{"--terragrunt-tfpath", "terraform", "--terragrunt-no-auto-init"}
 		cfg.Terragrunt = true
 	}
 }

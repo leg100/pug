@@ -90,7 +90,7 @@ func (e *enqueuer) enqueueDependentTask(t *Task) bool {
 		case Canceled, Errored:
 			// Dependency failed so mark task as failed too by cancelling it
 			// along with a reason why it was canceled.
-			t.buf.Write([]byte("task dependency failed"))
+			t.stdout.Write([]byte("task dependency failed"))
 			t.updateState(Canceled)
 			return false
 		default:

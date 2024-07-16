@@ -48,7 +48,7 @@ func (mm *Maker) make(id resource.ID, width, height int, border bool) (tea.Model
 		tasks:   mm.Tasks,
 		runs:    mm.Runs,
 		task:    task,
-		output:  task.NewReader(),
+		output:  task.NewReader(true),
 		spinner: mm.Spinner,
 		// read upto 1kb at a time
 		buf:      make([]byte, 1024),

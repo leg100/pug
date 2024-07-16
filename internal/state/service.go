@@ -77,7 +77,7 @@ func (s *Service) Reload(workspaceID resource.ID) (*task.Task, error) {
 		Command: []string{"state", "pull"},
 		JSON:    true,
 		AfterExited: func(t *task.Task) {
-			state, err := newState(t.Workspace(), t.NewReader())
+			state, err := newState(t.Workspace(), t.NewReader(false))
 			if err != nil {
 				s.logger.Error("reloading state", "error", err, "workspace", t.Workspace())
 				return

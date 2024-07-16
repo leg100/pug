@@ -4,3 +4,4 @@ echo foo
 echo bar
 echo baz
 echo bye
+>&2 echo err
