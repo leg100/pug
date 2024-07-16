@@ -15,6 +15,8 @@ import (
 	"github.com/peterbourgon/ff/v4/ffyaml"
 )
 
+var defaultMaxTasks = 2 * runtime.NumCPU()
+
 type config struct {
 	Program                 string
 	MaxTasks                int
@@ -47,7 +49,7 @@ func parse(stderr io.Writer, args []string) (config, error) {
 	fs := ff.NewFlagSet("pug")
 	fs.StringVar(&cfg.Program, 'p', "program", "terraform", "The default program to use with pug.")
 	fs.StringVar(&cfg.WorkDir, 'w', "workdir", ".", "The working directory containing modules.")
-	fs.IntVar(&cfg.MaxTasks, 't', "max-tasks", 2*runtime.NumCPU(), "The maximum number of parallel tasks.")
+	fs.IntVar(&cfg.MaxTasks, 't', "max-tasks", defaultMaxTasks, "The maximum number of parallel tasks.")
 	fs.StringVar(&cfg.DataDir, 0, "data-dir", defaultDataDir, "Directory in which to store plan files.")
 	fs.StringListVar(&cfg.Envs, 'e', "env", "Environment variable to pass to terraform process. Can set more than once.")
 	fs.StringListVar(&cfg.Args, 'a', "arg", "CLI arg to pass to terraform process. Can set more than once.")

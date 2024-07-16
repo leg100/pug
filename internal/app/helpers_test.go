@@ -60,7 +60,7 @@ func setup(t *testing.T, workdir string, opts ...configOption) *testModel {
 		FirstPage: "modules",
 		Program:   "terraform",
 		WorkDir:   workdir,
-		MaxTasks:  3,
+		MaxTasks:  defaultMaxTasks,
 		DataDir:   t.TempDir(),
 		Debug:     true,
 		Envs:      []string{fmt.Sprintf("TF_CLI_CONFIG_FILE=%s", mirrorConfigPath)},
