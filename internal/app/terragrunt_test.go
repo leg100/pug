@@ -180,9 +180,9 @@ func setupAndInitTerragruntModulesWithDependencies(t *testing.T) *testModel {
 	waitFor(t, tm, func(s string) bool {
 		return strings.Contains(s, "modules/vpc") &&
 			matchPattern(t, `modules/mysql.*modules/vpc`, s) &&
-			matchPattern(t, "modules/redis.*modules/vpc", s) &&
-			strings.Contains(s, "modules/backend-app") &&
-			strings.Contains(s, "modules/frontend-app") &&
+			matchPattern(t, `modules/redis.*modules/vpc`, s) &&
+			strings.Contains(s, `modules/backend-app`) &&
+			strings.Contains(s, `modules/frontend-app`) &&
 			matchPattern(t, `\..*local.*default`, s)
 	})
 
@@ -199,20 +199,25 @@ func setupAndInitTerragruntModulesWithDependencies(t *testing.T) *testModel {
 			matchPattern(t, `\..*init.*exited`, s)
 	})
 
-	// Go back to modules listing
-	tm.Send(tea.KeyMsg{Type: tea.KeyEsc})
+	// Go to workspace listing and expect one workspace for each module. We make
+	// assertions here on the workspace listing rather than the module listing
+	// because the latter has a dependencies column which makes it tricky to
+	// write regular expressions that don't accidentally pick up false
+	// positives...
+	tm.Type("w")
 
 	// Expect modules to be listed along with their default workspace.
 	waitFor(t, tm, func(s string) bool {
-		return matchPattern(t, "modules/vpc.*default", s) &&
+		return matchPattern(t, `modules/vpc.*default`, s) &&
 			matchPattern(t, `modules/mysql.*default`, s) &&
-			matchPattern(t, "modules/redis.*default", s) &&
-			matchPattern(t, "modules/backend-app.*default", s) &&
-			matchPattern(t, "modules/frontend-app.*default", s) &&
-			matchPattern(t, `\..*local.*default`, s)
+			matchPattern(t, `modules/redis.*default`, s) &&
+			matchPattern(t, `modules/backend-app.*default`, s) &&
+			matchPattern(t, `modules/frontend-app.*default`, s) &&
+			matchPattern(t, `\..*default`, s)
 	})
 
-	// Clear selection
+	// Go to modules listing and clear selection
+	tm.Type("m")
 	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlBackslash})
 
 	return tm
