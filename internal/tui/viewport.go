@@ -107,7 +107,7 @@ func (m *Viewport) SetDimensions(width, height int) {
 	}
 }
 
-func (m *Viewport) AppendContent(content string, finished bool) error {
+func (m *Viewport) AppendContent(content string, finished bool) (err error) {
 	m.content += content
 	if finished {
 		if m.content == "" {
@@ -119,8 +119,10 @@ func (m *Viewport) AppendContent(content string, finished bool) error {
 			//
 			// TODO: avoid casting to string and back, thereby avoiding
 			// unnecessary allocations.
-			if b, err := prettyjson.Format([]byte(m.content)); err != nil {
-				return fmt.Errorf("pretty printing json content: %w", err)
+			if b, fmterr := prettyjson.Format([]byte(m.content)); fmterr != nil {
+				// In the event of an error, still set unprettified content
+				// below.
+				err = fmt.Errorf("pretty printing json content: %w", fmterr)
 			} else {
 				m.content = string(b)
 			}
@@ -130,7 +132,7 @@ func (m *Viewport) AppendContent(content string, finished bool) error {
 	if m.Autoscroll {
 		m.viewport.GotoBottom()
 	}
-	return nil
+	return err
 }
 
 func (m *Viewport) setContent() {
