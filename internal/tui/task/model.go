@@ -219,8 +219,8 @@ const (
 	// viewport.
 	infoWidth = 40
 	// infoContentWidth is the width available to the content inside the task
-	// info sidebar, after subtracting 2 to account for margins, and 1 for border
-	infoContentWidth = infoWidth - 2 - 1
+	// info sidebar, after subtracting 1 to accomodate its border to the right
+	infoContentWidth = infoWidth - 1
 )
 
 // View renders the viewport
