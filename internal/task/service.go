@@ -2,7 +2,9 @@ package task
 
 import (
 	"errors"
+	"fmt"
 	"slices"
+	"time"
 
 	"github.com/leg100/pug/internal"
 	"github.com/leg100/pug/internal/logging"
@@ -59,8 +61,8 @@ func NewService(opts ServiceOptions) *Service {
 
 // Create a task. The task is placed into a pending state and requires enqueuing
 // before it'll be processed.
-func (s *Service) Create(opts CreateOptions) (*Task, error) {
-	task := s.newTask(opts)
+func (s *Service) Create(spec Spec) (*Task, error) {
+	task := s.newTask(spec)
 
 	s.logger.Debug("created task", "task", task)
 
@@ -69,8 +71,8 @@ func (s *Service) Create(opts CreateOptions) (*Task, error) {
 	// Increment counter of number of live tasks
 	*s.counter++
 
-	if opts.AfterCreate != nil {
-		opts.AfterCreate(task)
+	if spec.AfterCreate != nil {
+		spec.AfterCreate(task)
 	}
 
 	wait := make(chan error, 1)
@@ -83,7 +85,7 @@ func (s *Service) Create(opts CreateOptions) (*Task, error) {
 		}
 		s.logger.Debug("completed task", "task", task)
 	}()
-	if opts.Wait {
+	if spec.Wait {
 		return task, <-wait
 	}
 	return task, nil
@@ -105,7 +107,7 @@ func (s *Service) CreateGroup(cmd string, fn Func, ids ...resource.ID) (*Group, 
 	return group, nil
 }
 
-func (s *Service) CreateDependencyGroup(cmd string, reverse bool, opts ...CreateOptions) (*Group, error) {
+func (s *Service) CreateDependencyGroup(cmd string, reverse bool, opts ...Spec) (*Group, error) {
 	if len(opts) == 0 {
 		return nil, errors.New("no specs provided")
 	}
@@ -120,6 +122,53 @@ func (s *Service) CreateDependencyGroup(cmd string, reverse bool, opts ...Create
 	s.AddGroup(group)
 
 	return group, nil
+}
+
+// SpecErrors are errors returned from attempting to create task specs.
+type SpecErrors []error
+
+func (e SpecErrors) Error() string {
+	return fmt.Sprintf("failed to create %d specs", len(e))
+}
+
+// Create a task group from one or more task spec functions. An error is returned if zero
+// functions are provided, or if it fails to create at least one task.
+func (s *Service) CreateGroupFromSpecs(funcs ...SpecFunc) (*Group, error) {
+	if len(funcs) == 0 {
+		return nil, errors.New("no spec functions provided")
+	}
+	g := &Group{
+		Common:  resource.New(resource.TaskGroup, resource.GlobalResource),
+		Created: time.Now(),
+	}
+	var (
+		cmd    string
+		pruned SpecErrors
+	)
+	for _, fn := range funcs {
+		spec, err := fn()
+		if err != nil {
+			pruned = append(pruned, err)
+		}
+		task, err := s.Create(spec)
+		if err != nil {
+			g.CreateErrors = append(g.CreateErrors, err)
+		}
+		if cmd == "" {
+			cmd = task.String()
+		} else if cmd != task.String() {
+			// TODO: make a constant
+			cmd = "multi"
+		}
+		g.Tasks = append(g.Tasks, task)
+	}
+	if pruned != nil {
+		return nil, pruned
+	}
+	if len(g.Tasks) == 0 {
+		return g, errors.New("all tasks failed to be created")
+	}
+	return g, nil
 }
 
 // AddGroup adds a task group to the DB.

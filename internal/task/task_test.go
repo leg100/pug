@@ -19,7 +19,7 @@ func TestTask_NewReader(t *testing.T) {
 		program:   "./testdata/task",
 		publisher: &fakePublisher[*Task]{},
 	}
-	task := f.newTask(CreateOptions{})
+	task := f.newTask(Spec{})
 	task.updateState(Queued)
 	waitfn, err := task.start(context.Background())
 	require.NoError(t, err)
@@ -53,7 +53,7 @@ func TestTask_cancel(t *testing.T) {
 		program:   "./testdata/killme",
 		publisher: &fakePublisher[*Task]{},
 	}
-	task := f.newTask(CreateOptions{})
+	task := f.newTask(Spec{})
 	task.updateState(Queued)
 
 	done := make(chan struct{})

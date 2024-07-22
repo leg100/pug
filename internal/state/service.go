@@ -73,7 +73,7 @@ func (s *Service) GetResource(resourceID resource.ID) (*Resource, error) {
 // Reload creates a task to repopulate the local cache of the state of the given
 // workspace.
 func (s *Service) Reload(workspaceID resource.ID) (*task.Task, error) {
-	return s.createTask(workspaceID, task.CreateOptions{
+	return s.createTask(workspaceID, task.Spec{
 		Command: []string{"state", "pull"},
 		JSON:    true,
 		AfterExited: func(t *task.Task) {
@@ -107,7 +107,7 @@ func (s *Service) Delete(workspaceID resource.ID, addrs ...ResourceAddress) (*ta
 	for i, addr := range addrs {
 		addrStrings[i] = string(addr)
 	}
-	return s.createTask(workspaceID, task.CreateOptions{
+	return s.createTask(workspaceID, task.Spec{
 		Blocking: true,
 		Command:  []string{"state", "rm"},
 		Args:     addrStrings,
@@ -121,7 +121,7 @@ func (s *Service) Delete(workspaceID resource.ID, addrs ...ResourceAddress) (*ta
 }
 
 func (s *Service) Taint(workspaceID resource.ID, addr ResourceAddress) (*task.Task, error) {
-	return s.createTask(workspaceID, task.CreateOptions{
+	return s.createTask(workspaceID, task.Spec{
 		Blocking: true,
 		Command:  []string{"taint"},
 		Args:     []string{string(addr)},
@@ -135,7 +135,7 @@ func (s *Service) Taint(workspaceID resource.ID, addr ResourceAddress) (*task.Ta
 }
 
 func (s *Service) Untaint(workspaceID resource.ID, addr ResourceAddress) (*task.Task, error) {
-	return s.createTask(workspaceID, task.CreateOptions{
+	return s.createTask(workspaceID, task.Spec{
 		Blocking: true,
 		Command:  []string{"untaint"},
 		Args:     []string{string(addr)},
@@ -149,7 +149,7 @@ func (s *Service) Untaint(workspaceID resource.ID, addr ResourceAddress) (*task.
 }
 
 func (s *Service) Move(workspaceID resource.ID, src, dest ResourceAddress) (*task.Task, error) {
-	return s.createTask(workspaceID, task.CreateOptions{
+	return s.createTask(workspaceID, task.Spec{
 		Blocking: true,
 		Command:  []string{"state", "mv"},
 		Args:     []string{string(src), string(dest)},
@@ -163,7 +163,7 @@ func (s *Service) Move(workspaceID resource.ID, src, dest ResourceAddress) (*tas
 }
 
 // TODO: move this logic into task.Create
-func (s *Service) createTask(workspaceID resource.ID, opts task.CreateOptions) (*task.Task, error) {
+func (s *Service) createTask(workspaceID resource.ID, opts task.Spec) (*task.Task, error) {
 	ws, err := s.workspaces.Get(workspaceID)
 	if err != nil {
 		return nil, err

@@ -33,7 +33,7 @@ type ServiceOptions struct {
 }
 
 type taskCreator interface {
-	Create(spec task.CreateOptions) (*task.Task, error)
+	Create(spec task.Spec) (*task.Task, error)
 }
 
 type moduleTable interface {
@@ -111,7 +111,7 @@ func (s *Service) Reload() (added []string, removed []string, err error) {
 }
 
 func (s *Service) loadTerragruntDependencies() error {
-	task, err := s.tasks.Create(task.CreateOptions{
+	task, err := s.tasks.Create(task.Spec{
 		Parent:  resource.GlobalResource,
 		Command: []string{"graph-dependencies"},
 		Wait:    true,
@@ -201,7 +201,7 @@ func (s *Service) Init(moduleID resource.ID) (*task.Task, error) {
 	}
 
 	// create asynchronous task that runs terraform init
-	tsk, err := s.CreateTask(mod, task.CreateOptions{
+	return s.CreateTask(mod, task.Spec{
 		Command:  []string{"init"},
 		Args:     []string{"-input=false"},
 		Blocking: true,
@@ -216,10 +216,6 @@ func (s *Service) Init(moduleID resource.ID) (*task.Task, error) {
 			}
 		},
 	})
-	if err != nil {
-		return nil, err
-	}
-	return tsk, nil
 }
 
 func (s *Service) List() []*Module {
@@ -258,7 +254,7 @@ func (s *Service) Format(moduleID resource.ID) (*task.Task, error) {
 		return nil, fmt.Errorf("formatting module: %w", err)
 	}
 
-	return s.CreateTask(mod, task.CreateOptions{
+	return s.CreateTask(mod, task.Spec{
 		Command: []string{"fmt"},
 	})
 }
@@ -269,13 +265,13 @@ func (s *Service) Validate(moduleID resource.ID) (*task.Task, error) {
 		return nil, fmt.Errorf("validating module: %w", err)
 	}
 
-	return s.CreateTask(mod, task.CreateOptions{
+	return s.CreateTask(mod, task.Spec{
 		Command: []string{"validate"},
 	})
 }
 
 // TODO: move this logic into task.Create
-func (s *Service) CreateTask(mod *Module, opts task.CreateOptions) (*task.Task, error) {
+func (s *Service) CreateTask(mod *Module, opts task.Spec) (*task.Task, error) {
 	opts.Parent = mod
 	opts.Path = mod.Path
 	return s.tasks.Create(opts)

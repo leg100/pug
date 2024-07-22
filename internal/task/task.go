@@ -61,7 +61,7 @@ type Task struct {
 
 	// Retain a copy of the options used to originally create the task so that
 	// the task can be retried.
-	createOptions CreateOptions
+	createOptions Spec
 
 	// Call this function after the task has successfully finished
 	AfterExited func(*Task)
@@ -96,7 +96,11 @@ type factory struct {
 	terragrunt bool
 }
 
-type CreateOptions struct {
+// SpecFunc is a function that creates a spec.
+type SpecFunc func() (Spec, error)
+
+// Spec is a specification for creating a task.
+type Spec struct {
 	// Resource that the task belongs to.
 	Parent resource.Resource
 	// Program command and any sub commands, e.g. plan, state rm, etc.
@@ -142,7 +146,7 @@ type CreateOptions struct {
 }
 
 // TODO: check presence of mandatory options
-func (f *factory) newTask(opts CreateOptions) *Task {
+func (f *factory) newTask(opts Spec) *Task {
 	// In terragrunt mode add default terragrunt flags
 	args := append(f.userArgs, opts.Args...)
 	if f.terragrunt {

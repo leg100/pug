@@ -46,9 +46,9 @@ type RunService interface {
 }
 
 type TaskService interface {
-	Create(opts task.CreateOptions) (*task.Task, error)
+	Create(opts task.Spec) (*task.Task, error)
 	CreateGroup(cmd string, fn task.Func, ids ...resource.ID) (*task.Group, error)
-	CreateDependencyGroup(cmd string, reverse bool, opts ...task.CreateOptions) (*task.Group, error)
+	CreateDependencyGroup(cmd string, reverse bool, opts ...task.Spec) (*task.Group, error)
 	Retry(taskID resource.ID) (*task.Task, error)
 	Counter() int
 	Get(taskID resource.ID) (*task.Task, error)

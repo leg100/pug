@@ -84,7 +84,7 @@ func (s *Service) plan(workspaceID resource.ID, opts CreateOptions) (*task.Task,
 	if err != nil {
 		return nil, err
 	}
-	task, err := s.createTask(run, task.CreateOptions{
+	task, err := s.createTask(run, task.Spec{
 		Command: []string{"plan"},
 		Args:    run.planArgs(),
 		// TODO: explain why plan is blocking (?)
@@ -140,7 +140,7 @@ func (s *Service) MultiApply(opts *CreateOptions, ids ...resource.ID) (*task.Gro
 		return nil, errors.New("no IDs specified")
 	}
 	var destroy *bool
-	specs := make([]task.CreateOptions, 0, len(ids))
+	specs := make([]task.Spec, 0, len(ids))
 	for _, id := range ids {
 		spec, run, err := s.createApplySpec(id, opts)
 		if err != nil {
@@ -159,7 +159,7 @@ func (s *Service) MultiApply(opts *CreateOptions, ids ...resource.ID) (*task.Gro
 	return s.tasks.CreateDependencyGroup(desc, *destroy, specs...)
 }
 
-func (s *Service) createApplySpec(id resource.ID, opts *CreateOptions) (task.CreateOptions, *Run, error) {
+func (s *Service) createApplySpec(id resource.ID, opts *CreateOptions) (task.Spec, *Run, error) {
 	// Create or retrieve existing run.
 	var (
 		run *Run
@@ -177,11 +177,11 @@ func (s *Service) createApplySpec(id resource.ID, opts *CreateOptions) (task.Cre
 		}
 	}
 	if err != nil {
-		return task.CreateOptions{}, nil, err
+		return task.Spec{}, nil, err
 	}
 	s.table.Add(run.ID, run)
 
-	spec := task.CreateOptions{
+	spec := task.Spec{
 		Command:     []string{"apply"},
 		Args:        run.applyArgs(),
 		Blocking:    true,
@@ -210,7 +210,7 @@ func (s *Service) createApplySpec(id resource.ID, opts *CreateOptions) (task.Cre
 		},
 	}
 	if err := s.addWorkspaceAndPathToTaskSpec(run, &spec); err != nil {
-		return task.CreateOptions{}, nil, err
+		return task.Spec{}, nil, err
 	}
 	return spec, run, nil
 }
@@ -282,14 +282,14 @@ func (s *Service) delete(id resource.ID) error {
 	return nil
 }
 
-func (s *Service) createTask(run *Run, opts task.CreateOptions) (*task.Task, error) {
+func (s *Service) createTask(run *Run, opts task.Spec) (*task.Task, error) {
 	if err := s.addWorkspaceAndPathToTaskSpec(run, &opts); err != nil {
 		return nil, err
 	}
 	return s.tasks.Create(opts)
 }
 
-func (s *Service) addWorkspaceAndPathToTaskSpec(run *Run, opts *task.CreateOptions) error {
+func (s *Service) addWorkspaceAndPathToTaskSpec(run *Run, opts *task.Spec) error {
 	opts.Parent = run
 
 	ws, err := s.workspaces.Get(run.WorkspaceID())

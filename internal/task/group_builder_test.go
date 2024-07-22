@@ -10,7 +10,7 @@ import (
 
 type fakeTaskCreator struct{}
 
-func (f *fakeTaskCreator) Create(spec CreateOptions) (*Task, error) {
+func (f *fakeTaskCreator) Create(spec Spec) (*Task, error) {
 	return (&factory{}).newTask(spec), nil
 }
 
@@ -23,12 +23,12 @@ func TestNewGroupWithDependencies(t *testing.T) {
 	frontend := resource.New(resource.Module, resource.GlobalResource).WithDependencies(backend.ID, vpc.ID)
 	mq := resource.New(resource.Module, resource.GlobalResource)
 
-	vpcSpec := CreateOptions{Parent: vpc, Path: "vpc"}
-	mysqlSpec := CreateOptions{Parent: mysql, Path: "mysql"}
-	redisSpec := CreateOptions{Parent: redis, Path: "redis"}
-	backendSpec := CreateOptions{Parent: backend, Path: "backend"}
-	frontendSpec := CreateOptions{Parent: frontend, Path: "frontend"}
-	mqSpec := CreateOptions{Parent: mq, Path: "mq"}
+	vpcSpec := Spec{Parent: vpc, Path: "vpc"}
+	mysqlSpec := Spec{Parent: mysql, Path: "mysql"}
+	redisSpec := Spec{Parent: redis, Path: "redis"}
+	backendSpec := Spec{Parent: backend, Path: "backend"}
+	frontendSpec := Spec{Parent: frontend, Path: "frontend"}
+	mqSpec := Spec{Parent: mq, Path: "mq"}
 
 	t.Run("normal order", func(t *testing.T) {
 		got, err := newGroupWithDependencies(&fakeTaskCreator{}, "apply", false,

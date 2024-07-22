@@ -7,11 +7,11 @@ import (
 )
 
 type taskCreator interface {
-	Create(spec CreateOptions) (*Task, error)
+	Create(spec Spec) (*Task, error)
 }
 
 // newGroupWithDependencies constructs a graph from the given task specs.
-func newGroupWithDependencies(svc taskCreator, cmd string, reverse bool, specs ...CreateOptions) (*Group, error) {
+func newGroupWithDependencies(svc taskCreator, cmd string, reverse bool, specs ...Spec) (*Group, error) {
 	b := groupBuilder{
 		g:     NewEmptyGroup(cmd),
 		nodes: make(map[resource.ID]*groupBuilderNode),
@@ -72,7 +72,7 @@ type groupBuilder struct {
 // module.
 type groupBuilderNode struct {
 	module       resource.Resource
-	specs        []CreateOptions
+	specs        []Spec
 	created      []resource.ID
 	in, out      []*groupBuilderNode
 	visited      bool
@@ -134,7 +134,7 @@ func (b *groupBuilder) visitAndCreateTasksInReverse(n *groupBuilderNode) {
 	}
 }
 
-func (b *groupBuilder) createTask(spec CreateOptions) *Task {
+func (b *groupBuilder) createTask(spec Spec) *Task {
 	task, err := b.tasks.Create(spec)
 	if err != nil {
 		b.g.CreateErrors = append(b.g.CreateErrors, err)

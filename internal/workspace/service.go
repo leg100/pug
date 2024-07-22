@@ -44,7 +44,7 @@ type modules interface {
 	SetCurrent(moduleID, workspaceID resource.ID) error
 	Reload() ([]string, []string, error)
 	List() []*module.Module
-	CreateTask(mod *module.Module, opts task.CreateOptions) (*task.Task, error)
+	CreateTask(mod *module.Module, opts task.Spec) (*task.Task, error)
 }
 
 type moduleSubscription interface {
@@ -98,7 +98,7 @@ func (s *Service) Reload(moduleID resource.ID) (*task.Task, error) {
 	if err != nil {
 		return nil, err
 	}
-	task, err := s.modules.CreateTask(mod, task.CreateOptions{
+	task, err := s.modules.CreateTask(mod, task.Spec{
 		Command: []string{"workspace", "list"},
 		AfterError: func(t *task.Task) {
 			s.logger.Error("reloading workspaces", "error", t.Err, "module", mod, "task", t)
@@ -205,7 +205,7 @@ func (s *Service) Create(path, name string) (*Workspace, *task.Task, error) {
 		return nil, nil, err
 	}
 
-	task, err := s.createTask(ws, task.CreateOptions{
+	task, err := s.createTask(ws, task.Spec{
 		Command: []string{"workspace", "new"},
 		Args:    []string{name},
 		AfterExited: func(*task.Task) {
@@ -285,7 +285,7 @@ func (s *Service) selectWorkspace(moduleID, workspaceID resource.ID) error {
 		return err
 	}
 	// Create task to immediately set workspace as current workspace for module.
-	task, err := s.createTask(ws, task.CreateOptions{
+	task, err := s.createTask(ws, task.Spec{
 		Command:   []string{"workspace", "select"},
 		Args:      []string{ws.Name},
 		Immediate: true,
@@ -310,7 +310,7 @@ func (s *Service) Delete(id resource.ID) (*task.Task, error) {
 	if err != nil {
 		return nil, fmt.Errorf("deleting workspace: %w", err)
 	}
-	return s.createTask(ws, task.CreateOptions{
+	return s.createTask(ws, task.Spec{
 		Command:  []string{"workspace", "delete"},
 		Args:     []string{ws.Name},
 		Blocking: true,
@@ -321,7 +321,7 @@ func (s *Service) Delete(id resource.ID) (*task.Task, error) {
 }
 
 // TODO: move this logic into task.Create
-func (s *Service) createTask(ws *Workspace, opts task.CreateOptions) (*task.Task, error) {
+func (s *Service) createTask(ws *Workspace, opts task.Spec) (*task.Task, error) {
 	opts.Parent = ws
 
 	mod, err := s.modules.Get(ws.ModuleID())
