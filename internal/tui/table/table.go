@@ -167,7 +167,6 @@ func (m *Model[V]) setDimensions(width, height int) {
 	m.viewport.Width = max(0, width-2)
 	m.recalculateWidth()
 
-	// TODO: should this always be called?
 	m.UpdateViewport()
 }
 
@@ -285,7 +284,7 @@ func (m Model[V]) View() string {
 	if m.filterVisible() {
 		components = append(components, tui.Regular.Margin(0, 1).Render(m.filter.View()))
 		// Subtract 2 to accommodate border
-		components = append(components, strings.Repeat("─", m.width-2))
+		components = append(components, strings.Repeat("─", max(0, m.width-2)))
 	}
 	components = append(components, m.headersView())
 	components = append(components, m.viewport.View())
@@ -296,7 +295,7 @@ func (m Model[V]) View() string {
 	// total length of top border runes, not including corners
 	topBorderLength := max(0, m.width-lipgloss.Width(metadata)-2)
 	topBorderLeftLength := topBorderLength / 2
-	topBorderRightLength := topBorderLength - topBorderLeftLength
+	topBorderRightLength := max(0, topBorderLength-topBorderLeftLength)
 
 	topBorder := lipgloss.NewStyle().Foreground(m.borderColor).Render(fmt.Sprintf("%s%s%s%s%s", m.border.TopLeft, strings.Repeat(m.border.Top, topBorderLeftLength), metadata, strings.Repeat(m.border.Top, topBorderRightLength), m.border.TopRight))
 

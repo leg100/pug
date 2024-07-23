@@ -77,6 +77,10 @@ func New(opts Options) (model, error) {
 		}
 	}
 
+	// Work-around for
+	// https://github.com/charmbracelet/bubbletea/issues/1036#issuecomment-2158563056
+	_ = lipgloss.HasDarkBackground()
+
 	spinner := spinner.New(spinner.WithSpinner(spinner.Line))
 	makers := makeMakers(opts, &spinner)
 
