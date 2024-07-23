@@ -110,14 +110,13 @@ func New[V resource.Resource](cols []Column, fn RowRenderer[V], width, height in
 	}
 
 	// Copy column structs onto receiver, because the caller may modify columns.
+	m.cols = make([]Column, len(cols))
 	copy(m.cols, cols)
-
 	// For each column, set default truncation function if unset.
-	for _, col := range cols {
+	for i, col := range m.cols {
 		if col.TruncationFunc == nil {
-			col.TruncationFunc = defaultTruncationFunc
+			m.cols[i].TruncationFunc = defaultTruncationFunc
 		}
-		m.cols = append(m.cols, col)
 	}
 
 	m.setDimensions(width, height)
