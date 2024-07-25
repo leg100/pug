@@ -104,7 +104,7 @@ func findModules(logger logging.Interface, workdir internal.Workdir) (modules []
 				// type (not unless it evaluates terragrunt's language and
 				// follows `find_in_parent` etc. to locate the effective
 				// remote_state, which is perhaps a future exercise...).
-				logger.Warn("reloading modules: could not determine backend type", "path", path, "error", err)
+				logger.Warn("reloading modules: could not determine backend type", "path", path)
 			}
 			// Strip workdir from module path
 			stripped, err := filepath.Rel(workdir.String(), filepath.Dir(path))
