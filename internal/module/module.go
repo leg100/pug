@@ -68,7 +68,7 @@ func (m *Module) LogValue() slog.Value {
 //
 // A root module is deemed to be a directory that contains a .tf file that
 // contains a backend or cloud block, or in the case of terragrunt, a
-// terragrunt.hcl file containing a remote_state block.
+// terragrunt.hcl file.
 func findModules(logger logging.Interface, workdir internal.Workdir) (modules []Options, err error) {
 	walkfn := func(path string, d fs.DirEntry, walkerr error) error {
 		if walkerr != nil {
@@ -81,14 +81,30 @@ func findModules(logger logging.Interface, workdir internal.Workdir) (modules []
 			}
 			return nil
 		}
-		if filepath.Ext(path) == ".tf" || d.Name() == "terragrunt.hcl" {
+
+		var isTerragrunt bool
+		switch {
+		case d.Name() == "terragrunt.hcl":
+			isTerragrunt = true
+			fallthrough
+		case filepath.Ext(path) == ".tf":
 			backend, found, err := detectBackend(path)
 			if err != nil {
 				logger.Error("reloading modules: parsing hcl", "path", path, "error", err)
 				return nil
 			}
-			if !found {
+			if !isTerragrunt && !found {
+				// Not a terragrunt module, nor a vanilla terraform module with a
+				// backend config, so skip.
 				return nil
+			}
+			if isTerragrunt && backend == "" {
+				// Unless terragrunt.hcl directly contains a `remote_state`
+				// block then Pug doesn't have a way of determining the backend
+				// type (not unless it evaluates terragrunt's language and
+				// follows `find_in_parent` etc. to locate the effective
+				// remote_state, which is perhaps a future exercise...).
+				logger.Warn("reloading modules: could not determine backend type", "path", path, "error", err)
 			}
 			// Strip workdir from module path
 			stripped, err := filepath.Rel(workdir.String(), filepath.Dir(path))
@@ -102,6 +118,7 @@ func findModules(logger logging.Interface, workdir internal.Workdir) (modules []
 			// skip walking remainder of parent directory
 			return fs.SkipDir
 		}
+
 		return nil
 	}
 	if err := filepath.WalkDir(workdir.String(), walkfn); err != nil {
