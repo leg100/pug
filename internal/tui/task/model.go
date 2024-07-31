@@ -139,13 +139,13 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, cancel(m.tasks, m.task.ID)
 		case key.Matches(msg, keys.Common.Apply):
 			if m.run != nil {
-				// Only trigger an apply if run is in the planned state
-				if m.run.Status != run.Planned {
-					return m, nil
+				spec, err := m.runs.Apply(m.run.ID, nil)
+				if err != nil {
+					return m, tui.ReportError(fmt.Errorf("create apply task: %w", err))
 				}
 				return m, tui.YesNoPrompt(
 					"Apply plan?",
-					m.helpers.CreateApplyTasks(nil, m.run.ID),
+					m.helpers.CreateTasksWithSpecs(spec),
 				)
 			}
 		case key.Matches(msg, keys.Common.State):
@@ -157,7 +157,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, keys.Common.Retry):
 			return m, tui.YesNoPrompt(
 				"Retry task?",
-				m.helpers.CreateTasks("retry", m.tasks.Retry, m.task.ID),
+				m.helpers.CreateTasksWithSpecs(m.task.Spec),
 			)
 		}
 	case toggleAutoscrollMsg:

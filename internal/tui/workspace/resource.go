@@ -74,24 +74,24 @@ func (m resourceModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, resourcesKeys.Taint):
-			fn := func(workspaceID resource.ID) (*task.Task, error) {
+			fn := func(workspaceID resource.ID) (task.Spec, error) {
 				return m.states.Taint(workspaceID, m.resource.Address)
 			}
-			return m, m.helpers.CreateTasks("taint", fn, m.resource.Workspace().GetID())
+			return m, m.helpers.CreateTasks(fn, m.resource.Workspace().GetID())
 		case key.Matches(msg, resourcesKeys.Untaint):
-			fn := func(workspaceID resource.ID) (*task.Task, error) {
+			fn := func(workspaceID resource.ID) (task.Spec, error) {
 				return m.states.Untaint(workspaceID, m.resource.Address)
 			}
-			return m, m.helpers.CreateTasks("untaint", fn, m.resource.Workspace().GetID())
+			return m, m.helpers.CreateTasks(fn, m.resource.Workspace().GetID())
 		case key.Matches(msg, resourcesKeys.Move):
 			return m, m.helpers.Move(m.resource.Workspace().GetID(), m.resource.Address)
 		case key.Matches(msg, keys.Common.Delete):
-			fn := func(workspaceID resource.ID) (*task.Task, error) {
+			fn := func(workspaceID resource.ID) (task.Spec, error) {
 				return m.states.Delete(workspaceID, m.resource.Address)
 			}
 			return m, tui.YesNoPrompt(
 				"Delete resource?",
-				m.helpers.CreateTasks("state-rm", fn, m.resource.Workspace().GetID()),
+				m.helpers.CreateTasks(fn, m.resource.Workspace().GetID()),
 			)
 		case key.Matches(msg, keys.Common.PlanDestroy):
 			// Create a targeted destroy plan.
@@ -100,10 +100,10 @@ func (m resourceModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, keys.Common.Plan):
 			// Create a targeted plan.
 			createRunOptions.TargetAddrs = []state.ResourceAddress{m.resource.Address}
-			fn := func(workspaceID resource.ID) (*task.Task, error) {
+			fn := func(workspaceID resource.ID) (task.Spec, error) {
 				return m.runs.Plan(workspaceID, createRunOptions)
 			}
-			return m, m.helpers.CreateTasks("plan", fn, m.resource.Workspace().GetID())
+			return m, m.helpers.CreateTasks(fn, m.resource.Workspace().GetID())
 		}
 	case tea.WindowSizeMsg:
 		m.viewport.SetDimensions(m.viewportWidth(msg.Width), m.viewportHeight(msg.Height))

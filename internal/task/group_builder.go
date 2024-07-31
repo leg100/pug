@@ -10,16 +10,16 @@ type taskCreator interface {
 	Create(spec Spec) (*Task, error)
 }
 
-// newGroupWithDependencies constructs a graph from the given task specs.
-func newGroupWithDependencies(svc taskCreator, cmd string, reverse bool, specs ...Spec) (*Group, error) {
-	b := groupBuilder{
-		g:     NewEmptyGroup(cmd),
-		nodes: make(map[resource.ID]*groupBuilderNode),
-		tasks: svc,
+// createDependentTasks creates tasks whilst respecting their modules'
+// dependencies.
+func createDependentTasks(svc taskCreator, reverse bool, specs ...Spec) ([]*Task, error) {
+	b := dependencyGraphBuilder{
+		nodes:       make(map[resource.ID]*dependencyGraphNode),
+		taskCreator: svc,
 	}
-	// Build dependency graph. Each node in the graph is a module and the specs
-	// that belong to that module. Once the graph is built and dependencies are
-	// established, only then are tasks created from the specs.
+	// Build dependency graph. Each node in the graph is a module together with
+	// the specs that belong to that module. Once the graph is built and
+	// dependencies are established, only then are tasks created from the specs.
 	//
 	// Specs that don't belong to a module don't have any dependencies so tasks
 	// are built from these specs immediately.
@@ -28,7 +28,7 @@ func newGroupWithDependencies(svc taskCreator, cmd string, reverse bool, specs .
 			modID := mod.GetID()
 			node, ok := b.nodes[modID]
 			if !ok {
-				node = &groupBuilderNode{module: mod}
+				node = &dependencyGraphNode{module: mod}
 			}
 			node.specs = append(node.specs, spec)
 			b.nodes[modID] = node
@@ -55,32 +55,33 @@ func newGroupWithDependencies(svc taskCreator, cmd string, reverse bool, specs .
 		}
 	}
 
-	if len(b.g.Tasks) == 0 {
-		return b.g, fmt.Errorf("failed to create all %d tasks; see logs", len(b.g.CreateErrors))
+	if len(b.tasks) == 0 {
+		return nil, fmt.Errorf("failed to create all %d tasks; see logs", len(b.createErrors))
 	}
-	return b.g, nil
+	return b.tasks, nil
 }
 
-// groupBuilder builds a task group.
-type groupBuilder struct {
-	g     *Group
-	tasks taskCreator
-	nodes map[resource.ID]*groupBuilderNode
+// dependencyGraphBuilder builds a graph of dependencies
+type dependencyGraphBuilder struct {
+	tasks        []*Task
+	createErrors []error
+	nodes        map[resource.ID]*dependencyGraphNode
+
+	taskCreator
 }
 
-// groupBuilderNode represents a group of task specs that belong to the same
-// module.
-type groupBuilderNode struct {
+// dependencyGraphNode represents a module in a dependency graph
+type dependencyGraphNode struct {
 	module       resource.Resource
 	specs        []Spec
 	created      []resource.ID
-	in, out      []*groupBuilderNode
+	in, out      []*dependencyGraphNode
 	visited      bool
 	tasksCreated bool
 }
 
 // visit nodes recursively, populating the in and out degrees.
-func (b *groupBuilder) visit(id resource.ID, n *groupBuilderNode) {
+func (b *dependencyGraphBuilder) visit(id resource.ID, n *dependencyGraphNode) {
 	n.visited = true
 
 	for _, id := range n.module.Dependencies() {
@@ -94,7 +95,7 @@ func (b *groupBuilder) visit(id resource.ID, n *groupBuilderNode) {
 	}
 }
 
-func (b *groupBuilder) visitAndCreateTasks(n *groupBuilderNode) {
+func (b *dependencyGraphBuilder) visitAndCreateTasks(n *dependencyGraphNode) {
 	n.tasksCreated = true
 
 	var dependsOn []resource.ID
@@ -114,7 +115,7 @@ func (b *groupBuilder) visitAndCreateTasks(n *groupBuilderNode) {
 	}
 }
 
-func (b *groupBuilder) visitAndCreateTasksInReverse(n *groupBuilderNode) {
+func (b *dependencyGraphBuilder) visitAndCreateTasksInReverse(n *dependencyGraphNode) {
 	n.tasksCreated = true
 
 	var dependsOn []resource.ID
@@ -134,12 +135,12 @@ func (b *groupBuilder) visitAndCreateTasksInReverse(n *groupBuilderNode) {
 	}
 }
 
-func (b *groupBuilder) createTask(spec Spec) *Task {
-	task, err := b.tasks.Create(spec)
+func (b *dependencyGraphBuilder) createTask(spec Spec) *Task {
+	task, err := b.Create(spec)
 	if err != nil {
-		b.g.CreateErrors = append(b.g.CreateErrors, err)
+		b.createErrors = append(b.createErrors, err)
 	} else {
-		b.g.Tasks = append(b.g.Tasks, task)
+		b.tasks = append(b.tasks, task)
 	}
 	return task
 }

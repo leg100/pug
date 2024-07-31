@@ -194,27 +194,34 @@ func (s *Service) stripWorkdirFromPath(path string) (string, error) {
 }
 
 // Init invokes terraform init on the module.
-func (s *Service) Init(moduleID resource.ID) (*task.Task, error) {
-	mod, err := s.Get(moduleID)
-	if err != nil {
-		return nil, fmt.Errorf("initializing module: %w", err)
-	}
-
-	// create asynchronous task that runs terraform init
-	return s.CreateTask(mod, task.Spec{
+func (s *Service) Init(moduleID resource.ID) (task.Spec, error) {
+	return s.updateSpec(moduleID, task.Spec{
 		Command:  []string{"init"},
 		Args:     []string{"-input=false"},
 		Blocking: true,
 		// The terraform plugin cache is not concurrency-safe, so only allow one
 		// init task to run at any given time.
 		Exclusive: s.pluginCache,
-		AfterCreate: func(*task.Task) {
+		AfterCreate: func(task *task.Task) {
 			// Trigger a workspace reload if the module doesn't yet have a
 			// current workspace
+			mod := task.Module().(*Module)
 			if mod.CurrentWorkspaceID == nil {
 				s.Publish(resource.UpdatedEvent, mod)
 			}
 		},
+	})
+}
+
+func (s *Service) Format(moduleID resource.ID) (task.Spec, error) {
+	return s.updateSpec(moduleID, task.Spec{
+		Command: []string{"fmt"},
+	})
+}
+
+func (s *Service) Validate(moduleID resource.ID) (task.Spec, error) {
+	return s.updateSpec(moduleID, task.Spec{
+		Command: []string{"validate"},
 	})
 }
 
@@ -248,31 +255,13 @@ func (s *Service) SetCurrent(moduleID, workspaceID resource.ID) error {
 	return nil
 }
 
-func (s *Service) Format(moduleID resource.ID) (*task.Task, error) {
+// updateSpec updates the task spec with common module settings.
+func (s *Service) updateSpec(moduleID resource.ID, spec task.Spec) (task.Spec, error) {
 	mod, err := s.table.Get(moduleID)
 	if err != nil {
-		return nil, fmt.Errorf("formatting module: %w", err)
+		return task.Spec{}, err
 	}
-
-	return s.CreateTask(mod, task.Spec{
-		Command: []string{"fmt"},
-	})
-}
-
-func (s *Service) Validate(moduleID resource.ID) (*task.Task, error) {
-	mod, err := s.table.Get(moduleID)
-	if err != nil {
-		return nil, fmt.Errorf("validating module: %w", err)
-	}
-
-	return s.CreateTask(mod, task.Spec{
-		Command: []string{"validate"},
-	})
-}
-
-// TODO: move this logic into task.Create
-func (s *Service) CreateTask(mod *Module, opts task.Spec) (*task.Task, error) {
-	opts.Parent = mod
-	opts.Path = mod.Path
-	return s.tasks.Create(opts)
+	spec.Parent = mod
+	spec.Path = mod.Path
+	return spec, nil
 }

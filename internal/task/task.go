@@ -59,9 +59,9 @@ type Task struct {
 	// and out of a status.
 	timestamps map[Status]statusTimestamps
 
-	// Retain a copy of the options used to originally create the task so that
+	// Retain a copy of the Spec used to originally create the task so that
 	// the task can be retried.
-	createOptions Spec
+	Spec Spec
 
 	// Call this function after the task has successfully finished
 	AfterExited func(*Task)
@@ -96,65 +96,16 @@ type factory struct {
 	terragrunt bool
 }
 
-// SpecFunc is a function that creates a spec.
-type SpecFunc func() (Spec, error)
-
-// Spec is a specification for creating a task.
-type Spec struct {
-	// Resource that the task belongs to.
-	Parent resource.Resource
-	// Program command and any sub commands, e.g. plan, state rm, etc.
-	Command []string
-	// Args to pass to program.
-	Args []string
-	// Path relative to the pug working directory in which to run the command.
-	Path string
-	// Environment variables.
-	Env []string
-	// A blocking task blocks other tasks from running on the module or
-	// workspace.
-	Blocking bool
-	// Globally exclusive task - at most only one such task can be running
-	Exclusive bool
-	// Set to true to indicate that the task produces JSON output
-	JSON bool
-	// Skip queue and immediately start task
-	Immediate bool
-	// Wait blocks until the task has finished
-	Wait bool
-	// DependsOn are other tasks that all must successfully exit before the
-	// task can be enqueued. If any of the other tasks are canceled or error
-	// then the task will be canceled.
-	DependsOn []resource.ID
-	// Description assigns an optional description to the task to display to the
-	// user, overriding the default of displaying the command.
-	Description string
-	// Call this function after the task has successfully finished
-	AfterExited func(*Task)
-	// Call this function after the task is enqueued.
-	AfterQueued func(*Task)
-	// Call this function after the task starts running.
-	AfterRunning func(*Task)
-	// Call this function after the task fails with an error
-	AfterError func(*Task)
-	// Call this function after the task is successfully canceled
-	AfterCanceled func(*Task)
-	// Call this function after the task is successfully created
-	AfterCreate func(*Task)
-	// Call this function after the task terminates for whatever reason.
-	AfterFinish func(*Task)
-}
-
 // TODO: check presence of mandatory options
-func (f *factory) newTask(opts Spec) *Task {
+func (f *factory) newTask(spec Spec) *Task {
 	// In terragrunt mode add default terragrunt flags
-	args := append(f.userArgs, opts.Args...)
+	args := append(f.userArgs, spec.Args...)
 	if f.terragrunt {
 		args = append(args, "--terragrunt-non-interactive")
 	}
 
 	return &Task{
-		Common:        resource.New(resource.Task, opts.Parent),
+		Common:        resource.New(resource.Task, spec.Parent),
 		State:         Pending,
 		Created:       time.Now(),
 		Updated:       time.Now(),
@@ -162,23 +113,23 @@ func (f *factory) newTask(opts Spec) *Task {
 		stdout:        newBuffer(),
 		combined:      newBuffer(),
 		program:       f.program,
-		Command:       opts.Command,
-		Path:          filepath.Join(f.workdir.String(), opts.Path),
+		Command:       spec.Command,
+		Path:          filepath.Join(f.workdir.String(), spec.Path),
 		Args:          args,
-		AdditionalEnv: append(f.userEnvs, opts.Env...),
-		JSON:          opts.JSON,
-		Blocking:      opts.Blocking,
-		DependsOn:     opts.DependsOn,
-		Immediate:     opts.Immediate,
-		exclusive:     opts.Exclusive,
-		description:   opts.Description,
-		createOptions: opts,
-		AfterExited:   opts.AfterExited,
-		AfterError:    opts.AfterError,
-		AfterCanceled: opts.AfterCanceled,
-		AfterRunning:  opts.AfterRunning,
-		AfterQueued:   opts.AfterQueued,
-		AfterFinish:   opts.AfterFinish,
+		AdditionalEnv: append(f.userEnvs, spec.Env...),
+		JSON:          spec.JSON,
+		Blocking:      spec.Blocking,
+		DependsOn:     spec.DependsOn,
+		Immediate:     spec.Immediate,
+		exclusive:     spec.Exclusive,
+		description:   spec.Description,
+		Spec:          spec,
+		AfterExited:   spec.AfterExited,
+		AfterError:    spec.AfterError,
+		AfterCanceled: spec.AfterCanceled,
+		AfterRunning:  spec.AfterRunning,
+		AfterQueued:   spec.AfterQueued,
+		AfterFinish:   spec.AfterFinish,
 		// Publish an event whenever task state is updated
 		afterUpdate: func(t *Task) {
 			if f.publisher != nil {

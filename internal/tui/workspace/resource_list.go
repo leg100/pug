@@ -135,10 +135,15 @@ func (m resourceList) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.reloading = true
 			return m, func() tea.Msg {
 				msg := reloadedMsg{workspaceID: m.workspace.GetID()}
-				if task, err := m.states.Reload(msg.workspaceID); err != nil {
+				if spec, err := m.states.Reload(msg.workspaceID); err != nil {
 					msg.err = err
-				} else if err := task.Wait(); err != nil {
-					msg.err = err
+				} else {
+					task, err := m.helpers.Tasks.Create(spec)
+					if err != nil {
+						msg.err = err
+					} else if err := task.Wait(); err != nil {
+						msg.err = err
+					}
 				}
 				return msg
 			}
@@ -148,19 +153,19 @@ func (m resourceList) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				// no rows; do nothing
 				return m, nil
 			}
-			fn := func(workspaceID resource.ID) (*task.Task, error) {
+			fn := func(workspaceID resource.ID) (task.Spec, error) {
 				return m.states.Delete(workspaceID, addrs...)
 			}
 			return m, tui.YesNoPrompt(
 				fmt.Sprintf("Delete %d resource(s)?", len(addrs)),
-				m.helpers.CreateTasks("state-rm", fn, m.workspace.GetID()),
+				m.helpers.CreateTasks(fn, m.workspace.GetID()),
 			)
 		case key.Matches(msg, resourcesKeys.Taint):
 			addrs := m.selectedOrCurrentAddresses()
-			return m, m.createStateCommand("taint", m.states.Taint, addrs...)
+			return m, m.createStateCommand(m.states.Taint, addrs...)
 		case key.Matches(msg, resourcesKeys.Untaint):
 			addrs := m.selectedOrCurrentAddresses()
-			return m, m.createStateCommand("untaint", m.states.Untaint, addrs...)
+			return m, m.createStateCommand(m.states.Untaint, addrs...)
 		case key.Matches(msg, resourcesKeys.Move):
 			if row, ok := m.Table.CurrentRow(); ok {
 				from := row.Value.Address
@@ -175,10 +180,10 @@ func (m resourceList) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			createRunOptions.TargetAddrs = m.selectedOrCurrentAddresses()
 			// NOTE: even if the user hasn't selected any rows, we still proceed
 			// to create a run without targeted resources.
-			fn := func(workspaceID resource.ID) (*task.Task, error) {
+			fn := func(workspaceID resource.ID) (task.Spec, error) {
 				return m.runs.Plan(workspaceID, createRunOptions)
 			}
-			return m, m.helpers.CreateTasks("plan", fn, m.workspace.GetID())
+			return m, m.helpers.CreateTasks(fn, m.workspace.GetID())
 		}
 	case initState:
 		if msg.WorkspaceID != m.workspace.GetID() {

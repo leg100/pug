@@ -91,99 +91,79 @@ func (s *Service) Create(spec Spec) (*Task, error) {
 	return task, nil
 }
 
-// CreateGroup creates a task group, creating tasks by invoking the provided
-// func with each of the provided IDs.
-func (s *Service) CreateGroup(cmd string, fn Func, ids ...resource.ID) (*Group, error) {
-	group, err := newGroup(cmd, fn, ids...)
-	if err != nil {
-		return nil, err
-	}
-
-	s.logger.Debug("created task group", "group", group)
-
-	// Add to db
-	s.AddGroup(group)
-
-	return group, nil
-}
-
-func (s *Service) CreateDependencyGroup(cmd string, reverse bool, opts ...Spec) (*Group, error) {
-	if len(opts) == 0 {
+// Create a task group from one or more task specs. An error is returned if zero
+// specs are provided, or if it fails to create at least one task.
+func (s *Service) CreateGroup(specs ...Spec) (*Group, error) {
+	if len(specs) == 0 {
 		return nil, errors.New("no specs provided")
-	}
-
-	group, err := newGroupWithDependencies(s, cmd, reverse, opts...)
-	if err != nil {
-		return nil, err
-	}
-	s.logger.Debug("created task group", "group", group)
-
-	// Add to db
-	s.AddGroup(group)
-
-	return group, nil
-}
-
-// SpecErrors are errors returned from attempting to create task specs.
-type SpecErrors []error
-
-func (e SpecErrors) Error() string {
-	return fmt.Sprintf("failed to create %d specs", len(e))
-}
-
-// Create a task group from one or more task spec functions. An error is returned if zero
-// functions are provided, or if it fails to create at least one task.
-func (s *Service) CreateGroupFromSpecs(funcs ...SpecFunc) (*Group, error) {
-	if len(funcs) == 0 {
-		return nil, errors.New("no spec functions provided")
 	}
 	g := &Group{
 		Common:  resource.New(resource.TaskGroup, resource.GlobalResource),
 		Created: time.Now(),
 	}
+	// Validate specifications. There are some settings that are incompatible
+	// with one another within a task group.
 	var (
-		cmd    string
-		pruned SpecErrors
+		respectModuleDependencies *bool
+		inverseDependencyOrder    *bool
 	)
-	for _, fn := range funcs {
-		spec, err := fn()
-		if err != nil {
-			pruned = append(pruned, err)
+	for _, spec := range specs {
+		// All RespectModuleDependencies settings must be the same
+		if respectModuleDependencies == nil {
+			respectModuleDependencies = &spec.RespectModuleDependencies
+		} else if *respectModuleDependencies != spec.RespectModuleDependencies {
+			return nil, fmt.Errorf("not all specs share same respect-module-dependencies setting")
 		}
-		task, err := s.Create(spec)
-		if err != nil {
-			g.CreateErrors = append(g.CreateErrors, err)
+		// All InverseDependencyOrder settings must be the same
+		if inverseDependencyOrder == nil {
+			inverseDependencyOrder = &spec.InverseDependencyOrder
+		} else if *inverseDependencyOrder != spec.InverseDependencyOrder {
+			return nil, fmt.Errorf("not all specs share same inverse-dependency-order setting")
 		}
-		if cmd == "" {
-			cmd = task.String()
-		} else if cmd != task.String() {
-			// TODO: make a constant
-			cmd = "multi"
-		}
-		g.Tasks = append(g.Tasks, task)
 	}
-	if pruned != nil {
-		return nil, pruned
+	if *respectModuleDependencies {
+		tasks, err := createDependentTasks(s, *inverseDependencyOrder, specs...)
+		if err != nil {
+			return nil, err
+		}
+		g.Tasks = tasks
+	} else {
+		for _, spec := range specs {
+			task, err := s.Create(spec)
+			if err != nil {
+				g.CreateErrors = append(g.CreateErrors, err)
+				continue
+			}
+			g.Tasks = append(g.Tasks, task)
+		}
 	}
 	if len(g.Tasks) == 0 {
 		return g, errors.New("all tasks failed to be created")
 	}
+
+	for _, task := range g.Tasks {
+		if g.Command == "" {
+			g.Command = task.String()
+		} else if g.Command != task.String() {
+			// Detected that not all tasks have the same command, so name the
+			// task group to reflect that multiple commands comprise the group.
+			//
+			// TODO: make a constant
+			g.Command = "multi"
+		}
+	}
+
+	s.logger.Debug("created task group", "group", g)
+
+	// Add to db
+	s.AddGroup(g)
+
 	return g, nil
 }
 
 // AddGroup adds a task group to the DB.
 func (s *Service) AddGroup(group *Group) {
 	s.groups.Add(group.ID, group)
-}
-
-// Retry creates a new task that has all the properties of the task with the
-// given ID.
-func (s *Service) Retry(taskID resource.ID) (*Task, error) {
-	task, err := s.Get(taskID)
-	if err != nil {
-		return nil, err
-	}
-	return s.Create(task.createOptions)
 }
 
 // Enqueue moves the task onto the global queue for processing.

@@ -72,7 +72,7 @@ func TestModule_MultipleFormat(t *testing.T) {
 	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlA})
 	tm.Type("f")
 	waitFor(t, tm, func(s string) bool {
-		return matchPattern(t, "TaskGroup.*format", s) &&
+		return matchPattern(t, "TaskGroup.*fmt", s) &&
 			matchPattern(t, `modules/a.*exited`, s) &&
 			matchPattern(t, `modules/b.*exited`, s) &&
 			matchPattern(t, `modules/c.*exited`, s)
@@ -139,7 +139,7 @@ func TestModuleList_ReloadWorkspacesMultipleModules(t *testing.T) {
 	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlW})
 
 	waitFor(t, tm, func(s string) bool {
-		return matchPattern(t, "TaskGroup.*reload-workspace", s) &&
+		return matchPattern(t, "TaskGroup.*workspace list", s) &&
 			matchPattern(t, "modules/a.*exited", s) &&
 			matchPattern(t, "modules/b.*exited", s) &&
 			matchPattern(t, "modules/c.*exited", s)
@@ -171,6 +171,7 @@ func TestModule_MultiplePlans(t *testing.T) {
 	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlA})
 	tm.Type("p")
 	waitFor(t, tm, func(s string) bool {
+		t.Log(s)
 		return matchPattern(t, "TaskGroup.*plan.*3/3", s) &&
 			matchPattern(t, `modules/a.*default.*\+10~0-0`, s) &&
 			matchPattern(t, `modules/b.*default.*\+10~0-0`, s) &&

@@ -286,8 +286,8 @@ func TestWorkspace_Delete(t *testing.T) {
 
 	tm := setupAndInitModuleWithTwoWorkspaces(t)
 
-	// Filter workspaces to only show dev workspace. This is the only to ensure
-	// the dev workspace is currently highlighted.
+	// Filter workspaces to only show dev workspace. This is the only way to
+	// ensure the dev workspace is currently highlighted.
 
 	// Focus filter widget
 	tm.Type("/")
@@ -320,7 +320,8 @@ func TestWorkspace_Delete(t *testing.T) {
 	tm.Type("y")
 
 	waitFor(t, tm, func(s string) bool {
-		return matchPattern(t, `Task.*workspace delete.*dev.*modules/a.*exited`, s) &&
+		t.Log(s)
+		return matchPattern(t, `Task.*workspace delete.*modules/a.*exited`, s) &&
 			strings.Contains(s, `Deleted workspace "dev"!`)
 	})
 }
