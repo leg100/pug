@@ -88,7 +88,6 @@ func TestTerragrunt_Dependencies(t *testing.T) {
 
 	// Expect several modules to now have some resources
 	waitFor(t, tm, func(s string) bool {
-		t.Log(s)
 		return matchPattern(t, "modules/vpc.*default.*0", s) &&
 			matchPattern(t, `modules/mysql.*default.*1`, s) &&
 			matchPattern(t, "modules/redis.*default.*1", s) &&
@@ -107,7 +106,6 @@ func TestTerragrunt_Dependencies(t *testing.T) {
 
 	// Expect 6 apply tasks.
 	waitFor(t, tm, func(s string) bool {
-		t.Log(s)
 		return matchPattern(t, "TaskGroup.*apply.*6/6", s) &&
 			matchPattern(t, `modules/vpc.*default.*\+0~0-0`, s) &&
 			matchPattern(t, `modules/redis.*default.*\+0~0-0`, s) &&

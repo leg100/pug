@@ -210,7 +210,6 @@ func TestWorkspace_MultipleDestroy(t *testing.T) {
 	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlA})
 	tm.Type("i")
 	waitFor(t, tm, func(s string) bool {
-		t.Log(s)
 		return matchPattern(t, "TaskGroup.*init", s) &&
 			matchPattern(t, `modules/a.*exited`, s) &&
 			matchPattern(t, `modules/b.*exited`, s) &&
@@ -320,7 +319,6 @@ func TestWorkspace_Delete(t *testing.T) {
 	tm.Type("y")
 
 	waitFor(t, tm, func(s string) bool {
-		t.Log(s)
 		return matchPattern(t, `Task.*workspace delete.*modules/a.*exited`, s) &&
 			strings.Contains(s, `Deleted workspace "dev"!`)
 	})
