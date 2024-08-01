@@ -1,7 +1,6 @@
 package run
 
 import (
-	"errors"
 	"fmt"
 	"slices"
 
@@ -70,21 +69,26 @@ func NewService(opts ServiceOptions) *Service {
 }
 
 // Plan creates a plan task.
-func (s *Service) Plan(workspaceID resource.ID, opts CreateOptions) (*task.Task, error) {
-	task, err := s.plan(workspaceID, opts)
+func (s *Service) Plan(workspaceID resource.ID, opts CreateOptions) (task.Spec, error) {
+	spec, err := s.plan(workspaceID, opts)
 	if err != nil {
-		s.logger.Error("creating plan task", "error", err)
-		return nil, err
+		s.logger.Error("creating plan spec", "error", err)
+		return task.Spec{}, err
 	}
-	return task, nil
+	return spec, nil
 }
 
-func (s *Service) plan(workspaceID resource.ID, opts CreateOptions) (*task.Task, error) {
+func (s *Service) plan(workspaceID resource.ID, opts CreateOptions) (task.Spec, error) {
 	run, err := s.newRun(workspaceID, opts)
 	if err != nil {
-		return nil, err
+		return task.Spec{}, err
 	}
-	task, err := s.createTask(run, task.CreateOptions{
+	s.table.Add(run.ID, run)
+
+	return task.Spec{
+		Parent:  run,
+		Path:    run.ModulePath(),
+		Env:     []string{workspace.TerraformEnv(run.WorkspaceName())},
 		Command: []string{"plan"},
 		Args:    run.planArgs(),
 		// TODO: explain why plan is blocking (?)
@@ -107,12 +111,7 @@ func (s *Service) plan(workspaceID resource.ID, opts CreateOptions) (*task.Task,
 				s.logger.Error("finishing plan", "error", err, "run", run)
 			}
 		},
-	})
-	if err != nil {
-		return nil, err
-	}
-	s.table.Add(run.ID, run)
-	return task, nil
+	}, nil
 }
 
 // Apply creates a task for a terraform apply.
@@ -122,45 +121,7 @@ func (s *Service) plan(workspaceID resource.ID, opts CreateOptions) (*task.Task,
 //
 // If opts is nil, then it will apply an existing plan. The ID must specify an
 // existing run that has successfully created a plan.
-func (s *Service) Apply(id resource.ID, opts *CreateOptions) (*task.Task, error) {
-	spec, _, err := s.createApplySpec(id, opts)
-	if err != nil {
-		return nil, err
-	}
-	return s.tasks.Create(spec)
-}
-
-// MultiApply creates a task group of one or more apply tasks. See Apply() for
-// info on parameters.
-//
-// You cannot apply a combination of destory and non-destroy plans, because that
-// is incompatible with the dependency graph that is created to order the tasks.
-func (s *Service) MultiApply(opts *CreateOptions, ids ...resource.ID) (*task.Group, error) {
-	if len(ids) == 0 {
-		return nil, errors.New("no IDs specified")
-	}
-	var destroy *bool
-	specs := make([]task.CreateOptions, 0, len(ids))
-	for _, id := range ids {
-		spec, run, err := s.createApplySpec(id, opts)
-		if err != nil {
-			return nil, err
-		}
-		if destroy == nil {
-			destroy = &run.Destroy
-		} else if *destroy != run.Destroy {
-			return nil, errors.New("cannot apply a combination of destroy and non-destroy plans")
-		}
-
-		specs = append(specs, spec)
-	}
-	// All tasks should have the same description, so use the first one.
-	desc := specs[0].Description
-	return s.tasks.CreateDependencyGroup(desc, *destroy, specs...)
-}
-
-func (s *Service) createApplySpec(id resource.ID, opts *CreateOptions) (task.CreateOptions, *Run, error) {
-	// Create or retrieve existing run.
+func (s *Service) Apply(id resource.ID, opts *CreateOptions) (task.Spec, error) {
 	var (
 		run *Run
 		err error
@@ -177,15 +138,22 @@ func (s *Service) createApplySpec(id resource.ID, opts *CreateOptions) (task.Cre
 		}
 	}
 	if err != nil {
-		return task.CreateOptions{}, nil, err
+		return task.Spec{}, err
 	}
 	s.table.Add(run.ID, run)
 
-	spec := task.CreateOptions{
+	spec := task.Spec{
+		Parent:      run,
+		Path:        run.ModulePath(),
 		Command:     []string{"apply"},
 		Args:        run.applyArgs(),
+		Env:         []string{workspace.TerraformEnv(run.WorkspaceName())},
 		Blocking:    true,
 		Description: ApplyTaskDescription(run.Destroy),
+		// If terragrunt is in use then respect module dependencies.
+		RespectModuleDependencies: s.terragrunt,
+		// Module dependencies are reversed for a destroy.
+		InverseDependencyOrder: run.Destroy,
 		AfterQueued: func(*task.Task) {
 			run.updateStatus(ApplyQueued)
 		},
@@ -205,14 +173,19 @@ func (s *Service) createApplySpec(id resource.ID, opts *CreateOptions) (task.Cre
 			}
 
 			if !s.disableReloadAfterApply {
-				s.states.Reload(run.WorkspaceID())
+				spec, err := s.states.Reload(run.WorkspaceID())
+				if err != nil {
+					s.logger.Error("reloading state following apply", "error", err, "run", run)
+					return
+				}
+				if _, err := s.tasks.Create(spec); err != nil {
+					s.logger.Error("reloading state following apply", "error", err, "run", run)
+					return
+				}
 			}
 		},
 	}
-	if err := s.addWorkspaceAndPathToTaskSpec(run, &spec); err != nil {
-		return task.CreateOptions{}, nil, err
-	}
-	return spec, run, nil
+	return spec, nil
 }
 
 func (s *Service) Get(runID resource.ID) (*Run, error) {
@@ -279,30 +252,5 @@ func (s *Service) delete(id resource.ID) error {
 		return fmt.Errorf("cannot delete incomplete run")
 	}
 	s.table.Delete(id)
-	return nil
-}
-
-func (s *Service) createTask(run *Run, opts task.CreateOptions) (*task.Task, error) {
-	if err := s.addWorkspaceAndPathToTaskSpec(run, &opts); err != nil {
-		return nil, err
-	}
-	return s.tasks.Create(opts)
-}
-
-func (s *Service) addWorkspaceAndPathToTaskSpec(run *Run, opts *task.CreateOptions) error {
-	opts.Parent = run
-
-	ws, err := s.workspaces.Get(run.WorkspaceID())
-	if err != nil {
-		return err
-	}
-	opts.Env = []string{ws.TerraformEnv()}
-
-	mod, err := s.modules.Get(ws.ModuleID())
-	if err != nil {
-		return err
-	}
-	opts.Path = mod.Path
-
 	return nil
 }

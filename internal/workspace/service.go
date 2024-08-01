@@ -44,7 +44,6 @@ type modules interface {
 	SetCurrent(moduleID, workspaceID resource.ID) error
 	Reload() ([]string, []string, error)
 	List() []*module.Module
-	CreateTask(mod *module.Module, opts task.CreateOptions) (*task.Task, error)
 }
 
 type moduleSubscription interface {
@@ -73,32 +72,47 @@ func NewService(opts ServiceOptions) *Service {
 func (s *Service) LoadWorkspacesUponModuleLoad(modules moduleSubscription) {
 	sub := modules.Subscribe()
 
+	reload := func(moduleID resource.ID) error {
+		spec, err := s.Reload(moduleID)
+		if err != nil {
+			return err
+		}
+		_, err = s.tasks.Create(spec)
+		return err
+	}
+
 	go func() {
 		for event := range sub {
 			switch event.Type {
 			case resource.CreatedEvent:
-				s.Reload(event.Payload.ID)
+				if err := reload(event.Payload.ID); err != nil {
+					s.logger.Error("reloading workspaces", "module", event.Payload)
+				}
 			case resource.UpdatedEvent:
 				if event.Payload.CurrentWorkspaceID != nil {
 					// Module already has a current workspace; no need to reload
 					// workspaces
 					continue
 				}
-				s.Reload(event.Payload.ID)
+				if err := reload(event.Payload.ID); err != nil {
+					s.logger.Error("reloading workspaces", "module", event.Payload)
+				}
 			}
 		}
 	}()
 }
 
-// Reload invokes `terraform workspace list` on a module and updates pug with
-// the results, adding any newly discovered workspaces and pruning any
-// workspaces no longer found to exist.
-func (s *Service) Reload(moduleID resource.ID) (*task.Task, error) {
+// Reload returns a task spec that runs `terraform workspace list` on a
+// module and updates pug with the results, adding any newly discovered
+// workspaces and pruning any workspaces no longer found to exist.
+func (s *Service) Reload(moduleID resource.ID) (task.Spec, error) {
 	mod, err := s.modules.Get(moduleID)
 	if err != nil {
-		return nil, err
+		return task.Spec{}, err
 	}
-	task, err := s.modules.CreateTask(mod, task.CreateOptions{
+	return task.Spec{
+		Parent:  mod,
+		Path:    mod.Path,
 		Command: []string{"workspace", "list"},
 		AfterError: func(t *task.Task) {
 			s.logger.Error("reloading workspaces", "error", t.Err, "module", mod, "task", t)
@@ -116,12 +130,7 @@ func (s *Service) Reload(moduleID resource.ID) (*task.Task, error) {
 			}
 			s.logger.Info("reloaded workspaces", "added", added, "removed", removed, "module", mod)
 		},
-	})
-	if err != nil {
-		s.logger.Error("reloading workspaces", "error", err, "module", mod)
-		return nil, err
-	}
-	return task, nil
+	}, nil
 }
 
 // resetWorkspaces resets the workspaces for a module, adding newly discovered
@@ -195,17 +204,18 @@ func parseList(r io.Reader) (list []string, current string, err error) {
 }
 
 // Create a workspace. Asynchronous.
-func (s *Service) Create(path, name string) (*Workspace, *task.Task, error) {
+func (s *Service) Create(path, name string) (task.Spec, error) {
 	mod, err := s.modules.GetByPath(path)
 	if err != nil {
-		return nil, nil, fmt.Errorf("checking for module: %s: %w", path, err)
+		return task.Spec{}, err
 	}
 	ws, err := New(mod, name)
 	if err != nil {
-		return nil, nil, err
+		return task.Spec{}, err
 	}
-
-	task, err := s.createTask(ws, task.CreateOptions{
+	return task.Spec{
+		Parent:  mod,
+		Path:    mod.Path,
 		Command: []string{"workspace", "new"},
 		Args:    []string{name},
 		AfterExited: func(*task.Task) {
@@ -216,11 +226,7 @@ func (s *Service) Create(path, name string) (*Workspace, *task.Task, error) {
 				s.logger.Error("creating workspace: %w", err)
 			}
 		},
-	})
-	if err != nil {
-		return nil, nil, err
-	}
-	return ws, task, nil
+	}, nil
 }
 
 func (s *Service) Get(workspaceID resource.ID) (*Workspace, error) {
@@ -284,16 +290,20 @@ func (s *Service) selectWorkspace(moduleID, workspaceID resource.ID) error {
 	if err != nil {
 		return err
 	}
-	// Create task to immediately set workspace as current workspace for module.
-	task, err := s.createTask(ws, task.CreateOptions{
-		Command:   []string{"workspace", "select"},
-		Args:      []string{ws.Name},
-		Immediate: true,
-	})
+	mod, err := s.modules.Get(ws.ModuleID())
 	if err != nil {
 		return err
 	}
-	if err := task.Wait(); err != nil {
+	// Create task to immediately set workspace as current workspace for module.
+	_, err = s.tasks.Create(task.Spec{
+		Parent:    mod,
+		Path:      mod.Path,
+		Command:   []string{"workspace", "select"},
+		Args:      []string{ws.Name},
+		Immediate: true,
+		Wait:      true,
+	})
+	if err != nil {
 		return err
 	}
 	// Now task has finished successfully, update the current workspace in pug
@@ -305,30 +315,23 @@ func (s *Service) selectWorkspace(moduleID, workspaceID resource.ID) error {
 }
 
 // Delete a workspace. Asynchronous.
-func (s *Service) Delete(id resource.ID) (*task.Task, error) {
-	ws, err := s.table.Get(id)
+func (s *Service) Delete(workspaceID resource.ID) (task.Spec, error) {
+	ws, err := s.table.Get(workspaceID)
 	if err != nil {
-		return nil, fmt.Errorf("deleting workspace: %w", err)
+		return task.Spec{}, fmt.Errorf("deleting workspace: %w", err)
 	}
-	return s.createTask(ws, task.CreateOptions{
+	mod, err := s.modules.Get(ws.ModuleID())
+	if err != nil {
+		return task.Spec{}, err
+	}
+	return task.Spec{
+		Parent:   mod,
+		Path:     mod.Path,
 		Command:  []string{"workspace", "delete"},
 		Args:     []string{ws.Name},
 		Blocking: true,
 		AfterExited: func(*task.Task) {
 			s.table.Delete(ws.ID)
 		},
-	})
-}
-
-// TODO: move this logic into task.Create
-func (s *Service) createTask(ws *Workspace, opts task.CreateOptions) (*task.Task, error) {
-	opts.Parent = ws
-
-	mod, err := s.modules.Get(ws.ModuleID())
-	if err != nil {
-		return nil, err
-	}
-	opts.Path = mod.Path
-
-	return s.tasks.Create(opts)
+	}, nil
 }
