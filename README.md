@@ -144,7 +144,7 @@ Press `s` to go to the state page, listing a workspace's resources.
 |`D`|Run `terraform state rm`|&check;|
 |`M`|Run `terraform state mv`|&cross;|
 |`Ctrl+t`|Run `terraform taint`|&check;|
-|`Ctrl+u`|Run `terraform untaint`|&check;|
+|`U`|Run `terraform untaint`|&check;|
 |`Ctrl+r`|Run `terraform state pull`|-|
 
 ### Tasks
@@ -249,8 +249,10 @@ Common vim key bindings are supported for navigation.
 |--|--|
 |`Up/k`|Up one row|
 |`Down/j`|Down one row|
-|`PgUp/b`|Up one page|
-|`PgDown/f`|Down one page|
+|`PgUp`|Up one page|
+|`PgDown`|Down one page|
+|`Ctrl+u`|Up half page|
+|`Ctrl+d`|Down half page|
 |`Home/g`|Go to top|
 |`End/G`|Go to bottom|
 
