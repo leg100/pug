@@ -251,6 +251,8 @@ Common vim key bindings are supported for navigation.
 |`Down/j`|Down one row|
 |`PgUp/b`|Up one page|
 |`PgDown/f`|Down one page|
+|`Ctrl+u`|Up half page|
+|`Ctrl+d`|Down half page|
 |`Home/g`|Go to top|
 |`End/G`|Go to bottom|
 

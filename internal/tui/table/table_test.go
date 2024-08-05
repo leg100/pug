@@ -122,7 +122,7 @@ func TestTable_SelectRange(t *testing.T) {
 			for _, key := range tt.selected {
 				tbl.ToggleSelectionByID(key)
 			}
-			tbl.cursorRow = tt.cursor
+			tbl.currentRowIndex = tt.cursor
 
 			tbl.SelectRange()
 
