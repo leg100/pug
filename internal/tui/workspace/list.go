@@ -101,16 +101,16 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return m, tui.YesNoPrompt(
 				fmt.Sprintf("Delete %d workspace(s)?", len(workspaceIDs)),
-				m.helpers.CreateTasks("delete-workspace", m.Workspaces.Delete, workspaceIDs...),
+				m.helpers.CreateTasks(m.Workspaces.Delete, workspaceIDs...),
 			)
 		case key.Matches(msg, keys.Common.Init):
-			cmd := m.helpers.CreateTasks("init", m.Modules.Init, m.selectedOrCurrentModuleIDs()...)
+			cmd := m.helpers.CreateTasks(m.Modules.Init, m.selectedOrCurrentModuleIDs()...)
 			return m, cmd
 		case key.Matches(msg, keys.Common.Format):
-			cmd := m.helpers.CreateTasks("format", m.Modules.Format, m.selectedOrCurrentModuleIDs()...)
+			cmd := m.helpers.CreateTasks(m.Modules.Format, m.selectedOrCurrentModuleIDs()...)
 			return m, cmd
 		case key.Matches(msg, keys.Common.Validate):
-			cmd := m.helpers.CreateTasks("validate", m.Modules.Validate, m.selectedOrCurrentModuleIDs()...)
+			cmd := m.helpers.CreateTasks(m.Modules.Validate, m.selectedOrCurrentModuleIDs()...)
 			return m, cmd
 		case key.Matches(msg, localKeys.SetCurrent):
 			if row, ok := m.table.CurrentRow(); ok {
@@ -126,20 +126,22 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			fallthrough
 		case key.Matches(msg, keys.Common.Plan):
 			workspaceIDs := m.table.SelectedOrCurrentIDs()
-			fn := func(workspaceID resource.ID) (*task.Task, error) {
+			fn := func(workspaceID resource.ID) (task.Spec, error) {
 				return m.Runs.Plan(workspaceID, createRunOptions)
 			}
-			desc := run.PlanTaskDescription(createRunOptions.Destroy)
-			return m, m.helpers.CreateTasks(desc, fn, workspaceIDs...)
+			return m, m.helpers.CreateTasks(fn, workspaceIDs...)
 		case key.Matches(msg, keys.Common.Destroy):
 			createRunOptions.Destroy = true
 			applyPrompt = "Destroy resources of %d workspaces?"
 			fallthrough
 		case key.Matches(msg, keys.Common.Apply):
 			workspaceIDs := m.table.SelectedOrCurrentIDs()
+			fn := func(workspaceID resource.ID) (task.Spec, error) {
+				return m.Runs.Apply(workspaceID, &createRunOptions)
+			}
 			return m, tui.YesNoPrompt(
 				fmt.Sprintf(applyPrompt, len(workspaceIDs)),
-				m.helpers.CreateApplyTasks(&createRunOptions, workspaceIDs...),
+				m.helpers.CreateTasks(fn, workspaceIDs...),
 			)
 		case key.Matches(msg, keys.Common.State):
 			if row, ok := m.table.CurrentRow(); ok {

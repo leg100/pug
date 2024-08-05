@@ -15,6 +15,7 @@ import (
 	"github.com/leg100/go-runewidth"
 	"github.com/leg100/pug/internal"
 	"github.com/leg100/pug/internal/resource"
+	"github.com/leg100/pug/internal/task"
 	"github.com/leg100/pug/internal/tui"
 	"github.com/leg100/pug/internal/tui/keys"
 	"golang.org/x/exp/maps"
@@ -687,36 +688,36 @@ func (m *Model[V]) renderRow(rowIdx int) string {
 // it returns false then the resulting id is returned.
 //
 // If there are no rows in the table then a nil error is returned.
-func (m *Model[V]) Prune(fn func(value V) (resource.ID, bool)) ([]resource.ID, error) {
+func (m *Model[V]) Prune(fn func(value V) (task.Spec, error)) ([]task.Spec, error) {
 	rows := m.SelectedOrCurrent()
 	switch len(rows) {
 	case 0:
 		return nil, errors.New("no rows in table")
 	case 1:
 		// current row, no selections
-		id, prune := fn(rows[0].Value)
-		if prune {
+		spec, err := fn(rows[0].Value)
+		if err != nil {
 			// the single current row is to be pruned, so report this as an
 			// error
 			return nil, fmt.Errorf("action is not applicable to the current row")
 		}
-		return []resource.ID{id}, nil
+		return []task.Spec{spec}, nil
 	default:
 		// one or more selections: iterate thru and prune accordingly.
 		var (
-			ids    []resource.ID
+			ids    []task.Spec
 			before = len(m.Selected)
 			pruned int
 		)
 		for k, v := range m.Selected {
-			id, prune := fn(v)
-			if prune {
+			spec, err := fn(v)
+			if err != nil {
 				// De-select
 				m.ToggleSelectionByID(k)
 				pruned++
 				continue
 			}
-			ids = append(ids, id)
+			ids = append(ids, spec)
 		}
 		switch {
 		case len(ids) == 0:

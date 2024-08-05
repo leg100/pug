@@ -26,12 +26,12 @@ var Navigation = navigation{
 		key.WithHelp("↓/j", "down"),
 	),
 	PageUp: key.NewBinding(
-		key.WithKeys("b", "pgup"),
-		key.WithHelp("b/pgup", "page up"),
+		key.WithKeys("pgup"),
+		key.WithHelp("pgup", "page up"),
 	),
 	PageDown: key.NewBinding(
-		key.WithKeys("f", "pgdown"),
-		key.WithHelp("f/pgdn", "page down"),
+		key.WithKeys("pgdown"),
+		key.WithHelp("pgdn", "page down"),
 	),
 	HalfPageUp: key.NewBinding(
 		key.WithKeys("ctrl+u"),

@@ -1,7 +1,6 @@
 package module
 
 import (
-	"errors"
 	"fmt"
 	"strings"
 
@@ -130,16 +129,16 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, tui.OpenEditor(row.Value.FullPath())
 			}
 		case key.Matches(msg, keys.Common.Init):
-			cmd := m.helpers.CreateTasks("init", m.Modules.Init, m.table.SelectedOrCurrentIDs()...)
+			cmd := m.helpers.CreateTasks(m.Modules.Init, m.table.SelectedOrCurrentIDs()...)
 			return m, cmd
 		case key.Matches(msg, keys.Common.Validate):
-			cmd := m.helpers.CreateTasks("validate", m.Modules.Validate, m.table.SelectedOrCurrentIDs()...)
+			cmd := m.helpers.CreateTasks(m.Modules.Validate, m.table.SelectedOrCurrentIDs()...)
 			return m, cmd
 		case key.Matches(msg, keys.Common.Format):
-			cmd := m.helpers.CreateTasks("format", m.Modules.Format, m.table.SelectedOrCurrentIDs()...)
+			cmd := m.helpers.CreateTasks(m.Modules.Format, m.table.SelectedOrCurrentIDs()...)
 			return m, cmd
 		case key.Matches(msg, localKeys.ReloadWorkspaces):
-			cmd := m.helpers.CreateTasks("reload-workspace", m.Workspaces.Reload, m.table.SelectedOrCurrentIDs()...)
+			cmd := m.helpers.CreateTasks(m.Workspaces.Reload, m.table.SelectedOrCurrentIDs()...)
 			return m, cmd
 		case key.Matches(msg, keys.Common.State):
 			if row, ok := m.table.CurrentRow(); ok {
@@ -151,27 +150,43 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			createRunOptions.Destroy = true
 			fallthrough
 		case key.Matches(msg, keys.Common.Plan):
-			workspaceIDs, err := m.pruneModulesWithoutCurrentWorkspace()
+			// Create specs here, de-selecting any modules where an error is
+			// returned.
+			specs, err := m.table.Prune(func(mod *module.Module) (task.Spec, error) {
+				if workspaceID := mod.CurrentWorkspaceID; workspaceID == nil {
+					return task.Spec{}, fmt.Errorf("module %s does not have a current workspace", mod)
+				} else {
+					return m.Runs.Plan(*workspaceID, createRunOptions)
+				}
+			})
 			if err != nil {
-				return m, tui.ReportError(fmt.Errorf("deselected items: %w", err))
+				// Modules were de-selected, so report error and give user
+				// another opportunity to plan any remaining modules.
+				return m, tui.ReportError(err)
 			}
-			fn := func(workspaceID resource.ID) (*task.Task, error) {
-				return m.Runs.Plan(workspaceID, createRunOptions)
-			}
-			desc := run.PlanTaskDescription(createRunOptions.Destroy)
-			return m, m.helpers.CreateTasks(desc, fn, workspaceIDs...)
+			return m, m.helpers.CreateTasksWithSpecs(specs...)
 		case key.Matches(msg, keys.Common.Destroy):
 			createRunOptions.Destroy = true
 			applyPrompt = "Destroy resources of %d modules?"
 			fallthrough
 		case key.Matches(msg, keys.Common.Apply):
-			workspaceIDs, err := m.pruneModulesWithoutCurrentWorkspace()
+			// Create specs here, de-selecting any modules where an error is
+			// returned.
+			specs, err := m.table.Prune(func(mod *module.Module) (task.Spec, error) {
+				if workspaceID := mod.CurrentWorkspaceID; workspaceID == nil {
+					return task.Spec{}, fmt.Errorf("module %s does not have a current workspace", mod)
+				} else {
+					return m.Runs.Apply(*workspaceID, &createRunOptions)
+				}
+			})
 			if err != nil {
-				return m, tui.ReportError(fmt.Errorf("deselected items: %w", err))
+				// Modules were de-selected, so report error and give user
+				// another opportunity to apply any remaining modules.
+				return m, tui.ReportError(err)
 			}
 			return m, tui.YesNoPrompt(
-				fmt.Sprintf(applyPrompt, len(workspaceIDs)),
-				m.helpers.CreateApplyTasks(&createRunOptions, workspaceIDs...),
+				fmt.Sprintf(applyPrompt, len(specs)),
+				m.helpers.CreateTasksWithSpecs(specs...),
 			)
 		}
 	}
@@ -179,19 +194,6 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	m.table, cmd = m.table.Update(msg)
 	cmds = append(cmds, cmd)
 	return m, tea.Batch(cmds...)
-}
-
-func (m *list) pruneModulesWithoutCurrentWorkspace() ([]resource.ID, error) {
-	workspaceIDs, err := m.table.Prune(func(mod *module.Module) (resource.ID, bool) {
-		if workspaceID := mod.CurrentWorkspaceID; workspaceID != nil {
-			return *workspaceID, false
-		}
-		return resource.ID{}, true
-	})
-	if err != nil {
-		return nil, errors.New("module(s) do not have a current workspace")
-	}
-	return workspaceIDs, nil
 }
 
 func (m list) Title() string {

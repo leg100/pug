@@ -24,10 +24,11 @@ func TestFindModules(t *testing.T) {
 	got, err := findModules(logging.Discard, workdir)
 	require.NoError(t, err)
 
-	assert.Equal(t, 4, len(got), got)
+	assert.Equal(t, 5, len(got), got)
 	assert.Contains(t, got, Options{Path: "with_local_backend", Backend: "local"})
 	assert.Contains(t, got, Options{Path: "with_s3_backend", Backend: "s3"})
 	assert.Contains(t, got, Options{Path: "with_cloud_backend", Backend: "cloud"})
 	assert.Contains(t, got, Options{Path: "terragrunt_with_local", Backend: "local"})
+	assert.Contains(t, got, Options{Path: "terragrunt_without_backend", Backend: ""})
 	assert.NotContains(t, got, "broken")
 }

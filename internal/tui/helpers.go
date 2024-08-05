@@ -213,50 +213,63 @@ func (h *Helpers) GroupReport(group *task.Group, table bool) string {
 	return s
 }
 
-func (h *Helpers) CreateTasks(cmd string, fn task.Func, ids ...resource.ID) tea.Cmd {
+// CreateTasks repeatedly invokes fn with each id in ids, creating a task for
+// each invocation. If there is more than one id then a task group is created
+// and the user sent to the task group's page; otherwise if only id is provided,
+// the user is sent to the task's page.
+func (h *Helpers) CreateTasks(fn task.SpecFunc, ids ...resource.ID) tea.Cmd {
 	return func() tea.Msg {
 		switch len(ids) {
 		case 0:
 			return nil
 		case 1:
-			task, err := fn(ids[0])
+			spec, err := fn(ids[0])
+			if err != nil {
+				return ReportError(fmt.Errorf("creating task: %w", err))
+			}
+			task, err := h.Tasks.Create(spec)
 			if err != nil {
 				return ReportError(fmt.Errorf("creating task: %w", err))
 			}
 			return NewNavigationMsg(TaskKind, WithParent(task))
 		default:
-			group, err := h.Tasks.CreateGroup(cmd, fn, ids...)
-			if err != nil {
-				return ReportError(fmt.Errorf("creating task group: %w", err))
+			specs := make([]task.Spec, 0, len(ids))
+			for _, id := range ids {
+				spec, err := fn(id)
+				if err != nil {
+					h.Logger.Error("creating task spec", "error", err, "id", id)
+					continue
+				}
+				specs = append(specs, spec)
 			}
-			return NewNavigationMsg(TaskGroupKind, WithParent(group))
+			return h.createTaskGroup(specs...)
 		}
 	}
 }
 
-func (h *Helpers) CreateApplyTasks(opts *run.CreateOptions, ids ...resource.ID) tea.Cmd {
+func (h *Helpers) CreateTasksWithSpecs(specs ...task.Spec) tea.Cmd {
 	return func() tea.Msg {
-		switch len(ids) {
+		switch len(specs) {
 		case 0:
 			return nil
 		case 1:
-			// Only one task is to be created. If successful send user directly to task
-			// page. Otherwise report an error.
-			task, err := h.Runs.Apply(ids[0], opts)
+			task, err := h.Tasks.Create(specs[0])
 			if err != nil {
-				return ReportError(fmt.Errorf("creating apply task: %w", err))
+				return ReportError(fmt.Errorf("creating task: %w", err))
 			}
 			return NewNavigationMsg(TaskKind, WithParent(task))
 		default:
-			// More than one task is to be created. If successful send user to
-			// task group page.
-			group, err := h.Runs.MultiApply(opts, ids...)
-			if err != nil {
-				return ReportError(fmt.Errorf("creating apply task group: %w", err))
-			}
-			return NewNavigationMsg(TaskGroupKind, WithParent(group))
+			return h.createTaskGroup(specs...)
 		}
 	}
+}
+
+func (h *Helpers) createTaskGroup(specs ...task.Spec) tea.Msg {
+	group, err := h.Tasks.CreateGroup(specs...)
+	if err != nil {
+		return ReportError(fmt.Errorf("creating task group: %w", err))
+	}
+	return NewNavigationMsg(TaskGroupKind, WithParent(group))
 }
 
 func (h *Helpers) Move(workspaceID resource.ID, from state.ResourceAddress) tea.Cmd {
@@ -267,10 +280,10 @@ func (h *Helpers) Move(workspaceID resource.ID, from state.ResourceAddress) tea.
 			if v == "" {
 				return nil
 			}
-			fn := func(workspaceID resource.ID) (*task.Task, error) {
+			fn := func(workspaceID resource.ID) (task.Spec, error) {
 				return h.States.Move(workspaceID, from, state.ResourceAddress(v))
 			}
-			return h.CreateTasks("state-mv", fn, workspaceID)
+			return h.CreateTasks(fn, workspaceID)
 		},
 		Key:    key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", "confirm")),
 		Cancel: key.NewBinding(key.WithKeys("esc"), key.WithHelp("esc", "cancel")),

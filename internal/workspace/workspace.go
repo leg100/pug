@@ -43,11 +43,15 @@ func (ws *Workspace) ModulePath() string {
 }
 
 func (ws *Workspace) TerraformEnv() string {
-	return fmt.Sprintf("TF_WORKSPACE=%s", ws.Name)
+	return TerraformEnv(ws.Name)
 }
 
 func (ws *Workspace) LogValue() slog.Value {
 	return slog.GroupValue(
 		slog.String("name", ws.Name),
 	)
+}
+
+func TerraformEnv(workspaceName string) string {
+	return fmt.Sprintf("TF_WORKSPACE=%s", workspaceName)
 }

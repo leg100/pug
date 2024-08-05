@@ -33,7 +33,7 @@ func TestState_SingleTaint_Untaint(t *testing.T) {
 	})
 
 	// Untaint resource
-	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlU})
+	tm.Type("U")
 
 	// Expect to be taken to task page for untaint
 	waitFor(t, tm, func(s string) bool {
@@ -81,7 +81,7 @@ func TestState_MultipleTaint_Untaint(t *testing.T) {
 	// Untaint all resources (need to select all again, because resources have
 	// been reloaded).
 	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlA})
-	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlU})
+	tm.Type("U")
 
 	// Expect to be taken to task group page for untaint
 	waitFor(t, tm, func(s string) bool {

@@ -3,11 +3,13 @@ package tui
 import (
 	"fmt"
 
+	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/hokaccha/go-prettyjson"
+	"github.com/leg100/pug/internal/tui/keys"
 	"github.com/leg100/reflow/wrap"
 )
 
@@ -51,6 +53,16 @@ func (m Viewport) Update(msg tea.Msg) (Viewport, tea.Cmd) {
 		cmd  tea.Cmd
 		cmds []tea.Cmd
 	)
+
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		switch {
+		case key.Matches(msg, keys.Navigation.GotoTop):
+			m.viewport.SetYOffset(0)
+		case key.Matches(msg, keys.Navigation.GotoBottom):
+			m.viewport.SetYOffset(m.viewport.TotalLineCount())
+		}
+	}
 
 	// Handle keyboard and mouse events in the viewport
 	m.viewport, cmd = m.viewport.Update(msg)

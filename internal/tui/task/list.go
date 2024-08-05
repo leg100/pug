@@ -9,7 +9,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/leg100/pug/internal/resource"
 	runpkg "github.com/leg100/pug/internal/run"
-	"github.com/leg100/pug/internal/task"
+	taskpkg "github.com/leg100/pug/internal/task"
 	"github.com/leg100/pug/internal/tui"
 	"github.com/leg100/pug/internal/tui/keys"
 	"github.com/leg100/pug/internal/tui/split"
@@ -30,7 +30,7 @@ var (
 	statusColumn = table.Column{
 		Key:   "task_status",
 		Title: "STATUS",
-		Width: task.MaxStatusLen,
+		Width: taskpkg.MaxStatusLen,
 	}
 	ageColumn = table.Column{
 		Key:   "age",
@@ -83,7 +83,7 @@ func (mm *ListMaker) Make(_ resource.ID, width, height int) (tea.Model, error) {
 		ageColumn,
 	}
 
-	renderer := func(t *task.Task) table.RenderedRow {
+	renderer := func(t *taskpkg.Task) table.RenderedRow {
 		row := table.RenderedRow{
 			taskIDColumn.Key:          t.ID.String(),
 			table.ModuleColumn.Key:    mm.Helpers.ModulePath(t),
@@ -105,10 +105,10 @@ func (mm *ListMaker) Make(_ resource.ID, width, height int) (tea.Model, error) {
 		return row
 	}
 
-	splitModel := split.New(split.Options[*task.Task]{
+	splitModel := split.New(split.Options[*taskpkg.Task]{
 		Columns:      columns,
 		Renderer:     renderer,
-		TableOptions: []table.Option[*task.Task]{table.WithSortFunc(task.ByState)},
+		TableOptions: []table.Option[*taskpkg.Task]{table.WithSortFunc(taskpkg.ByState)},
 		Width:        width,
 		Height:       height,
 		Maker:        mm.TaskMaker,
@@ -123,7 +123,7 @@ func (mm *ListMaker) Make(_ resource.ID, width, height int) (tea.Model, error) {
 }
 
 type List struct {
-	split.Model[*task.Task]
+	split.Model[*taskpkg.Task]
 
 	runs    tui.RunService
 	tasks   tui.TaskService
@@ -132,8 +132,8 @@ type List struct {
 
 func (m List) Init() tea.Cmd {
 	return func() tea.Msg {
-		tasks := m.tasks.List(task.ListOptions{})
-		return table.BulkInsertMsg[*task.Task](tasks)
+		tasks := m.tasks.List(taskpkg.ListOptions{})
+		return table.BulkInsertMsg[*taskpkg.Task](tasks)
 	}
 }
 
@@ -149,13 +149,20 @@ func (m List) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, tui.NavigateTo(tui.TaskKind, tui.WithParent(row.Value))
 			}
 		case key.Matches(msg, keys.Common.Apply):
-			runIDs, err := m.pruneApplyableTasks()
+			specs, err := m.Table.Prune(func(task *taskpkg.Task) (taskpkg.Spec, error) {
+				// Task must belong to a run in order to be applied.
+				res := task.Run()
+				if res == nil {
+					return taskpkg.Spec{}, errors.New("task does not belong to a run")
+				}
+				return m.runs.Apply(res.GetID(), nil)
+			})
 			if err != nil {
 				return m, tui.ReportError(fmt.Errorf("applying tasks: %w", err))
 			}
 			return m, tui.YesNoPrompt(
-				fmt.Sprintf("Apply %d plans?", len(runIDs)),
-				m.helpers.CreateApplyTasks(nil, runIDs...),
+				fmt.Sprintf("Apply %d plans?", len(specs)),
+				m.helpers.CreateTasksWithSpecs(specs...),
 			)
 		case key.Matches(msg, keys.Common.State):
 			if row, ok := m.Table.CurrentRow(); ok {
@@ -166,22 +173,14 @@ func (m List) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 		case key.Matches(msg, keys.Common.Retry):
-			// If all tasks have the same stringified identifier (which reveals
-			// the underlying command), then use that. Otherwise use the string
-			// "multi".
-			var cmd string
-			for _, task := range m.Table.SelectedOrCurrent() {
-				if cmd == "" {
-					cmd = task.Value.String()
-				} else if cmd != task.Value.String() {
-					cmd = "multi"
-					break
-				}
+			rows := m.Table.SelectedOrCurrent()
+			specs := make([]taskpkg.Spec, len(rows))
+			for i, row := range rows {
+				specs[i] = row.Value.Spec
 			}
-			taskIDs := m.Table.SelectedOrCurrentIDs()
 			return m, tui.YesNoPrompt(
-				fmt.Sprintf("Retry %d tasks?", len(taskIDs)),
-				m.helpers.CreateTasks(cmd, m.tasks.Retry, taskIDs...),
+				fmt.Sprintf("Retry %d tasks?", len(rows)),
+				m.helpers.CreateTasksWithSpecs(specs...),
 			)
 		}
 	}
@@ -203,21 +202,4 @@ func (m List) HelpBindings() []key.Binding {
 		keys.Common.Retry,
 	}
 	return append(bindings, keys.KeyMapToSlice(split.Keys)...)
-}
-
-// pruneApplyableTasks removes from the selection any tasks that cannot be
-// applied, i.e all tasks other than those that are a plan and are in the
-// planned state. The run ID of each task after pruning is returned.
-func (m *List) pruneApplyableTasks() ([]resource.ID, error) {
-	return m.Table.Prune(func(task *task.Task) (resource.ID, bool) {
-		rr := task.Run()
-		if rr == nil {
-			return resource.ID{}, true
-		}
-		run := rr.(*runpkg.Run)
-		if run.Status != runpkg.Planned {
-			return resource.ID{}, true
-		}
-		return run.ID, false
-	})
 }
