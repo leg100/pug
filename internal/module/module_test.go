@@ -1,13 +1,12 @@
 package module
 
 import (
+	"context"
 	"os"
 	"testing"
 
 	"github.com/leg100/pug/internal"
-	"github.com/leg100/pug/internal/logging"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestNew(t *testing.T) {
@@ -21,8 +20,12 @@ func TestNew(t *testing.T) {
 
 func TestFindModules(t *testing.T) {
 	workdir, _ := internal.NewWorkdir("./testdata/modules")
-	got, err := findModules(logging.Discard, workdir)
-	require.NoError(t, err)
+	modules, errch := find(context.Background(), workdir)
+
+	var got []Options
+	for opts := range modules {
+		got = append(got, opts)
+	}
 
 	assert.Equal(t, 5, len(got), got)
 	assert.Contains(t, got, Options{Path: "with_local_backend", Backend: "local"})
@@ -31,4 +34,10 @@ func TestFindModules(t *testing.T) {
 	assert.Contains(t, got, Options{Path: "terragrunt_with_local", Backend: "local"})
 	assert.Contains(t, got, Options{Path: "terragrunt_without_backend", Backend: ""})
 	assert.NotContains(t, got, "broken")
+
+	// Expect one error from broken module then error channel should close
+	goterr := <-errch
+	assert.Contains(t, goterr.Error(), "Unclosed configuration block")
+	_, closed := <-errch
+	assert.False(t, closed)
 }
