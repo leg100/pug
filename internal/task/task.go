@@ -63,6 +63,10 @@ type Task struct {
 	// the task can be retried.
 	Spec Spec
 
+	// Call this function after the CLI program has finished successfully. If a
+	// non-nil error is returned then the task is deemed to have failed with an
+	// error.
+	AfterCLISuccess func(*Task) error
 	// Call this function after the task has successfully finished
 	AfterExited func(*Task)
 	// Call this function after the task is enqueued.
@@ -105,31 +109,32 @@ func (f *factory) newTask(spec Spec) *Task {
 	}
 
 	return &Task{
-		Common:        resource.New(resource.Task, spec.Parent),
-		State:         Pending,
-		Created:       time.Now(),
-		Updated:       time.Now(),
-		finished:      make(chan struct{}),
-		stdout:        newBuffer(),
-		combined:      newBuffer(),
-		program:       f.program,
-		Command:       spec.Command,
-		Path:          filepath.Join(f.workdir.String(), spec.Path),
-		Args:          args,
-		AdditionalEnv: append(f.userEnvs, spec.Env...),
-		JSON:          spec.JSON,
-		Blocking:      spec.Blocking,
-		DependsOn:     spec.DependsOn,
-		Immediate:     spec.Immediate,
-		exclusive:     spec.Exclusive,
-		description:   spec.Description,
-		Spec:          spec,
-		AfterExited:   spec.AfterExited,
-		AfterError:    spec.AfterError,
-		AfterCanceled: spec.AfterCanceled,
-		AfterRunning:  spec.AfterRunning,
-		AfterQueued:   spec.AfterQueued,
-		AfterFinish:   spec.AfterFinish,
+		Common:          resource.New(resource.Task, spec.Parent),
+		State:           Pending,
+		Created:         time.Now(),
+		Updated:         time.Now(),
+		finished:        make(chan struct{}),
+		stdout:          newBuffer(),
+		combined:        newBuffer(),
+		program:         f.program,
+		Command:         spec.Command,
+		Path:            filepath.Join(f.workdir.String(), spec.Path),
+		Args:            args,
+		AdditionalEnv:   append(f.userEnvs, spec.Env...),
+		JSON:            spec.JSON,
+		Blocking:        spec.Blocking,
+		DependsOn:       spec.DependsOn,
+		Immediate:       spec.Immediate,
+		exclusive:       spec.Exclusive,
+		description:     spec.Description,
+		Spec:            spec,
+		AfterCLISuccess: spec.AfterCLISuccess,
+		AfterExited:     spec.AfterExited,
+		AfterError:      spec.AfterError,
+		AfterCanceled:   spec.AfterCanceled,
+		AfterRunning:    spec.AfterRunning,
+		AfterQueued:     spec.AfterQueued,
+		AfterFinish:     spec.AfterFinish,
 		// Publish an event whenever task state is updated
 		afterUpdate: func(t *Task) {
 			if f.publisher != nil {
@@ -298,6 +303,9 @@ func (t *Task) updateState(state Status) {
 		t.recordStatusEndTime(now)
 		t.stdout.Close()
 		t.combined.Close()
+		if t.AfterCLISuccess != nil {
+			t.AfterCLISuccess(t)
+		}
 		close(t.finished)
 		if t.afterFinish != nil {
 			t.afterFinish(t)

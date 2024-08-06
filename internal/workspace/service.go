@@ -111,24 +111,26 @@ func (s *Service) Reload(moduleID resource.ID) (task.Spec, error) {
 		return task.Spec{}, err
 	}
 	return task.Spec{
-		Parent:  mod,
-		Path:    mod.Path,
-		Command: []string{"workspace", "list"},
+		Parent:      mod,
+		Path:        mod.Path,
+		Command:     []string{"workspace", "list"},
+		Description: "reload workspaces",
 		AfterError: func(t *task.Task) {
 			s.logger.Error("reloading workspaces", "error", t.Err, "module", mod, "task", t)
 		},
-		AfterExited: func(t *task.Task) {
+		AfterCLISuccess: func(t *task.Task) error {
 			found, current, err := parseList(t.NewReader(false))
 			if err != nil {
-				s.logger.Error("reloading workspaces", "error", err, "module", mod, "task", t)
-				return
+				return err
 			}
 			added, removed, err := s.resetWorkspaces(mod, found, current)
 			if err != nil {
-				s.logger.Error("reloading workspaces", "error", err, "module", mod, "task", t)
-				return
+				return err
 			}
 			s.logger.Info("reloaded workspaces", "added", added, "removed", removed, "module", mod)
+			//
+			// TODO: write message to stdout
+			return nil
 		},
 	}, nil
 }
@@ -218,13 +220,13 @@ func (s *Service) Create(path, name string) (task.Spec, error) {
 		Path:    mod.Path,
 		Command: []string{"workspace", "new"},
 		Args:    []string{name},
-		AfterExited: func(*task.Task) {
+		AfterCLISuccess: func(*task.Task) error {
 			s.table.Add(ws.ID, ws)
 			// `workspace new` implicitly makes the created workspace the
 			// *current* workspace, so better tell pug that too.
-			if err := s.modules.SetCurrent(mod.ID, ws.ID); err != nil {
-				s.logger.Error("creating workspace: %w", err)
-			}
+			//
+			// TODO: write message to stdout
+			return s.modules.SetCurrent(mod.ID, ws.ID)
 		},
 	}, nil
 }
@@ -302,13 +304,13 @@ func (s *Service) selectWorkspace(moduleID, workspaceID resource.ID) error {
 		Args:      []string{ws.Name},
 		Immediate: true,
 		Wait:      true,
+		AfterCLISuccess: func(*task.Task) error {
+			// Now task has finished successfully, update the current workspace in pug
+			// as well.
+			return s.modules.SetCurrent(moduleID, workspaceID)
+		},
 	})
 	if err != nil {
-		return err
-	}
-	// Now task has finished successfully, update the current workspace in pug
-	// as well.
-	if err := s.modules.SetCurrent(moduleID, workspaceID); err != nil {
 		return err
 	}
 	return nil

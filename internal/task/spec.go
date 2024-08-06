@@ -48,6 +48,8 @@ type Spec struct {
 	// as part of a task group. All specs in the task group must set
 	// InverseDependencyOrder to the same value otherwise an error is raised.
 	InverseDependencyOrder bool
+	// Call this function after the CLI program has successfully finished
+	AfterCLISuccess func(*Task) error
 	// Call this function after the task has successfully finished
 	AfterExited func(*Task)
 	// Call this function after the task is enqueued.
