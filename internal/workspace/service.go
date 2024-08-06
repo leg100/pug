@@ -242,13 +242,13 @@ func (s *Service) Discover(ctx context.Context) error {
 			defer wg.Done()
 			spec, err := s.Reload(result.Module.ID)
 			if err != nil {
-				s.logger.Error("loading workspace", "error", err)
+				s.logger.Error("loading workspaces", "error", err)
 				return
 			}
 			// Wait for task to finish
 			spec.Wait = true
 			if _, err = s.tasks.Create(spec); err != nil {
-				s.logger.Error("loading workspace", "error", err)
+				s.logger.Error("loading workspaces", "error", err)
 				return
 			}
 		}()
