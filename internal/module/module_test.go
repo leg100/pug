@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/leg100/pug/internal"
-	"github.com/leg100/pug/internal/logging"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -21,8 +20,13 @@ func TestNew(t *testing.T) {
 
 func TestFindModules(t *testing.T) {
 	workdir, _ := internal.NewWorkdir("./testdata/modules")
-	got, err := findModules(logging.Discard, workdir)
-	require.NoError(t, err)
+	modules, err := find(workdir)
+	require.Nil(t, <-err)
+
+	var got []Options
+	for opts := range modules {
+		got = append(got, opts)
+	}
 
 	assert.Equal(t, 5, len(got), got)
 	assert.Contains(t, got, Options{Path: "with_local_backend", Backend: "local"})
