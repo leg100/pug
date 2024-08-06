@@ -1,6 +1,7 @@
 package module
 
 import (
+	"context"
 	"os"
 	"testing"
 
@@ -19,7 +20,7 @@ func TestNew(t *testing.T) {
 
 func TestFindModules(t *testing.T) {
 	workdir, _ := internal.NewWorkdir("./testdata/modules")
-	modules, errch := find(workdir)
+	modules, errch := find(context.Background(), workdir)
 
 	var got []Options
 	for opts := range modules {

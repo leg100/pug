@@ -1,6 +1,7 @@
 package module
 
 import (
+	"context"
 	"io/fs"
 	"log/slog"
 	"path/filepath"
@@ -74,10 +75,8 @@ func (m *Module) LogValue() slog.Value {
 // of Options structs for creating the module in pug); the second streams any
 // errors encountered.
 //
-// find closes both channels when finished.
-//
-// TODO: take a done channel parameter
-func find(workdir internal.Workdir) (<-chan Options, <-chan error) {
+// When finished, both channels are closed.
+func find(ctx context.Context, workdir internal.Workdir) (<-chan Options, <-chan error) {
 	modules := make(chan Options)
 	errc := make(chan error, 1)
 
@@ -133,11 +132,16 @@ func find(workdir internal.Workdir) (<-chan Options, <-chan error) {
 						Backend: backend,
 					}
 				}()
-				// skip walking remainder of parent directory
+				// Skip walking remainder of parent directory
 				return fs.SkipDir
 			}
-
-			return nil
+			// Abort walk if context canceled
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			default:
+				return nil
+			}
 		})
 		if err != nil {
 			errc <- err

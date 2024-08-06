@@ -1,6 +1,7 @@
 package module
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -66,7 +67,7 @@ func NewService(opts ServiceOptions) *Service {
 // to the store before pruning those that are currently stored but can no longer
 // be found.
 func (s *Service) Reload() (added []string, removed []string, err error) {
-	ch, errc := find(s.workdir)
+	ch, errc := find(context.TODO(), s.workdir)
 	var found []string
 	for ch != nil || errc != nil {
 		select {
