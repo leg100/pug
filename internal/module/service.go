@@ -63,60 +63,86 @@ func NewService(opts ServiceOptions) *Service {
 	}
 }
 
-// Reload searches the working directory recursively for modules and adds them
-// to the store before pruning those that are currently stored but can no longer
-// be found.
-func (s *Service) Reload() (added []string, removed []string, err error) {
-	ch, errc := find(context.TODO(), s.workdir)
-	var found []string
-	for ch != nil || errc != nil {
-		select {
-		case opts, ok := <-ch:
-			if !ok {
-				ch = nil
-				break
-			}
-			found = append(found, opts.Path)
-			// handle found module
-			if mod, err := s.GetByPath(opts.Path); errors.Is(err, resource.ErrNotFound) {
-				// Not found, so add to pug
-				mod := New(s.workdir, opts)
-				s.table.Add(mod.ID, mod)
-				added = append(added, opts.Path)
-			} else if err != nil {
-				s.logger.Error("reloading modules", "error", err)
-			} else {
-				// Update in-place; the backend may have changed.
-				s.table.Update(mod.ID, func(existing *Module) error {
-					existing.Backend = opts.Backend
-					return nil
-				})
-			}
-		case err, ok := <-errc:
-			if !ok {
-				errc = nil
-				break
-			}
-			if err != nil {
-				s.logger.Error("reloading modules", "error", err)
-			}
-		}
-	}
-	// Cleanup existing modules, removing those that are no longer to be found
-	for _, existing := range s.table.List() {
-		if !slices.Contains(found, existing.Path) {
-			s.table.Delete(existing.ID)
-			removed = append(removed, existing.Path)
-		}
-	}
-	s.logger.Info("reloaded modules", "added", added, "removed", removed)
+type ReloadResult struct {
+	// Loaded is true if the module has been newly loaded or false if it has
+	// been unloaded
+	Loaded bool
+	Module *Module
+}
 
-	if s.terragrunt {
-		if err := s.loadTerragruntDependencies(); err != nil {
-			s.logger.Error("loading terragrunt dependencies: %w", err)
+// Load searches the working directory recursively for modules and loads them
+// into Pug. Newly found modules are sent to the loaded channel. Any modules
+// previously loaded into Pug but that can no longer be found are unloaded from
+// Pug and sent to the unloaded channel.
+func (s *Service) Reload(ctx context.Context) chan ReloadResult {
+	ch, errc := find(ctx, s.workdir)
+	var results = make(chan ReloadResult, 1)
+	go func() {
+		var (
+			loadTotal int
+			// Keep reference to found paths to deduce which modules can no
+			// longer be found.
+			found []string
+		)
+		for ch != nil || errc != nil {
+			select {
+			case opts, ok := <-ch:
+				if !ok {
+					ch = nil
+					break
+				}
+				found = append(found, opts.Path)
+				// Handle found module
+				if mod, err := s.GetByPath(opts.Path); errors.Is(err, resource.ErrNotFound) {
+					// Not found, so add to pug
+					mod := New(s.workdir, opts)
+					s.table.Add(mod.ID, mod)
+					results <- ReloadResult{Loaded: true, Module: mod}
+					loadTotal++
+				} else if err != nil {
+					s.logger.Error("loading modules", "error", err)
+				} else {
+					// Update in-place; the backend may have changed.
+					s.table.Update(mod.ID, func(existing *Module) error {
+						existing.Backend = opts.Backend
+						return nil
+					})
+				}
+			case err, ok := <-errc:
+				if !ok {
+					errc = nil
+					break
+				}
+				if err != nil {
+					s.logger.Error("loading modules", "error", err)
+				}
+			}
 		}
-	}
-	return
+		s.logger.Info("finished loading modules", "loaded", loadTotal)
+
+		// Cleanup existing modules, removing those that are no longer to be found
+		var unloadTotal int
+		for _, existing := range s.table.List() {
+			if !slices.Contains(found, existing.Path) {
+				s.table.Delete(existing.ID)
+				unloadTotal++
+				results <- ReloadResult{Loaded: false, Module: existing}
+			}
+		}
+		if unloadTotal > 0 {
+			s.logger.Info("finished unloading modules", "unloaded", loadTotal)
+		}
+
+		if s.terragrunt {
+			if err := s.loadTerragruntDependencies(); err != nil {
+				s.logger.Error("loading terragrunt dependencies: %w", err)
+			}
+			// TODO: log info about loaded dependencies
+		}
+		// Let caller know we're done.
+		close(results)
+	}()
+	return results
 }
 
 func (s *Service) loadTerragruntDependencies() error {

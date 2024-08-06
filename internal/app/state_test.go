@@ -332,10 +332,11 @@ func TestState_ViewResourceTargetPlan(t *testing.T) {
 	// Expect to be taken to the task page for the plan, with a completed plan, and a warning
 	// that resource targeting is in effect
 	waitFor(t, tm, func(s string) bool {
+		t.Log(s)
 		// Strip ANSI formatting from output
 		s = internal.StripAnsi(s)
 		return matchPattern(t, `Task.*plan.*default.*modules/a.*\+1~0\-1.*exited`, s) &&
-			strings.Contains(s, "Warning: Resource targeting is in effect")
+			strings.Contains(s, "not for routine use")
 	})
 }
 

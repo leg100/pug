@@ -66,8 +66,7 @@ type Options struct {
 	Terragrunt bool
 }
 
-// New constructs the top-level TUI model.
-func New(opts Options) (model, error) {
+func newModel(opts Options) (model, error) {
 	var dump *os.File
 	if opts.Debug {
 		var err error
@@ -98,7 +97,6 @@ func New(opts Options) (model, error) {
 	if err != nil {
 		return model{}, err
 	}
-
 	return m, nil
 }
 

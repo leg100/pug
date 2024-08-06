@@ -20,7 +20,7 @@ func TestLogs(t *testing.T) {
 	// terminal is only of a limited width, which means the message is
 	// truncated.
 	waitFor(t, tm, func(s string) bool {
-		return strings.Contains(s, `reloaded modules`)
+		return strings.Contains(s, `finished loading modules`)
 	})
 
 	// Focus filter widget
@@ -33,7 +33,7 @@ func TestLogs(t *testing.T) {
 
 	// Filter to only the reloaded modules message, so that we can be sure the
 	// cursor is on that message.
-	tm.Type("reloaded modules")
+	tm.Type("finished loading modules")
 
 	// Exit filter prompt
 	tm.Send(tea.KeyMsg{Type: tea.KeyEnter})
@@ -43,9 +43,8 @@ func TestLogs(t *testing.T) {
 
 	// Expect a table of keys and values
 	waitFor(t, tm, func(s string) bool {
+		t.Log(s)
 		return matchPattern(t, `level\s+INFO`, s) &&
-			matchPattern(t, `message\s+reloaded modules`, s) &&
-			matchPattern(t, `added\s+\[modules/[a-c] modules/[a-c] modules/[a-c]\]`, s) &&
-			matchPattern(t, `removed\s+\[\]`, s)
+			matchPattern(t, `message\s+finished loading modules`, s)
 	})
 }

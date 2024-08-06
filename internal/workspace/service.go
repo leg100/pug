@@ -2,10 +2,12 @@ package workspace
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"io"
 	"slices"
 	"strings"
+	"sync"
 
 	"github.com/leg100/pug/internal/logging"
 	"github.com/leg100/pug/internal/module"
@@ -42,7 +44,7 @@ type modules interface {
 	Get(id resource.ID) (*module.Module, error)
 	GetByPath(path string) (*module.Module, error)
 	SetCurrent(moduleID, workspaceID resource.ID) error
-	Reload() ([]string, []string, error)
+	Reload(ctx context.Context) chan module.ReloadResult
 	List() []*module.Module
 }
 
@@ -114,14 +116,13 @@ func (s *Service) Reload(moduleID resource.ID) (task.Spec, error) {
 		return task.Spec{}, err
 	}
 	return task.Spec{
-		Parent:      mod,
-		Path:        mod.Path,
-		Command:     []string{"workspace", "list"},
-		Description: "reload workspaces",
+		Parent:  mod,
+		Path:    mod.Path,
+		Command: []string{"workspace", "list"},
 		AfterError: func(t *task.Task) {
 			s.logger.Error("reloading workspaces", "error", t.Err, "module", mod, "task", t)
 		},
-		AfterCLISuccess: func(t *task.Task) error {
+		BeforeExited: func(t *task.Task) error {
 			found, current, err := parseList(t.NewReader(false))
 			if err != nil {
 				return err
@@ -227,20 +228,34 @@ func parseList(r io.Reader) (list []string, current string, err error) {
 // 	b. add/remove workspaces
 
 // Discover populates Pug with modules and workspaces. Synchronous.
-func (s *Service) Discover() error {
-	// TODO: log discovered modules
-	if _, _, err := s.modules.Reload(); err != nil {
-		return err
-	}
-	for _, mod := range s.modules.List() {
-		spec, err := s.Reload(mod.ID)
-		if err != nil {
-			return err
+func (s *Service) Discover(ctx context.Context) error {
+	// Reload modules, and for each incoming reload result, reload the module's
+	// workspaces.
+	var wg sync.WaitGroup
+	for result := range s.modules.Reload(ctx) {
+		if !result.Loaded {
+			// Skip anything other than newly loaded modules
+			continue
 		}
-		if _, err = s.tasks.Create(spec); err != nil {
-			return err
-		}
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			spec, err := s.Reload(result.Module.ID)
+			if err != nil {
+				s.logger.Error("loading workspace", "error", err)
+				return
+			}
+			// Wait for task to finish
+			spec.Wait = true
+			if _, err = s.tasks.Create(spec); err != nil {
+				s.logger.Error("loading workspace", "error", err)
+				return
+			}
+		}()
+
 	}
+	// Wait for all workspace reload tasks to complete
+	wg.Wait()
 	return nil
 }
 
@@ -259,7 +274,7 @@ func (s *Service) Create(path, name string) (task.Spec, error) {
 		Path:    mod.Path,
 		Command: []string{"workspace", "new"},
 		Args:    []string{name},
-		AfterCLISuccess: func(*task.Task) error {
+		BeforeExited: func(*task.Task) error {
 			s.table.Add(ws.ID, ws)
 			// `workspace new` implicitly makes the created workspace the
 			// *current* workspace, so better tell pug that too.
@@ -343,7 +358,7 @@ func (s *Service) selectWorkspace(moduleID, workspaceID resource.ID) error {
 		Args:      []string{ws.Name},
 		Immediate: true,
 		Wait:      true,
-		AfterCLISuccess: func(*task.Task) error {
+		BeforeExited: func(*task.Task) error {
 			// Now task has finished successfully, update the current workspace in pug
 			// as well.
 			return s.modules.SetCurrent(moduleID, workspaceID)

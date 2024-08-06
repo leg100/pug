@@ -91,6 +91,22 @@ func (s *Service) Create(spec Spec) (*Task, error) {
 	return task, nil
 }
 
+func (s *Service) Subscribe() <-chan resource.Event[*Task] {
+	return s.TaskBroker.Subscribe()
+}
+
+func (s *Service) SubscribeGroups() <-chan resource.Event[*Group] {
+	return s.GroupBroker.Subscribe()
+}
+
+func (s *Service) Shutdown() {
+	s.TaskBroker.Shutdown()
+}
+
+func (s *Service) ShutdownGroups() {
+	s.GroupBroker.Shutdown()
+}
+
 // Create a task group from one or more task specs. An error is returned if zero
 // specs are provided, or if it fails to create at least one task.
 func (s *Service) CreateGroup(specs ...Spec) (*Group, error) {
