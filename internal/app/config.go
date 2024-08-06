@@ -30,6 +30,7 @@ type config struct {
 
 	loggingOptions logging.Options
 	version        bool
+	discovery      bool
 }
 
 // set config in order of precedence:

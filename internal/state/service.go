@@ -40,6 +40,8 @@ func NewService(opts ServiceOptions) *Service {
 	}
 
 	// Whenever a workspace is added, pull its state
+	//
+	// TODO: disable if not using TUI
 	go func() {
 		for event := range opts.Workspaces.Subscribe() {
 			if event.Type == resource.CreatedEvent {

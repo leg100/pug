@@ -33,6 +33,14 @@ func Start(stdout, stderr io.Writer, args []string) error {
 		return nil
 	}
 
+	// If user passes "discovery" command then just discover modules and
+	// workspaces and return, and skip instantiating TUI app.
+	cfg.discovery = len(args) > 0 && args[len(args)-1] == "discovery"
+
+	if cfg.discovery {
+		cfg.loggingOptions.AdditionalWriters = []io.Writer{stderr}
+	}
+
 	// Construct services and start daemons
 	app, err := newApp(cfg, stdout)
 	if err != nil {
@@ -49,9 +57,7 @@ func Start(stdout, stderr io.Writer, args []string) error {
 		"work_dir", cfg.WorkDir,
 	)
 
-	// If user passes "discovery" command then just discover modules and
-	// workspaces and return, and skip instantiating TUI app.
-	if len(args) > 0 && args[len(args)-1] == "discovery" {
+	if cfg.discovery {
 		return app.workspaces.Discover(context.TODO())
 	}
 
@@ -73,9 +79,10 @@ func Start(stdout, stderr io.Writer, args []string) error {
 }
 
 type app struct {
-	logger  *logging.Logger
-	workdir internal.Workdir
-	cleanup func()
+	logger    *logging.Logger
+	workdir   internal.Workdir
+	cleanup   func()
+	discovery bool
 
 	modules    *module.Service
 	workspaces *workspace.Service
@@ -143,7 +150,9 @@ func newApp(cfg config, stdout io.Writer) (*app, error) {
 	waitTasks := task.StartRunner(ctx, logger, tasks, cfg.MaxTasks)
 
 	// Automatically load workspaces whenever modules are loaded.
-	workspaces.LoadWorkspacesUponModuleLoad(modules)
+	if !cfg.discovery {
+		workspaces.LoadWorkspacesUponModuleLoad(modules)
+	}
 
 	// cleanup function to be invoked when app is terminated.
 	cleanup := func() {
