@@ -1,10 +1,12 @@
 package module
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
 	"path/filepath"
+	"slices"
 
 	"github.com/leg100/pug/internal"
 	"github.com/leg100/pug/internal/logging"
@@ -65,37 +67,44 @@ func NewService(opts ServiceOptions) *Service {
 // to the store before pruning those that are currently stored but can no longer
 // be found.
 func (s *Service) Reload() (added []string, removed []string, err error) {
-	found, err := findModules(s.logger, s.workdir)
-	if err != nil {
-		return nil, nil, err
-	}
-	for _, opts := range found {
-		// Add module if it isn't in pug already, otherwise update in-place
-		if mod, err := s.GetByPath(opts.Path); errors.Is(err, resource.ErrNotFound) {
-			mod := New(s.workdir, opts)
-			s.table.Add(mod.ID, mod)
-			added = append(added, opts.Path)
-		} else if err != nil {
-			return nil, nil, fmt.Errorf("retrieving module: %w", err)
-		} else {
-			// Update in-place; the backend may have changed.
-			s.table.Update(mod.ID, func(existing *Module) error {
-				existing.Backend = opts.Backend
-				return nil
-			})
-		}
-	}
-
-	// Cleanup existing modules, removing those that are no longer to be found
-	for _, existing := range s.table.List() {
-		var keep bool
-		for _, opts := range found {
-			if opts.Path == existing.Path {
-				keep = true
+	ch, errc := find(context.TODO(), s.workdir)
+	var found []string
+	for ch != nil || errc != nil {
+		select {
+		case opts, ok := <-ch:
+			if !ok {
+				ch = nil
 				break
 			}
+			found = append(found, opts.Path)
+			// handle found module
+			if mod, err := s.GetByPath(opts.Path); errors.Is(err, resource.ErrNotFound) {
+				// Not found, so add to pug
+				mod := New(s.workdir, opts)
+				s.table.Add(mod.ID, mod)
+				added = append(added, opts.Path)
+			} else if err != nil {
+				s.logger.Error("reloading modules", "error", err)
+			} else {
+				// Update in-place; the backend may have changed.
+				s.table.Update(mod.ID, func(existing *Module) error {
+					existing.Backend = opts.Backend
+					return nil
+				})
+			}
+		case err, ok := <-errc:
+			if !ok {
+				errc = nil
+				break
+			}
+			if err != nil {
+				s.logger.Error("reloading modules", "error", err)
+			}
 		}
-		if !keep {
+	}
+	// Cleanup existing modules, removing those that are no longer to be found
+	for _, existing := range s.table.List() {
+		if !slices.Contains(found, existing.Path) {
 			s.table.Delete(existing.ID)
 			removed = append(removed, existing.Path)
 		}

@@ -69,6 +69,9 @@ func NewService(opts ServiceOptions) *Service {
 // whenever:
 // * a new module is loaded into pug for the first time
 // * an existing module is updated and does not yet have a current workspace.
+//
+// TODO: "load" is ambiguous, it often means the opposite of save, i.e. read
+// from a system, whereas what is intended is to save or add workspaces to pug.
 func (s *Service) LoadWorkspacesUponModuleLoad(modules moduleSubscription) {
 	sub := modules.Subscribe()
 
