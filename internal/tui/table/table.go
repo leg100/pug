@@ -558,10 +558,14 @@ func (m *Model[V]) SetItems(items map[resource.ID]V) {
 
 	// Track item corresponding to the current row.
 	m.currentRowIndex = -1
-	for i, item := range m.rows {
-		if item.ID == m.currentRowID {
-			// Found item corresponding to current row; update its offset and
-			// position.
+	for i, row := range m.rows {
+		if row.ID == m.currentRowID {
+			// Found item corresponding to current row. Whenever SetItems() is
+			// called we try to ensure the current row offset remains the same
+			// (which prevents the current row unnecessarily "dancing around").
+			// It should only change if:
+			// (a) The current offset is greater than the number of rows.
+			// (b) The current offset is greater than the number of rows.
 			m.currentRowIndex = i
 		}
 	}
