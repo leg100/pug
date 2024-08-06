@@ -221,7 +221,6 @@ func TestTask_Cancel(t *testing.T) {
 
 	// Wait for footer to report signal sent, and for process to receive signal
 	waitFor(t, tm, func(s string) bool {
-		t.Log(s)
 		return strings.Contains(s, "sent cancel signal to task") &&
 			strings.Contains(s, "Interrupt received")
 	})

@@ -95,7 +95,7 @@ func setup(t *testing.T, workdir string, opts ...configOption) *testModel {
 		Terragrunt: cfg.Terragrunt,
 	}
 	return &testModel{
-		TestModel: top.NewTest(t, topopts, 150, 20),
+		TestModel: top.NewTest(t, topopts, 150, 50),
 		workdir:   workdir,
 	}
 }
