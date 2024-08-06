@@ -114,13 +114,6 @@ func find(ctx context.Context, workdir internal.Workdir) (<-chan Options, <-chan
 						// backend config, so skip.
 						return
 					}
-					//if isTerragrunt && backend == "" {
-					// Unless terragrunt.hcl directly contains a `remote_state`
-					// block then Pug doesn't have a way of determining the backend
-					// type (not unless it evaluates terragrunt's language and
-					// follows `find_in_parent` etc. to locate the effective
-					// remote_state, which is perhaps a future exercise...).
-					//}
 					// Strip workdir from module path
 					stripped, err := filepath.Rel(workdir.String(), filepath.Dir(path))
 					if err != nil {
@@ -205,7 +198,14 @@ func detectBackend(path string) (string, bool, error) {
 			return "cloud", true, nil
 		}
 	}
-	// Detect terragrunt remote state configuration
+	// Detect terragrunt remote state configuration.
+	//
+	// Unless terragrunt.hcl directly contains a `remote_state` block then Pug
+	// doesn't have a way of determining the backend type (not unless it
+	// evaluates terragrunt's language and follows `find_in_parent` etc. to
+	// locate the effective remote_state, which is perhaps a future
+	// exercise...). If it doesn't contain such a block then the backend is
+	// simply an empty string.
 	var remoteStateBlock terragrunt
 	if diags := gohcl.DecodeBody(f.Body, nil, &remoteStateBlock); diags != nil {
 		return "", false, diags
