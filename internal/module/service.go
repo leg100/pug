@@ -66,14 +66,16 @@ func NewService(opts ServiceOptions) *Service {
 // to the store before pruning those that are currently stored but can no longer
 // be found.
 func (s *Service) Reload() (added []string, removed []string, err error) {
-	found, errc := find(s.workdir)
-	for found != nil || errc != nil {
+	ch, errc := find(s.workdir)
+	var found []string
+	for ch != nil || errc != nil {
 		select {
-		case opts, ok := <-found:
+		case opts, ok := <-ch:
 			if !ok {
-				found = nil
+				ch = nil
 				break
 			}
+			found = append(found, opts.Path)
 			// handle found module
 			if mod, err := s.GetByPath(opts.Path); errors.Is(err, resource.ErrNotFound) {
 				// Not found, so add to pug
@@ -94,12 +96,14 @@ func (s *Service) Reload() (added []string, removed []string, err error) {
 				errc = nil
 				break
 			}
-			s.logger.Error("reloading modules", "error", err)
+			if err != nil {
+				s.logger.Error("reloading modules", "error", err)
+			}
 		}
 	}
 	// Cleanup existing modules, removing those that are no longer to be found
 	for _, existing := range s.table.List() {
-		if !slices.Contains(added, existing.Path) {
+		if !slices.Contains(found, existing.Path) {
 			s.table.Delete(existing.ID)
 			removed = append(removed, existing.Path)
 		}

@@ -83,7 +83,7 @@ func find(workdir internal.Workdir) (<-chan Options, <-chan error) {
 
 	go func() {
 		var wg sync.WaitGroup
-		errc <- filepath.WalkDir(workdir.String(), func(path string, d fs.DirEntry, err error) error {
+		err := filepath.WalkDir(workdir.String(), func(path string, d fs.DirEntry, err error) error {
 			if err != nil {
 				errc <- err
 				return err
@@ -139,6 +139,9 @@ func find(workdir internal.Workdir) (<-chan Options, <-chan error) {
 
 			return nil
 		})
+		if err != nil {
+			errc <- err
+		}
 		go func() {
 			wg.Wait()
 			close(modules)

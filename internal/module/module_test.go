@@ -6,7 +6,6 @@ import (
 
 	"github.com/leg100/pug/internal"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestNew(t *testing.T) {
@@ -20,8 +19,7 @@ func TestNew(t *testing.T) {
 
 func TestFindModules(t *testing.T) {
 	workdir, _ := internal.NewWorkdir("./testdata/modules")
-	modules, err := find(workdir)
-	require.Nil(t, <-err)
+	modules, errch := find(workdir)
 
 	var got []Options
 	for opts := range modules {
@@ -35,4 +33,10 @@ func TestFindModules(t *testing.T) {
 	assert.Contains(t, got, Options{Path: "terragrunt_with_local", Backend: "local"})
 	assert.Contains(t, got, Options{Path: "terragrunt_without_backend", Backend: ""})
 	assert.NotContains(t, got, "broken")
+
+	// Expect one error from broken module then error channel should close
+	goterr := <-errch
+	assert.Contains(t, goterr.Error(), "Unclosed configuration block")
+	_, closed := <-errch
+	assert.False(t, closed)
 }
