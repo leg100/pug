@@ -203,6 +203,42 @@ func parseList(r io.Reader) (list []string, current string, err error) {
 	return
 }
 
+// Discovery should work like this. Modules are detected and added to pug as
+// soon as they are detected, and when they are added, a task is invoked to list
+// its workspaces and load them into pug as well. If the task fails that is ok.
+// Discovery should wait for both the module and workspace loading to complete
+// before returning.
+//
+// This could be achieved with channels?
+// detect-modules -> add-modules -> detect-workspaces -> add-workspaces
+//
+// Make this work for:
+//
+// 1 TUI bootstrap
+// 2 CLI bootstrap
+// 3 TUI reloading of modules (which can trigger #4) - adds/removes modules
+// 4 TUI reloading of workspaces for a module
+// 	a. detect-workspaces (terraform workspace list)
+// 	b. add/remove workspaces
+
+// Discover populates Pug with modules and workspaces. Synchronous.
+func (s *Service) Discover() error {
+	// TODO: log discovered modules
+	if _, _, err := s.modules.Reload(); err != nil {
+		return err
+	}
+	for _, mod := range s.modules.List() {
+		spec, err := s.Reload(mod.ID)
+		if err != nil {
+			return err
+		}
+		if _, err = s.tasks.Create(spec); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // Create a workspace. Asynchronous.
 func (s *Service) Create(path, name string) (task.Spec, error) {
 	mod, err := s.modules.GetByPath(path)
