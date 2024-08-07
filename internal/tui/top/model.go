@@ -10,8 +10,6 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/davecgh/go-spew/spew"
-	"github.com/leg100/pug/internal"
-	"github.com/leg100/pug/internal/logging"
 	"github.com/leg100/pug/internal/resource"
 	"github.com/leg100/pug/internal/task"
 	"github.com/leg100/pug/internal/tui"
@@ -49,21 +47,6 @@ type model struct {
 	spinner  *spinner.Model
 	spinning bool
 	maxTasks int
-}
-
-type Options struct {
-	Modules    tui.ModuleService
-	Workspaces tui.WorkspaceService
-	States     tui.StateService
-	Runs       tui.RunService
-	Tasks      tui.TaskService
-	Logger     *logging.Logger
-	Workdir    internal.Workdir
-	FirstPage  string
-	MaxTasks   int
-	Debug      bool
-	Program    string
-	Terragrunt bool
 }
 
 func newModel(opts Options) (model, error) {

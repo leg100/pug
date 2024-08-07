@@ -96,6 +96,7 @@ type app struct {
 // relaying events. The app's cleanup function should be called when finished.
 func newApp(cfg config, stdout io.Writer) (*app, error) {
 	// Setup logging
+	cfg.loggingOptions.TUI = !cfg.discovery
 	logger := logging.NewLogger(cfg.loggingOptions)
 
 	// Perform any conversions from the flag parsed primitive types to pug
@@ -148,11 +149,6 @@ func newApp(cfg config, stdout io.Writer) (*app, error) {
 	// Start daemons
 	task.StartEnqueuer(tasks)
 	waitTasks := task.StartRunner(ctx, logger, tasks, cfg.MaxTasks)
-
-	// Automatically load workspaces whenever modules are loaded.
-	if !cfg.discovery {
-		workspaces.LoadWorkspacesUponModuleLoad(modules)
-	}
 
 	// cleanup function to be invoked when app is terminated.
 	cleanup := func() {

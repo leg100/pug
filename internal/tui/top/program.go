@@ -6,13 +6,26 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/x/exp/teatest"
+	"github.com/leg100/pug/internal"
+	"github.com/leg100/pug/internal/logging"
+	"github.com/leg100/pug/internal/resource"
+	"github.com/leg100/pug/internal/tui"
 	"github.com/stretchr/testify/require"
 )
 
-type program struct {
-	model   tea.Model
-	ch      chan tea.Msg
-	cleanup func()
+type Options struct {
+	Modules    tui.ModuleService
+	Workspaces tui.WorkspaceService
+	States     tui.StateService
+	Runs       tui.RunService
+	Tasks      tui.TaskService
+	Logger     *logging.Logger
+	Workdir    internal.Workdir
+	FirstPage  string
+	MaxTasks   int
+	Debug      bool
+	Program    string
+	Terragrunt bool
 }
 
 // New constructs and runs the TUI program.
@@ -59,6 +72,12 @@ func NewTest(t *testing.T, opts Options, width, height int) *teatest.TestModel {
 		}
 	}()
 	return tm
+}
+
+type program struct {
+	model   tea.Model
+	ch      chan tea.Msg
+	cleanup func()
 }
 
 func newProgram(opts Options) (*program, error) {
@@ -132,6 +151,18 @@ func newProgram(opts Options) (*program, error) {
 			ch <- ev
 		}
 		wg.Done()
+	}()
+
+	// Automatically load workspaces whenever modules are loaded.
+	opts.Workspaces.LoadWorkspacesUponModuleLoad(opts.Modules.Subscribe())
+
+	// Whenever a workspace is added, pull its state
+	go func() {
+		for event := range opts.Workspaces.Subscribe() {
+			if event.Type == resource.CreatedEvent {
+				_, _ = opts.States.CreateReloadTask(event.Payload.ID)
+			}
+		}
 	}()
 
 	// cleanup function to be invoked when program is terminated.

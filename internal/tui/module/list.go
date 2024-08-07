@@ -138,7 +138,10 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			cmd := m.helpers.CreateTasks(m.Modules.Format, m.table.SelectedOrCurrentIDs()...)
 			return m, cmd
 		case key.Matches(msg, localKeys.ReloadWorkspaces):
-			cmd := m.helpers.CreateTasks(m.Workspaces.Reload, m.table.SelectedOrCurrentIDs()...)
+			fn := func(moduleID resource.ID) (task.Spec, error) {
+				return m.Workspaces.Reload(moduleID, nil)
+			}
+			cmd := m.helpers.CreateTasks(fn, m.table.SelectedOrCurrentIDs()...)
 			return m, cmd
 		case key.Matches(msg, keys.Common.State):
 			if row, ok := m.table.CurrentRow(); ok {

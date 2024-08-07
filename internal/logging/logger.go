@@ -3,10 +3,13 @@ package logging
 import (
 	"io"
 	"log/slog"
+	"os"
 	"slices"
+	"time"
 
 	"github.com/leg100/pug/internal/pubsub"
 	"github.com/leg100/pug/internal/resource"
+	"github.com/lmittmann/tint"
 	"golang.org/x/exp/maps"
 )
 
@@ -41,29 +44,37 @@ func ValidLevels() []string {
 
 // NewLogger constructs Logger, a slog wrapper with additional functionality.
 func NewLogger(opts Options) *Logger {
-	logger := &Logger{}
-	broker := pubsub.NewBroker[Message](logger)
-	writer := &writer{table: resource.NewTable(broker)}
-
-	handler := slog.NewTextHandler(
-		io.MultiWriter(append(opts.AdditionalWriters, writer)...),
-		&slog.HandlerOptions{
-			Level: slog.Level(levels[opts.Level]),
-		},
-	)
-
-	logger.logger = slog.New(handler)
-	logger.Broker = broker
-	logger.writer = writer
-	logger.enricher = &enricher{}
-
+	level := slog.Level(levels[opts.Level])
+	logger := &Logger{
+		enricher: &enricher{},
+	}
+	if opts.TUI {
+		logger.Broker = pubsub.NewBroker[Message](logger)
+		logger.writer = &writer{table: resource.NewTable(logger.Broker)}
+		logger.logger = slog.New(slog.NewTextHandler(
+			io.MultiWriter(append(opts.AdditionalWriters, logger.writer)...),
+			&slog.HandlerOptions{Level: level},
+		))
+	} else {
+		logger.logger = slog.New(
+			tint.NewHandler(os.Stderr, &tint.Options{
+				Level:      level,
+				TimeFormat: time.Kitchen,
+			}),
+		)
+	}
 	return logger
 }
 
 type Options struct {
 	// The log level of the logger
 	Level string
-	// Any additional writers the log handler should write to.
+	// TUI toggles TUI mode: logs are emitted as Pug events and persisted in
+	// memory for later retrieval. When set to false, logs are instead written
+	// directly to stderr.
+	TUI bool
+	// Any additional writers the log handler should write to. Only takes effect
+	// when in TUI mode.
 	AdditionalWriters []io.Writer
 }
 

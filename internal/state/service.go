@@ -30,7 +30,7 @@ type ServiceOptions struct {
 
 func NewService(opts ServiceOptions) *Service {
 	broker := pubsub.NewBroker[*State](opts.Logger)
-	svc := &Service{
+	return &Service{
 		modules:    opts.Modules,
 		workspaces: opts.Workspaces,
 		tasks:      opts.Tasks,
@@ -38,19 +38,6 @@ func NewService(opts ServiceOptions) *Service {
 		Broker:     broker,
 		logger:     opts.Logger,
 	}
-
-	// Whenever a workspace is added, pull its state
-	//
-	// TODO: disable if not using TUI
-	go func() {
-		for event := range opts.Workspaces.Subscribe() {
-			if event.Type == resource.CreatedEvent {
-				_, _ = svc.createReloadTask(event.Payload.ID)
-			}
-		}
-	}()
-
-	return svc
 }
 
 // Get retrieves the state for a workspace.
@@ -104,7 +91,7 @@ func (s *Service) Reload(workspaceID resource.ID) (task.Spec, error) {
 	})
 }
 
-func (s *Service) createReloadTask(workspaceID resource.ID) (*task.Task, error) {
+func (s *Service) CreateReloadTask(workspaceID resource.ID) (*task.Task, error) {
 	spec, err := s.Reload(workspaceID)
 	if err != nil {
 		return nil, err
@@ -125,7 +112,7 @@ func (s *Service) Delete(workspaceID resource.ID, addrs ...ResourceAddress) (tas
 			s.logger.Error("deleting resources", "error", t.Err, "resources", addrs)
 		},
 		AfterExited: func(t *task.Task) {
-			s.createReloadTask(workspaceID)
+			s.CreateReloadTask(workspaceID)
 		},
 	})
 }
@@ -139,7 +126,7 @@ func (s *Service) Taint(workspaceID resource.ID, addr ResourceAddress) (task.Spe
 			s.logger.Error("tainting resource", "error", t.Err, "resource", addr)
 		},
 		AfterExited: func(t *task.Task) {
-			s.createReloadTask(workspaceID)
+			s.CreateReloadTask(workspaceID)
 		},
 	})
 }
@@ -153,7 +140,7 @@ func (s *Service) Untaint(workspaceID resource.ID, addr ResourceAddress) (task.S
 			s.logger.Error("untainting resource", "error", t.Err, "resource", addr)
 		},
 		AfterExited: func(t *task.Task) {
-			s.createReloadTask(workspaceID)
+			s.CreateReloadTask(workspaceID)
 		},
 	})
 }
@@ -167,7 +154,7 @@ func (s *Service) Move(workspaceID resource.ID, src, dest ResourceAddress) (task
 			s.logger.Error("moving resource", "error", t.Err, "resources", src)
 		},
 		AfterExited: func(t *task.Task) {
-			s.createReloadTask(workspaceID)
+			s.CreateReloadTask(workspaceID)
 		},
 	})
 }

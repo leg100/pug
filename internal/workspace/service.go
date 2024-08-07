@@ -48,10 +48,6 @@ type modules interface {
 	List() []*module.Module
 }
 
-type moduleSubscription interface {
-	Subscribe() <-chan resource.Event[*module.Module]
-}
-
 func NewService(opts ServiceOptions) *Service {
 	broker := pubsub.NewBroker[*Workspace](opts.Logger)
 	table := resource.NewTable(broker)
@@ -74,11 +70,10 @@ func NewService(opts ServiceOptions) *Service {
 //
 // TODO: "load" is ambiguous, it often means the opposite of save, i.e. read
 // from a system, whereas what is intended is to save or add workspaces to pug.
-func (s *Service) LoadWorkspacesUponModuleLoad(modules moduleSubscription) {
-	sub := modules.Subscribe()
+func (s *Service) LoadWorkspacesUponModuleLoad(sub <-chan resource.Event[*module.Module]) {
 
 	reload := func(moduleID resource.ID) error {
-		spec, err := s.Reload(moduleID)
+		spec, err := s.Reload(moduleID, nil)
 		if err != nil {
 			return err
 		}
@@ -107,21 +102,25 @@ func (s *Service) LoadWorkspacesUponModuleLoad(modules moduleSubscription) {
 	}()
 }
 
+type ReloadResult struct {
+	// Loaded is true if the workspace has been newly loaded or false if it has
+	// been unloaded
+	Loaded bool
+	Name   string
+}
+
 // Reload returns a task spec that runs `terraform workspace list` on a
 // module and updates pug with the results, adding any newly discovered
 // workspaces and pruning any workspaces no longer found to exist.
-func (s *Service) Reload(moduleID resource.ID) (task.Spec, error) {
+func (s *Service) Reload(moduleID resource.ID, results chan ReloadResult) (task.Spec, error) {
 	mod, err := s.modules.Get(moduleID)
 	if err != nil {
 		return task.Spec{}, err
 	}
-	return task.Spec{
+	spec := task.Spec{
 		Parent:  mod,
 		Path:    mod.Path,
 		Command: []string{"workspace", "list"},
-		AfterError: func(t *task.Task) {
-			s.logger.Error("reloading workspaces", "error", t.Err, "module", mod, "task", t)
-		},
 		BeforeExited: func(t *task.Task) error {
 			found, current, err := parseList(t.NewReader(false))
 			if err != nil {
@@ -131,12 +130,24 @@ func (s *Service) Reload(moduleID resource.ID) (task.Spec, error) {
 			if err != nil {
 				return err
 			}
-			s.logger.Info("reloaded workspaces", "added", added, "removed", removed, "module", mod)
-			//
-			// TODO: write message to stdout
+			if results != nil {
+				for _, name := range added {
+					results <- ReloadResult{Loaded: true, Name: name}
+				}
+				for _, name := range removed {
+					results <- ReloadResult{Loaded: false, Name: name}
+				}
+			}
+			if len(added) > 0 {
+				s.logger.Debug("loaded workspaces", "loaded", added, "module", mod)
+			}
+			if len(removed) > 0 {
+				s.logger.Debug("unloaded workspaces", "unloaded", removed, "module", mod)
+			}
 			return nil
 		},
-	}, nil
+	}
+	return spec, nil
 }
 
 // resetWorkspaces resets the workspaces for a module, adding newly discovered
@@ -209,46 +220,39 @@ func parseList(r io.Reader) (list []string, current string, err error) {
 	return
 }
 
-// Discovery should work like this. Modules are detected and added to pug as
-// soon as they are detected, and when they are added, a task is invoked to list
-// its workspaces and load them into pug as well. If the task fails that is ok.
-// Discovery should wait for both the module and workspace loading to complete
-// before returning.
-//
-// This could be achieved with channels?
-// detect-modules -> add-modules -> detect-workspaces -> add-workspaces
-//
-// Make this work for:
-//
-// 1 TUI bootstrap
-// 2 CLI bootstrap
-// 3 TUI reloading of modules (which can trigger #4) - adds/removes modules
-// 4 TUI reloading of workspaces for a module
-// 	a. detect-workspaces (terraform workspace list)
-// 	b. add/remove workspaces
-
 // Discover populates Pug with modules and workspaces. Synchronous.
 func (s *Service) Discover(ctx context.Context) error {
 	// Reload modules, and for each incoming reload result, reload the module's
 	// workspaces.
-	var wg sync.WaitGroup
-	for result := range s.modules.Reload(ctx) {
-		if !result.Loaded {
+	var (
+		wg           sync.WaitGroup
+		results      = make(chan ReloadResult, 1)
+		resultsReady = make(chan struct{})
+		loaded       int
+	)
+	go func() {
+		for res := range results {
+			if res.Loaded {
+				loaded++
+			}
+		}
+		resultsReady <- struct{}{}
+	}()
+	for mod := range s.modules.Reload(ctx) {
+		if !mod.Loaded {
 			// Skip anything other than newly loaded modules
 			continue
 		}
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			spec, err := s.Reload(result.Module.ID)
+			spec, err := s.Reload(mod.Module.ID, results)
 			if err != nil {
-				s.logger.Error("loading workspaces", "error", err)
 				return
 			}
 			// Wait for task to finish
 			spec.Wait = true
 			if _, err = s.tasks.Create(spec); err != nil {
-				s.logger.Error("loading workspaces", "error", err)
 				return
 			}
 		}()
@@ -256,6 +260,13 @@ func (s *Service) Discover(ctx context.Context) error {
 	}
 	// Wait for all workspace reload tasks to complete
 	wg.Wait()
+	// Can now safely close channel because reload tasks are no longer sending
+	// to it.
+	close(results)
+	// Wait til loaded tally is ready
+	<-resultsReady
+	s.logger.Info("finished loading workspaces", "loaded", loaded)
+
 	return nil
 }
 

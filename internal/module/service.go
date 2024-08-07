@@ -76,7 +76,7 @@ type ReloadResult struct {
 // Pug and sent to the unloaded channel.
 func (s *Service) Reload(ctx context.Context) chan ReloadResult {
 	ch, errc := find(ctx, s.workdir)
-	var results = make(chan ReloadResult, 1)
+	results := make(chan ReloadResult, 1)
 	go func() {
 		var (
 			loadTotal int

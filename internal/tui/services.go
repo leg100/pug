@@ -24,13 +24,14 @@ type ModuleService interface {
 }
 
 type WorkspaceService interface {
-	Reload(moduleID resource.ID) (task.Spec, error)
+	Reload(moduleID resource.ID, results chan workspace.ReloadResult) (task.Spec, error)
 	Get(id resource.ID) (*workspace.Workspace, error)
 	List(opts workspace.ListOptions) []*workspace.Workspace
 	SelectWorkspace(moduleID, workspaceID resource.ID) error
 	Delete(id resource.ID) (task.Spec, error)
 	Subscribe() <-chan resource.Event[*workspace.Workspace]
 	Shutdown()
+	LoadWorkspacesUponModuleLoad(<-chan resource.Event[*module.Module])
 }
 
 type StateService interface {
@@ -43,6 +44,7 @@ type StateService interface {
 	Move(workspaceID resource.ID, src, dest state.ResourceAddress) (task.Spec, error)
 	Subscribe() <-chan resource.Event[*state.State]
 	Shutdown()
+	CreateReloadTask(workspaceID resource.ID) (*task.Task, error)
 }
 
 type RunService interface {
