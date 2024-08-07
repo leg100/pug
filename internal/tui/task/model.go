@@ -22,8 +22,8 @@ import (
 )
 
 type Maker struct {
-	Runs    tui.RunService
-	Tasks   tui.TaskService
+	Runs    *run.Service
+	Tasks   *task.Service
 	Spinner *spinner.Model
 	Helpers *tui.Helpers
 	Logger  *logging.Logger
@@ -101,9 +101,9 @@ func (mm *Maker) Update(msg tea.Msg) tea.Cmd {
 type model struct {
 	id uuid.UUID
 
-	tasks tui.TaskService
+	tasks *task.Service
 	task  *task.Task
-	runs  tui.RunService
+	runs  *run.Service
 	run   *run.Run
 
 	output io.Reader

@@ -12,12 +12,16 @@ import (
 	"github.com/davecgh/go-spew/spew"
 	"github.com/leg100/pug/internal"
 	"github.com/leg100/pug/internal/logging"
+	"github.com/leg100/pug/internal/module"
 	"github.com/leg100/pug/internal/resource"
+	"github.com/leg100/pug/internal/run"
+	"github.com/leg100/pug/internal/state"
 	"github.com/leg100/pug/internal/task"
 	"github.com/leg100/pug/internal/tui"
 	"github.com/leg100/pug/internal/tui/keys"
-	"github.com/leg100/pug/internal/tui/module"
+	tuimodule "github.com/leg100/pug/internal/tui/module"
 	"github.com/leg100/pug/internal/version"
+	"github.com/leg100/pug/internal/workspace"
 )
 
 // pug is in one of several modes, which alter how all messages are handled.
@@ -35,7 +39,7 @@ const (
 type model struct {
 	*navigator
 
-	modules  tui.ModuleService
+	modules  *module.Service
 	width    int
 	height   int
 	mode     mode
@@ -45,18 +49,18 @@ type model struct {
 	workdir  string
 	err      error
 	info     string
-	tasks    tui.TaskService
+	tasks    *task.Service
 	spinner  *spinner.Model
 	spinning bool
 	maxTasks int
 }
 
 type Options struct {
-	Modules    tui.ModuleService
-	Workspaces tui.WorkspaceService
-	States     tui.StateService
-	Runs       tui.RunService
-	Tasks      tui.TaskService
+	Modules    *module.Service
+	Workspaces *workspace.Service
+	States     *state.Service
+	Runs       *run.Service
+	Tasks      *task.Service
 	Logger     *logging.Logger
 	Workdir    internal.Workdir
 	FirstPage  string
@@ -105,7 +109,7 @@ func New(opts Options) (model, error) {
 func (m model) Init() tea.Cmd {
 	return tea.Batch(
 		m.currentModel().Init(),
-		module.ReloadModules(true, m.modules),
+		tuimodule.ReloadModules(true, m.modules),
 	)
 }
 
