@@ -12,19 +12,24 @@ import (
 type ModuleService interface {
 	Get(id resource.ID) (*module.Module, error)
 	List() []*module.Module
-	Reload() ([]string, []string, error)
+	Reload(ctx context.Context) chan module.ReloadResult
 	Init(moduleID resource.ID) (task.Spec, error)
 	Format(moduleID resource.ID) (task.Spec, error)
 	Validate(moduleID resource.ID) (task.Spec, error)
 	SetCurrent(moduleID, workspaceID resource.ID) error
+	Subscribe() <-chan resource.Event[*module.Module]
+	Shutdown()
 }
 
 type WorkspaceService interface {
-	Reload(moduleID resource.ID) (task.Spec, error)
+	Reload(moduleID resource.ID, results chan workspace.ReloadResult) (task.Spec, error)
 	Get(id resource.ID) (*workspace.Workspace, error)
 	List(opts workspace.ListOptions) []*workspace.Workspace
 	SelectWorkspace(moduleID, workspaceID resource.ID) error
 	Delete(id resource.ID) (task.Spec, error)
+	Subscribe() <-chan resource.Event[*workspace.Workspace]
+	Shutdown()
+	LoadWorkspacesUponModuleLoad(<-chan resource.Event[*module.Module])
 }
 
 type StateService interface {
@@ -35,6 +40,9 @@ type StateService interface {
 	Taint(workspaceID resource.ID, addr state.ResourceAddress) (task.Spec, error)
 	Untaint(workspaceID resource.ID, addr state.ResourceAddress) (task.Spec, error)
 	Move(workspaceID resource.ID, src, dest state.ResourceAddress) (task.Spec, error)
+	Subscribe() <-chan resource.Event[*state.State]
+	Shutdown()
+	CreateReloadTask(workspaceID resource.ID) (*task.Task, error)
 }
 
 type RunService interface {
@@ -42,6 +50,8 @@ type RunService interface {
 	List(opts run.ListOptions) []*run.Run
 	Plan(workspaceID resource.ID, opts run.CreateOptions) (task.Spec, error)
 	Apply(id resource.ID, opts *run.CreateOptions) (task.Spec, error)
+	Subscribe() <-chan resource.Event[*run.Run]
+	Shutdown()
 }
 
 type TaskService interface {
@@ -53,4 +63,8 @@ type TaskService interface {
 	List(opts task.ListOptions) []*task.Task
 	ListGroups() []*task.Group
 	Cancel(taskID resource.ID) (*task.Task, error)
+	Subscribe() <-chan resource.Event[*task.Task]
+	SubscribeGroups() <-chan resource.Event[*task.Group]
+	Shutdown()
+	ShutdownGroups()
 }

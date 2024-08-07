@@ -10,8 +10,6 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/davecgh/go-spew/spew"
-	"github.com/leg100/pug/internal"
-	"github.com/leg100/pug/internal/logging"
 	"github.com/leg100/pug/internal/resource"
 	"github.com/leg100/pug/internal/task"
 	"github.com/leg100/pug/internal/tui"
@@ -51,23 +49,7 @@ type model struct {
 	maxTasks int
 }
 
-type Options struct {
-	Modules    tui.ModuleService
-	Workspaces tui.WorkspaceService
-	States     tui.StateService
-	Runs       tui.RunService
-	Tasks      tui.TaskService
-	Logger     *logging.Logger
-	Workdir    internal.Workdir
-	FirstPage  string
-	MaxTasks   int
-	Debug      bool
-	Program    string
-	Terragrunt bool
-}
-
-// New constructs the top-level TUI model.
-func New(opts Options) (model, error) {
+func newModel(opts Options) (model, error) {
 	var dump *os.File
 	if opts.Debug {
 		var err error
@@ -98,7 +80,6 @@ func New(opts Options) (model, error) {
 	if err != nil {
 		return model{}, err
 	}
-
 	return m, nil
 }
 

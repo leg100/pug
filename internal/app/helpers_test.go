@@ -14,6 +14,7 @@ import (
 
 	"github.com/charmbracelet/x/exp/teatest"
 	"github.com/leg100/pug/internal/logging"
+	"github.com/leg100/pug/internal/tui/top"
 	"github.com/stretchr/testify/require"
 )
 
@@ -75,27 +76,26 @@ func setup(t *testing.T, workdir string, opts ...configOption) *testModel {
 		fn(&cfg)
 	}
 
-	app, err := startApp(
-		cfg,
-		io.Discard,
-	)
+	app, err := newApp(cfg, io.Discard)
 	require.NoError(t, err)
 	t.Cleanup(app.cleanup)
 
-	tm := teatest.NewTestModel(
-		t,
-		app.model,
-		teatest.WithInitialTermSize(120, 50),
-	)
-	t.Cleanup(func() {
-		tm.Quit()
-	})
-
-	// Relay events to TUI
-	app.relay(tm)
-
+	topopts := top.Options{
+		Modules:    app.modules,
+		Workspaces: app.workspaces,
+		Runs:       app.runs,
+		States:     app.states,
+		Tasks:      app.tasks,
+		Logger:     app.logger,
+		FirstPage:  cfg.FirstPage,
+		Workdir:    app.workdir,
+		MaxTasks:   cfg.MaxTasks,
+		Debug:      cfg.Debug,
+		Program:    cfg.Program,
+		Terragrunt: cfg.Terragrunt,
+	}
 	return &testModel{
-		TestModel: tm,
+		TestModel: top.NewTest(t, topopts, 150, 50),
 		workdir:   workdir,
 	}
 }
