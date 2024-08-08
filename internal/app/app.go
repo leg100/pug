@@ -31,11 +31,11 @@ type App struct {
 // relaying events. The app's cleanup function should be called when finished.
 func New(cfg Config) (*App, error) {
 	// Setup logging
-	logger := logging.NewLogger(cfg.LoggingOptions)
+	logger := logging.NewLogger(cfg.Logging)
 
 	// Log some info useful to the user
 	logger.Info("loaded config",
-		"log_level", cfg.LoggingOptions.Level,
+		"log_level", cfg.Logging.Level,
 		"max_tasks", cfg.MaxTasks,
 		"plugin_cache", cfg.PluginCache,
 		"program", cfg.Program,

@@ -49,7 +49,7 @@ func TestConfig(t *testing.T) {
 					FirstPage: "modules",
 					Workdir:   wd,
 					DataDir:   filepath.Join(os.Getenv("HOME"), ".pug"),
-					LoggingOptions: logging.Options{
+					Logging: logging.Options{
 						Level: "info",
 					},
 				}

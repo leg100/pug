@@ -28,9 +28,9 @@ type Config struct {
 	Envs                    []string
 	Args                    []string
 	Terragrunt              bool
+	Logging                 logging.Options
 
-	LoggingOptions logging.Options
-	Version        bool
+	Version bool
 }
 
 // set config in order of precedence:
@@ -61,7 +61,7 @@ func Parse(stderr io.Writer, args []string) (Config, error) {
 
 	{
 		usage := fmt.Sprintf("Logging level (valid: %s).", strings.Join(logging.ValidLevels(), ","))
-		fs.StringEnumVar(&cfg.LoggingOptions.Level, 'l', "log-level", usage, logging.ValidLevels()...)
+		fs.StringEnumVar(&cfg.Logging.Level, 'l', "log-level", usage, logging.ValidLevels()...)
 	}
 
 	// Plugin cache is enabled not via pug flags but via terraform config

@@ -58,7 +58,7 @@ func setup(t *testing.T, workdir string, opts ...configOption) *testModel {
 		DataDir:   t.TempDir(),
 		Debug:     true,
 		Envs:      []string{fmt.Sprintf("TF_CLI_CONFIG_FILE=%s", mirrorConfigPath)},
-		LoggingOptions: logging.Options{
+		Logging: logging.Options{
 			Level: "debug",
 			AdditionalWriters: []io.Writer{
 				&testLogger{t},
