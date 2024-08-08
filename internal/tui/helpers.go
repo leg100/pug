@@ -25,11 +25,11 @@ import (
 // table with, say 40 visible rows, means they are invoked 40 times a render,
 // which is 40 lookups.
 type Helpers struct {
-	Modules    ModuleService
-	Workspaces WorkspaceService
-	Runs       RunService
-	Tasks      TaskService
-	States     StateService
+	Modules    *module.Service
+	Workspaces *workspace.Service
+	Runs       *run.Service
+	Tasks      *task.Service
+	States     *state.Service
 	Logger     logging.Interface
 }
 

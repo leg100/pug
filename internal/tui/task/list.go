@@ -8,8 +8,8 @@ import (
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/leg100/pug/internal/resource"
-	runpkg "github.com/leg100/pug/internal/run"
-	taskpkg "github.com/leg100/pug/internal/task"
+	"github.com/leg100/pug/internal/run"
+	"github.com/leg100/pug/internal/task"
 	"github.com/leg100/pug/internal/tui"
 	"github.com/leg100/pug/internal/tui/keys"
 	"github.com/leg100/pug/internal/tui/split"
@@ -30,7 +30,7 @@ var (
 	statusColumn = table.Column{
 		Key:   "task_status",
 		Title: "STATUS",
-		Width: taskpkg.MaxStatusLen,
+		Width: task.MaxStatusLen,
 	}
 	ageColumn = table.Column{
 		Key:   "age",
@@ -54,7 +54,7 @@ func (m *ListTaskMaker) Make(id resource.ID, width, height int) (tea.Model, erro
 }
 
 // NewListMaker constructs a task list model maker
-func NewListMaker(tasks tui.TaskService, runs tui.RunService, taskMaker *Maker, helpers *tui.Helpers) *ListMaker {
+func NewListMaker(tasks *task.Service, runs *run.Service, taskMaker *Maker, helpers *tui.Helpers) *ListMaker {
 	return &ListMaker{
 		Tasks:     tasks,
 		Runs:      runs,
@@ -65,8 +65,8 @@ func NewListMaker(tasks tui.TaskService, runs tui.RunService, taskMaker *Maker, 
 
 // ListMaker makes task list models
 type ListMaker struct {
-	Runs  tui.RunService
-	Tasks tui.TaskService
+	Runs  *run.Service
+	Tasks *task.Service
 
 	TaskMaker tui.Maker
 	Helpers   *tui.Helpers
@@ -83,7 +83,7 @@ func (mm *ListMaker) Make(_ resource.ID, width, height int) (tea.Model, error) {
 		ageColumn,
 	}
 
-	renderer := func(t *taskpkg.Task) table.RenderedRow {
+	renderer := func(t *task.Task) table.RenderedRow {
 		row := table.RenderedRow{
 			taskIDColumn.Key:          t.ID.String(),
 			table.ModuleColumn.Key:    mm.Helpers.ModulePath(t),
@@ -94,7 +94,7 @@ func (mm *ListMaker) Make(_ resource.ID, width, height int) (tea.Model, error) {
 		}
 
 		if rr := t.Run(); rr != nil {
-			run := rr.(*runpkg.Run)
+			run := rr.(*run.Run)
 			if t.Command[0] == "plan" && run.PlanReport != nil {
 				row[runChangesColumn.Key] = mm.Helpers.RunReport(*run.PlanReport, true)
 			} else if t.Command[0] == "apply" && run.ApplyReport != nil {
@@ -105,10 +105,10 @@ func (mm *ListMaker) Make(_ resource.ID, width, height int) (tea.Model, error) {
 		return row
 	}
 
-	splitModel := split.New(split.Options[*taskpkg.Task]{
+	splitModel := split.New(split.Options[*task.Task]{
 		Columns:      columns,
 		Renderer:     renderer,
-		TableOptions: []table.Option[*taskpkg.Task]{table.WithSortFunc(taskpkg.ByState)},
+		TableOptions: []table.Option[*task.Task]{table.WithSortFunc(task.ByState)},
 		Width:        width,
 		Height:       height,
 		Maker:        mm.TaskMaker,
@@ -123,17 +123,17 @@ func (mm *ListMaker) Make(_ resource.ID, width, height int) (tea.Model, error) {
 }
 
 type List struct {
-	split.Model[*taskpkg.Task]
+	split.Model[*task.Task]
 
-	runs    tui.RunService
-	tasks   tui.TaskService
+	runs    *run.Service
+	tasks   *task.Service
 	helpers *tui.Helpers
 }
 
 func (m List) Init() tea.Cmd {
 	return func() tea.Msg {
-		tasks := m.tasks.List(taskpkg.ListOptions{})
-		return table.BulkInsertMsg[*taskpkg.Task](tasks)
+		tasks := m.tasks.List(task.ListOptions{})
+		return table.BulkInsertMsg[*task.Task](tasks)
 	}
 }
 
@@ -149,11 +149,11 @@ func (m List) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, tui.NavigateTo(tui.TaskKind, tui.WithParent(row.Value))
 			}
 		case key.Matches(msg, keys.Common.Apply):
-			specs, err := m.Table.Prune(func(task *taskpkg.Task) (taskpkg.Spec, error) {
+			specs, err := m.Table.Prune(func(tsk *task.Task) (task.Spec, error) {
 				// Task must belong to a run in order to be applied.
-				res := task.Run()
+				res := tsk.Run()
 				if res == nil {
-					return taskpkg.Spec{}, errors.New("task does not belong to a run")
+					return task.Spec{}, errors.New("task does not belong to a run")
 				}
 				return m.runs.Apply(res.GetID(), nil)
 			})
@@ -174,7 +174,7 @@ func (m List) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		case key.Matches(msg, keys.Common.Retry):
 			rows := m.Table.SelectedOrCurrent()
-			specs := make([]taskpkg.Spec, len(rows))
+			specs := make([]task.Spec, len(rows))
 			for i, row := range rows {
 				specs[i] = row.Value.Spec
 			}

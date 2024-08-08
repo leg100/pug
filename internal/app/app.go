@@ -33,14 +33,6 @@ func Start(stdout, stderr io.Writer, args []string) error {
 		return nil
 	}
 
-	// If user passes "discovery" command then just discover modules and
-	// workspaces and return, and skip instantiating TUI app.
-	cfg.discovery = len(args) > 0 && args[len(args)-1] == "discovery"
-
-	if cfg.discovery {
-		cfg.loggingOptions.AdditionalWriters = []io.Writer{stderr}
-	}
-
 	// Construct services and start daemons
 	app, err := newApp(cfg, stdout)
 	if err != nil {
@@ -57,12 +49,8 @@ func Start(stdout, stderr io.Writer, args []string) error {
 		"work_dir", cfg.WorkDir,
 	)
 
-	if cfg.discovery {
-		return app.workspaces.Discover(context.TODO())
-	}
-
 	// Start the TUI program.
-	return top.New(top.Options{
+	return top.Start(top.Options{
 		Modules:    app.modules,
 		Workspaces: app.workspaces,
 		Runs:       app.runs,
@@ -79,10 +67,9 @@ func Start(stdout, stderr io.Writer, args []string) error {
 }
 
 type app struct {
-	logger    *logging.Logger
-	workdir   internal.Workdir
-	cleanup   func()
-	discovery bool
+	logger  *logging.Logger
+	workdir internal.Workdir
+	cleanup func()
 
 	modules    *module.Service
 	workspaces *workspace.Service
@@ -96,7 +83,6 @@ type app struct {
 // relaying events. The app's cleanup function should be called when finished.
 func newApp(cfg config, stdout io.Writer) (*app, error) {
 	// Setup logging
-	cfg.loggingOptions.TUI = !cfg.discovery
 	logger := logging.NewLogger(cfg.loggingOptions)
 
 	// Perform any conversions from the flag parsed primitive types to pug

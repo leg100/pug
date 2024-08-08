@@ -10,11 +10,12 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/davecgh/go-spew/spew"
+	"github.com/leg100/pug/internal/module"
 	"github.com/leg100/pug/internal/resource"
 	"github.com/leg100/pug/internal/task"
 	"github.com/leg100/pug/internal/tui"
 	"github.com/leg100/pug/internal/tui/keys"
-	"github.com/leg100/pug/internal/tui/module"
+	tuimodule "github.com/leg100/pug/internal/tui/module"
 	"github.com/leg100/pug/internal/version"
 )
 
@@ -33,7 +34,7 @@ const (
 type model struct {
 	*navigator
 
-	modules  tui.ModuleService
+	modules  *module.Service
 	width    int
 	height   int
 	mode     mode
@@ -43,7 +44,7 @@ type model struct {
 	workdir  string
 	err      error
 	info     string
-	tasks    tui.TaskService
+	tasks    *task.Service
 	spinner  *spinner.Model
 	spinning bool
 	maxTasks int
@@ -86,7 +87,7 @@ func newModel(opts Options) (model, error) {
 func (m model) Init() tea.Cmd {
 	return tea.Batch(
 		m.currentModel().Init(),
-		module.ReloadModules(true, m.modules),
+		tuimodule.ReloadModules(true, m.modules),
 	)
 }
 
