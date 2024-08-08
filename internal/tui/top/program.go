@@ -1,48 +1,31 @@
 package top
 
 import (
+	"context"
 	"sync"
 	"testing"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/x/exp/teatest"
-	"github.com/leg100/pug/internal"
 	"github.com/leg100/pug/internal/app"
-	"github.com/leg100/pug/internal/logging"
-	"github.com/leg100/pug/internal/module"
 	"github.com/leg100/pug/internal/resource"
-	"github.com/leg100/pug/internal/run"
-	"github.com/leg100/pug/internal/state"
-	"github.com/leg100/pug/internal/task"
-	"github.com/leg100/pug/internal/workspace"
 	"github.com/stretchr/testify/require"
 )
 
-// Options for starting the TUI.
-type Options struct {
-	Modules    *module.Service
-	Workspaces *workspace.Service
-	States     *state.Service
-	Runs       *run.Service
-	Tasks      *task.Service
-	Logger     *logging.Logger
-	Workdir    internal.Workdir
-	FirstPage  string
-	MaxTasks   int
-	Debug      bool
-	Program    string
-	Terragrunt bool
-}
-
 // Start starts the TUI and blocks until the user exits.
 func Start(cfg app.Config) error {
-	p, err := newProgram(cfg)
+	app, err := app.New(cfg)
 	if err != nil {
 		return err
 	}
-	defer p.cleanup()
+	defer app.Cleanup()
 
-	tp := tea.NewProgram(p.model,
+	m, err := newModel(cfg, app)
+	if err != nil {
+		return err
+	}
+
+	tp := tea.NewProgram(m,
 		// Use the full size of the terminal with its "alternate screen buffer"
 		tea.WithAltScreen(),
 		// Enabling mouse cell motion removes the ability to "blackboard" text
@@ -52,12 +35,10 @@ func Start(cfg app.Config) error {
 		//
 		// tea.WithMouseCellMotion(),
 	)
-	// Relay events in background
-	go func() {
-		for msg := range p.ch {
-			tp.Send(msg)
-		}
-	}()
+
+	subscribe := setupSubscriptions(app, tp)
+	defer subscribe()
+
 	// Blocks until user quits
 	_, err = tp.Run()
 	return err
@@ -65,46 +46,39 @@ func Start(cfg app.Config) error {
 
 // StartTest starts the TUI and returns a test model for testing purposes.
 func StartTest(t *testing.T, cfg app.Config, width, height int) *teatest.TestModel {
-	p, err := newProgram(cfg)
+	app, err := app.New(cfg)
+	if err != nil {
+		return nil
+	}
+	t.Cleanup(app.Cleanup)
+
+	m, err := newModel(cfg, app)
 	require.NoError(t, err)
 
-	tm := teatest.NewTestModel(t, p.model, teatest.WithInitialTermSize(width, height))
+	tm := teatest.NewTestModel(t, m, teatest.WithInitialTermSize(width, height))
+
+	unsub := setupSubscriptions(app, tm)
+	t.Cleanup(unsub)
+
 	t.Cleanup(func() {
-		p.cleanup()
 		tm.Quit()
 	})
-
-	// Relay events in background
-	go func() {
-		for msg := range p.ch {
-			tm.Send(msg)
-		}
-	}()
 	return tm
 }
 
-type program struct {
-	model   tea.Model
-	ch      chan tea.Msg
-	cleanup func()
+type sendable interface {
+	Send(tea.Msg)
 }
 
-func newProgram(cfg app.Config) (*program, error) {
-	app, err := app.New(cfg)
-	if err != nil {
-		return nil, err
-	}
-	m, err := newModel(cfg, app)
-	if err != nil {
-		app.Cleanup()
-		return nil, err
-	}
+func setupSubscriptions(app *app.App, model sendable) func() {
 	// Relay resource events to TUI. Deliberately set up subscriptions *before*
 	// any events are triggered, to ensure the TUI receives all messages.
 	ch := make(chan tea.Msg)
 	wg := sync.WaitGroup{} // sync closure of subscriptions
 
-	logEvents := app.Logger.Subscribe()
+	ctx, cancel := context.WithCancel(context.Background())
+
+	logEvents := app.Logger.Subscribe(ctx)
 	wg.Add(1)
 	go func() {
 		for ev := range logEvents {
@@ -113,7 +87,7 @@ func newProgram(cfg app.Config) (*program, error) {
 		wg.Done()
 	}()
 
-	modEvents := app.Modules.Subscribe()
+	modEvents := app.Modules.Subscribe(ctx)
 	wg.Add(1)
 	go func() {
 		for ev := range modEvents {
@@ -122,7 +96,7 @@ func newProgram(cfg app.Config) (*program, error) {
 		wg.Done()
 	}()
 
-	wsEvents := app.Workspaces.Subscribe()
+	wsEvents := app.Workspaces.Subscribe(ctx)
 	wg.Add(1)
 	go func() {
 		for ev := range wsEvents {
@@ -131,7 +105,7 @@ func newProgram(cfg app.Config) (*program, error) {
 		wg.Done()
 	}()
 
-	stateEvents := app.States.Subscribe()
+	stateEvents := app.States.Subscribe(ctx)
 	wg.Add(1)
 	go func() {
 		for ev := range stateEvents {
@@ -140,7 +114,7 @@ func newProgram(cfg app.Config) (*program, error) {
 		wg.Done()
 	}()
 
-	runEvents := app.Runs.Subscribe()
+	runEvents := app.Runs.Subscribe(ctx)
 	wg.Add(1)
 	go func() {
 		for ev := range runEvents {
@@ -149,7 +123,7 @@ func newProgram(cfg app.Config) (*program, error) {
 		wg.Done()
 	}()
 
-	taskEvents := app.Tasks.TaskBroker.Subscribe()
+	taskEvents := app.Tasks.TaskBroker.Subscribe(ctx)
 	wg.Add(1)
 	go func() {
 		for ev := range taskEvents {
@@ -158,7 +132,7 @@ func newProgram(cfg app.Config) (*program, error) {
 		wg.Done()
 	}()
 
-	taskGroupEvents := app.Tasks.GroupBroker.Subscribe()
+	taskGroupEvents := app.Tasks.GroupBroker.Subscribe(ctx)
 	wg.Add(1)
 	go func() {
 		for ev := range taskGroupEvents {
@@ -167,12 +141,19 @@ func newProgram(cfg app.Config) (*program, error) {
 		wg.Done()
 	}()
 
+	// Relay events to model in background
+	go func() {
+		for msg := range ch {
+			model.Send(msg)
+		}
+	}()
+
 	// Automatically load workspaces whenever modules are loaded.
-	app.Workspaces.LoadWorkspacesUponModuleLoad(app.Modules.Subscribe())
+	app.Workspaces.LoadWorkspacesUponModuleLoad(app.Modules.Subscribe(ctx))
 
 	// Whenever a workspace is loaded, pull its state
 	go func() {
-		for event := range app.Workspaces.Subscribe() {
+		for event := range app.Workspaces.Subscribe(ctx) {
 			if event.Type == resource.CreatedEvent {
 				_, _ = app.States.CreateReloadTask(event.Payload.ID)
 			}
@@ -180,31 +161,11 @@ func newProgram(cfg app.Config) (*program, error) {
 	}()
 
 	// cleanup function to be invoked when program is terminated.
-	cleanup := func() {
-		// Gracefully shutdown remaining tasks.
-		//
-		// TODO: check this is the right place to do this, and not *after*
-		// shutting down pub/sub below.
-		app.Cleanup()
-
-		// Close subscriptions
-		app.Logger.Shutdown()
-		app.Tasks.TaskBroker.Shutdown()
-		app.Tasks.GroupBroker.Shutdown()
-		app.Modules.Shutdown()
-		app.Workspaces.Shutdown()
-		app.Runs.Shutdown()
-		app.States.Shutdown()
-
+	return func() {
+		cancel()
 		// Wait for relays to finish before closing channel, to avoid sends
 		// to a closed channel, which would result in a panic.
 		wg.Wait()
 		close(ch)
 	}
-
-	return &program{
-		cleanup: cleanup,
-		ch:      ch,
-		model:   m,
-	}, nil
 }

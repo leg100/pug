@@ -91,15 +91,24 @@ func New(cfg Config) (*App, error) {
 		// Cancel context
 		cancel()
 
-		// Remove all run artefacts (plan files etc,...)
-		for _, run := range runs.List(run.ListOptions{}) {
-			_ = os.RemoveAll(run.ArtefactsPath)
-		}
+		// Close subscriptions
+		logger.Shutdown()
+		tasks.TaskBroker.Shutdown()
+		tasks.GroupBroker.Shutdown()
+		modules.Shutdown()
+		workspaces.Shutdown()
+		runs.Shutdown()
+		states.Shutdown()
 
 		// Wait for running tasks to terminate. Canceling the context (above)
 		// sends each task a termination signal so each task's process should
 		// shut itself down.
 		waitTasks()
+
+		// Remove all run artefacts (plan files etc,...)
+		for _, run := range runs.List(run.ListOptions{}) {
+			_ = os.RemoveAll(run.ArtefactsPath)
+		}
 	}
 
 	return &App{
