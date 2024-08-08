@@ -65,24 +65,24 @@ func setup(t *testing.T, workdir string, opts ...configOption) *testModel {
 			},
 		},
 	}
-	{
-		// Copy workdir to a dedicated directory for this test, to ensure any
-		// artefacts created in workdir are done so in isolation from other
-		// tests that are run in parallel, and to ensure artefacts don't persist to
-		// future invocations of this test.
-		target := t.TempDir()
-		err = cp.Copy(workdir, target)
-		require.NoError(t, err)
-		cfg.Workdir, err = internal.NewWorkdir(target)
-		require.NoError(t, err)
-	}
+
+	// Copy workdir to a dedicated directory for this test, to ensure any
+	// artefacts created in workdir are done so in isolation from other
+	// tests that are run in parallel, and to ensure artefacts don't persist to
+	// future invocations of this test.
+	target := t.TempDir()
+	err = cp.Copy(workdir, target)
+	require.NoError(t, err)
+	cfg.Workdir, err = internal.NewWorkdir(target)
+	require.NoError(t, err)
+
 	for _, fn := range opts {
 		fn(&cfg)
 	}
 
 	return &testModel{
 		TestModel: top.StartTest(t, cfg, 150, 50),
-		workdir:   workdir,
+		workdir:   target,
 	}
 }
 

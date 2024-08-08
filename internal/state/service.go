@@ -30,7 +30,7 @@ type ServiceOptions struct {
 
 func NewService(opts ServiceOptions) *Service {
 	broker := pubsub.NewBroker[*State](opts.Logger)
-	svc := &Service{
+	return &Service{
 		modules:    opts.Modules,
 		workspaces: opts.Workspaces,
 		tasks:      opts.Tasks,
@@ -38,17 +38,6 @@ func NewService(opts ServiceOptions) *Service {
 		Broker:     broker,
 		logger:     opts.Logger,
 	}
-
-	// Whenever a workspace is added, pull its state
-	go func() {
-		for event := range opts.Workspaces.Subscribe() {
-			if event.Type == resource.CreatedEvent {
-				_, _ = svc.CreateReloadTask(event.Payload.ID)
-			}
-		}
-	}()
-
-	return svc
 }
 
 // Get retrieves the state for a workspace.

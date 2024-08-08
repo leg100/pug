@@ -170,7 +170,7 @@ func newProgram(cfg app.Config) (*program, error) {
 	// Automatically load workspaces whenever modules are loaded.
 	app.Workspaces.LoadWorkspacesUponModuleLoad(app.Modules.Subscribe())
 
-	// Whenever a workspace is added, pull its state
+	// Whenever a workspace is loaded, pull its state
 	go func() {
 		for event := range app.Workspaces.Subscribe() {
 			if event.Type == resource.CreatedEvent {
