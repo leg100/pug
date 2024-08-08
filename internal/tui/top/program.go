@@ -7,6 +7,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/x/exp/teatest"
 	"github.com/leg100/pug/internal"
+	"github.com/leg100/pug/internal/app"
 	"github.com/leg100/pug/internal/logging"
 	"github.com/leg100/pug/internal/module"
 	"github.com/leg100/pug/internal/resource"
@@ -34,8 +35,8 @@ type Options struct {
 }
 
 // Start starts the TUI and blocks until the user exits.
-func Start(opts Options) error {
-	p, err := newProgram(opts)
+func Start(cfg app.Config) error {
+	p, err := newProgram(cfg)
 	if err != nil {
 		return err
 	}
@@ -63,8 +64,8 @@ func Start(opts Options) error {
 }
 
 // StartTest starts the TUI and returns a test model for testing purposes.
-func StartTest(t *testing.T, opts Options, width, height int) *teatest.TestModel {
-	p, err := newProgram(opts)
+func StartTest(t *testing.T, cfg app.Config, width, height int) *teatest.TestModel {
+	p, err := newProgram(cfg)
 	require.NoError(t, err)
 
 	tm := teatest.NewTestModel(t, p.model, teatest.WithInitialTermSize(width, height))
@@ -88,9 +89,14 @@ type program struct {
 	cleanup func()
 }
 
-func newProgram(opts Options) (*program, error) {
-	m, err := newModel(opts)
+func newProgram(cfg app.Config) (*program, error) {
+	app, err := app.New(cfg)
 	if err != nil {
+		return nil, err
+	}
+	m, err := newModel(cfg, app)
+	if err != nil {
+		app.Cleanup()
 		return nil, err
 	}
 	// Relay resource events to TUI. Deliberately set up subscriptions *before*
@@ -98,7 +104,7 @@ func newProgram(opts Options) (*program, error) {
 	ch := make(chan tea.Msg)
 	wg := sync.WaitGroup{} // sync closure of subscriptions
 
-	logEvents := opts.Logger.Subscribe()
+	logEvents := app.Logger.Subscribe()
 	wg.Add(1)
 	go func() {
 		for ev := range logEvents {
@@ -107,7 +113,7 @@ func newProgram(opts Options) (*program, error) {
 		wg.Done()
 	}()
 
-	modEvents := opts.Modules.Subscribe()
+	modEvents := app.Modules.Subscribe()
 	wg.Add(1)
 	go func() {
 		for ev := range modEvents {
@@ -116,7 +122,7 @@ func newProgram(opts Options) (*program, error) {
 		wg.Done()
 	}()
 
-	wsEvents := opts.Workspaces.Subscribe()
+	wsEvents := app.Workspaces.Subscribe()
 	wg.Add(1)
 	go func() {
 		for ev := range wsEvents {
@@ -125,7 +131,7 @@ func newProgram(opts Options) (*program, error) {
 		wg.Done()
 	}()
 
-	stateEvents := opts.States.Subscribe()
+	stateEvents := app.States.Subscribe()
 	wg.Add(1)
 	go func() {
 		for ev := range stateEvents {
@@ -134,7 +140,7 @@ func newProgram(opts Options) (*program, error) {
 		wg.Done()
 	}()
 
-	runEvents := opts.Runs.Subscribe()
+	runEvents := app.Runs.Subscribe()
 	wg.Add(1)
 	go func() {
 		for ev := range runEvents {
@@ -143,7 +149,7 @@ func newProgram(opts Options) (*program, error) {
 		wg.Done()
 	}()
 
-	taskEvents := opts.Tasks.TaskBroker.Subscribe()
+	taskEvents := app.Tasks.TaskBroker.Subscribe()
 	wg.Add(1)
 	go func() {
 		for ev := range taskEvents {
@@ -152,7 +158,7 @@ func newProgram(opts Options) (*program, error) {
 		wg.Done()
 	}()
 
-	taskGroupEvents := opts.Tasks.GroupBroker.Subscribe()
+	taskGroupEvents := app.Tasks.GroupBroker.Subscribe()
 	wg.Add(1)
 	go func() {
 		for ev := range taskGroupEvents {
@@ -162,27 +168,33 @@ func newProgram(opts Options) (*program, error) {
 	}()
 
 	// Automatically load workspaces whenever modules are loaded.
-	opts.Workspaces.LoadWorkspacesUponModuleLoad(opts.Modules.Subscribe())
+	app.Workspaces.LoadWorkspacesUponModuleLoad(app.Modules.Subscribe())
 
 	// Whenever a workspace is added, pull its state
 	go func() {
-		for event := range opts.Workspaces.Subscribe() {
+		for event := range app.Workspaces.Subscribe() {
 			if event.Type == resource.CreatedEvent {
-				_, _ = opts.States.CreateReloadTask(event.Payload.ID)
+				_, _ = app.States.CreateReloadTask(event.Payload.ID)
 			}
 		}
 	}()
 
 	// cleanup function to be invoked when program is terminated.
 	cleanup := func() {
+		// Gracefully shutdown remaining tasks.
+		//
+		// TODO: check this is the right place to do this, and not *after*
+		// shutting down pub/sub below.
+		app.Cleanup()
+
 		// Close subscriptions
-		opts.Logger.Shutdown()
-		opts.Tasks.TaskBroker.Shutdown()
-		opts.Tasks.GroupBroker.Shutdown()
-		opts.Modules.Shutdown()
-		opts.Workspaces.Shutdown()
-		opts.Runs.Shutdown()
-		opts.States.Shutdown()
+		app.Logger.Shutdown()
+		app.Tasks.TaskBroker.Shutdown()
+		app.Tasks.GroupBroker.Shutdown()
+		app.Modules.Shutdown()
+		app.Workspaces.Shutdown()
+		app.Runs.Shutdown()
+		app.States.Shutdown()
 
 		// Wait for relays to finish before closing channel, to avoid sends
 		// to a closed channel, which would result in a panic.

@@ -5,105 +5,55 @@ package app
 
 import (
 	"context"
-	"fmt"
-	"io"
 	"os"
 
-	"github.com/leg100/pug/internal"
 	"github.com/leg100/pug/internal/logging"
 	"github.com/leg100/pug/internal/module"
 	"github.com/leg100/pug/internal/run"
 	"github.com/leg100/pug/internal/state"
 	"github.com/leg100/pug/internal/task"
-	"github.com/leg100/pug/internal/tui/top"
-	"github.com/leg100/pug/internal/version"
 	"github.com/leg100/pug/internal/workspace"
 )
 
-// Start Pug.
-func Start(stdout, stderr io.Writer, args []string) error {
-	// Parse configuration from env vars and flags
-	cfg, err := parse(stderr, args)
-	if err != nil {
-		return err
-	}
+type App struct {
+	Logger  *logging.Logger
+	Cleanup func()
 
-	if cfg.version {
-		fmt.Fprintln(stdout, "pug", version.Version)
-		return nil
-	}
+	Modules    *module.Service
+	Workspaces *workspace.Service
+	Runs       *run.Service
+	States     *state.Service
+	Tasks      *task.Service
+}
 
-	// Construct services and start daemons
-	app, err := newApp(cfg, stdout)
-	if err != nil {
-		return err
-	}
-	defer app.cleanup()
+// New starts the application, constructing services, starting daemons and
+// subscribing to events. The returned app is used for constructing the TUI and
+// relaying events. The app's cleanup function should be called when finished.
+func New(cfg Config) (*App, error) {
+	// Setup logging
+	logger := logging.NewLogger(cfg.LoggingOptions)
 
 	// Log some info useful to the user
-	app.logger.Info("loaded config",
-		"log_level", cfg.loggingOptions.Level,
+	logger.Info("loaded config",
+		"log_level", cfg.LoggingOptions.Level,
 		"max_tasks", cfg.MaxTasks,
 		"plugin_cache", cfg.PluginCache,
 		"program", cfg.Program,
-		"work_dir", cfg.WorkDir,
+		"work_dir", cfg.Workdir,
 	)
-
-	// Start the TUI program.
-	return top.Start(top.Options{
-		Modules:    app.modules,
-		Workspaces: app.workspaces,
-		Runs:       app.runs,
-		States:     app.states,
-		Tasks:      app.tasks,
-		Logger:     app.logger,
-		FirstPage:  cfg.FirstPage,
-		Workdir:    app.workdir,
-		MaxTasks:   cfg.MaxTasks,
-		Debug:      cfg.Debug,
-		Program:    cfg.Program,
-		Terragrunt: cfg.Terragrunt,
-	})
-}
-
-type app struct {
-	logger  *logging.Logger
-	workdir internal.Workdir
-	cleanup func()
-
-	modules    *module.Service
-	workspaces *workspace.Service
-	runs       *run.Service
-	states     *state.Service
-	tasks      *task.Service
-}
-
-// newApp starts the application, constructing services, starting daemons and
-// subscribing to events. The returned app is used for constructing the TUI and
-// relaying events. The app's cleanup function should be called when finished.
-func newApp(cfg config, stdout io.Writer) (*app, error) {
-	// Setup logging
-	logger := logging.NewLogger(cfg.loggingOptions)
-
-	// Perform any conversions from the flag parsed primitive types to pug
-	// defined types.
-	workdir, err := internal.NewWorkdir(cfg.WorkDir)
-	if err != nil {
-		return nil, err
-	}
 
 	// Instantiate services
 	tasks := task.NewService(task.ServiceOptions{
 		Program:    cfg.Program,
 		Logger:     logger,
-		Workdir:    workdir,
+		Workdir:    cfg.Workdir,
 		UserEnvs:   cfg.Envs,
 		UserArgs:   cfg.Args,
 		Terragrunt: cfg.Terragrunt,
 	})
 	modules := module.NewService(module.ServiceOptions{
 		Tasks:       tasks,
-		Workdir:     workdir,
+		Workdir:     cfg.Workdir,
 		PluginCache: cfg.PluginCache,
 		Logger:      logger,
 		Terragrunt:  cfg.Terragrunt,
@@ -152,14 +102,13 @@ func newApp(cfg config, stdout io.Writer) (*app, error) {
 		waitTasks()
 	}
 
-	return &app{
-		modules:    modules,
-		workspaces: workspaces,
-		runs:       runs,
-		tasks:      tasks,
-		states:     states,
-		cleanup:    cleanup,
-		logger:     logger,
-		workdir:    workdir,
+	return &App{
+		Modules:    modules,
+		Workspaces: workspaces,
+		Runs:       runs,
+		Tasks:      tasks,
+		States:     states,
+		Cleanup:    cleanup,
+		Logger:     logger,
 	}, nil
 }
