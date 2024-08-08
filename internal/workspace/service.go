@@ -78,25 +78,23 @@ func (s *Service) LoadWorkspacesUponModuleLoad(sub <-chan resource.Event[*module
 		return err
 	}
 
-	go func() {
-		for event := range sub {
-			switch event.Type {
-			case resource.CreatedEvent:
-				if err := reload(event.Payload.ID); err != nil {
-					s.logger.Error("reloading workspaces", "module", event.Payload)
-				}
-			case resource.UpdatedEvent:
-				if event.Payload.CurrentWorkspaceID != nil {
-					// Module already has a current workspace; no need to reload
-					// workspaces
-					continue
-				}
-				if err := reload(event.Payload.ID); err != nil {
-					s.logger.Error("reloading workspaces", "module", event.Payload)
-				}
+	for event := range sub {
+		switch event.Type {
+		case resource.CreatedEvent:
+			if err := reload(event.Payload.ID); err != nil {
+				s.logger.Error("reloading workspaces", "module", event.Payload)
+			}
+		case resource.UpdatedEvent:
+			if event.Payload.CurrentWorkspaceID != nil {
+				// Module already has a current workspace; no need to reload
+				// workspaces
+				continue
+			}
+			if err := reload(event.Payload.ID); err != nil {
+				s.logger.Error("reloading workspaces", "module", event.Payload)
 			}
 		}
-	}()
+	}
 }
 
 // Reload returns a task spec that runs `terraform workspace list` on a

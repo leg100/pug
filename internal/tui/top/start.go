@@ -36,8 +36,8 @@ func Start(cfg app.Config) error {
 		// tea.WithMouseCellMotion(),
 	)
 
-	subscribe := setupSubscriptions(app, tp)
-	defer subscribe()
+	unsub := setupSubscriptions(app, tp)
+	defer unsub()
 
 	// Blocks until user quits
 	_, err = tp.Run()
@@ -78,88 +78,102 @@ func setupSubscriptions(app *app.App, model sendable) func() {
 
 	ctx, cancel := context.WithCancel(context.Background())
 
-	logEvents := app.Logger.Subscribe(ctx)
-	wg.Add(1)
-	go func() {
-		for ev := range logEvents {
-			ch <- ev
-		}
-		wg.Done()
-	}()
+	{
+		sub := app.Logger.Subscribe(ctx)
+		wg.Add(1)
+		go func() {
+			for ev := range sub {
+				ch <- ev
+			}
+			wg.Done()
+		}()
+	}
+	{
+		sub := app.Modules.Subscribe(ctx)
+		wg.Add(1)
+		go func() {
+			for ev := range sub {
+				ch <- ev
+			}
+			wg.Done()
+		}()
+	}
+	{
+		sub := app.Workspaces.Subscribe(ctx)
+		wg.Add(1)
+		go func() {
+			for ev := range sub {
+				ch <- ev
+			}
+			wg.Done()
+		}()
 
-	modEvents := app.Modules.Subscribe(ctx)
-	wg.Add(1)
-	go func() {
-		for ev := range modEvents {
-			ch <- ev
-		}
-		wg.Done()
-	}()
+	}
+	{
+		sub := app.States.Subscribe(ctx)
+		wg.Add(1)
+		go func() {
+			for ev := range sub {
+				ch <- ev
+			}
+			wg.Done()
+		}()
 
-	wsEvents := app.Workspaces.Subscribe(ctx)
-	wg.Add(1)
-	go func() {
-		for ev := range wsEvents {
-			ch <- ev
-		}
-		wg.Done()
-	}()
+	}
+	{
+		sub := app.Runs.Subscribe(ctx)
+		wg.Add(1)
+		go func() {
+			for ev := range sub {
+				ch <- ev
+			}
+			wg.Done()
+		}()
 
-	stateEvents := app.States.Subscribe(ctx)
-	wg.Add(1)
-	go func() {
-		for ev := range stateEvents {
-			ch <- ev
-		}
-		wg.Done()
-	}()
+	}
+	{
+		sub := app.Tasks.TaskBroker.Subscribe(ctx)
+		wg.Add(1)
+		go func() {
+			for ev := range sub {
+				ch <- ev
+			}
+			wg.Done()
+		}()
 
-	runEvents := app.Runs.Subscribe(ctx)
-	wg.Add(1)
-	go func() {
-		for ev := range runEvents {
-			ch <- ev
-		}
-		wg.Done()
-	}()
-
-	taskEvents := app.Tasks.TaskBroker.Subscribe(ctx)
-	wg.Add(1)
-	go func() {
-		for ev := range taskEvents {
-			ch <- ev
-		}
-		wg.Done()
-	}()
-
-	taskGroupEvents := app.Tasks.GroupBroker.Subscribe(ctx)
-	wg.Add(1)
-	go func() {
-		for ev := range taskGroupEvents {
-			ch <- ev
-		}
-		wg.Done()
-	}()
-
+	}
+	{
+		sub := app.Tasks.GroupBroker.Subscribe(ctx)
+		wg.Add(1)
+		go func() {
+			for ev := range sub {
+				ch <- ev
+			}
+			wg.Done()
+		}()
+	}
 	// Relay events to model in background
 	go func() {
 		for msg := range ch {
 			model.Send(msg)
 		}
 	}()
-
 	// Automatically load workspaces whenever modules are loaded.
-	app.Workspaces.LoadWorkspacesUponModuleLoad(app.Modules.Subscribe(ctx))
-
+	{
+		sub := app.Modules.Subscribe(ctx)
+		go app.Workspaces.LoadWorkspacesUponModuleLoad(sub)
+	}
 	// Whenever a workspace is loaded, pull its state
-	go func() {
-		for event := range app.Workspaces.Subscribe(ctx) {
-			if event.Type == resource.CreatedEvent {
-				_, _ = app.States.CreateReloadTask(event.Payload.ID)
+	{
+		sub := app.Workspaces.Subscribe(ctx)
+		go func() {
+			for event := range sub {
+				if event.Type == resource.CreatedEvent {
+					_, _ = app.States.CreateReloadTask(event.Payload.ID)
+				}
 			}
-		}
-	}()
-
+		}()
+	}
 	// cleanup function to be invoked when program is terminated.
 	return func() {
 		cancel()
