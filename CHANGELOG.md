@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.5.0](https://github.com/leg100/pug/compare/v0.4.3...v0.5.0) (2024-08-09)
+
+
+### ⚠ BREAKING CHANGES
+
+* standardize navigation keys and change untaint key ([#110](https://github.com/leg100/pug/issues/110))
+
+### Features
+
+* standardize navigation keys and change untaint key ([#110](https://github.com/leg100/pug/issues/110)) ([178bff4](https://github.com/leg100/pug/commit/178bff448000668c2058a990652a257d4020e711))
+
+
+### Miscellaneous
+
+* speed up module discovery ([#112](https://github.com/leg100/pug/issues/112)) ([0099c23](https://github.com/leg100/pug/commit/0099c238bf20519b78c241efccde7fdf42b7c776))
+
 ## [0.4.3](https://github.com/leg100/pug/compare/v0.4.2...v0.4.3) (2024-07-25)
 
 
