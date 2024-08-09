@@ -9,8 +9,10 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/leg100/pug/internal"
 	"github.com/leg100/pug/internal/logging"
 	"github.com/leg100/pug/internal/testutils"
+	"github.com/peterbourgon/ff/v4"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -28,21 +30,26 @@ func TestConfig(t *testing.T) {
 		file string
 		args []string
 		envs []string
-		want func(t *testing.T, got config)
+		want func(t *testing.T, got Config)
 	}{
 		{
 			"defaults",
 			"",
 			nil,
 			nil,
-			func(t *testing.T, got config) {
-				want := config{
+			func(t *testing.T, got Config) {
+				pwd, err := os.Getwd()
+				require.NoError(t, err)
+				wd, err := internal.NewWorkdir(pwd)
+				require.NoError(t, err)
+
+				want := Config{
 					Program:   "terraform",
 					MaxTasks:  2 * runtime.NumCPU(),
 					FirstPage: "modules",
-					WorkDir:   ".",
+					Workdir:   wd,
 					DataDir:   filepath.Join(os.Getenv("HOME"), ".pug"),
-					loggingOptions: logging.Options{
+					Logging: logging.Options{
 						Level: "info",
 					},
 				}
@@ -54,7 +61,7 @@ func TestConfig(t *testing.T) {
 			"program: tofu\n",
 			nil,
 			nil,
-			func(t *testing.T, got config) {
+			func(t *testing.T, got Config) {
 				assert.Equal(t, got.Program, "tofu")
 			},
 		},
@@ -63,7 +70,7 @@ func TestConfig(t *testing.T) {
 			"max-tasks: 3\n",
 			nil,
 			nil,
-			func(t *testing.T, got config) {
+			func(t *testing.T, got Config) {
 				assert.Equal(t, got.MaxTasks, 3)
 			},
 		},
@@ -72,7 +79,7 @@ func TestConfig(t *testing.T) {
 			"",
 			nil,
 			[]string{"PUG_PROGRAM=tofu"},
-			func(t *testing.T, got config) {
+			func(t *testing.T, got Config) {
 				assert.Equal(t, got.Program, "tofu")
 			},
 		},
@@ -81,7 +88,7 @@ func TestConfig(t *testing.T) {
 			"",
 			[]string{"--program", "tofu"},
 			nil,
-			func(t *testing.T, got config) {
+			func(t *testing.T, got Config) {
 				assert.Equal(t, got.Program, "tofu")
 			},
 		},
@@ -90,7 +97,7 @@ func TestConfig(t *testing.T) {
 			"program: tofu\n",
 			nil,
 			[]string{"PUG_PROGRAM=terragrunt"},
-			func(t *testing.T, got config) {
+			func(t *testing.T, got Config) {
 				assert.Equal(t, got.Program, "terragrunt")
 			},
 		},
@@ -99,7 +106,7 @@ func TestConfig(t *testing.T) {
 			"",
 			[]string{"--program", "tofu"},
 			[]string{"PUG_PROGRAM=terragrunt"},
-			func(t *testing.T, got config) {
+			func(t *testing.T, got Config) {
 				assert.Equal(t, got.Program, "tofu")
 			},
 		},
@@ -108,7 +115,7 @@ func TestConfig(t *testing.T) {
 			"program: cloudformation\n",
 			[]string{"--program", "tofu"},
 			[]string{"PUG_PROGRAM=terragrunt"},
-			func(t *testing.T, got config) {
+			func(t *testing.T, got Config) {
 				assert.Equal(t, got.Program, "tofu")
 			},
 		},
@@ -117,7 +124,7 @@ func TestConfig(t *testing.T) {
 			"",
 			nil,
 			[]string{"TF_PLUGIN_CACHE_DIR=../testdata/plugin_cache"},
-			func(t *testing.T, got config) {
+			func(t *testing.T, got Config) {
 				assert.True(t, got.PluginCache)
 			},
 		},
@@ -126,7 +133,7 @@ func TestConfig(t *testing.T) {
 			"",
 			nil,
 			[]string{"PUG_FIRST_PAGE=runs"},
-			func(t *testing.T, got config) {
+			func(t *testing.T, got Config) {
 				assert.Equal(t, got.FirstPage, "runs")
 			},
 		},
@@ -135,7 +142,7 @@ func TestConfig(t *testing.T) {
 			"",
 			[]string{"-e", "TF_LOG=DEBUG"},
 			nil,
-			func(t *testing.T, got config) {
+			func(t *testing.T, got Config) {
 				assert.Equal(t, got.Envs, []string{"TF_LOG=DEBUG"})
 			},
 		},
@@ -144,7 +151,7 @@ func TestConfig(t *testing.T) {
 			"",
 			[]string{"-e", "TF_LOG=DEBUG", "-e", "TF_IGNORE=TRACE", "-e", "TF_PLUGIN_CACHE_DIR=/tmp"},
 			nil,
-			func(t *testing.T, got config) {
+			func(t *testing.T, got Config) {
 				assert.Len(t, got.Envs, 3)
 				assert.Contains(t, got.Envs, "TF_LOG=DEBUG")
 				assert.Contains(t, got.Envs, "TF_IGNORE=TRACE")
@@ -171,7 +178,7 @@ func TestConfig(t *testing.T) {
 			}
 
 			// and pass in flags
-			got, err := parse(io.Discard, tt.args)
+			got, err := Parse(io.Discard, tt.args)
 			require.NoError(t, err)
 
 			tt.want(t, got)
@@ -180,11 +187,13 @@ func TestConfig(t *testing.T) {
 }
 
 func TestHelpFlag(t *testing.T) {
-	got := new(bytes.Buffer)
-	_, err := parse(got, []string{"--help"})
-	// Help flag should return error
-	require.Error(t, err)
+	for _, flag := range []string{"--help", "-h"} {
+		got := new(bytes.Buffer)
+		_, err := Parse(got, []string{flag})
+		// Help flag should return error
+		assert.ErrorIs(t, err, ff.ErrHelp)
 
-	want := "-l, --log-level STRING             Logging level (valid: info,debug,error,warn). (default: info)"
-	assert.Contains(t, got.String(), want)
+		want := "-l, --log-level STRING             Logging level (valid: info,debug,error,warn). (default: info)"
+		assert.Contains(t, got.String(), want)
+	}
 }

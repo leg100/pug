@@ -10,18 +10,14 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/davecgh/go-spew/spew"
-	"github.com/leg100/pug/internal"
-	"github.com/leg100/pug/internal/logging"
+	"github.com/leg100/pug/internal/app"
 	"github.com/leg100/pug/internal/module"
 	"github.com/leg100/pug/internal/resource"
-	"github.com/leg100/pug/internal/run"
-	"github.com/leg100/pug/internal/state"
 	"github.com/leg100/pug/internal/task"
 	"github.com/leg100/pug/internal/tui"
 	"github.com/leg100/pug/internal/tui/keys"
 	tuimodule "github.com/leg100/pug/internal/tui/module"
 	"github.com/leg100/pug/internal/version"
-	"github.com/leg100/pug/internal/workspace"
 )
 
 // pug is in one of several modes, which alter how all messages are handled.
@@ -55,25 +51,9 @@ type model struct {
 	maxTasks int
 }
 
-type Options struct {
-	Modules    *module.Service
-	Workspaces *workspace.Service
-	States     *state.Service
-	Runs       *run.Service
-	Tasks      *task.Service
-	Logger     *logging.Logger
-	Workdir    internal.Workdir
-	FirstPage  string
-	MaxTasks   int
-	Debug      bool
-	Program    string
-	Terragrunt bool
-}
-
-// New constructs the top-level TUI model.
-func New(opts Options) (model, error) {
+func newModel(cfg app.Config, app *app.App) (model, error) {
 	var dump *os.File
-	if opts.Debug {
+	if cfg.Debug {
 		var err error
 		dump, err = os.OpenFile("messages.log", os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0o644)
 		if err != nil {
@@ -86,23 +66,22 @@ func New(opts Options) (model, error) {
 	_ = lipgloss.HasDarkBackground()
 
 	spinner := spinner.New(spinner.WithSpinner(spinner.Line))
-	makers := makeMakers(opts, &spinner)
+	makers := makeMakers(cfg, app, &spinner)
 
 	m := model{
-		modules:  opts.Modules,
+		modules:  app.Modules,
 		spinner:  &spinner,
-		tasks:    opts.Tasks,
-		maxTasks: opts.MaxTasks,
+		tasks:    app.Tasks,
+		maxTasks: cfg.MaxTasks,
 		dump:     dump,
-		workdir:  opts.Workdir.PrettyString(),
+		workdir:  cfg.Workdir.PrettyString(),
 	}
 
 	var err error
-	m.navigator, err = newNavigator(opts, makers)
+	m.navigator, err = newNavigator(cfg.FirstPage, makers)
 	if err != nil {
 		return model{}, err
 	}
-
 	return m, nil
 }
 

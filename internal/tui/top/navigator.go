@@ -22,13 +22,13 @@ type navigator struct {
 	height int
 }
 
-func newNavigator(opts Options, makers map[tui.Kind]tui.Maker) (*navigator, error) {
+func newNavigator(firstPage string, makers map[tui.Kind]tui.Maker) (*navigator, error) {
 	n := &navigator{
 		makers: makers,
 		cache:  tui.NewCache(),
 	}
 
-	firstKind, err := tui.FirstPageKind(opts.FirstPage)
+	firstKind, err := tui.FirstPageKind(firstPage)
 	if err != nil {
 		return nil, err
 	}

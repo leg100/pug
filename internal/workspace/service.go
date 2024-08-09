@@ -46,10 +46,6 @@ type modules interface {
 	List() []*module.Module
 }
 
-type moduleSubscription interface {
-	Subscribe() <-chan resource.Event[*module.Module]
-}
-
 func NewService(opts ServiceOptions) *Service {
 	broker := pubsub.NewBroker[*Workspace](opts.Logger)
 	table := resource.NewTable(broker)
@@ -72,9 +68,7 @@ func NewService(opts ServiceOptions) *Service {
 //
 // TODO: "load" is ambiguous, it often means the opposite of save, i.e. read
 // from a system, whereas what is intended is to save or add workspaces to pug.
-func (s *Service) LoadWorkspacesUponModuleLoad(modules moduleSubscription) {
-	sub := modules.Subscribe()
-
+func (s *Service) LoadWorkspacesUponModuleLoad(sub <-chan resource.Event[*module.Module]) {
 	reload := func(moduleID resource.ID) error {
 		spec, err := s.Reload(moduleID)
 		if err != nil {
@@ -84,25 +78,23 @@ func (s *Service) LoadWorkspacesUponModuleLoad(modules moduleSubscription) {
 		return err
 	}
 
-	go func() {
-		for event := range sub {
-			switch event.Type {
-			case resource.CreatedEvent:
-				if err := reload(event.Payload.ID); err != nil {
-					s.logger.Error("reloading workspaces", "module", event.Payload)
-				}
-			case resource.UpdatedEvent:
-				if event.Payload.CurrentWorkspaceID != nil {
-					// Module already has a current workspace; no need to reload
-					// workspaces
-					continue
-				}
-				if err := reload(event.Payload.ID); err != nil {
-					s.logger.Error("reloading workspaces", "module", event.Payload)
-				}
+	for event := range sub {
+		switch event.Type {
+		case resource.CreatedEvent:
+			if err := reload(event.Payload.ID); err != nil {
+				s.logger.Error("reloading workspaces", "module", event.Payload)
+			}
+		case resource.UpdatedEvent:
+			if event.Payload.CurrentWorkspaceID != nil {
+				// Module already has a current workspace; no need to reload
+				// workspaces
+				continue
+			}
+			if err := reload(event.Payload.ID); err != nil {
+				s.logger.Error("reloading workspaces", "module", event.Payload)
 			}
 		}
-	}()
+	}
 }
 
 // Reload returns a task spec that runs `terraform workspace list` on a
