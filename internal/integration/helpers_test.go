@@ -13,16 +13,19 @@ import (
 	"time"
 
 	"github.com/charmbracelet/x/exp/teatest"
+	"github.com/leg100/pug/internal"
+	"github.com/leg100/pug/internal/app"
 	"github.com/leg100/pug/internal/logging"
+	"github.com/leg100/pug/internal/tui/top"
 	"github.com/stretchr/testify/require"
 )
 
 const mirrorConfigPath = "../../mirror/mirror.tfrc"
 
-type configOption func(cfg *config)
+type configOption func(cfg *app.Config)
 
 func withTerragrunt() configOption {
-	return func(cfg *config) {
+	return func(cfg *app.Config) {
 		cfg.Program = "terragrunt"
 		// Use terraform to ensure the provider mirror is valid (terraform and
 		// tofu use different registry hosts, which forms part of the provider
@@ -47,6 +50,22 @@ func setup(t *testing.T, workdir string, opts ...configOption) *testModel {
 	// network roundtrips to retrieve or query providers.
 	mirrorConfigPath, err := filepath.Abs(mirrorConfigPath)
 	require.NoError(t, err)
+
+	cfg := app.Config{
+		FirstPage: "modules",
+		Program:   "terraform",
+		MaxTasks:  3,
+		DataDir:   t.TempDir(),
+		Debug:     true,
+		Envs:      []string{fmt.Sprintf("TF_CLI_CONFIG_FILE=%s", mirrorConfigPath)},
+		Logging: logging.Options{
+			Level: "debug",
+			AdditionalWriters: []io.Writer{
+				&testLogger{t},
+			},
+		},
+	}
+
 	// Copy workdir to a dedicated directory for this test, to ensure any
 	// artefacts created in workdir are done so in isolation from other
 	// tests that are run in parallel, and to ensure artefacts don't persist to
@@ -54,49 +73,16 @@ func setup(t *testing.T, workdir string, opts ...configOption) *testModel {
 	target := t.TempDir()
 	err = cp.Copy(workdir, target)
 	require.NoError(t, err)
-	workdir = target
+	cfg.Workdir, err = internal.NewWorkdir(target)
+	require.NoError(t, err)
 
-	cfg := config{
-		FirstPage: "modules",
-		Program:   "terraform",
-		WorkDir:   workdir,
-		MaxTasks:  3,
-		DataDir:   t.TempDir(),
-		Debug:     true,
-		Envs:      []string{fmt.Sprintf("TF_CLI_CONFIG_FILE=%s", mirrorConfigPath)},
-		loggingOptions: logging.Options{
-			Level: "debug",
-			AdditionalWriters: []io.Writer{
-				&testLogger{t},
-			},
-		},
-	}
 	for _, fn := range opts {
 		fn(&cfg)
 	}
 
-	app, err := startApp(
-		cfg,
-		io.Discard,
-	)
-	require.NoError(t, err)
-	t.Cleanup(app.cleanup)
-
-	tm := teatest.NewTestModel(
-		t,
-		app.model,
-		teatest.WithInitialTermSize(120, 50),
-	)
-	t.Cleanup(func() {
-		tm.Quit()
-	})
-
-	// Relay events to TUI
-	app.relay(tm)
-
 	return &testModel{
-		TestModel: tm,
-		workdir:   workdir,
+		TestModel: top.StartTest(t, cfg, 150, 50),
+		workdir:   target,
 	}
 }
 

@@ -1,6 +1,7 @@
 package pubsub
 
 import (
+	"context"
 	"sync"
 
 	"github.com/leg100/pug/internal/resource"
@@ -51,21 +52,41 @@ func (b *Broker[T]) Shutdown() {
 
 // Subscribe subscribes the caller to a stream of events. The returned channel
 // is closed when the broker is shutdown.
-func (b *Broker[T]) Subscribe() <-chan resource.Event[T] {
+func (b *Broker[T]) Subscribe(ctx context.Context) <-chan resource.Event[T] {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 
+	// Check if broker has shutdown and if so return closed channel
 	select {
 	case <-b.done:
-		// Broker has shutdown, so return closed channel
 		ch := make(chan resource.Event[T])
 		close(ch)
 		return ch
 	default:
 	}
 
+	// Subscribe
 	sub := make(chan resource.Event[T], bufferSize)
 	b.subs[sub] = struct{}{}
+
+	// Unsubscribe when context is done.
+	go func() {
+		<-ctx.Done()
+
+		b.mu.Lock()
+		defer b.mu.Unlock()
+
+		// Check if broker has shutdown and if so do nothing
+		select {
+		case <-b.done:
+			return
+		default:
+		}
+
+		delete(b.subs, sub)
+		close(sub)
+	}()
+
 	return sub
 }
 

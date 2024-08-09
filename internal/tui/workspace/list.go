@@ -24,9 +24,9 @@ var currentColumn = table.Column{
 }
 
 type ListMaker struct {
-	Modules    tui.ModuleService
-	Workspaces tui.WorkspaceService
-	Runs       tui.RunService
+	Modules    *module.Service
+	Workspaces *workspace.Service
+	Runs       *run.Service
 	Helpers    *tui.Helpers
 }
 
@@ -61,9 +61,9 @@ func (m *ListMaker) Make(_ resource.ID, width, height int) (tea.Model, error) {
 }
 
 type list struct {
-	Modules    tui.ModuleService
-	Workspaces tui.WorkspaceService
-	Runs       tui.RunService
+	Modules    *module.Service
+	Workspaces *workspace.Service
+	Runs       *run.Service
 
 	table table.Model[*workspace.Workspace]
 

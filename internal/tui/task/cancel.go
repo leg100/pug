@@ -6,11 +6,12 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/leg100/pug/internal/resource"
+	"github.com/leg100/pug/internal/task"
 	"github.com/leg100/pug/internal/tui"
 )
 
 // cancel task(s)
-func cancel(tasks tui.TaskService, taskIDs ...resource.ID) tea.Cmd {
+func cancel(tasks *task.Service, taskIDs ...resource.ID) tea.Cmd {
 	var (
 		prompt string
 		cmd    tea.Cmd

@@ -18,7 +18,7 @@ type runner struct {
 // StartRunner starts the task runner and returns a function that waits for
 // running tasks to finish.
 func StartRunner(ctx context.Context, logger logging.Interface, tasks *Service, maxTasks int) func() {
-	sub := tasks.TaskBroker.Subscribe()
+	sub := tasks.TaskBroker.Subscribe(context.Background())
 	r := &runner{
 		max:   maxTasks,
 		tasks: tasks,

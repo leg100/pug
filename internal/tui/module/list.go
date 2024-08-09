@@ -14,6 +14,7 @@ import (
 	"github.com/leg100/pug/internal/tui"
 	"github.com/leg100/pug/internal/tui/keys"
 	"github.com/leg100/pug/internal/tui/table"
+	"github.com/leg100/pug/internal/workspace"
 )
 
 var (
@@ -36,9 +37,9 @@ var (
 
 // ListMaker makes module list models
 type ListMaker struct {
-	Modules    tui.ModuleService
-	Workspaces tui.WorkspaceService
-	Runs       tui.RunService
+	Modules    *module.Service
+	Workspaces *workspace.Service
+	Runs       *run.Service
 	Spinner    *spinner.Model
 	Workdir    string
 	Helpers    *tui.Helpers
@@ -95,9 +96,9 @@ func (m *ListMaker) Make(_ resource.ID, width, height int) (tea.Model, error) {
 }
 
 type list struct {
-	Modules    tui.ModuleService
-	Workspaces tui.WorkspaceService
-	Runs       tui.RunService
+	Modules    *module.Service
+	Workspaces *workspace.Service
+	Runs       *run.Service
 
 	table   table.Model[*module.Module]
 	spinner *spinner.Model

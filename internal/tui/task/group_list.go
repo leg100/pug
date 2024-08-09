@@ -26,7 +26,7 @@ var (
 )
 
 type GroupListMaker struct {
-	Tasks   tui.TaskService
+	Tasks   *task.Service
 	Helpers *tui.Helpers
 }
 
@@ -60,7 +60,7 @@ func (m *GroupListMaker) Make(_ resource.ID, width, height int) (tea.Model, erro
 
 type groupList struct {
 	table table.Model[*task.Group]
-	tasks tui.TaskService
+	tasks *task.Service
 }
 
 func (m groupList) Init() tea.Cmd {

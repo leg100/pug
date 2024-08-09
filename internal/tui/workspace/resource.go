@@ -14,8 +14,8 @@ import (
 )
 
 type ResourceMaker struct {
-	States  tui.StateService
-	Runs    tui.RunService
+	States  *state.Service
+	Runs    *run.Service
 	Helpers *tui.Helpers
 
 	disableBorders bool
@@ -50,8 +50,8 @@ func (mm *ResourceMaker) Make(id resource.ID, width, height int) (tea.Model, err
 }
 
 type resourceModel struct {
-	states tui.StateService
-	runs   tui.RunService
+	states *state.Service
+	runs   *run.Service
 
 	viewport tui.Viewport
 	resource *state.Resource

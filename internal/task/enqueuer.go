@@ -1,6 +1,8 @@
 package task
 
 import (
+	"context"
+
 	"github.com/leg100/pug/internal/resource"
 )
 
@@ -18,7 +20,7 @@ type enqueuerTaskService interface {
 
 func StartEnqueuer(tasks *Service) {
 	e := enqueuer{tasks: tasks}
-	sub := tasks.TaskBroker.Subscribe()
+	sub := tasks.TaskBroker.Subscribe(context.Background())
 
 	go func() {
 		for range sub {

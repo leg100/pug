@@ -3,6 +3,7 @@ package top
 import (
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/leg100/pug/internal/app"
 	"github.com/leg100/pug/internal/tui"
 	"github.com/leg100/pug/internal/tui/logs"
 	moduletui "github.com/leg100/pug/internal/tui/module"
@@ -16,76 +17,76 @@ type updateableMaker interface {
 }
 
 // makeMakers makes model makers for making models
-func makeMakers(opts Options, spinner *spinner.Model) map[tui.Kind]tui.Maker {
+func makeMakers(cfg app.Config, app *app.App, spinner *spinner.Model) map[tui.Kind]tui.Maker {
 	helpers := &tui.Helpers{
-		Modules:    opts.Modules,
-		Workspaces: opts.Workspaces,
-		Runs:       opts.Runs,
-		States:     opts.States,
-		Tasks:      opts.Tasks,
-		Logger:     opts.Logger,
+		Modules:    app.Modules,
+		Workspaces: app.Workspaces,
+		Runs:       app.Runs,
+		States:     app.States,
+		Tasks:      app.Tasks,
+		Logger:     app.Logger,
 	}
 
 	workspaceListMaker := &workspacetui.ListMaker{
-		Workspaces: opts.Workspaces,
-		Modules:    opts.Modules,
-		Runs:       opts.Runs,
+		Workspaces: app.Workspaces,
+		Modules:    app.Modules,
+		Runs:       app.Runs,
 		Helpers:    helpers,
 	}
 	taskMaker := &tasktui.Maker{
-		Runs:    opts.Runs,
-		Tasks:   opts.Tasks,
+		Runs:    app.Runs,
+		Tasks:   app.Tasks,
 		Spinner: spinner,
 		Helpers: helpers,
-		Logger:  opts.Logger,
-		Program: opts.Program,
+		Logger:  app.Logger,
+		Program: cfg.Program,
 	}
 	taskListMaker := tasktui.NewListMaker(
-		opts.Tasks,
-		opts.Runs,
+		app.Tasks,
+		app.Runs,
 		taskMaker,
 		helpers,
 	)
 
 	makers := map[tui.Kind]tui.Maker{
 		tui.ModuleListKind: &moduletui.ListMaker{
-			Modules:    opts.Modules,
-			Workspaces: opts.Workspaces,
-			Runs:       opts.Runs,
+			Modules:    app.Modules,
+			Workspaces: app.Workspaces,
+			Runs:       app.Runs,
 			Spinner:    spinner,
-			Workdir:    opts.Workdir.PrettyString(),
+			Workdir:    cfg.Workdir.PrettyString(),
 			Helpers:    helpers,
-			Terragrunt: opts.Terragrunt,
+			Terragrunt: cfg.Terragrunt,
 		},
 		tui.WorkspaceListKind: workspaceListMaker,
 		tui.TaskListKind:      taskListMaker,
 		tui.TaskKind:          taskMaker,
 		tui.TaskGroupListKind: &tasktui.GroupListMaker{
-			Tasks:   opts.Tasks,
+			Tasks:   app.Tasks,
 			Helpers: helpers,
 		},
 		tui.TaskGroupKind: tasktui.NewGroupMaker(
-			opts.Tasks,
-			opts.Runs,
+			app.Tasks,
+			app.Runs,
 			taskMaker,
 			helpers,
 		),
 		tui.LogListKind: &logs.ListMaker{
-			Logger: opts.Logger,
+			Logger: app.Logger,
 		},
 		tui.LogKind: &logs.Maker{
-			Logger: opts.Logger,
+			Logger: app.Logger,
 		},
 		tui.ResourceListKind: &workspacetui.ResourceListMaker{
-			Workspaces: opts.Workspaces,
-			States:     opts.States,
-			Runs:       opts.Runs,
+			Workspaces: app.Workspaces,
+			States:     app.States,
+			Runs:       app.Runs,
 			Spinner:    spinner,
 			Helpers:    helpers,
 		},
 		tui.ResourceKind: &workspacetui.ResourceMaker{
-			States:  opts.States,
-			Runs:    opts.Runs,
+			States:  app.States,
+			Runs:    app.Runs,
 			Helpers: helpers,
 		},
 	}

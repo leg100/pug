@@ -16,6 +16,7 @@ import (
 	"github.com/leg100/pug/internal/tui/keys"
 	"github.com/leg100/pug/internal/tui/split"
 	"github.com/leg100/pug/internal/tui/table"
+	"github.com/leg100/pug/internal/workspace"
 )
 
 var resourceColumn = table.Column{
@@ -25,9 +26,9 @@ var resourceColumn = table.Column{
 }
 
 type ResourceListMaker struct {
-	Workspaces tui.WorkspaceService
-	States     tui.StateService
-	Runs       tui.RunService
+	Workspaces *workspace.Service
+	States     *state.Service
+	Runs       *run.Service
 	Spinner    *spinner.Model
 	Helpers    *tui.Helpers
 }
@@ -78,8 +79,8 @@ func (m *ResourceListMaker) Make(id resource.ID, width, height int) (tea.Model, 
 type resourceList struct {
 	split.Model[*state.Resource]
 
-	states    tui.StateService
-	runs      tui.RunService
+	states    *state.Service
+	runs      *run.Service
 	workspace resource.Resource
 	state     *state.State
 	reloading bool
