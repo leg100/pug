@@ -25,7 +25,7 @@ func Start(cfg app.Config) error {
 		return err
 	}
 
-	tp := tea.NewProgram(m,
+	p := tea.NewProgram(m,
 		// Use the full size of the terminal with its "alternate screen buffer"
 		tea.WithAltScreen(),
 		// Enabling mouse cell motion removes the ability to "blackboard" text
@@ -36,11 +36,18 @@ func Start(cfg app.Config) error {
 		// tea.WithMouseCellMotion(),
 	)
 
-	unsub := setupSubscriptions(app, tp)
+	ch, unsub := setupSubscriptions(app)
 	defer unsub()
 
+	// Relay events to model in background
+	go func() {
+		for msg := range ch {
+			p.Send(msg)
+		}
+	}()
+
 	// Blocks until user quits
-	_, err = tp.Run()
+	_, err = p.Run()
 	return err
 }
 
@@ -55,10 +62,17 @@ func StartTest(t *testing.T, cfg app.Config, width, height int) *teatest.TestMod
 	m, err := newModel(cfg, app)
 	require.NoError(t, err)
 
+	ch, unsub := setupSubscriptions(app)
+	t.Cleanup(unsub)
+
 	tm := teatest.NewTestModel(t, m, teatest.WithInitialTermSize(width, height))
 
-	unsub := setupSubscriptions(app, tm)
-	t.Cleanup(unsub)
+	// Relay events to model in background
+	go func() {
+		for msg := range ch {
+			tm.Send(msg)
+		}
+	}()
 
 	t.Cleanup(func() {
 		tm.Quit()
@@ -70,7 +84,7 @@ type sendable interface {
 	Send(tea.Msg)
 }
 
-func setupSubscriptions(app *app.App, model sendable) func() {
+func setupSubscriptions(app *app.App) (chan tea.Msg, func()) {
 	// Relay resource events to TUI. Deliberately set up subscriptions *before*
 	// any events are triggered, to ensure the TUI receives all messages.
 	ch := make(chan tea.Msg)
@@ -152,12 +166,6 @@ func setupSubscriptions(app *app.App, model sendable) func() {
 			wg.Done()
 		}()
 	}
-	// Relay events to model in background
-	go func() {
-		for msg := range ch {
-			model.Send(msg)
-		}
-	}()
 	// Automatically load workspaces whenever modules are loaded.
 	{
 		sub := app.Modules.Subscribe(ctx)
@@ -175,7 +183,7 @@ func setupSubscriptions(app *app.App, model sendable) func() {
 		}()
 	}
 	// cleanup function to be invoked when program is terminated.
-	return func() {
+	return ch, func() {
 		cancel()
 		// Wait for relays to finish before closing channel, to avoid sends
 		// to a closed channel, which would result in a panic.
