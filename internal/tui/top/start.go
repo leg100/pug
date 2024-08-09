@@ -80,10 +80,6 @@ func StartTest(t *testing.T, cfg app.Config, width, height int) *teatest.TestMod
 	return tm
 }
 
-type sendable interface {
-	Send(tea.Msg)
-}
-
 func setupSubscriptions(app *app.App) (chan tea.Msg, func()) {
 	// Relay resource events to TUI. Deliberately set up subscriptions *before*
 	// any events are triggered, to ensure the TUI receives all messages.
