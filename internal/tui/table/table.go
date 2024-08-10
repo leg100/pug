@@ -43,8 +43,6 @@ type Model[V resource.Resource] struct {
 	currentRowIndex int
 	currentRowID    resource.ID
 
-	content string
-
 	// items are the unfiltered set of items available to the table.
 	items    map[resource.ID]V
 	sortFunc SortFunc[V]
