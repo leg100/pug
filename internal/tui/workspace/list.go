@@ -8,7 +8,6 @@ import (
 	"github.com/leg100/pug/internal/module"
 	"github.com/leg100/pug/internal/resource"
 	"github.com/leg100/pug/internal/run"
-	"github.com/leg100/pug/internal/state"
 	"github.com/leg100/pug/internal/task"
 	"github.com/leg100/pug/internal/tui"
 	"github.com/leg100/pug/internal/tui/keys"
@@ -86,12 +85,6 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	)
 
 	switch msg := msg.(type) {
-	case resource.Event[*module.Module]:
-		// Update changes to current workspace for a module
-		m.table.UpdateViewport()
-	case resource.Event[*state.State]:
-		// Update resource counts
-		m.table.UpdateViewport()
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, keys.Common.Delete):

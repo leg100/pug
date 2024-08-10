@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/bubbles/key"
-	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -46,6 +45,7 @@ type Model[V resource.Resource] struct {
 
 	content string
 
+	// items are the unfiltered set of items available to the table.
 	items    map[resource.ID]V
 	sortFunc SortFunc[V]
 
@@ -56,9 +56,6 @@ type Model[V resource.Resource] struct {
 
 	// index of first visible row
 	start int
-	// offset of current row from first visible row, i.e. its index relative to
-	// start
-	offset int
 
 	// dimensions calcs
 	width  int
@@ -157,19 +154,12 @@ func (m *Model[V]) setDimensions(width, height int) {
 	m.width = width
 	m.setColumnWidths()
 
-	m.setStart(0)
+	m.setStart()
 }
 
-func (m *Model[V]) setStart(n int) {
-	// Ensure the cursor offset is no greater than the row area height.
-	m.offset = clamp(m.offset+n, 0, m.rowAreaHeight()-1)
-	// Ensure the start index is no greater than the number of rows minus the
-	// row area height.
-	m.start = clamp(m.start-m.offset, 0, len(m.rows)-m.rowAreaHeight())
-}
-
-// rowAreaHeight retrieves the height of the area allocated to rows.
-func (m *Model[V]) rowAreaHeight() int {
+// maxVisibleRows returns the maximum number of visible rows, i.e. the height of
+// the terminal allocated to rows.
+func (m *Model[V]) maxVisibleRows() int {
 	// Subtract two from height to accommodate borders
 	height := max(0, m.height-headerHeight-2)
 
@@ -180,10 +170,22 @@ func (m *Model[V]) rowAreaHeight() int {
 	return height
 }
 
+// visibleRows returns the number of renderable visible rows.
+func (m Model[V]) visibleRows() int {
+	// The number of visible rows cannot exceed the row area height.
+	return min(m.maxVisibleRows(), len(m.rows)-m.start)
+}
+
 // tableWidth retrieves the width available to the table, excluding its borders.
 func (m *Model[V]) tableWidth() int {
 	// Subtract two from width to accommodate borders
 	return m.width - 2
+}
+
+// tableHeight retrieves the height available to the table, excluding its borders.
+func (m *Model[V]) tableHeight() int {
+	// Subtract two from width to accommodate borders
+	return m.height - 2
 }
 
 // Update is the Bubble Tea update loop.
@@ -200,13 +202,13 @@ func (m Model[V]) Update(msg tea.Msg) (Model[V], tea.Cmd) {
 		case key.Matches(msg, keys.Navigation.LineDown):
 			m.MoveDown(1)
 		case key.Matches(msg, keys.Navigation.PageUp):
-			m.MoveUp(m.rowAreaHeight())
+			m.MoveUp(m.maxVisibleRows())
 		case key.Matches(msg, keys.Navigation.PageDown):
-			m.MoveDown(m.rowAreaHeight())
+			m.MoveDown(m.maxVisibleRows())
 		case key.Matches(msg, keys.Navigation.HalfPageUp):
-			m.MoveUp(m.rowAreaHeight() / 2)
+			m.MoveUp(m.maxVisibleRows() / 2)
 		case key.Matches(msg, keys.Navigation.HalfPageDown):
-			m.MoveDown(m.rowAreaHeight() / 2)
+			m.MoveDown(m.maxVisibleRows() / 2)
 		case key.Matches(msg, keys.Navigation.GotoTop):
 			m.GotoTop()
 		case key.Matches(msg, keys.Navigation.GotoBottom):
@@ -236,10 +238,6 @@ func (m Model[V]) Update(msg tea.Msg) (Model[V], tea.Cmd) {
 		}
 	case tea.WindowSizeMsg:
 		m.setDimensions(msg.Width, msg.Height)
-	case spinner.TickMsg:
-		// Rows can contain spinners, so we re-render them whenever a tick is
-		// received.
-		m.UpdateViewport()
 	case tui.FilterFocusReqMsg:
 		// Focus the filter widget
 		blink := m.filter.Focus()
@@ -285,44 +283,65 @@ func (m Model[V]) Focused() bool {
 // interact.
 func (m *Model[V]) Focus() {
 	m.focus = true
-	m.UpdateViewport()
 }
 
 // Blur blurs the table, preventing selection or movement.
 func (m *Model[V]) Blur() {
 	m.focus = false
-	m.UpdateViewport()
 }
 
-// View renders the component.
+// View renders the table.
 func (m Model[V]) View() string {
-	components := make([]string, 0, 3)
+	// Table is composed of a vertical stack of components:
+	// (a) optional filter widget
+	// (b) header
+	// (c) rows
+	components := make([]string, 0, 1+1+m.visibleRows())
 	if m.filterVisible() {
 		components = append(components, tui.Regular.Margin(0, 1).Render(m.filter.View()))
 		// Add horizontal rule between filter widget and table
 		components = append(components, strings.Repeat("─", m.tableWidth()))
 	}
 	components = append(components, m.headersView())
-
-	renderedRows := make([]string, m.visibleLineCount())
-	for i := range m.visibleLineCount() {
-		renderedRows[i] = m.renderRow(m.start + i)
+	for i := range m.visibleRows() {
+		components = append(components, m.renderRow(m.start+i))
 	}
-	components = append(components, lipgloss.JoinVertical(lipgloss.Left, renderedRows...))
-
-	content := lipgloss.JoinVertical(lipgloss.Top, components...)
-
-	metadata := m.RowInfo()
-
-	// total length of top border runes, not including corners
-	topBorderLength := max(0, m.width-lipgloss.Width(metadata)-2)
-	topBorderLeftLength := topBorderLength / 2
-	topBorderRightLength := max(0, topBorderLength-topBorderLeftLength)
-
-	topBorder := lipgloss.NewStyle().Foreground(m.borderColor).Render(fmt.Sprintf("%s%s%s%s%s", m.border.TopLeft, strings.Repeat(m.border.Top, topBorderLeftLength), metadata, strings.Repeat(m.border.Top, topBorderRightLength), m.border.TopRight))
-
+	// Render table components, ensuring it is at least a min height
+	content := lipgloss.NewStyle().
+		Height(m.tableHeight()).
+		Render(lipgloss.JoinVertical(lipgloss.Top, components...))
+	// Render table metadata
+	var metadata string
+	{
+		// Calculate the top and bottom visible row ordinal numbers
+		top := m.start + 1
+		bottom := m.start + m.visibleRows()
+		prefix := fmt.Sprintf("%d-%d of ", top, bottom)
+		if m.filterVisible() {
+			metadata = prefix + fmt.Sprintf("%d/%d", len(m.rows), len(m.items))
+		} else {
+			metadata = prefix + strconv.Itoa(len(m.rows))
+		}
+	}
+	// Render top border with metadata in the center
+	var topBorder string
+	{
+		// total length of top border runes, not including corners
+		length := max(0, m.width-lipgloss.Width(metadata)-2)
+		leftLength := length / 2
+		rightLength := max(0, length-leftLength)
+		topBorder = lipgloss.JoinHorizontal(lipgloss.Left,
+			m.border.TopLeft,
+			strings.Repeat(m.border.Top, leftLength),
+			metadata,
+			strings.Repeat(m.border.Top, rightLength),
+			m.border.TopRight,
+		)
+	}
+	// Join top border with table components wrapped with borders on remaining
+	// sides.
 	return lipgloss.JoinVertical(lipgloss.Top,
-		topBorder,
+		lipgloss.NewStyle().Foreground(m.borderColor).Render(topBorder),
 		lipgloss.NewStyle().Border(m.border, false, true, true, true).BorderForeground(m.borderColor).Render(content),
 	)
 }
@@ -332,16 +351,8 @@ func (m *Model[V]) SetBorderStyle(border lipgloss.Border, color lipgloss.Termina
 	m.borderColor = color
 }
 
-// UpdateViewport populates the viewport with table rows.
-func (m *Model[V]) UpdateViewport() {}
-
-func (m Model[V]) visibleLineCount() int {
-	// The number of visible rows cannot exceed the row area height.
-	return min(m.rowAreaHeight(), len(m.rows)-m.start)
-}
-
-// CurrentRow returns the row on which the cursor currently sits. If the cursor
-// is out of bounds then false is returned along with an empty row.
+// CurrentRow returns the current row the user has highlighted. If its index is
+// out of bounds then false is returned along with an empty row.
 func (m Model[V]) CurrentRow() (Row[V], bool) {
 	if m.currentRowIndex < 0 || m.currentRowIndex >= len(m.rows) {
 		return *new(Row[V]), false
@@ -391,7 +402,6 @@ func (m *Model[V]) ToggleSelection() {
 	} else {
 		m.Selected[current.ID] = current.Value
 	}
-	m.UpdateViewport()
 }
 
 // ToggleSelectionByID toggles the selection of the row with the given id. If
@@ -409,7 +419,6 @@ func (m *Model[V]) ToggleSelectionByID(id resource.ID) {
 	} else {
 		m.Selected[id] = v
 	}
-	m.UpdateViewport()
 }
 
 // SelectAll selects all rows. Any rows not currently selected are selected.
@@ -421,7 +430,6 @@ func (m *Model[V]) SelectAll() {
 	for _, row := range m.rows {
 		m.Selected[row.ID] = row.Value
 	}
-	m.UpdateViewport()
 }
 
 // DeselectAll de-selects any rows that are currently selected
@@ -431,7 +439,6 @@ func (m *Model[V]) DeselectAll() {
 	}
 
 	m.Selected = make(map[resource.ID]V)
-	m.UpdateViewport()
 }
 
 // SelectRange selects a range of rows. If the current row is *below* a selected
@@ -451,7 +458,7 @@ func (m *Model[V]) SelectRange() {
 	n := 0
 	for i, row := range m.rows {
 		if i == m.currentRowIndex && first > -1 && first < m.currentRowIndex {
-			// Select rows before and including cursor
+			// Select rows before and including current row
 			n = m.currentRowIndex - first + 1
 			break
 		}
@@ -460,8 +467,8 @@ func (m *Model[V]) SelectRange() {
 			continue
 		}
 		if i > m.currentRowIndex {
-			// Select rows including cursor and all rows up to but not including
-			// next selected row
+			// Select rows including current row and all rows up to but not
+			// including next selected row
 			first = m.currentRowIndex
 			n = i - m.currentRowIndex
 			break
@@ -472,24 +479,9 @@ func (m *Model[V]) SelectRange() {
 	for _, row := range m.rows[first : first+n] {
 		m.Selected[row.ID] = row.Value
 	}
-	m.UpdateViewport()
 }
 
-// RowInfo returns human-readable row information.
-func (m Model[V]) RowInfo() string {
-	// Calculate the top and bottom visible row ordinal numbers
-	top := m.start + 1
-	bottom := m.start + m.visibleLineCount()
-
-	prefix := fmt.Sprintf("%d-%d of ", top, bottom)
-
-	if m.filterVisible() {
-		return prefix + fmt.Sprintf("%d/%d", len(m.rows), len(m.items))
-	}
-	return prefix + strconv.Itoa(len(m.rows))
-}
-
-// SetItems sets new items on the table, overwriting existing items. If the
+// SetItems sets new items for the table, overwriting existing items. If the
 // table has a parent resource, then items that are not a descendent of that
 // resource are skipped.
 func (m *Model[V]) SetItems(items map[resource.ID]V) {
@@ -522,6 +514,7 @@ func (m *Model[V]) SetItems(items map[resource.ID]V) {
 			// the user edits the filter value, particularly as the row renderer
 			// can make data lookups on each invocation. But there is no obvious
 			// alternative at present.
+			// it.
 			filterMatch := func() bool {
 				for _, row := range m.rowRenderer(it) {
 					// Remove ANSI escapes code before filtering
@@ -560,12 +553,6 @@ func (m *Model[V]) SetItems(items map[resource.ID]V) {
 	m.currentRowIndex = -1
 	for i, row := range m.rows {
 		if row.ID == m.currentRowID {
-			// Found item corresponding to current row. Whenever SetItems() is
-			// called we try to ensure the current row offset remains the same
-			// (which prevents the current row unnecessarily "dancing around").
-			// It should only change if:
-			// (a) The current offset is greater than the number of rows.
-			// (b) The current offset is greater than the number of rows.
 			m.currentRowIndex = i
 		}
 	}
@@ -579,28 +566,40 @@ func (m *Model[V]) SetItems(items map[resource.ID]V) {
 		}
 	}
 
-	// Reset start index, and the offset of the current row
-	m.setStart(0)
+	// Reset start index
+	m.setStart()
 }
 
 // MoveUp moves the current row up by any number of rows.
 // It can not go above the first row.
 func (m *Model[V]) MoveUp(n int) {
-	m.moveCursor(-n)
+	m.moveCurrentRow(-n)
 }
 
 // MoveDown moves the current row down by any number of rows.
 // It can not go below the last row.
 func (m *Model[V]) MoveDown(n int) {
-	m.moveCursor(n)
+	m.moveCurrentRow(n)
 }
 
-func (m *Model[V]) moveCursor(n int) {
+func (m *Model[V]) moveCurrentRow(n int) {
 	if len(m.rows) > 0 {
 		m.currentRowIndex = clamp(m.currentRowIndex+n, 0, len(m.rows)-1)
 		m.currentRowID = m.rows[m.currentRowIndex].ID
-		m.setStart(n)
+		m.setStart()
 	}
+}
+
+func (m *Model[V]) setStart() {
+	// Start index must be at least the current row index minus the max number
+	// of visible rows.
+	minimum := max(0, m.currentRowIndex-m.maxVisibleRows()+1)
+	// Start index must be at most the lesser of:
+	// (a) the current row index, or
+	// (b) the number of rows minus the maximum number of visible rows (as many
+	// rows as possible are rendered)
+	maximum := max(0, min(m.currentRowIndex, len(m.rows)-m.maxVisibleRows()))
+	m.start = clamp(m.start, minimum, maximum)
 }
 
 // GotoTop makes the top row the current row.
@@ -649,7 +648,7 @@ func (m *Model[V]) renderRow(rowIdx int) string {
 		foreground = tui.SelectedForeground
 	}
 
-	var renderedCells = make([]string, len(m.cols))
+	renderedCells := make([]string, len(m.cols))
 	cells := m.rowRenderer(row.Value)
 	for i, col := range m.cols {
 		content := cells[col.Key]
