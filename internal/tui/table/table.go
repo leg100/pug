@@ -512,7 +512,6 @@ func (m *Model[V]) SetItems(items map[resource.ID]V) {
 			// the user edits the filter value, particularly as the row renderer
 			// can make data lookups on each invocation. But there is no obvious
 			// alternative at present.
-			// it.
 			filterMatch := func() bool {
 				for _, row := range m.rowRenderer(it) {
 					// Remove ANSI escapes code before filtering
