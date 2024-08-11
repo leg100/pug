@@ -36,6 +36,7 @@ type Model[V resource.Resource] struct {
 	rows        []Row[V]
 	rowRenderer RowRenderer[V]
 	focus       bool
+	rendered    map[resource.ID]RenderedRow
 
 	border      lipgloss.Border
 	borderColor lipgloss.TerminalColor
@@ -47,7 +48,7 @@ type Model[V resource.Resource] struct {
 	items    map[resource.ID]V
 	sortFunc SortFunc[V]
 
-	Selected   map[resource.ID]V
+	selected   map[resource.ID]V
 	selectable bool
 
 	filter textinput.Model
@@ -92,13 +93,15 @@ func New[V resource.Resource](cols []Column, fn RowRenderer[V], width, height in
 	filter.Prompt = "Filter: "
 
 	m := Model[V]{
-		rowRenderer: fn,
-		items:       make(map[resource.ID]V),
-		Selected:    make(map[resource.ID]V),
-		selectable:  true,
-		focus:       true,
-		filter:      filter,
-		border:      lipgloss.NormalBorder(),
+		rowRenderer:     fn,
+		items:           make(map[resource.ID]V),
+		rendered:        make(map[resource.ID]RenderedRow),
+		selected:        make(map[resource.ID]V),
+		selectable:      true,
+		focus:           true,
+		filter:          filter,
+		border:          lipgloss.NormalBorder(),
+		currentRowIndex: -1,
 	}
 	for _, fn := range opts {
 		fn(&m)
@@ -221,18 +224,22 @@ func (m Model[V]) Update(msg tea.Msg) (Model[V], tea.Cmd) {
 			m.SelectRange()
 		}
 	case BulkInsertMsg[V]:
-		for _, ws := range msg {
-			m.items[ws.GetID()] = ws
+		m.AddItems(msg...)
+	case resource.Event[resource.Resource]:
+		// If event's resource has V as an ancestor, then re-render its row.
+		for _, ancestor := range msg.Payload.Ancestors() {
+			id := ancestor.GetID()
+			if item, ok := m.items[id]; ok {
+				m.rendered[id] = m.rowRenderer(item)
+				break
+			}
 		}
-		m.SetItems(m.items)
 	case resource.Event[V]:
 		switch msg.Type {
 		case resource.CreatedEvent, resource.UpdatedEvent:
-			m.items[msg.Payload.GetID()] = msg.Payload
-			m.SetItems(m.items)
+			m.AddItems(msg.Payload)
 		case resource.DeletedEvent:
-			delete(m.items, msg.Payload.GetID())
-			m.SetItems(m.items)
+			m.removeItem(msg.Payload)
 		}
 	case tea.WindowSizeMsg:
 		m.setDimensions(msg.Width, msg.Height)
@@ -250,7 +257,7 @@ func (m Model[V]) Update(msg tea.Msg) (Model[V], tea.Cmd) {
 		m.filter.Blur()
 		m.filter.SetValue("")
 		// Unfilter table items
-		m.SetItems(m.items)
+		m.setRows(maps.Values(m.items)...)
 		return m, nil
 	case tui.FilterKeyMsg:
 		// unwrap key and send to filter widget
@@ -258,7 +265,7 @@ func (m Model[V]) Update(msg tea.Msg) (Model[V], tea.Cmd) {
 		var cmd tea.Cmd
 		m.filter, cmd = m.filter.Update(kmsg)
 		// Filter table items
-		m.SetItems(m.items)
+		m.filterItems()
 		return m, cmd
 	default:
 		// Send any other messages to the filter if it is focused.
@@ -361,10 +368,10 @@ func (m Model[V]) CurrentRow() (Row[V], bool) {
 // SelectedOrCurrent returns either the selected rows, or if there are no
 // selections, the current row
 func (m Model[V]) SelectedOrCurrent() []Row[V] {
-	if len(m.Selected) > 0 {
-		rows := make([]Row[V], len(m.Selected))
+	if len(m.selected) > 0 {
+		rows := make([]Row[V], len(m.selected))
 		var i int
-		for k, v := range m.Selected {
+		for k, v := range m.selected {
 			rows[i] = Row[V]{ID: k, Value: v}
 			i++
 		}
@@ -377,8 +384,8 @@ func (m Model[V]) SelectedOrCurrent() []Row[V] {
 }
 
 func (m Model[V]) SelectedOrCurrentIDs() []resource.ID {
-	if len(m.Selected) > 0 {
-		return maps.Keys(m.Selected)
+	if len(m.selected) > 0 {
+		return maps.Keys(m.selected)
 	}
 	if row, ok := m.CurrentRow(); ok {
 		return []resource.ID{row.ID}
@@ -395,10 +402,10 @@ func (m *Model[V]) ToggleSelection() {
 	if !ok {
 		return
 	}
-	if _, isSelected := m.Selected[current.ID]; isSelected {
-		delete(m.Selected, current.ID)
+	if _, isSelected := m.selected[current.ID]; isSelected {
+		delete(m.selected, current.ID)
 	} else {
-		m.Selected[current.ID] = current.Value
+		m.selected[current.ID] = current.Value
 	}
 }
 
@@ -412,10 +419,10 @@ func (m *Model[V]) ToggleSelectionByID(id resource.ID) {
 	if !ok {
 		return
 	}
-	if _, isSelected := m.Selected[id]; isSelected {
-		delete(m.Selected, id)
+	if _, isSelected := m.selected[id]; isSelected {
+		delete(m.selected, id)
 	} else {
-		m.Selected[id] = v
+		m.selected[id] = v
 	}
 }
 
@@ -426,7 +433,7 @@ func (m *Model[V]) SelectAll() {
 	}
 
 	for _, row := range m.rows {
-		m.Selected[row.ID] = row.Value
+		m.selected[row.ID] = row.Value
 	}
 }
 
@@ -436,7 +443,7 @@ func (m *Model[V]) DeselectAll() {
 		return
 	}
 
-	m.Selected = make(map[resource.ID]V)
+	m.selected = make(map[resource.ID]V)
 }
 
 // SelectRange selects a range of rows. If the current row is *below* a selected
@@ -448,7 +455,7 @@ func (m *Model[V]) SelectRange() {
 	if !m.selectable {
 		return
 	}
-	if len(m.Selected) == 0 {
+	if len(m.selected) == 0 {
 		return
 	}
 	// Determine the first row to select, and the number of rows to select.
@@ -460,7 +467,7 @@ func (m *Model[V]) SelectRange() {
 			n = m.currentRowIndex - first + 1
 			break
 		}
-		if _, ok := m.Selected[row.ID]; !ok {
+		if _, ok := m.selected[row.ID]; !ok {
 			// Ignore unselected rows
 			continue
 		}
@@ -475,95 +482,107 @@ func (m *Model[V]) SelectRange() {
 		first = i + 1
 	}
 	for _, row := range m.rows[first : first+n] {
-		m.Selected[row.ID] = row.Value
+		m.selected[row.ID] = row.Value
 	}
 }
 
-// SetItems sets new items for the table, overwriting existing items. If the
-// table has a parent resource, then items that are not a descendent of that
-// resource are skipped.
-func (m *Model[V]) SetItems(items map[resource.ID]V) {
-	// Skip non-descendent items
-	if m.parent != nil {
-		for k, v := range items {
-			if !v.HasAncestor(m.parent.GetID()) {
-				delete(items, k)
+// SetItems overwrites all existing items in the table with items.
+func (m *Model[V]) SetItems(items ...V) {
+	m.items = make(map[resource.ID]V)
+	m.rendered = make(map[resource.ID]RenderedRow)
+	m.AddItems(items...)
+}
+
+// AddItems idempotently adds items to the table, updating any items that exist
+// on the table already.
+func (m *Model[V]) AddItems(items ...V) {
+	for _, item := range items {
+		// Skip item if it's not a descendent of the table parent resource.
+		if m.parent != nil && !item.HasAncestor(m.parent.GetID()) {
+			return
+		}
+		// Add/update item
+		m.items[item.GetID()] = item
+		// (Re-)render item's row.
+		m.rendered[item.GetID()] = m.rowRenderer(item)
+	}
+	m.setRows(maps.Values(m.items)...)
+}
+
+func (m *Model[V]) removeItem(item V) {
+	delete(m.rendered, item.GetID())
+	delete(m.items, item.GetID())
+	delete(m.selected, item.GetID())
+	for i, row := range m.rows {
+		if row.ID == item.GetID() {
+			// TODO: this might well produce a memory leak. See note:
+			// https://go.dev/wiki/SliceTricks#delete-without-preserving-order
+			m.rows = append(m.rows[:i], m.rows[i+1:]...)
+			break
+		}
+	}
+	if item.GetID() == m.currentRowID {
+		// If item being removed is the current row the make the row above it
+		// the new current row. (MoveUp also calls setStart, see below).
+		m.MoveUp(1)
+	} else {
+		// Removing item may well affect index of first visible row, so
+		// re-calculate just in case.
+		m.setStart()
+	}
+}
+
+func (m *Model[V]) filterItems() {
+	// Filter rows using row renderer. If the filter value is a
+	// substring of one of the rendered cells then add row. Otherwise,
+	// skip row.
+	var filtered []V
+	for id, rendered := range m.rendered {
+		for _, col := range rendered {
+			// Remove ANSI escapes code before filtering
+			stripped := internal.StripAnsi(col)
+			if strings.Contains(stripped, m.filter.Value()) {
+				filtered = append(filtered, m.items[id])
+				break
 			}
 		}
 	}
+	m.setRows(filtered...)
+}
 
-	// Overwrite existing items
-	m.items = items
-
-	// Carry over existing selections.
-	selections := make(map[resource.ID]V)
-
-	// Overwrite existing rows
-	m.rows = make([]Row[V], 0, len(items))
-
-	// Convert items into rows, and carry across matching selections
-	for id, it := range items {
-		if m.filter.Value() != "" {
-			// Filter rows using row renderer. If the filter value is a
-			// substring of one of the rendered cells then add row. Otherwise,
-			// skip row.
-			//
-			// NOTE: it is highly inefficient to render every row, every time
-			// the user edits the filter value, particularly as the row renderer
-			// can make data lookups on each invocation. But there is no obvious
-			// alternative at present.
-			filterMatch := func() bool {
-				for _, row := range m.rowRenderer(it) {
-					// Remove ANSI escapes code before filtering
-					row = internal.StripAnsi(row)
-					if strings.Contains(row, m.filter.Value()) {
-						return true
-					}
-				}
-				return false
-			}
-			if !filterMatch() {
-				// Skip item not matching filter
-				continue
-			}
-		}
-		m.rows = append(m.rows, Row[V]{ID: id, Value: it})
+func (m *Model[V]) setRows(items ...V) {
+	selected := make(map[resource.ID]V)
+	m.rows = make([]Row[V], len(items))
+	for i, item := range items {
+		m.rows[i] = Row[V]{ID: item.GetID(), Value: item}
 		if m.selectable {
-			if _, ok := m.Selected[id]; ok {
-				selections[id] = it
+			if _, ok := m.selected[item.GetID()]; ok {
+				selected[item.GetID()] = item
 			}
 		}
 	}
-
+	m.selected = selected
 	// Sort rows in-place
 	if m.sortFunc != nil {
 		slices.SortFunc(m.rows, func(i, j Row[V]) int {
 			return m.sortFunc(i.Value, j.Value)
 		})
 	}
-
-	// Overwrite existing selections, removing any that no longer have a
-	// corresponding item.
-	m.Selected = selections
-
-	// Track item corresponding to the current row.
+	// Track current row index
 	m.currentRowIndex = -1
 	for i, row := range m.rows {
 		if row.ID == m.currentRowID {
 			m.currentRowIndex = i
+			break
 		}
 	}
 	// Check if item corresponding to current row doesn't exist, which occurs
-	// when items are removed, or the very first time the table is populated. If
-	// so, set current row to the first row, and reset its offset.
-	if m.currentRowIndex == -1 {
+	// the very first time the table is populated. If so, set current row to the
+	// first row.
+	if len(m.rows) > 0 && m.currentRowIndex == -1 {
 		m.currentRowIndex = 0
-		if len(m.rows) > 0 {
-			m.currentRowID = m.rows[m.currentRowIndex].ID
-		}
+		m.currentRowID = m.rows[m.currentRowIndex].ID
 	}
-
-	// Reset start index
 	m.setStart()
 }
 
@@ -628,7 +647,7 @@ func (m *Model[V]) renderRow(rowIdx int) string {
 		current    bool
 		selected   bool
 	)
-	if _, ok := m.Selected[row.ID]; ok {
+	if _, ok := m.selected[row.ID]; ok {
 		selected = true
 	}
 	if rowIdx == m.currentRowIndex {
@@ -645,8 +664,8 @@ func (m *Model[V]) renderRow(rowIdx int) string {
 		foreground = tui.SelectedForeground
 	}
 
-	renderedCells := make([]string, len(m.cols))
-	cells := m.rowRenderer(row.Value)
+	cells := m.rendered[row.ID]
+	styledCells := make([]string, len(m.cols))
 	for i, col := range m.cols {
 		content := cells[col.Key]
 		// Truncate content if it is wider than column
@@ -661,11 +680,11 @@ func (m *Model[V]) renderRow(rowIdx int) string {
 		boxed := lipgloss.NewStyle().
 			Padding(0, 1).
 			Render(inlined)
-		renderedCells[i] = boxed
+		styledCells[i] = boxed
 	}
 
 	// Join cells together to form a row
-	renderedRow := lipgloss.JoinHorizontal(lipgloss.Left, renderedCells...)
+	renderedRow := lipgloss.JoinHorizontal(lipgloss.Left, styledCells...)
 
 	// If current row or seleted rows, strip colors and apply background color
 	if current || selected {
@@ -706,10 +725,10 @@ func (m *Model[V]) Prune(fn func(value V) (task.Spec, error)) ([]task.Spec, erro
 		// one or more selections: iterate thru and prune accordingly.
 		var (
 			ids    []task.Spec
-			before = len(m.Selected)
+			before = len(m.selected)
 			pruned int
 		)
-		for k, v := range m.Selected {
+		for k, v := range m.selected {
 			spec, err := fn(v)
 			if err != nil {
 				// De-select

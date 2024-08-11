@@ -9,6 +9,7 @@ import (
 	"github.com/leg100/pug/internal/resource"
 	"github.com/leg100/pug/internal/tui"
 	"github.com/leg100/pug/internal/tui/table"
+	"golang.org/x/exp/maps"
 )
 
 var (
@@ -67,7 +68,7 @@ func (mm *Maker) Make(id resource.ID, width, height int) (tea.Model, error) {
 		table.WithSortFunc(byAttribute),
 		table.WithSelectable[logging.Attr](false),
 	)
-	table.SetItems(items)
+	table.SetItems(maps.Values(items)...)
 
 	return model{
 		msg:    msg,

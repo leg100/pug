@@ -10,6 +10,7 @@ import (
 	"github.com/leg100/pug/internal/module"
 	"github.com/leg100/pug/internal/resource"
 	"github.com/leg100/pug/internal/run"
+	"github.com/leg100/pug/internal/state"
 	"github.com/leg100/pug/internal/task"
 	"github.com/leg100/pug/internal/tui"
 	"github.com/leg100/pug/internal/tui/keys"
@@ -121,6 +122,10 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	)
 
 	switch msg := msg.(type) {
+	case resource.Event[*state.State]:
+		// Update resource count
+		mod := msg.Payload.Module().(*module.Module)
+		m.table.AddItems(mod)
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, localKeys.ReloadModules):
