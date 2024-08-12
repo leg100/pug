@@ -225,15 +225,6 @@ func (m Model[V]) Update(msg tea.Msg) (Model[V], tea.Cmd) {
 		}
 	case BulkInsertMsg[V]:
 		m.AddItems(msg...)
-	case resource.Event[resource.Resource]:
-		// If event's resource has V as an ancestor, then re-render its row.
-		for _, ancestor := range msg.Payload.Ancestors() {
-			id := ancestor.GetID()
-			if item, ok := m.items[id]; ok {
-				m.rendered[id] = m.rowRenderer(item)
-				break
-			}
-		}
 	case resource.Event[V]:
 		switch msg.Type {
 		case resource.CreatedEvent, resource.UpdatedEvent:
