@@ -30,7 +30,9 @@ type Task struct {
 	Immediate     bool
 	AdditionalEnv []string
 	DependsOn     []resource.ID
-	description   string
+	// Summary summarises the outcome of a task to the end-user.
+	Summary     string
+	description string
 
 	program   string
 	exclusive bool
@@ -63,24 +65,15 @@ type Task struct {
 	// the task can be retried.
 	Spec Spec
 
-	// Call this function after the task has successfully finished
-	AfterExited func(*Task)
-	// Call this function after the task is enqueued.
-	AfterQueued func(*Task)
-	// Call this function after the task starts running.
-	AfterRunning func(*Task)
-	// Call this function after the task fails with an error
-	AfterError func(*Task)
-	// Call this function after the task is successfully canceled
+	BeforeExited  func(*Task) (string, error)
+	AfterExited   func(*Task)
+	AfterQueued   func(*Task)
+	AfterRunning  func(*Task)
+	AfterError    func(*Task)
 	AfterCanceled func(*Task)
-	// Call this function after the task terminates for whatever reason.
-	AfterFinish func(*Task)
-
-	// call this whenever state is updated
-	afterUpdate func(*Task)
-
-	// call this once the task has terminated
-	afterFinish func(*Task)
+	AfterFinish   func(*Task)
+	afterUpdate   func(*Task)
+	afterFinish   func(*Task)
 }
 
 type factory struct {
@@ -132,6 +125,8 @@ func (f *factory) newTask(spec Spec) *Task {
 		AfterFinish:   spec.AfterFinish,
 		// Publish an event whenever task state is updated
 		afterUpdate: func(t *Task) {
+			// TODO: remove nil-check that is only here to ensure tests don't
+			// have to mock publisher...
 			if f.publisher != nil {
 				f.publisher.Publish(resource.UpdatedEvent, t)
 			}
@@ -287,6 +282,15 @@ func (t *Task) updateState(state Status) {
 	t.recordStatusEndTime(now)
 	t.timestamps[state] = statusTimestamps{
 		started: now,
+	}
+	// Before task exits trigger callback and if it fails set task's status to
+	// errored. Otherwise the returned summary summarises the task's outcome.
+	if state == Exited && t.BeforeExited != nil {
+		summary, err := t.BeforeExited(t)
+		if err != nil {
+			state = Errored
+		}
+		t.Summary = summary
 	}
 
 	t.State = state
