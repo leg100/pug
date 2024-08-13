@@ -61,7 +61,7 @@ func (mm *Maker) make(id resource.ID, width, height int, border bool) (tea.Model
 	m.setHeight(height)
 
 	if rr := m.task.Run(); rr != nil {
-		m.run = rr.(*run.Run)
+		m.run = rr.(*run.Plan)
 	}
 
 	m.viewport = tui.NewViewport(tui.ViewportOptions{
@@ -104,7 +104,7 @@ type model struct {
 	tasks *task.Service
 	task  *task.Task
 	runs  *run.Service
-	run   *run.Run
+	run   *run.Plan
 
 	output io.Reader
 	buf    []byte

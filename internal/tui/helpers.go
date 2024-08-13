@@ -162,7 +162,7 @@ func (h *Helpers) TaskStatus(t *task.Task, background bool) string {
 	}
 }
 
-func (h *Helpers) LatestRunReport(r *run.Run, table bool) string {
+func (h *Helpers) LatestRunReport(r *run.Plan, table bool) string {
 	if r.ApplyReport != nil {
 		return h.RunReport(*r.ApplyReport, table)
 	}
@@ -303,7 +303,7 @@ func Breadcrumbs(title string, res resource.Resource, crumbs ...string) string {
 		cmd := TitleCommand.Render(res.String())
 		id := TitleID.Render(res.GetID().String())
 		return Breadcrumbs(title, res.GetParent(), cmd, id)
-	case *run.Run:
+	case *run.Plan:
 		// Skip run info in breadcrumbs
 		return Breadcrumbs(title, res.GetParent(), crumbs...)
 	case *workspace.Workspace:

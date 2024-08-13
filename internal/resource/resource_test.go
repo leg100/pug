@@ -9,7 +9,7 @@ import (
 func TestResource(t *testing.T) {
 	mod := New(Module, GlobalResource)
 	ws := New(Workspace, mod)
-	run := New(Run, ws)
+	run := New(Plan, ws)
 	task := New(Task, run)
 
 	t.Run("has ancestor", func(t *testing.T) {

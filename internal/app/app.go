@@ -69,15 +69,14 @@ func New(cfg Config) (*App, error) {
 		Tasks:      tasks,
 		Logger:     logger,
 	})
-	runs := run.NewService(run.ServiceOptions{
-		Tasks:                   tasks,
-		Modules:                 modules,
-		Workspaces:              workspaces,
-		States:                  states,
-		DisableReloadAfterApply: cfg.DisableReloadAfterApply,
-		DataDir:                 cfg.DataDir,
-		Logger:                  logger,
-		Terragrunt:              cfg.Terragrunt,
+	plans := run.NewService(run.ServiceOptions{
+		Tasks:      tasks,
+		Modules:    modules,
+		Workspaces: workspaces,
+		States:     states,
+		DataDir:    cfg.DataDir,
+		Logger:     logger,
+		Terragrunt: cfg.Terragrunt,
 	})
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -97,7 +96,7 @@ func New(cfg Config) (*App, error) {
 		tasks.GroupBroker.Shutdown()
 		modules.Shutdown()
 		workspaces.Shutdown()
-		runs.Shutdown()
+		plans.Shutdown()
 		states.Shutdown()
 
 		// Wait for running tasks to terminate. Canceling the context (above)
@@ -106,15 +105,15 @@ func New(cfg Config) (*App, error) {
 		waitTasks()
 
 		// Remove all run artefacts (plan files etc,...)
-		for _, run := range runs.List(run.ListOptions{}) {
-			_ = os.RemoveAll(run.ArtefactsPath)
+		for _, plan := range plans.List() {
+			_ = os.RemoveAll(plan.ArtefactsPath)
 		}
 	}
 
 	return &App{
 		Modules:    modules,
 		Workspaces: workspaces,
-		Runs:       runs,
+		Runs:       plans,
 		Tasks:      tasks,
 		States:     states,
 		Cleanup:    cleanup,

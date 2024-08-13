@@ -67,7 +67,7 @@ func (r Common) Workspace() Resource {
 }
 
 func (r Common) Run() Resource {
-	return r.getCurrentOrAncestorKind(Run)
+	return r.getCurrentOrAncestorKind(Plan)
 }
 
 func (r Common) Dependencies() []ID {

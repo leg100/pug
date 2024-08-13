@@ -94,7 +94,7 @@ func (mm *ListMaker) Make(_ resource.ID, width, height int) (tea.Model, error) {
 		}
 
 		if rr := t.Run(); rr != nil {
-			run := rr.(*run.Run)
+			run := rr.(*run.Plan)
 			if t.Command[0] == "plan" && run.PlanReport != nil {
 				row[runChangesColumn.Key] = mm.Helpers.RunReport(*run.PlanReport, true)
 			} else if t.Command[0] == "apply" && run.ApplyReport != nil {
