@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"log/slog"
 	"net/url"
+	"os"
+	"path/filepath"
 
 	"github.com/leg100/pug/internal/module"
 	"github.com/leg100/pug/internal/resource"
@@ -13,11 +15,6 @@ type Workspace struct {
 	resource.Common
 
 	Name string
-
-	// The workspace's current or last active run.
-	CurrentRunID *resource.ID
-
-	AutoApply bool
 }
 
 func New(mod *module.Module, name string) (*Workspace, error) {
@@ -50,6 +47,16 @@ func (ws *Workspace) LogValue() slog.Value {
 	return slog.GroupValue(
 		slog.String("name", ws.Name),
 	)
+}
+
+// VarsFile returns the filename of the workspace's terraform variables file
+// and whether it exists or not.
+func (ws *Workspace) VarsFile() (string, bool) {
+	fname := fmt.Sprintf("%s.tfvars", ws.Name)
+	mod := ws.Module().(*module.Module)
+	path := filepath.Join(mod.FullPath(), fname)
+	_, err := os.Stat(path)
+	return fname, err == nil
 }
 
 func TerraformEnv(workspaceName string) string {

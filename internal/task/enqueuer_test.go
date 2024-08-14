@@ -16,8 +16,8 @@ func TestEnqueuer(t *testing.T) {
 
 	mod1 := resource.New(resource.Module, resource.GlobalResource)
 	ws1 := resource.New(resource.Workspace, mod1)
-	run1 := resource.New(resource.Run, ws1)
-	run2 := resource.New(resource.Run, ws1)
+	run1 := resource.New(resource.Plan, ws1)
+	run2 := resource.New(resource.Plan, ws1)
 
 	mod1Task1 := f.newTask(Spec{Parent: mod1})
 	mod1TaskBlocking1 := f.newTask(Spec{Parent: mod1, Blocking: true})

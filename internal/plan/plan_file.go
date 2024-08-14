@@ -1,4 +1,4 @@
-package run
+package plan
 
 const (
 	CreateAction ChangeAction = "create"

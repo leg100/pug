@@ -709,7 +709,7 @@ func (m *Model[V]) Prune(fn func(value V) (task.Spec, error)) ([]task.Spec, erro
 		if err != nil {
 			// the single current row is to be pruned, so report this as an
 			// error
-			return nil, fmt.Errorf("action is not applicable to the current row")
+			return nil, err
 		}
 		return []task.Spec{spec}, nil
 	default:

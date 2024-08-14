@@ -13,8 +13,8 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/google/uuid"
 	"github.com/leg100/pug/internal/logging"
+	"github.com/leg100/pug/internal/plan"
 	"github.com/leg100/pug/internal/resource"
-	"github.com/leg100/pug/internal/run"
 	"github.com/leg100/pug/internal/task"
 	"github.com/leg100/pug/internal/tui"
 	"github.com/leg100/pug/internal/tui/keys"
@@ -22,7 +22,7 @@ import (
 )
 
 type Maker struct {
-	Runs    *run.Service
+	Plans   *plan.Service
 	Tasks   *task.Service
 	Spinner *spinner.Model
 	Helpers *tui.Helpers
@@ -46,7 +46,7 @@ func (mm *Maker) make(id resource.ID, width, height int, border bool) (tea.Model
 	m := model{
 		id:      uuid.New(),
 		tasks:   mm.Tasks,
-		runs:    mm.Runs,
+		plans:   mm.Plans,
 		task:    task,
 		output:  task.NewReader(true),
 		spinner: mm.Spinner,
@@ -59,10 +59,6 @@ func (mm *Maker) make(id resource.ID, width, height int, border bool) (tea.Model
 		program:  mm.Program,
 	}
 	m.setHeight(height)
-
-	if rr := m.task.Run(); rr != nil {
-		m.run = rr.(*run.Run)
-	}
 
 	m.viewport = tui.NewViewport(tui.ViewportOptions{
 		JSON:       m.task.JSON,
@@ -103,8 +99,7 @@ type model struct {
 
 	tasks *task.Service
 	task  *task.Task
-	runs  *run.Service
-	run   *run.Run
+	plans *plan.Service
 
 	output io.Reader
 	buf    []byte
@@ -138,16 +133,14 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, keys.Common.Cancel):
 			return m, cancel(m.tasks, m.task.ID)
 		case key.Matches(msg, keys.Common.Apply):
-			if m.run != nil {
-				spec, err := m.runs.Apply(m.run.ID, nil)
-				if err != nil {
-					return m, tui.ReportError(fmt.Errorf("create apply task: %w", err))
-				}
-				return m, tui.YesNoPrompt(
-					"Apply plan?",
-					m.helpers.CreateTasksWithSpecs(spec),
-				)
+			spec, err := m.plans.ApplyPlan(m.task.ID)
+			if err != nil {
+				return m, tui.ReportError(err)
 			}
+			return m, tui.YesNoPrompt(
+				"Apply plan?",
+				m.helpers.CreateTasksWithSpecs(spec),
+			)
 		case key.Matches(msg, keys.Common.State):
 			if ws, ok := m.helpers.TaskWorkspace(m.task); ok {
 				return m, tui.NavigateTo(tui.ResourceListKind, tui.WithParent(ws))
@@ -300,13 +293,10 @@ func (m model) Title() string {
 }
 
 func (m model) Status() string {
-	if m.run != nil {
-		return lipgloss.JoinHorizontal(lipgloss.Top,
-			m.helpers.LatestRunReport(m.run, false),
-			m.helpers.TaskStatus(m.task, true),
-		)
-	}
-	return m.helpers.TaskStatus(m.task, true)
+	return lipgloss.JoinHorizontal(lipgloss.Top,
+		m.helpers.TaskSummary(m.task, false),
+		m.helpers.TaskStatus(m.task, true),
+	)
 }
 
 func (m model) HelpBindings() []key.Binding {
@@ -322,7 +312,7 @@ func (m model) HelpBindings() []key.Binding {
 	if ws := m.task.Workspace(); ws != nil {
 		bindings = append(bindings, keys.Common.Workspace)
 	}
-	if run := m.task.Run(); run != nil {
+	if plan.IsApplyTask(m.task) {
 		bindings = append(bindings, keys.Common.Apply)
 	}
 	return bindings

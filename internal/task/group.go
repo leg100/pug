@@ -27,7 +27,7 @@ func (g *Group) IncludesTask(taskID resource.ID) bool {
 func (g *Group) Finished() int {
 	var finished int
 	for _, t := range g.Tasks {
-		if t.IsFinished() {
+		if t.State.IsFinal() {
 			finished++
 		}
 	}

@@ -30,7 +30,9 @@ type Task struct {
 	Immediate     bool
 	AdditionalEnv []string
 	DependsOn     []resource.ID
-	description   string
+	// Summary summarises the outcome of a task to the end-user.
+	Summary     Summary
+	description string
 
 	program   string
 	exclusive bool
@@ -63,24 +65,16 @@ type Task struct {
 	// the task can be retried.
 	Spec Spec
 
-	// Call this function after the task has successfully finished
-	AfterExited func(*Task)
-	// Call this function after the task is enqueued.
-	AfterQueued func(*Task)
-	// Call this function after the task starts running.
-	AfterRunning func(*Task)
-	// Call this function after the task fails with an error
-	AfterError func(*Task)
-	// Call this function after the task is successfully canceled
+	AfterCreate   func(*Task)
+	AfterQueued   func(*Task)
+	AfterRunning  func(*Task)
+	BeforeExited  func(*Task) (Summary, error)
+	AfterExited   func(*Task)
+	AfterError    func(*Task)
 	AfterCanceled func(*Task)
-	// Call this function after the task terminates for whatever reason.
-	AfterFinish func(*Task)
-
-	// call this whenever state is updated
-	afterUpdate func(*Task)
-
-	// call this once the task has terminated
-	afterFinish func(*Task)
+	AfterFinish   func(*Task)
+	afterUpdate   func(*Task)
+	afterFinish   func(*Task)
 }
 
 type factory struct {
@@ -94,6 +88,11 @@ type factory struct {
 	userArgs []string
 	// Terragrunt mode
 	terragrunt bool
+}
+
+// Summary summarises the outcome of a task.
+type Summary interface {
+	String() string
 }
 
 // TODO: check presence of mandatory options
@@ -124,14 +123,18 @@ func (f *factory) newTask(spec Spec) *Task {
 		exclusive:     spec.Exclusive,
 		description:   spec.Description,
 		Spec:          spec,
+		AfterCreate:   spec.AfterCreate,
+		AfterRunning:  spec.AfterRunning,
+		AfterQueued:   spec.AfterQueued,
+		BeforeExited:  spec.BeforeExited,
 		AfterExited:   spec.AfterExited,
 		AfterError:    spec.AfterError,
 		AfterCanceled: spec.AfterCanceled,
-		AfterRunning:  spec.AfterRunning,
-		AfterQueued:   spec.AfterQueued,
 		AfterFinish:   spec.AfterFinish,
 		// Publish an event whenever task state is updated
 		afterUpdate: func(t *Task) {
+			// TODO: remove nil-check that is only here to ensure tests don't
+			// have to mock publisher...
 			if f.publisher != nil {
 				f.publisher.Publish(resource.UpdatedEvent, t)
 			}
@@ -180,15 +183,6 @@ func (t *Task) Elapsed(s Status) time.Duration {
 		return 0
 	}
 	return st.Elapsed()
-}
-
-func (t *Task) IsFinished() bool {
-	switch t.State {
-	case Errored, Exited, Canceled:
-		return true
-	default:
-		return false
-	}
 }
 
 // Wait for task to complete successfully. If the task completes unsuccessfully
@@ -289,15 +283,30 @@ func (t *Task) updateState(state Status) {
 		started: now,
 	}
 
+	// Close output streams. It's important this is done before BeforeExited is
+	// called because it may want to consume the output streams until EOF.
+	if state.IsFinal() {
+		t.stdout.Close()
+		t.combined.Close()
+	}
+
+	// Before task exits trigger callback and if it fails set task's status to
+	// errored. Otherwise the returned summary summarises the task's outcome.
+	if state == Exited && t.BeforeExited != nil {
+		summary, err := t.BeforeExited(t)
+		if err != nil {
+			state = Errored
+		}
+		t.Summary = summary
+	}
+
 	t.State = state
 	if t.afterUpdate != nil {
 		t.afterUpdate(t)
 	}
 
-	if t.IsFinished() {
+	if t.State.IsFinal() {
 		t.recordStatusEndTime(now)
-		t.stdout.Close()
-		t.combined.Close()
 		close(t.finished)
 		if t.afterFinish != nil {
 			t.afterFinish(t)

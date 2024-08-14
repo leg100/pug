@@ -8,8 +8,8 @@ import (
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/leg100/pug/internal/module"
+	"github.com/leg100/pug/internal/plan"
 	"github.com/leg100/pug/internal/resource"
-	"github.com/leg100/pug/internal/run"
 	"github.com/leg100/pug/internal/state"
 	"github.com/leg100/pug/internal/task"
 	"github.com/leg100/pug/internal/tui"
@@ -40,7 +40,7 @@ var (
 type ListMaker struct {
 	Modules    *module.Service
 	Workspaces *workspace.Service
-	Runs       *run.Service
+	Plans      *plan.Service
 	Spinner    *spinner.Model
 	Workdir    string
 	Helpers    *tui.Helpers
@@ -90,7 +90,7 @@ func (m *ListMaker) Make(_ resource.ID, width, height int) (tea.Model, error) {
 		spinner:    m.Spinner,
 		Modules:    m.Modules,
 		Workspaces: m.Workspaces,
-		Runs:       m.Runs,
+		Plans:      m.Plans,
 		workdir:    m.Workdir,
 		helpers:    m.Helpers,
 	}, nil
@@ -99,7 +99,7 @@ func (m *ListMaker) Make(_ resource.ID, width, height int) (tea.Model, error) {
 type list struct {
 	Modules    *module.Service
 	Workspaces *workspace.Service
-	Runs       *run.Service
+	Plans      *plan.Service
 
 	table   table.Model[*module.Module]
 	spinner *spinner.Model
@@ -115,10 +115,10 @@ func (m list) Init() tea.Cmd {
 
 func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var (
-		cmd              tea.Cmd
-		cmds             []tea.Cmd
-		createRunOptions run.CreateOptions
-		applyPrompt      = "Auto-apply %d modules?"
+		cmd            tea.Cmd
+		cmds           []tea.Cmd
+		createPlanOpts plan.CreateOptions
+		applyPrompt    = "Auto-apply %d modules?"
 	)
 
 	switch msg := msg.(type) {
@@ -153,7 +153,7 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 		case key.Matches(msg, keys.Common.PlanDestroy):
-			createRunOptions.Destroy = true
+			createPlanOpts.Destroy = true
 			fallthrough
 		case key.Matches(msg, keys.Common.Plan):
 			// Create specs here, de-selecting any modules where an error is
@@ -162,7 +162,7 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if workspaceID := mod.CurrentWorkspaceID; workspaceID == nil {
 					return task.Spec{}, fmt.Errorf("module %s does not have a current workspace", mod)
 				} else {
-					return m.Runs.Plan(*workspaceID, createRunOptions)
+					return m.Plans.Plan(*workspaceID, createPlanOpts)
 				}
 			})
 			if err != nil {
@@ -172,7 +172,7 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return m, m.helpers.CreateTasksWithSpecs(specs...)
 		case key.Matches(msg, keys.Common.Destroy):
-			createRunOptions.Destroy = true
+			createPlanOpts.Destroy = true
 			applyPrompt = "Destroy resources of %d modules?"
 			fallthrough
 		case key.Matches(msg, keys.Common.Apply):
@@ -182,7 +182,7 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if workspaceID := mod.CurrentWorkspaceID; workspaceID == nil {
 					return task.Spec{}, fmt.Errorf("module %s does not have a current workspace", mod)
 				} else {
-					return m.Runs.Apply(*workspaceID, &createRunOptions)
+					return m.Plans.Apply(*workspaceID, createPlanOpts)
 				}
 			})
 			if err != nil {

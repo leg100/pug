@@ -255,19 +255,6 @@ func (s *Service) List(opts ListOptions) []*Workspace {
 	return existing
 }
 
-func (s *Service) SetCurrentRun(workspaceID, runID resource.ID) error {
-	ws, err := s.table.Update(workspaceID, func(existing *Workspace) error {
-		existing.CurrentRunID = &runID
-		return nil
-	})
-	if err != nil {
-		s.logger.Error("setting current run", "workspace_id", workspaceID, "run_id", runID, "error", err)
-		return err
-	}
-	s.logger.Debug("set current run", "workspace", ws, "run_id", runID, "error", err)
-	return nil
-}
-
 // SelectWorkspace runs the `terraform workspace select <workspace_name>`
 // command, which sets the current workspace for the module. Once that's
 // finished it then updates the current workspace in pug itself too.

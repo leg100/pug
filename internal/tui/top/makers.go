@@ -21,7 +21,7 @@ func makeMakers(cfg app.Config, app *app.App, spinner *spinner.Model) map[tui.Ki
 	helpers := &tui.Helpers{
 		Modules:    app.Modules,
 		Workspaces: app.Workspaces,
-		Runs:       app.Runs,
+		Plans:      app.Plans,
 		States:     app.States,
 		Tasks:      app.Tasks,
 		Logger:     app.Logger,
@@ -30,11 +30,11 @@ func makeMakers(cfg app.Config, app *app.App, spinner *spinner.Model) map[tui.Ki
 	workspaceListMaker := &workspacetui.ListMaker{
 		Workspaces: app.Workspaces,
 		Modules:    app.Modules,
-		Runs:       app.Runs,
+		Plans:      app.Plans,
 		Helpers:    helpers,
 	}
 	taskMaker := &tasktui.Maker{
-		Runs:    app.Runs,
+		Plans:   app.Plans,
 		Tasks:   app.Tasks,
 		Spinner: spinner,
 		Helpers: helpers,
@@ -43,7 +43,7 @@ func makeMakers(cfg app.Config, app *app.App, spinner *spinner.Model) map[tui.Ki
 	}
 	taskListMaker := tasktui.NewListMaker(
 		app.Tasks,
-		app.Runs,
+		app.Plans,
 		taskMaker,
 		helpers,
 	)
@@ -52,7 +52,7 @@ func makeMakers(cfg app.Config, app *app.App, spinner *spinner.Model) map[tui.Ki
 		tui.ModuleListKind: &moduletui.ListMaker{
 			Modules:    app.Modules,
 			Workspaces: app.Workspaces,
-			Runs:       app.Runs,
+			Plans:      app.Plans,
 			Spinner:    spinner,
 			Workdir:    cfg.Workdir.PrettyString(),
 			Helpers:    helpers,
@@ -67,7 +67,7 @@ func makeMakers(cfg app.Config, app *app.App, spinner *spinner.Model) map[tui.Ki
 		},
 		tui.TaskGroupKind: tasktui.NewGroupMaker(
 			app.Tasks,
-			app.Runs,
+			app.Plans,
 			taskMaker,
 			helpers,
 		),
@@ -80,13 +80,13 @@ func makeMakers(cfg app.Config, app *app.App, spinner *spinner.Model) map[tui.Ki
 		tui.ResourceListKind: &workspacetui.ResourceListMaker{
 			Workspaces: app.Workspaces,
 			States:     app.States,
-			Runs:       app.Runs,
+			Plans:      app.Plans,
 			Spinner:    spinner,
 			Helpers:    helpers,
 		},
 		tui.ResourceKind: &workspacetui.ResourceMaker{
 			States:  app.States,
-			Runs:    app.Runs,
+			Plans:   app.Plans,
 			Helpers: helpers,
 		},
 	}
