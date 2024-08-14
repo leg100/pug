@@ -9,7 +9,6 @@ import (
 	"github.com/leg100/pug/internal/resource"
 	"github.com/leg100/pug/internal/tui"
 	"github.com/leg100/pug/internal/tui/table"
-	"golang.org/x/exp/maps"
 )
 
 var (
@@ -47,28 +46,24 @@ func (mm *Maker) Make(id resource.ID, width, height int) (tea.Model, error) {
 			valueColumn.Key: attr.Value,
 		}
 	}
-	items := map[resource.ID]logging.Attr{
-		resource.NewID(resource.LogAttr): {
-			Key:   timeAttrKey,
-			Value: msg.Time.Format(timeFormat),
-		},
-		resource.NewID(resource.LogAttr): {
-			Key:   messageAttrKey,
-			Value: msg.Message,
-		},
-		resource.NewID(resource.LogAttr): {
-			Key:   levelAttrKey,
-			Value: coloredLogLevel(msg.Level),
-		},
-	}
-	for _, attr := range msg.Attributes {
-		items[resource.NewID(resource.LogAttr)] = attr
-	}
 	table := table.New(columns, renderer, width, height,
 		table.WithSortFunc(byAttribute),
 		table.WithSelectable[logging.Attr](false),
 	)
-	table.SetItems(maps.Values(items)...)
+	table.SetItems(
+		logging.Attr{
+			Key:   timeAttrKey,
+			Value: msg.Time.Format(timeFormat),
+		},
+		logging.Attr{
+			Key:   messageAttrKey,
+			Value: msg.Message,
+		},
+		logging.Attr{
+			Key:   levelAttrKey,
+			Value: coloredLogLevel(msg.Level),
+		},
+	)
 
 	return model{
 		msg:    msg,

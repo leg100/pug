@@ -142,7 +142,6 @@ func TestWorkspace_MultipleApplies(t *testing.T) {
 	tm.Type("y")
 
 	waitFor(t, tm, func(s string) bool {
-		t.Log(s)
 		return matchPattern(t, "TaskGroup.*apply.*4/4", s) &&
 			matchPattern(t, `modules/a.*default.*\+10~0-0`, s) &&
 			matchPattern(t, `modules/a.*dev.*\+10~0-0`, s) &&
