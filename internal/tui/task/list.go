@@ -7,8 +7,8 @@ import (
 
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/leg100/pug/internal/plan"
 	"github.com/leg100/pug/internal/resource"
-	"github.com/leg100/pug/internal/run"
 	"github.com/leg100/pug/internal/task"
 	"github.com/leg100/pug/internal/tui"
 	"github.com/leg100/pug/internal/tui/keys"
@@ -54,10 +54,10 @@ func (m *ListTaskMaker) Make(id resource.ID, width, height int) (tea.Model, erro
 }
 
 // NewListMaker constructs a task list model maker
-func NewListMaker(tasks *task.Service, runs *run.Service, taskMaker *Maker, helpers *tui.Helpers) *ListMaker {
+func NewListMaker(tasks *task.Service, plans *plan.Service, taskMaker *Maker, helpers *tui.Helpers) *ListMaker {
 	return &ListMaker{
 		Tasks:     tasks,
-		Runs:      runs,
+		Plans:     plans,
 		TaskMaker: &ListTaskMaker{Maker: taskMaker},
 		Helpers:   helpers,
 	}
@@ -65,7 +65,7 @@ func NewListMaker(tasks *task.Service, runs *run.Service, taskMaker *Maker, help
 
 // ListMaker makes task list models
 type ListMaker struct {
-	Runs  *run.Service
+	Plans *plan.Service
 	Tasks *task.Service
 
 	TaskMaker tui.Maker
@@ -105,7 +105,7 @@ func (mm *ListMaker) Make(_ resource.ID, width, height int) (tea.Model, error) {
 	})
 	m := List{
 		Model:   splitModel,
-		runs:    mm.Runs,
+		plans:   mm.Plans,
 		tasks:   mm.Tasks,
 		helpers: mm.Helpers,
 	}
@@ -115,7 +115,7 @@ func (mm *ListMaker) Make(_ resource.ID, width, height int) (tea.Model, error) {
 type List struct {
 	split.Model[*task.Task]
 
-	runs    *run.Service
+	plans   *plan.Service
 	tasks   *task.Service
 	helpers *tui.Helpers
 }
@@ -140,8 +140,8 @@ func (m List) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		case key.Matches(msg, keys.Common.Apply):
 			specs, err := m.Table.Prune(func(t *task.Task) (task.Spec, error) {
-				// Task must belong to a run in order to be applied.
-				return m.runs.ApplyPlan(t.ID)
+				// Task must be a plan in order to be applied
+				return m.plans.ApplyPlan(t.ID)
 			})
 			if err != nil {
 				return m, tui.ReportError(fmt.Errorf("applying tasks: %w", err))

@@ -15,11 +15,6 @@ type Workspace struct {
 	resource.Common
 
 	Name string
-
-	// The workspace's current or last active run.
-	CurrentRunID *resource.ID
-
-	AutoApply bool
 }
 
 func New(mod *module.Module, name string) (*Workspace, error) {

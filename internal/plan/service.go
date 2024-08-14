@@ -1,4 +1,4 @@
-package run
+package plan
 
 import (
 	"fmt"
@@ -71,7 +71,7 @@ func (s *Service) ReloadAfterApply(sub <-chan resource.Event[*task.Task]) {
 			if event.Payload.State != task.Exited {
 				continue
 			}
-			if len(event.Payload.Command) == 0 || event.Payload.Command[0] != "apply" {
+			if !IsApplyTask(event.Payload) {
 				continue
 			}
 			ws := event.Payload.Workspace()

@@ -13,8 +13,8 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/google/uuid"
 	"github.com/leg100/pug/internal/logging"
+	"github.com/leg100/pug/internal/plan"
 	"github.com/leg100/pug/internal/resource"
-	"github.com/leg100/pug/internal/run"
 	"github.com/leg100/pug/internal/task"
 	"github.com/leg100/pug/internal/tui"
 	"github.com/leg100/pug/internal/tui/keys"
@@ -22,7 +22,7 @@ import (
 )
 
 type Maker struct {
-	Runs    *run.Service
+	Plans   *plan.Service
 	Tasks   *task.Service
 	Spinner *spinner.Model
 	Helpers *tui.Helpers
@@ -46,7 +46,7 @@ func (mm *Maker) make(id resource.ID, width, height int, border bool) (tea.Model
 	m := model{
 		id:      uuid.New(),
 		tasks:   mm.Tasks,
-		runs:    mm.Runs,
+		plans:   mm.Plans,
 		task:    task,
 		output:  task.NewReader(true),
 		spinner: mm.Spinner,
@@ -99,7 +99,7 @@ type model struct {
 
 	tasks *task.Service
 	task  *task.Task
-	runs  *run.Service
+	plans *plan.Service
 
 	output io.Reader
 	buf    []byte
@@ -133,7 +133,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, keys.Common.Cancel):
 			return m, cancel(m.tasks, m.task.ID)
 		case key.Matches(msg, keys.Common.Apply):
-			spec, err := m.runs.ApplyPlan(m.task.ID)
+			spec, err := m.plans.ApplyPlan(m.task.ID)
 			if err != nil {
 				return m, tui.ReportError(err)
 			}
@@ -312,7 +312,7 @@ func (m model) HelpBindings() []key.Binding {
 	if ws := m.task.Workspace(); ws != nil {
 		bindings = append(bindings, keys.Common.Workspace)
 	}
-	if run := m.task.Run(); run != nil {
+	if plan.IsApplyTask(m.task) {
 		bindings = append(bindings, keys.Common.Apply)
 	}
 	return bindings

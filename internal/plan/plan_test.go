@@ -1,4 +1,4 @@
-package run
+package plan
 
 import (
 	"os"
@@ -14,8 +14,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestRun_VarsFile tests creating a run with a workspace tfvars file.
-func TestRun_VarsFile(t *testing.T) {
+// TestPlan_VarsFile tests creating a plan with a workspace tfvars file.
+func TestPlan_VarsFile(t *testing.T) {
 	f, mod, ws := setupTest(t)
 
 	// Create a workspace tfvars file for dev
@@ -31,7 +31,7 @@ func TestRun_VarsFile(t *testing.T) {
 	}
 }
 
-func TestRun_MakeArtefactsPath(t *testing.T) {
+func TestPlan_MakeArtefactsPath(t *testing.T) {
 	f, _, ws := setupTest(t)
 
 	run, err := f.newPlan(ws.ID, CreateOptions{planFile: true})

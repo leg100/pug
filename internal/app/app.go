@@ -9,7 +9,7 @@ import (
 
 	"github.com/leg100/pug/internal/logging"
 	"github.com/leg100/pug/internal/module"
-	"github.com/leg100/pug/internal/run"
+	"github.com/leg100/pug/internal/plan"
 	"github.com/leg100/pug/internal/state"
 	"github.com/leg100/pug/internal/task"
 	"github.com/leg100/pug/internal/workspace"
@@ -21,7 +21,7 @@ type App struct {
 
 	Modules    *module.Service
 	Workspaces *workspace.Service
-	Runs       *run.Service
+	Plans      *plan.Service
 	States     *state.Service
 	Tasks      *task.Service
 }
@@ -69,7 +69,7 @@ func New(cfg Config) (*App, error) {
 		Tasks:      tasks,
 		Logger:     logger,
 	})
-	plans := run.NewService(run.ServiceOptions{
+	plans := plan.NewService(plan.ServiceOptions{
 		Tasks:      tasks,
 		Modules:    modules,
 		Workspaces: workspaces,
@@ -113,7 +113,7 @@ func New(cfg Config) (*App, error) {
 	return &App{
 		Modules:    modules,
 		Workspaces: workspaces,
-		Runs:       plans,
+		Plans:      plans,
 		Tasks:      tasks,
 		States:     states,
 		Cleanup:    cleanup,

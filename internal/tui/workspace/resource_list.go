@@ -8,8 +8,8 @@ import (
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/leg100/pug/internal/plan"
 	"github.com/leg100/pug/internal/resource"
-	"github.com/leg100/pug/internal/run"
 	"github.com/leg100/pug/internal/state"
 	"github.com/leg100/pug/internal/task"
 	"github.com/leg100/pug/internal/tui"
@@ -28,7 +28,7 @@ var resourceColumn = table.Column{
 type ResourceListMaker struct {
 	Workspaces *workspace.Service
 	States     *state.Service
-	Runs       *run.Service
+	Plans      *plan.Service
 	Spinner    *spinner.Model
 	Helpers    *tui.Helpers
 }
@@ -59,7 +59,7 @@ func (m *ResourceListMaker) Make(id resource.ID, width, height int) (tea.Model, 
 		Height:       height,
 		Maker: &ResourceMaker{
 			States:         m.States,
-			Runs:           m.Runs,
+			Plans:          m.Plans,
 			Helpers:        m.Helpers,
 			disableBorders: true,
 		},
@@ -67,7 +67,7 @@ func (m *ResourceListMaker) Make(id resource.ID, width, height int) (tea.Model, 
 	return resourceList{
 		Model:     splitModel,
 		states:    m.States,
-		runs:      m.Runs,
+		plans:     m.Plans,
 		workspace: ws,
 		spinner:   m.Spinner,
 		width:     width,
@@ -80,7 +80,7 @@ type resourceList struct {
 	split.Model[*state.Resource]
 
 	states    *state.Service
-	runs      *run.Service
+	plans     *plan.Service
 	workspace resource.Resource
 	state     *state.State
 	reloading bool
@@ -113,7 +113,7 @@ func (m resourceList) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var (
 		cmd              tea.Cmd
 		cmds             []tea.Cmd
-		createRunOptions run.CreateOptions
+		createRunOptions plan.CreateOptions
 	)
 
 	switch msg := msg.(type) {
@@ -182,7 +182,7 @@ func (m resourceList) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// NOTE: even if the user hasn't selected any rows, we still proceed
 			// to create a run without targeted resources.
 			fn := func(workspaceID resource.ID) (task.Spec, error) {
-				return m.runs.Plan(workspaceID, createRunOptions)
+				return m.plans.Plan(workspaceID, createRunOptions)
 			}
 			return m, m.helpers.CreateTasks(fn, m.workspace.GetID())
 		}

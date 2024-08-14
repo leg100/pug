@@ -131,7 +131,7 @@ func setupSubscriptions(app *app.App, cfg app.Config) (chan tea.Msg, func()) {
 
 	}
 	{
-		sub := app.Runs.Subscribe(ctx)
+		sub := app.Plans.Subscribe(ctx)
 		wg.Add(1)
 		go func() {
 			for ev := range sub {
@@ -181,7 +181,7 @@ func setupSubscriptions(app *app.App, cfg app.Config) (chan tea.Msg, func()) {
 	// Whenever an apply is successful, pull workspace state
 	if !cfg.DisableReloadAfterApply {
 		sub := app.Tasks.TaskBroker.Subscribe(ctx)
-		go app.Runs.ReloadAfterApply(sub)
+		go app.Plans.ReloadAfterApply(sub)
 	}
 	// cleanup function to be invoked when program is terminated.
 	return ch, func() {

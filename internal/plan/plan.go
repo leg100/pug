@@ -1,4 +1,4 @@
-package run
+package plan
 
 import (
 	"errors"
@@ -60,6 +60,7 @@ func (f *factory) newPlan(workspaceID resource.ID, opts CreateOptions) (*Plan, e
 		Destroy:     opts.Destroy,
 		TargetAddrs: opts.TargetAddrs,
 		planFile:    opts.planFile,
+		terragrunt:  f.terragrunt,
 	}
 	if opts.planFile {
 		plan.ArtefactsPath = filepath.Join(f.dataDir, fmt.Sprintf("%d", plan.Serial))
@@ -181,4 +182,8 @@ func (r *Plan) applyTaskSpec(logger logging.Interface) (task.Spec, error) {
 		spec.Description += " (destroy)"
 	}
 	return spec, nil
+}
+
+func IsApplyTask(t *task.Task) bool {
+	return len(t.Command) > 0 && t.Command[0] == "apply"
 }

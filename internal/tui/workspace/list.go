@@ -6,8 +6,8 @@ import (
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/leg100/pug/internal/module"
+	"github.com/leg100/pug/internal/plan"
 	"github.com/leg100/pug/internal/resource"
-	"github.com/leg100/pug/internal/run"
 	"github.com/leg100/pug/internal/task"
 	"github.com/leg100/pug/internal/tui"
 	"github.com/leg100/pug/internal/tui/keys"
@@ -25,7 +25,7 @@ var currentColumn = table.Column{
 type ListMaker struct {
 	Modules    *module.Service
 	Workspaces *workspace.Service
-	Runs       *run.Service
+	Plans      *plan.Service
 	Helpers    *tui.Helpers
 }
 
@@ -53,7 +53,7 @@ func (m *ListMaker) Make(_ resource.ID, width, height int) (tea.Model, error) {
 	return list{
 		Workspaces: m.Workspaces,
 		Modules:    m.Modules,
-		Runs:       m.Runs,
+		Plans:      m.Plans,
 		table:      table,
 		helpers:    m.Helpers,
 	}, nil
@@ -62,7 +62,7 @@ func (m *ListMaker) Make(_ resource.ID, width, height int) (tea.Model, error) {
 type list struct {
 	Modules    *module.Service
 	Workspaces *workspace.Service
-	Runs       *run.Service
+	Plans      *plan.Service
 
 	table table.Model[*workspace.Workspace]
 
@@ -80,7 +80,7 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var (
 		cmd              tea.Cmd
 		cmds             []tea.Cmd
-		createRunOptions run.CreateOptions
+		createRunOptions plan.CreateOptions
 		applyPrompt      = "Auto-apply %d workspaces?"
 	)
 
@@ -120,7 +120,7 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, keys.Common.Plan):
 			workspaceIDs := m.table.SelectedOrCurrentIDs()
 			fn := func(workspaceID resource.ID) (task.Spec, error) {
-				return m.Runs.Plan(workspaceID, createRunOptions)
+				return m.Plans.Plan(workspaceID, createRunOptions)
 			}
 			return m, m.helpers.CreateTasks(fn, workspaceIDs...)
 		case key.Matches(msg, keys.Common.Destroy):
@@ -130,7 +130,7 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, keys.Common.Apply):
 			workspaceIDs := m.table.SelectedOrCurrentIDs()
 			fn := func(workspaceID resource.ID) (task.Spec, error) {
-				return m.Runs.Apply(workspaceID, createRunOptions)
+				return m.Plans.Apply(workspaceID, createRunOptions)
 			}
 			return m, tui.YesNoPrompt(
 				fmt.Sprintf(applyPrompt, len(workspaceIDs)),
