@@ -251,17 +251,13 @@ func (s *Service) GetByPath(path string) (*Module, error) {
 	return nil, fmt.Errorf("%s: %w", path, resource.ErrNotFound)
 }
 
+// SetCurrent sets the current workspace for the module.
 func (s *Service) SetCurrent(moduleID, workspaceID resource.ID) error {
 	_, err := s.table.Update(moduleID, func(existing *Module) error {
 		existing.CurrentWorkspaceID = &workspaceID
 		return nil
 	})
-	if err != nil {
-		s.logger.Error("setting current workspace", "module", moduleID, "workspace", workspaceID, "error", err)
-		return err
-	}
-	s.logger.Debug("set current workspace", "module", moduleID, "workspace", workspaceID)
-	return nil
+	return err
 }
 
 // updateSpec updates the task spec with common module settings.

@@ -259,15 +259,6 @@ func (s *Service) List(opts ListOptions) []*Workspace {
 // command, which sets the current workspace for the module. Once that's
 // finished it then updates the current workspace in pug itself too.
 func (s *Service) SelectWorkspace(moduleID, workspaceID resource.ID) error {
-	if err := s.selectWorkspace(moduleID, workspaceID); err != nil {
-		s.logger.Error("selecting current workspace", "workspace_id", workspaceID, "error", err)
-		return err
-	}
-	s.logger.Debug("selected current workspace", "workspace", workspaceID)
-	return nil
-}
-
-func (s *Service) selectWorkspace(moduleID, workspaceID resource.ID) error {
 	ws, err := s.table.Get(workspaceID)
 	if err != nil {
 		return err
@@ -284,13 +275,14 @@ func (s *Service) selectWorkspace(moduleID, workspaceID resource.ID) error {
 		Args:      []string{ws.Name},
 		Immediate: true,
 		Wait:      true,
+		BeforeExited: func(t *task.Task) (task.Summary, error) {
+			// Now the terraform command has finished, update the current
+			// workspace in pug as well.
+			err := s.modules.SetCurrent(moduleID, workspaceID)
+			return nil, err
+		},
 	})
 	if err != nil {
-		return err
-	}
-	// Now task has finished successfully, update the current workspace in pug
-	// as well.
-	if err := s.modules.SetCurrent(moduleID, workspaceID); err != nil {
 		return err
 	}
 	return nil
