@@ -60,10 +60,6 @@ func (mm *Maker) make(id resource.ID, width, height int, border bool) (tea.Model
 	}
 	m.setHeight(height)
 
-	if rr := m.task.Run(); rr != nil {
-		m.run = rr.(*run.Plan)
-	}
-
 	m.viewport = tui.NewViewport(tui.ViewportOptions{
 		JSON:       m.task.JSON,
 		Autoscroll: !mm.disableAutoscroll,
@@ -104,7 +100,6 @@ type model struct {
 	tasks *task.Service
 	task  *task.Task
 	runs  *run.Service
-	run   *run.Plan
 
 	output io.Reader
 	buf    []byte
@@ -138,16 +133,14 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, keys.Common.Cancel):
 			return m, cancel(m.tasks, m.task.ID)
 		case key.Matches(msg, keys.Common.Apply):
-			if m.run != nil {
-				spec, err := m.runs.Apply(m.run.ID, nil)
-				if err != nil {
-					return m, tui.ReportError(fmt.Errorf("create apply task: %w", err))
-				}
-				return m, tui.YesNoPrompt(
-					"Apply plan?",
-					m.helpers.CreateTasksWithSpecs(spec),
-				)
+			spec, err := m.runs.ApplyPlan(m.task.ID)
+			if err != nil {
+				return m, tui.ReportError(err)
 			}
+			return m, tui.YesNoPrompt(
+				"Apply plan?",
+				m.helpers.CreateTasksWithSpecs(spec),
+			)
 		case key.Matches(msg, keys.Common.State):
 			if ws, ok := m.helpers.TaskWorkspace(m.task); ok {
 				return m, tui.NavigateTo(tui.ResourceListKind, tui.WithParent(ws))
@@ -300,13 +293,10 @@ func (m model) Title() string {
 }
 
 func (m model) Status() string {
-	if m.run != nil {
-		return lipgloss.JoinHorizontal(lipgloss.Top,
-			m.helpers.LatestRunReport(m.run, false),
-			m.helpers.TaskStatus(m.task, true),
-		)
-	}
-	return m.helpers.TaskStatus(m.task, true)
+	return lipgloss.JoinHorizontal(lipgloss.Top,
+		m.helpers.TaskSummary(m.task, false),
+		m.helpers.TaskStatus(m.task, true),
+	)
 }
 
 func (m model) HelpBindings() []key.Binding {

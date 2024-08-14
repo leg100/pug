@@ -18,21 +18,19 @@ import (
 type Plan struct {
 	resource.Common
 
-	// taskID is the ID of the plan task, and is only set once the task is
-	// created.
-	taskID *resource.ID
-
-	PlanReport    *Report
-	ApplyReport   *Report
 	HasChanges    bool
 	ArtefactsPath string
 	Destroy       bool
 	TargetAddrs   []state.ResourceAddress
 
-	applyOnly    bool
-	defaultArgs  []string
-	planFileArgs []string
-	terragrunt   bool
+	targetArgs  []string
+	terragrunt  bool
+	planFile    bool
+	varsFileArg *string
+
+	// taskID is the ID of the plan task, and is only set once the task is
+	// created.
+	taskID *resource.ID
 }
 
 type CreateOptions struct {
@@ -40,9 +38,9 @@ type CreateOptions struct {
 	TargetAddrs []state.ResourceAddress
 	// Destroy creates a plan to destroy all resources.
 	Destroy bool
-	// applyOnly skips the plan task and goes directly to creating an apply task
-	// without a plan file.
-	applyOnly bool
+	// planFile is true if a plan file is first created with `terraform plan
+	// -out plan.file`.
+	planFile bool
 }
 
 type factory struct {
@@ -61,23 +59,20 @@ func (f *factory) newPlan(workspaceID resource.ID, opts CreateOptions) (*Plan, e
 		Common:      resource.New(resource.Plan, ws),
 		Destroy:     opts.Destroy,
 		TargetAddrs: opts.TargetAddrs,
-		applyOnly:   opts.applyOnly,
-		defaultArgs: []string{"-input=false"},
+		planFile:    opts.planFile,
 	}
-	if !opts.applyOnly {
+	if opts.planFile {
 		plan.ArtefactsPath = filepath.Join(f.dataDir, fmt.Sprintf("%d", plan.Serial))
 		if err := os.MkdirAll(plan.ArtefactsPath, 0o755); err != nil {
 			return nil, fmt.Errorf("creating run artefacts directory: %w", err)
 		}
 	}
-	if plan.Destroy {
-		plan.planFileArgs = append(plan.planFileArgs, "-destroy")
-	}
 	for _, addr := range plan.TargetAddrs {
-		plan.planFileArgs = append(plan.planFileArgs, fmt.Sprintf("-target=%s", addr))
+		plan.targetArgs = append(plan.targetArgs, fmt.Sprintf("-target=%s", addr))
 	}
 	if fname, ok := ws.VarsFile(); ok {
-		plan.planFileArgs = append(plan.planFileArgs, fmt.Sprintf("-var-file=%s", fname))
+		flag := fmt.Sprintf("-var-file=%s", fname)
+		plan.varsFileArg = &flag
 	}
 	return plan, nil
 }
@@ -98,64 +93,56 @@ func (r *Plan) planPath() string {
 	return filepath.Join(r.ArtefactsPath, "plan")
 }
 
+func (r *Plan) args() []string {
+	return append([]string{"-input"}, r.targetArgs...)
+}
+
 func (r *Plan) planTaskSpec(logger logging.Interface) task.Spec {
+	// TODO: assert planFile is true first
 	spec := task.Spec{
 		Parent:  r.Workspace(),
 		Path:    r.ModulePath(),
 		Env:     []string{workspace.TerraformEnv(r.WorkspaceName())},
 		Command: []string{"plan"},
-		Args:    append(r.defaultArgs, r.planFileArgs...),
+		Args:    append(r.args(), "-out", r.planPath()),
 		// TODO: explain why plan is blocking (?)
 		Blocking:    true,
 		Description: "plan",
 		AfterCreate: func(t *task.Task) {
 			r.taskID = &t.ID
 		},
-		AfterExited: func(t *task.Task) {
-			if err := r.finishPlan(t.NewReader(false)); err != nil {
-				logger.Error("finishing plan", "error", err, "run", r)
+		BeforeExited: func(t *task.Task) (task.Summary, error) {
+			out, err := io.ReadAll(t.NewReader(false))
+			if err != nil {
+				return nil, err
 			}
+			changes, report, err := parsePlanReport(string(out))
+			if err != nil {
+				return nil, err
+			}
+			r.HasChanges = changes
+			return report, nil
 		},
 	}
-	if !r.applyOnly {
-		spec.Args = append(spec.Args, "-out", r.planPath())
+	if r.varsFileArg != nil {
+		spec.Args = append(spec.Args, *r.varsFileArg)
 	}
 	if r.Destroy {
+		spec.Args = append(spec.Args, "-destroy")
 		spec.Description += " (destroy)"
 	}
 	return spec
 }
 
-func (r *Plan) finishPlan(reader io.Reader) (err error) {
-	out, err := io.ReadAll(reader)
-	if err != nil {
-		return err
-	}
-	if err := r.parsePlanOutput(out); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (r *Plan) parsePlanOutput(out []byte) error {
-	changes, report, err := parsePlanReport(string(out))
-	if err != nil {
-		return err
-	}
-	r.PlanReport = &report
-	r.HasChanges = changes
-	return nil
-}
-
 func (r *Plan) applyTaskSpec(logger logging.Interface) (task.Spec, error) {
-	if !r.applyOnly && r.HasChanges {
+	if r.planFile && !r.HasChanges {
 		return task.Spec{}, errors.New("plan does not have any changes to apply")
 	}
 	spec := task.Spec{
 		Parent:      r.Workspace(),
 		Path:        r.ModulePath(),
 		Command:     []string{"apply"},
-		Args:        r.defaultArgs,
+		Args:        r.args(),
 		Env:         []string{workspace.TerraformEnv(r.WorkspaceName())},
 		Blocking:    true,
 		Description: "apply",
@@ -163,42 +150,35 @@ func (r *Plan) applyTaskSpec(logger logging.Interface) (task.Spec, error) {
 		RespectModuleDependencies: r.terragrunt,
 		// Module dependencies are reversed for a destroy.
 		InverseDependencyOrder: r.Destroy,
-		AfterExited: func(t *task.Task) {
-			if err := r.finishApply(t.NewReader(false)); err != nil {
-				logger.Error("finishing apply", "error", err, "workspace", r.Workspace())
-				return
+		BeforeExited: func(t *task.Task) (task.Summary, error) {
+			out, err := io.ReadAll(t.NewReader(false))
+			if err != nil {
+				return nil, err
 			}
+			if r.planFile {
+				// Plan file can now be safely removed
+				_ = os.RemoveAll(r.ArtefactsPath)
+			}
+			report, err := parseApplyReport(string(out))
+			if err != nil {
+				return nil, err
+			}
+			return report, nil
 		},
 	}
-	if r.applyOnly {
-		spec.Args = append(spec.Args, r.planFileArgs...)
-		spec.Args = append(spec.Args, "-auto-approve")
-	} else {
+	if r.planFile {
 		spec.Args = append(spec.Args, r.planPath())
+	} else {
+		if r.varsFileArg != nil {
+			spec.Args = append(spec.Args, *r.varsFileArg)
+		}
+		spec.Args = append(spec.Args, "-auto-approve")
 	}
 	if r.Destroy {
+		if !r.planFile {
+			spec.Args = append(spec.Args, "-destroy")
+		}
 		spec.Description += " (destroy)"
 	}
 	return spec, nil
-}
-
-func (r *Plan) finishApply(reader io.Reader) error {
-	out, err := io.ReadAll(reader)
-	if err != nil {
-		return err
-	}
-	if r.applyOnly {
-		if err := r.parsePlanOutput(out); err != nil {
-			return err
-		}
-	} else {
-		// Plan file can be safely removed
-		_ = os.RemoveAll(r.ArtefactsPath)
-	}
-	report, err := parseApplyReport(string(out))
-	if err != nil {
-		return err
-	}
-	r.ApplyReport = &report
-	return nil
 }

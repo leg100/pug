@@ -26,13 +26,15 @@ func TestRun_VarsFile(t *testing.T) {
 	run, err := f.newPlan(ws.ID, CreateOptions{})
 	require.NoError(t, err)
 
-	assert.Contains(t, run.planFileArgs, "-var-file=dev.tfvars")
+	if assert.NotNil(t, run.varsFileArg) {
+		assert.Equal(t, *run.varsFileArg, "-var-file=dev.tfvars")
+	}
 }
 
 func TestRun_MakeArtefactsPath(t *testing.T) {
 	f, _, ws := setupTest(t)
 
-	run, err := f.newPlan(ws.ID, CreateOptions{})
+	run, err := f.newPlan(ws.ID, CreateOptions{planFile: true})
 	require.NoError(t, err)
 
 	assert.DirExists(t, run.ArtefactsPath)

@@ -162,14 +162,17 @@ func (h *Helpers) TaskStatus(t *task.Task, background bool) string {
 	}
 }
 
-func (h *Helpers) LatestRunReport(r *run.Plan, table bool) string {
-	if r.ApplyReport != nil {
-		return h.RunReport(*r.ApplyReport, table)
+// TaskSummary renders a summary of the task's outcome. Set table to true if the
+// outcome is to be rendered within a table row.
+func (h *Helpers) TaskSummary(t *task.Task, table bool) string {
+	if t.Summary == nil {
+		return ""
 	}
-	if r.PlanReport != nil {
-		return h.RunReport(*r.PlanReport, table)
+	if report, ok := t.Summary.(run.Report); ok {
+		// Render special resource report
+		return h.RunReport(report, table)
 	}
-	return ""
+	return t.Summary.String()
 }
 
 // RunReport renders a colored summary of a run's changes. Set table to true if

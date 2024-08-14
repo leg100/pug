@@ -71,7 +71,7 @@ func (s *Service) ReloadAfterApply(sub <-chan resource.Event[*task.Task]) {
 			if event.Payload.State != task.Exited {
 				continue
 			}
-			if len(event.Payload.Command) != 1 || event.Payload.Command[0] != "apply" {
+			if len(event.Payload.Command) == 0 || event.Payload.Command[0] != "apply" {
 				continue
 			}
 			ws := event.Payload.Workspace()
@@ -100,7 +100,7 @@ func (s *Service) Plan(workspaceID resource.ID, opts CreateOptions) (task.Spec, 
 // Apply creates a task spec to auto-apply a plan, i.e. `terraform apply`. To
 // apply an existing plan, see ApplyPlan.
 func (s *Service) Apply(workspaceID resource.ID, opts CreateOptions) (task.Spec, error) {
-	opts.applyOnly = true
+	opts.planFile = false
 	plan, err := s.newPlan(workspaceID, opts)
 	if err != nil {
 		return task.Spec{}, err
@@ -136,7 +136,7 @@ func (s *Service) getByTaskID(taskID resource.ID) (*Plan, error) {
 			return plan, nil
 		}
 	}
-	return nil, resource.ErrNotFound
+	return nil, fmt.Errorf("task is not associated with a plan: %w", resource.ErrNotFound)
 }
 
 func (s *Service) List() []*Plan {

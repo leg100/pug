@@ -62,7 +62,7 @@ func StartTest(t *testing.T, cfg app.Config, width, height int) *teatest.TestMod
 	m, err := newModel(cfg, app)
 	require.NoError(t, err)
 
-	ch, unsub := setupSubscriptions(app)
+	ch, unsub := setupSubscriptions(app, cfg)
 	t.Cleanup(unsub)
 
 	tm := teatest.NewTestModel(t, m, teatest.WithInitialTermSize(width, height))

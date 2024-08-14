@@ -1,9 +1,5 @@
 package table
 
-import (
-	"github.com/leg100/pug/internal/run"
-)
-
 var (
 	ModuleColumn = Column{
 		Key:            "module",
@@ -15,11 +11,6 @@ var (
 		Key:        "workspace",
 		Title:      "WORKSPACE",
 		FlexFactor: 1,
-	}
-	RunStatusColumn = Column{
-		Key:   "run_status",
-		Title: "STATUS",
-		Width: run.MaxStatusLen,
 	}
 	RunChangesColumn = Column{
 		Key:        "run_changes",

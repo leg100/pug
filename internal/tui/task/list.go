@@ -84,25 +84,15 @@ func (mm *ListMaker) Make(_ resource.ID, width, height int) (tea.Model, error) {
 	}
 
 	renderer := func(t *task.Task) table.RenderedRow {
-		row := table.RenderedRow{
+		return table.RenderedRow{
 			taskIDColumn.Key:          t.ID.String(),
 			table.ModuleColumn.Key:    mm.Helpers.ModulePath(t),
 			table.WorkspaceColumn.Key: mm.Helpers.WorkspaceName(t),
 			commandColumn.Key:         t.String(),
 			ageColumn.Key:             tui.Ago(time.Now(), t.Updated),
 			statusColumn.Key:          mm.Helpers.TaskStatus(t, false),
+			runChangesColumn.Key:      mm.Helpers.TaskSummary(t, true),
 		}
-
-		if rr := t.Run(); rr != nil {
-			run := rr.(*run.Plan)
-			if t.Command[0] == "plan" && run.PlanReport != nil {
-				row[runChangesColumn.Key] = mm.Helpers.RunReport(*run.PlanReport, true)
-			} else if t.Command[0] == "apply" && run.ApplyReport != nil {
-				row[runChangesColumn.Key] = mm.Helpers.RunReport(*run.ApplyReport, true)
-			}
-		}
-
-		return row
 	}
 
 	splitModel := split.New(split.Options[*task.Task]{
@@ -149,13 +139,9 @@ func (m List) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, tui.NavigateTo(tui.TaskKind, tui.WithParent(row.Value))
 			}
 		case key.Matches(msg, keys.Common.Apply):
-			specs, err := m.Table.Prune(func(tsk *task.Task) (task.Spec, error) {
+			specs, err := m.Table.Prune(func(t *task.Task) (task.Spec, error) {
 				// Task must belong to a run in order to be applied.
-				res := tsk.Run()
-				if res == nil {
-					return task.Spec{}, errors.New("task does not belong to a run")
-				}
-				return m.runs.Apply(res.GetID(), nil)
+				return m.runs.ApplyPlan(t.ID)
 			})
 			if err != nil {
 				return m, tui.ReportError(fmt.Errorf("applying tasks: %w", err))

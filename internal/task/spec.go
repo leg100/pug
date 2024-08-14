@@ -51,7 +51,7 @@ type Spec struct {
 	// Call this function before the task has successfully finished. The
 	// returned string sets the task summary, and the error, if non-nil, deems
 	// the task to have failed and places the task into an errored state.
-	BeforeExited func(*Task) (string, error)
+	BeforeExited func(*Task) (Summary, error)
 	// Call this function after the task has successfully finished
 	AfterExited func(*Task)
 	// Call this function after the task is enqueued.

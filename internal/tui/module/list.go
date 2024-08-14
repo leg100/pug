@@ -177,7 +177,7 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if workspaceID := mod.CurrentWorkspaceID; workspaceID == nil {
 					return task.Spec{}, fmt.Errorf("module %s does not have a current workspace", mod)
 				} else {
-					return m.Runs.Apply(*workspaceID, &createRunOptions)
+					return m.Runs.Apply(*workspaceID, createRunOptions)
 				}
 			})
 			if err != nil {
