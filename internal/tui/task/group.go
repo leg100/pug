@@ -5,8 +5,8 @@ import (
 
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/leg100/pug/internal/plan"
 	"github.com/leg100/pug/internal/resource"
-	"github.com/leg100/pug/internal/run"
 	"github.com/leg100/pug/internal/task"
 	"github.com/leg100/pug/internal/tui"
 	"github.com/leg100/pug/internal/tui/keys"
@@ -29,11 +29,11 @@ type GroupMaker struct {
 }
 
 // NewGroupMaker constructs a task group model maker
-func NewGroupMaker(tasks *task.Service, runs *run.Service, taskMaker *Maker, helpers *tui.Helpers) *GroupMaker {
+func NewGroupMaker(tasks *task.Service, plans *plan.Service, taskMaker *Maker, helpers *tui.Helpers) *GroupMaker {
 	return &GroupMaker{
 		taskListMaker: &ListMaker{
 			Tasks:     tasks,
-			Runs:      runs,
+			Plans:     plans,
 			TaskMaker: &groupTaskMaker{Maker: taskMaker},
 			Helpers:   helpers,
 		},

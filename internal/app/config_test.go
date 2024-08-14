@@ -132,9 +132,9 @@ func TestConfig(t *testing.T) {
 			"set first page via environment variable",
 			"",
 			nil,
-			[]string{"PUG_FIRST_PAGE=runs"},
+			[]string{"PUG_FIRST_PAGE=tasks"},
 			func(t *testing.T, got Config) {
-				assert.Equal(t, got.FirstPage, "runs")
+				assert.Equal(t, got.FirstPage, "tasks")
 			},
 		},
 		{

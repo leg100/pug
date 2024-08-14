@@ -11,8 +11,8 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/leg100/pug/internal/logging"
 	"github.com/leg100/pug/internal/module"
+	"github.com/leg100/pug/internal/plan"
 	"github.com/leg100/pug/internal/resource"
-	"github.com/leg100/pug/internal/run"
 	"github.com/leg100/pug/internal/state"
 	"github.com/leg100/pug/internal/task"
 	"github.com/leg100/pug/internal/workspace"
@@ -27,7 +27,7 @@ import (
 type Helpers struct {
 	Modules    *module.Service
 	Workspaces *workspace.Service
-	Runs       *run.Service
+	Plans      *plan.Service
 	Tasks      *task.Service
 	States     *state.Service
 	Logger     logging.Interface
@@ -162,19 +162,23 @@ func (h *Helpers) TaskStatus(t *task.Task, background bool) string {
 	}
 }
 
-func (h *Helpers) LatestRunReport(r *run.Run, table bool) string {
-	if r.ApplyReport != nil {
-		return h.RunReport(*r.ApplyReport, table)
+// TaskSummary renders a summary of the task's outcome. Set table to true if the
+// outcome is to be rendered within a table row.
+func (h *Helpers) TaskSummary(t *task.Task, table bool) string {
+	if t.Summary == nil {
+		return ""
 	}
-	if r.PlanReport != nil {
-		return h.RunReport(*r.PlanReport, table)
+	if report, ok := t.Summary.(plan.Report); ok {
+		// Render special resource report
+		return h.ResourceReport(report, table)
 	}
-	return ""
+	return t.Summary.String()
 }
 
-// RunReport renders a colored summary of a run's changes. Set table to true if
-// the report is rendered within a table row.
-func (h *Helpers) RunReport(report run.Report, table bool) string {
+// ResourceReport renders a colored summary of resource changes as a result of a
+// plan or apply. Set table to true if the report is rendered within a table
+// row.
+func (h *Helpers) ResourceReport(report plan.Report, table bool) string {
 	var background lipgloss.TerminalColor = lipgloss.NoColor{}
 	if !table {
 		background = RunReportBackgroundColor
@@ -190,7 +194,7 @@ func (h *Helpers) RunReport(report run.Report, table bool) string {
 	return s
 }
 
-// RunReport renders a colored summary of a run's changes. Set table to true if
+// GroupReport renders a colored summary of a task group's task statuses. Set table to true if
 // the report is rendered within a table row.
 func (h *Helpers) GroupReport(group *task.Group, table bool) string {
 	var background lipgloss.TerminalColor = lipgloss.NoColor{}
@@ -303,9 +307,6 @@ func Breadcrumbs(title string, res resource.Resource, crumbs ...string) string {
 		cmd := TitleCommand.Render(res.String())
 		id := TitleID.Render(res.GetID().String())
 		return Breadcrumbs(title, res.GetParent(), cmd, id)
-	case *run.Run:
-		// Skip run info in breadcrumbs
-		return Breadcrumbs(title, res.GetParent(), crumbs...)
 	case *workspace.Workspace:
 		name := TitleWorkspace.Render(res.String())
 		return Breadcrumbs(title, res.GetParent(), append(crumbs, name)...)

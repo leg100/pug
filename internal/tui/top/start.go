@@ -36,7 +36,7 @@ func Start(cfg app.Config) error {
 		// tea.WithMouseCellMotion(),
 	)
 
-	ch, unsub := setupSubscriptions(app)
+	ch, unsub := setupSubscriptions(app, cfg)
 	defer unsub()
 
 	// Relay events to model in background
@@ -62,7 +62,7 @@ func StartTest(t *testing.T, cfg app.Config, width, height int) *teatest.TestMod
 	m, err := newModel(cfg, app)
 	require.NoError(t, err)
 
-	ch, unsub := setupSubscriptions(app)
+	ch, unsub := setupSubscriptions(app, cfg)
 	t.Cleanup(unsub)
 
 	tm := teatest.NewTestModel(t, m, teatest.WithInitialTermSize(width, height))
@@ -80,7 +80,7 @@ func StartTest(t *testing.T, cfg app.Config, width, height int) *teatest.TestMod
 	return tm
 }
 
-func setupSubscriptions(app *app.App) (chan tea.Msg, func()) {
+func setupSubscriptions(app *app.App, cfg app.Config) (chan tea.Msg, func()) {
 	// Relay resource events to TUI. Deliberately set up subscriptions *before*
 	// any events are triggered, to ensure the TUI receives all messages.
 	ch := make(chan tea.Msg)
@@ -131,7 +131,7 @@ func setupSubscriptions(app *app.App) (chan tea.Msg, func()) {
 
 	}
 	{
-		sub := app.Runs.Subscribe(ctx)
+		sub := app.Plans.Subscribe(ctx)
 		wg.Add(1)
 		go func() {
 			for ev := range sub {
@@ -177,6 +177,11 @@ func setupSubscriptions(app *app.App) (chan tea.Msg, func()) {
 				}
 			}
 		}()
+	}
+	// Whenever an apply is successful, pull workspace state
+	if !cfg.DisableReloadAfterApply {
+		sub := app.Tasks.TaskBroker.Subscribe(ctx)
+		go app.Plans.ReloadAfterApply(sub)
 	}
 	// cleanup function to be invoked when program is terminated.
 	return ch, func() {

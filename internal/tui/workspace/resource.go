@@ -5,8 +5,8 @@ import (
 
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/leg100/pug/internal/plan"
 	"github.com/leg100/pug/internal/resource"
-	"github.com/leg100/pug/internal/run"
 	"github.com/leg100/pug/internal/state"
 	"github.com/leg100/pug/internal/task"
 	"github.com/leg100/pug/internal/tui"
@@ -15,7 +15,7 @@ import (
 
 type ResourceMaker struct {
 	States  *state.Service
-	Runs    *run.Service
+	Plans   *plan.Service
 	Helpers *tui.Helpers
 
 	disableBorders bool
@@ -29,7 +29,7 @@ func (mm *ResourceMaker) Make(id resource.ID, width, height int) (tea.Model, err
 
 	m := resourceModel{
 		states:   mm.States,
-		runs:     mm.Runs,
+		plans:    mm.Plans,
 		helpers:  mm.Helpers,
 		resource: stateResource,
 		border:   !mm.disableBorders,
@@ -51,7 +51,7 @@ func (mm *ResourceMaker) Make(id resource.ID, width, height int) (tea.Model, err
 
 type resourceModel struct {
 	states *state.Service
-	runs   *run.Service
+	plans  *plan.Service
 
 	viewport tui.Viewport
 	resource *state.Resource
@@ -67,7 +67,7 @@ func (m resourceModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var (
 		cmd              tea.Cmd
 		cmds             []tea.Cmd
-		createRunOptions run.CreateOptions
+		createRunOptions plan.CreateOptions
 	)
 
 	switch msg := msg.(type) {
@@ -101,7 +101,7 @@ func (m resourceModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// Create a targeted plan.
 			createRunOptions.TargetAddrs = []state.ResourceAddress{m.resource.Address}
 			fn := func(workspaceID resource.ID) (task.Spec, error) {
-				return m.runs.Plan(workspaceID, createRunOptions)
+				return m.plans.Plan(workspaceID, createRunOptions)
 			}
 			return m, m.helpers.CreateTasks(fn, m.resource.Workspace().GetID())
 		}

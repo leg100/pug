@@ -16,6 +16,16 @@ const (
 	MaxStatusLen = len(Canceled)
 )
 
+// IsFinal returns true if the state is a final state.
+func (s Status) IsFinal() bool {
+	switch s {
+	case Errored, Exited, Canceled:
+		return true
+	default:
+		return false
+	}
+}
+
 type statusTimestamps struct {
 	started time.Time
 	ended   time.Time
