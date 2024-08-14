@@ -13,7 +13,7 @@ import (
 )
 
 type Service struct {
-	table  *resource.Table[*Plan]
+	table  *resource.Table[*plan]
 	logger logging.Interface
 
 	tasks      *task.Service
@@ -22,7 +22,7 @@ type Service struct {
 	states     *state.Service
 
 	*factory
-	*pubsub.Broker[*Plan]
+	*pubsub.Broker[*plan]
 }
 
 type ServiceOptions struct {
@@ -44,7 +44,7 @@ type workspaceGetter interface {
 }
 
 func NewService(opts ServiceOptions) *Service {
-	broker := pubsub.NewBroker[*Plan](opts.Logger)
+	broker := pubsub.NewBroker[*plan](opts.Logger)
 	return &Service{
 		table:      resource.NewTable(broker),
 		Broker:     broker,
@@ -126,11 +126,11 @@ func (s *Service) ApplyPlan(taskID resource.ID) (task.Spec, error) {
 	return plan.applyTaskSpec(s.logger)
 }
 
-func (s *Service) Get(runID resource.ID) (*Plan, error) {
+func (s *Service) Get(runID resource.ID) (*plan, error) {
 	return s.table.Get(runID)
 }
 
-func (s *Service) getByTaskID(taskID resource.ID) (*Plan, error) {
+func (s *Service) getByTaskID(taskID resource.ID) (*plan, error) {
 	for _, plan := range s.List() {
 		if plan.taskID != nil && *plan.taskID == taskID {
 			return plan, nil
@@ -139,6 +139,6 @@ func (s *Service) getByTaskID(taskID resource.ID) (*Plan, error) {
 	return nil, fmt.Errorf("task is not associated with a plan: %w", resource.ErrNotFound)
 }
 
-func (s *Service) List() []*Plan {
+func (s *Service) List() []*plan {
 	return s.table.List()
 }

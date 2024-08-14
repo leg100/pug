@@ -15,7 +15,7 @@ import (
 	"github.com/leg100/pug/internal/workspace"
 )
 
-type Plan struct {
+type plan struct {
 	resource.Common
 
 	HasChanges    bool
@@ -46,16 +46,16 @@ type CreateOptions struct {
 type factory struct {
 	dataDir    string
 	workspaces workspaceGetter
-	broker     *pubsub.Broker[*Plan]
+	broker     *pubsub.Broker[*plan]
 	terragrunt bool
 }
 
-func (f *factory) newPlan(workspaceID resource.ID, opts CreateOptions) (*Plan, error) {
+func (f *factory) newPlan(workspaceID resource.ID, opts CreateOptions) (*plan, error) {
 	ws, err := f.workspaces.Get(workspaceID)
 	if err != nil {
 		return nil, fmt.Errorf("retrieving workspace: %w", err)
 	}
-	plan := &Plan{
+	plan := &plan{
 		Common:      resource.New(resource.Plan, ws),
 		Destroy:     opts.Destroy,
 		TargetAddrs: opts.TargetAddrs,
@@ -78,27 +78,27 @@ func (f *factory) newPlan(workspaceID resource.ID, opts CreateOptions) (*Plan, e
 	return plan, nil
 }
 
-func (r *Plan) WorkspaceID() resource.ID {
+func (r *plan) WorkspaceID() resource.ID {
 	return r.Parent.GetID()
 }
 
-func (r *Plan) WorkspaceName() string {
+func (r *plan) WorkspaceName() string {
 	return r.Parent.String()
 }
 
-func (r *Plan) ModulePath() string {
+func (r *plan) ModulePath() string {
 	return r.Parent.GetParent().String()
 }
 
-func (r *Plan) planPath() string {
+func (r *plan) planPath() string {
 	return filepath.Join(r.ArtefactsPath, "plan")
 }
 
-func (r *Plan) args() []string {
+func (r *plan) args() []string {
 	return append([]string{"-input"}, r.targetArgs...)
 }
 
-func (r *Plan) planTaskSpec(logger logging.Interface) task.Spec {
+func (r *plan) planTaskSpec(logger logging.Interface) task.Spec {
 	// TODO: assert planFile is true first
 	spec := task.Spec{
 		Parent:  r.Workspace(),
@@ -135,7 +135,7 @@ func (r *Plan) planTaskSpec(logger logging.Interface) task.Spec {
 	return spec
 }
 
-func (r *Plan) applyTaskSpec(logger logging.Interface) (task.Spec, error) {
+func (r *plan) applyTaskSpec(logger logging.Interface) (task.Spec, error) {
 	if r.planFile && !r.HasChanges {
 		return task.Spec{}, errors.New("plan does not have any changes to apply")
 	}

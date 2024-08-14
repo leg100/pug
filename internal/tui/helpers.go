@@ -307,9 +307,6 @@ func Breadcrumbs(title string, res resource.Resource, crumbs ...string) string {
 		cmd := TitleCommand.Render(res.String())
 		id := TitleID.Render(res.GetID().String())
 		return Breadcrumbs(title, res.GetParent(), cmd, id)
-	case *plan.Plan:
-		// Skip run info in breadcrumbs
-		return Breadcrumbs(title, res.GetParent(), crumbs...)
 	case *workspace.Workspace:
 		name := TitleWorkspace.Render(res.String())
 		return Breadcrumbs(title, res.GetParent(), append(crumbs, name)...)
