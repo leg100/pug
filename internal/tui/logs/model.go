@@ -50,20 +50,25 @@ func (mm *Maker) Make(id resource.ID, width, height int) (tea.Model, error) {
 		table.WithSortFunc(byAttribute),
 		table.WithSelectable[logging.Attr](false),
 	)
-	table.SetItems(
-		logging.Attr{
-			Key:   timeAttrKey,
-			Value: msg.Time.Format(timeFormat),
+	items := []logging.Attr{
+		{
+			Key:    timeAttrKey,
+			Value:  msg.Time.Format(timeFormat),
+			Common: resource.New(resource.LogAttr, resource.GlobalResource),
 		},
-		logging.Attr{
-			Key:   messageAttrKey,
-			Value: msg.Message,
+		{
+			Key:    messageAttrKey,
+			Value:  msg.Message,
+			Common: resource.New(resource.LogAttr, resource.GlobalResource),
 		},
-		logging.Attr{
-			Key:   levelAttrKey,
-			Value: coloredLogLevel(msg.Level),
+		{
+			Key:    levelAttrKey,
+			Value:  coloredLogLevel(msg.Level),
+			Common: resource.New(resource.LogAttr, resource.GlobalResource),
 		},
-	)
+	}
+	items = append(items, msg.Attributes...)
+	table.SetItems(items...)
 
 	return model{
 		msg:    msg,

@@ -256,7 +256,7 @@ func (m Model[V]) Update(msg tea.Msg) (Model[V], tea.Cmd) {
 		var cmd tea.Cmd
 		m.filter, cmd = m.filter.Update(kmsg)
 		// Filter table items
-		m.filterItems()
+		m.setRows(maps.Values(m.items)...)
 		return m, cmd
 	default:
 		// Send any other messages to the filter if it is focused.
@@ -523,29 +523,15 @@ func (m *Model[V]) removeItem(item V) {
 	}
 }
 
-func (m *Model[V]) filterItems() {
-	// Filter rows using row renderer. If the filter value is a
-	// substring of one of the rendered cells then add row. Otherwise,
-	// skip row.
-	var filtered []V
-	for id, rendered := range m.rendered {
-		for _, col := range rendered {
-			// Remove ANSI escapes code before filtering
-			stripped := internal.StripAnsi(col)
-			if strings.Contains(stripped, m.filter.Value()) {
-				filtered = append(filtered, m.items[id])
-				break
-			}
-		}
-	}
-	m.setRows(filtered...)
-}
-
 func (m *Model[V]) setRows(items ...V) {
 	selected := make(map[resource.ID]V)
-	m.rows = make([]Row[V], len(items))
-	for i, item := range items {
-		m.rows[i] = Row[V]{ID: item.GetID(), Value: item}
+	m.rows = make([]Row[V], 0, len(items))
+	for _, item := range items {
+		if m.filterVisible() && !m.matchFilter(item.GetID()) {
+			// Skip item that doesn't match filter
+			continue
+		}
+		m.rows = append(m.rows, Row[V]{ID: item.GetID(), Value: item})
 		if m.selectable {
 			if _, ok := m.selected[item.GetID()]; ok {
 				selected[item.GetID()] = item
@@ -575,6 +561,19 @@ func (m *Model[V]) setRows(items ...V) {
 		m.currentRowID = m.rows[m.currentRowIndex].ID
 	}
 	m.setStart()
+}
+
+// matchFilter returns true if the item with the given ID matches the filter
+// value.
+func (m *Model[V]) matchFilter(id resource.ID) bool {
+	for _, col := range m.rendered[id] {
+		// Remove ANSI escapes code before filtering
+		stripped := internal.StripAnsi(col)
+		if strings.Contains(stripped, m.filter.Value()) {
+			return true
+		}
+	}
+	return false
 }
 
 // MoveUp moves the current row up by any number of rows.

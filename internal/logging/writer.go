@@ -35,8 +35,9 @@ func (w *writer) Write(p []byte) (int, error) {
 				msg.Message = string(d.Value())
 			default:
 				msg.Attributes = append(msg.Attributes, Attr{
-					Key:   string(d.Key()),
-					Value: string(d.Value()),
+					Key:    string(d.Key()),
+					Value:  string(d.Value()),
+					Common: resource.New(resource.LogAttr, msg),
 				})
 			}
 		}
