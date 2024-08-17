@@ -85,6 +85,20 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	)
 
 	switch msg := msg.(type) {
+	case resource.Event[*module.Module]:
+		// Re-render workspaces belonging to updated module (the module's
+		// current workspace may have changed, which changes the value of the
+		// workspace's CURRENT column).
+		workspaces := m.Workspaces.List(workspace.ListOptions{ModuleID: msg.Payload.ID})
+		for _, ws := range workspaces {
+			m.table.AddItems(ws)
+		}
+	case resource.Event[*task.Task]:
+		// Re-render workspace whenever a task event is received belonging to the
+		// workspace.
+		if ws := msg.Payload.Workspace(); ws != nil {
+			m.table.AddItems(ws.(*workspace.Workspace))
+		}
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, keys.Common.Delete):

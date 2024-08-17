@@ -17,15 +17,6 @@ var (
 	resource3 = testResource{n: 3, Common: resource.New(resource.Workspace, resource.GlobalResource)}
 	resource4 = testResource{n: 4, Common: resource.New(resource.Workspace, resource.GlobalResource)}
 	resource5 = testResource{n: 5, Common: resource.New(resource.Workspace, resource.GlobalResource)}
-
-	testItems = map[resource.ID]testResource{
-		resource0.ID: resource0,
-		resource1.ID: resource1,
-		resource2.ID: resource2,
-		resource3.ID: resource3,
-		resource4.ID: resource4,
-		resource5.ID: resource5,
-	}
 )
 
 type testResource struct {
@@ -47,7 +38,14 @@ func setupTest() Model[testResource] {
 			return 1
 		}),
 	)
-	tbl.SetItems(testItems)
+	tbl.SetItems(
+		resource0,
+		resource1,
+		resource2,
+		resource3,
+		resource4,
+		resource5,
+	)
 	return tbl
 }
 
@@ -65,8 +63,8 @@ func TestTable_ToggleSelection(t *testing.T) {
 
 	tbl.ToggleSelection()
 
-	assert.Len(t, tbl.Selected, 1)
-	assert.Equal(t, resource0, tbl.Selected[resource0.ID])
+	assert.Len(t, tbl.selected, 1)
+	assert.Equal(t, resource0, tbl.selected[resource0.ID])
 }
 
 func TestTable_SelectRange(t *testing.T) {
@@ -126,7 +124,7 @@ func TestTable_SelectRange(t *testing.T) {
 
 			tbl.SelectRange()
 
-			got := maps.Keys(tbl.Selected)
+			got := maps.Keys(tbl.selected)
 			slices.SortFunc(got, sortStrings)
 			slices.SortFunc(tt.want, sortStrings)
 			assert.Equal(t, tt.want, got)

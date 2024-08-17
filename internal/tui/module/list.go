@@ -121,6 +121,12 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	)
 
 	switch msg := msg.(type) {
+	case resource.Event[*task.Task]:
+		// Re-render module whenever a task event is received belonging to the
+		// module.
+		if mod := msg.Payload.Module(); mod != nil {
+			m.table.AddItems(mod.(*module.Module))
+		}
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, localKeys.ReloadModules):

@@ -17,6 +17,7 @@ import (
 	"github.com/leg100/pug/internal/tui/split"
 	"github.com/leg100/pug/internal/tui/table"
 	"github.com/leg100/pug/internal/workspace"
+	"golang.org/x/exp/maps"
 )
 
 var resourceColumn = table.Column{
@@ -191,7 +192,7 @@ func (m resourceList) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		m.state = (*state.State)(msg)
-		m.Table.SetItems(toTableItems(m.state))
+		m.Table.SetItems(maps.Values(m.state.Resources)...)
 	case resource.Event[*state.State]:
 		if msg.Payload.WorkspaceID != m.workspace.GetID() {
 			return m, nil
@@ -200,7 +201,7 @@ func (m resourceList) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case resource.CreatedEvent, resource.UpdatedEvent:
 			// Whenever state is created or updated, re-populate table with
 			// resources.
-			m.Table.SetItems(toTableItems(msg.Payload))
+			m.Table.SetItems(maps.Values(msg.Payload.Resources)...)
 			m.state = msg.Payload
 		}
 	case tea.WindowSizeMsg:
@@ -274,14 +275,6 @@ func (m resourceList) selectedOrCurrentAddresses() []state.ResourceAddress {
 		i++
 	}
 	return addrs
-}
-
-func toTableItems(s *state.State) map[resource.ID]*state.Resource {
-	to := make(map[resource.ID]*state.Resource, len(s.Resources))
-	for _, v := range s.Resources {
-		to[v.ID] = v
-	}
-	return to
 }
 
 func serialBreadcrumb(serial int64) string {
