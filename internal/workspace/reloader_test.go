@@ -40,11 +40,13 @@ func TestWorkspace_resetWorkspaces(t *testing.T) {
 	table := &fakeWorkspaceTable{
 		existing: []*Workspace{dev, staging},
 	}
-	svc := &Service{
-		modules: &fakeModuleService{current: &gotCurrent},
-		table:   table,
+	reloader := &reloader{
+		&Service{
+			modules: &fakeModuleService{current: &gotCurrent},
+			table:   table,
+		},
 	}
-	_, _, err = svc.resetWorkspaces(mod, []string{"dev", "prod"}, "dev")
+	_, _, err = reloader.resetWorkspaces(mod, []string{"dev", "prod"}, "dev")
 	require.NoError(t, err)
 
 	// expect staging to be dropped

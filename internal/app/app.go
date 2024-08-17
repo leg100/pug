@@ -40,6 +40,7 @@ func New(cfg Config) (*App, error) {
 		"plugin_cache", cfg.PluginCache,
 		"program", cfg.Program,
 		"work_dir", cfg.Workdir,
+		"data_dir", cfg.DataDir,
 	)
 
 	// Instantiate services

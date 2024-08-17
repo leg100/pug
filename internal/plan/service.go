@@ -87,6 +87,7 @@ func (s *Service) ReloadAfterApply(sub <-chan resource.Event[*task.Task]) {
 // Plan creates a task spec to create a plan, i.e. `terraform plan -out
 // plan.file`.
 func (s *Service) Plan(workspaceID resource.ID, opts CreateOptions) (task.Spec, error) {
+	opts.planFile = true
 	plan, err := s.newPlan(workspaceID, opts)
 	if err != nil {
 		s.logger.Error("creating plan spec", "error", err)
@@ -100,7 +101,6 @@ func (s *Service) Plan(workspaceID resource.ID, opts CreateOptions) (task.Spec, 
 // Apply creates a task spec to auto-apply a plan, i.e. `terraform apply`. To
 // apply an existing plan, see ApplyPlan.
 func (s *Service) Apply(workspaceID resource.ID, opts CreateOptions) (task.Spec, error) {
-	opts.planFile = false
 	plan, err := s.newPlan(workspaceID, opts)
 	if err != nil {
 		return task.Spec{}, err
