@@ -1,11 +1,7 @@
 package workspace
 
 import (
-	"bufio"
 	"fmt"
-	"io"
-	"slices"
-	"strings"
 
 	"github.com/leg100/pug/internal/logging"
 	"github.com/leg100/pug/internal/module"
@@ -18,16 +14,17 @@ type Service struct {
 	table  workspaceTable
 	logger logging.Interface
 
-	modules moduleService
+	modules modules
 	tasks   *task.Service
 
 	*pubsub.Broker[*Workspace]
+	*reloader
 }
 
 type ServiceOptions struct {
-	TaskService   *task.Service
-	ModuleService *module.Service
-	Logger        logging.Interface
+	Tasks   *task.Service
+	Modules *module.Service
+	Logger  logging.Interface
 }
 
 type workspaceTable interface {
@@ -38,17 +35,12 @@ type workspaceTable interface {
 	List() []*Workspace
 }
 
-type moduleService interface {
+type modules interface {
 	Get(id resource.ID) (*module.Module, error)
 	GetByPath(path string) (*module.Module, error)
 	SetCurrent(moduleID, workspaceID resource.ID) error
 	Reload() ([]string, []string, error)
 	List() []*module.Module
-	CreateTask(mod *module.Module, opts task.CreateOptions) (*task.Task, error)
-}
-
-type moduleSubscription interface {
-	Subscribe() <-chan resource.Event[*module.Module]
 }
 
 func NewService(opts ServiceOptions) *Service {
@@ -57,160 +49,66 @@ func NewService(opts ServiceOptions) *Service {
 
 	opts.Logger.AddEnricher(&logEnricher{table: table})
 
-	svc := &Service{
+	s := &Service{
 		Broker:  broker,
 		table:   table,
-		modules: opts.ModuleService,
-		tasks:   opts.TaskService,
+		modules: opts.Modules,
+		tasks:   opts.Tasks,
 		logger:  opts.Logger,
 	}
-	return svc
+	s.reloader = &reloader{s}
+	return s
 }
 
 // LoadWorkspacesUponModuleLoad automatically loads workspaces for a module
 // whenever:
 // * a new module is loaded into pug for the first time
 // * an existing module is updated and does not yet have a current workspace.
-func (s *Service) LoadWorkspacesUponModuleLoad(modules moduleSubscription) {
-	sub := modules.Subscribe()
-
-	go func() {
-		for event := range sub {
-			switch event.Type {
-			case resource.CreatedEvent:
-				s.Reload(event.Payload.ID)
-			case resource.UpdatedEvent:
-				if event.Payload.CurrentWorkspaceID != nil {
-					// Module already has a current workspace; no need to reload
-					// workspaces
-					continue
-				}
-				s.Reload(event.Payload.ID)
-			}
+//
+// TODO: "load" is ambiguous, it often means the opposite of save, i.e. read
+// from a system, whereas what is intended is to save or add workspaces to pug.
+func (s *Service) LoadWorkspacesUponModuleLoad(sub <-chan resource.Event[*module.Module]) {
+	reload := func(moduleID resource.ID) error {
+		spec, err := s.Reload(moduleID)
+		if err != nil {
+			return err
 		}
-	}()
-}
-
-// Reload invokes `terraform workspace list` on a module and updates pug with
-// the results, adding any newly discovered workspaces and pruning any
-// workspaces no longer found to exist.
-func (s *Service) Reload(moduleID resource.ID) (*task.Task, error) {
-	mod, err := s.modules.Get(moduleID)
-	if err != nil {
-		return nil, err
-	}
-	task, err := s.modules.CreateTask(mod, task.CreateOptions{
-		Command: []string{"workspace", "list"},
-		AfterError: func(t *task.Task) {
-			s.logger.Error("reloading workspaces", "error", t.Err, "module", mod, "task", t)
-		},
-		AfterExited: func(t *task.Task) {
-			found, current, err := parseList(t.NewReader())
-			if err != nil {
-				s.logger.Error("reloading workspaces", "error", err, "module", mod, "task", t)
-				return
-			}
-			added, removed, err := s.resetWorkspaces(mod, found, current)
-			if err != nil {
-				s.logger.Error("reloading workspaces", "error", err, "module", mod, "task", t)
-				return
-			}
-			s.logger.Info("reloaded workspaces", "added", added, "removed", removed, "module", mod)
-		},
-	})
-	if err != nil {
-		s.logger.Error("reloading workspaces", "error", err, "module", mod)
-		return nil, err
-	}
-	return task, nil
-}
-
-// resetWorkspaces resets the workspaces for a module, adding newly discovered
-// workspaces, removing workspaces that no longer exist, and setting the current
-// workspace for the module.
-func (s *Service) resetWorkspaces(mod *module.Module, discovered []string, current string) (added []string, removed []string, err error) {
-	// Gather existing workspaces for the module.
-	var existing []*Workspace
-	for _, ws := range s.table.List() {
-		if ws.ModuleID() == mod.ID {
-			existing = append(existing, ws)
-		}
+		_, err = s.tasks.Create(spec)
+		return err
 	}
 
-	// Add discovered workspaces that don't exist in pug
-	for _, name := range discovered {
-		if !slices.ContainsFunc(existing, func(ws *Workspace) bool {
-			return ws.Name == name
-		}) {
-			add, err := New(mod, name)
-			if err != nil {
-				return nil, nil, fmt.Errorf("adding workspace: %w", err)
+	for event := range sub {
+		switch event.Type {
+		case resource.CreatedEvent:
+			if err := reload(event.Payload.ID); err != nil {
+				s.logger.Error("reloading workspaces", "module", event.Payload)
 			}
-			s.table.Add(add.ID, add)
-			added = append(added, name)
-		}
-	}
-	// Remove workspaces from pug that no longer exist
-	for _, ws := range existing {
-		if !slices.Contains(discovered, ws.Name) {
-			s.table.Delete(ws.ID)
-			removed = append(removed, ws.Name)
-		}
-	}
-	// Reset current workspace
-	currentWorkspace, err := s.GetByName(mod.ID, current)
-	if err != nil {
-		return nil, nil, fmt.Errorf("cannot find current workspace: %s: %w", current, err)
-	}
-	err = s.modules.SetCurrent(mod.ID, currentWorkspace.ID)
-	if err != nil {
-		return nil, nil, err
-	}
-	return
-}
-
-// Parse workspaces from the output of `terraform workspace list`.
-func parseList(r io.Reader) (list []string, current string, err error) {
-	// Reader should output something like this:
-	//
-	//   default
-	//   non-default-1
-	// * non-default-2
-	scanner := bufio.NewScanner(r)
-	for scanner.Scan() {
-		out := strings.TrimSpace(scanner.Text())
-		if out == "" {
-			continue
-		}
-		// Handle current workspace denoted with a "*" prefix
-		if strings.HasPrefix(out, "*") {
-			var found bool
-			_, current, found = strings.Cut(out, "* ")
-			if !found {
-				return nil, "", fmt.Errorf("malformed output: %s", out)
+		case resource.UpdatedEvent:
+			if event.Payload.CurrentWorkspaceID != nil {
+				// Module already has a current workspace; no need to reload
+				// workspaces
+				continue
 			}
-			out = current
+			if err := reload(event.Payload.ID); err != nil {
+				s.logger.Error("reloading workspaces", "module", event.Payload)
+			}
 		}
-		list = append(list, out)
 	}
-	if err := scanner.Err(); err != nil {
-		return nil, "", err
-	}
-	return
 }
 
 // Create a workspace. Asynchronous.
-func (s *Service) Create(path, name string) (*Workspace, *task.Task, error) {
+func (s *Service) Create(path, name string) (task.Spec, error) {
 	mod, err := s.modules.GetByPath(path)
 	if err != nil {
-		return nil, nil, fmt.Errorf("checking for module: %s: %w", path, err)
+		return task.Spec{}, err
 	}
 	ws, err := New(mod, name)
 	if err != nil {
-		return nil, nil, err
+		return task.Spec{}, err
 	}
-
-	task, err := s.createTask(ws, task.CreateOptions{
+	return task.Spec{
+		Parent:  mod,
+		Path:    mod.Path,
 		Command: []string{"workspace", "new"},
 		Args:    []string{name},
 		AfterExited: func(*task.Task) {
@@ -221,11 +119,7 @@ func (s *Service) Create(path, name string) (*Workspace, *task.Task, error) {
 				s.logger.Error("creating workspace: %w", err)
 			}
 		},
-	})
-	if err != nil {
-		return nil, nil, err
-	}
-	return ws, task, nil
+	}, nil
 }
 
 func (s *Service) Get(workspaceID resource.ID) (*Workspace, error) {
@@ -259,101 +153,77 @@ func (s *Service) List(opts ListOptions) []*Workspace {
 	return existing
 }
 
-func (s *Service) SetCurrentRun(workspaceID, runID resource.ID) error {
-	ws, err := s.table.Update(workspaceID, func(existing *Workspace) error {
-		existing.CurrentRunID = &runID
-		return nil
-	})
-	if err != nil {
-		s.logger.Error("setting current run", "workspace_id", workspaceID, "run_id", runID, "error", err)
-		return err
-	}
-	s.logger.Debug("set current run", "workspace", ws, "run_id", runID, "error", err)
-	return nil
-}
-
 // SelectWorkspace runs the `terraform workspace select <workspace_name>`
 // command, which sets the current workspace for the module. Once that's
 // finished it then updates the current workspace in pug itself too.
 func (s *Service) SelectWorkspace(moduleID, workspaceID resource.ID) error {
-	if err := s.selectWorkspace(moduleID, workspaceID); err != nil {
-		s.logger.Error("selecting current workspace", "workspace_id", workspaceID, "error", err)
-		return err
-	}
-	s.logger.Debug("selected current workspace", "workspace", workspaceID)
-	return nil
-}
-
-func (s *Service) selectWorkspace(moduleID, workspaceID resource.ID) error {
 	ws, err := s.table.Get(workspaceID)
 	if err != nil {
 		return err
 	}
-	// Create task to immediately set workspace as current workspace for module.
-	task, err := s.createTask(ws, task.CreateOptions{
-		Command:   []string{"workspace", "select"},
-		Args:      []string{ws.Name},
-		Immediate: true,
-	})
+	mod, err := s.modules.Get(ws.ModuleID())
 	if err != nil {
 		return err
 	}
-	if err := task.Wait(); err != nil {
-		return err
-	}
-	// Now task has finished successfully, update the current workspace in pug
-	// as well.
-	if err := s.modules.SetCurrent(moduleID, workspaceID); err != nil {
+	// Create task to immediately set workspace as current workspace for module.
+	_, err = s.tasks.Create(task.Spec{
+		Parent:    mod,
+		Path:      mod.Path,
+		Command:   []string{"workspace", "select"},
+		Args:      []string{ws.Name},
+		Immediate: true,
+		Wait:      true,
+		BeforeExited: func(t *task.Task) (task.Summary, error) {
+			// Now the terraform command has finished, update the current
+			// workspace in pug as well.
+			err := s.modules.SetCurrent(moduleID, workspaceID)
+			return nil, err
+		},
+	})
+	if err != nil {
 		return err
 	}
 	return nil
 }
 
 // Delete a workspace. Asynchronous.
-func (s *Service) Delete(id resource.ID) (*task.Task, error) {
-	ws, err := s.table.Get(id)
+func (s *Service) Delete(workspaceID resource.ID) (task.Spec, error) {
+	ws, err := s.table.Get(workspaceID)
 	if err != nil {
-		return nil, fmt.Errorf("deleting workspace: %w", err)
+		return task.Spec{}, fmt.Errorf("deleting workspace: %w", err)
 	}
-	return s.createTask(ws, task.CreateOptions{
+	mod, err := s.modules.Get(ws.ModuleID())
+	if err != nil {
+		return task.Spec{}, err
+	}
+	return task.Spec{
+		Parent:   mod,
+		Path:     mod.Path,
 		Command:  []string{"workspace", "delete"},
 		Args:     []string{ws.Name},
 		Blocking: true,
 		AfterExited: func(*task.Task) {
 			s.table.Delete(ws.ID)
 		},
-	})
+	}, nil
 }
 
 // Cost creates a task that retrieves a breakdown of the costs of the
 // infrastructure deployed by the workspace.
-func (s *Service) Cost(workspaceID resource.ID) (*task.Task, error) {
-	ws, err := s.table.Get(workspaceID)
-	if err != nil {
-		return nil, fmt.Errorf("costing workspace: %w", err)
-	}
-	return s.createTask(ws, task.CreateOptions{
-		Command: []string{"infracost"},
-		Args:    []string{"breakdown", "-p", ws.ModulePath(), "--terraform-workspace", ws.Name},
-		AfterExited: func(t *task.Task) {
-			cost, err := parseInfracostOutput(t.NewReader())
-			if err != nil {
-				s.logger.Error("parsing infracost output", "error", err, "workspace", ws)
-			}
-			t.SetSummary(cost)
-		},
-	})
-}
-
-// TODO: move this logic into task.Create
-func (s *Service) createTask(ws *Workspace, opts task.CreateOptions) (*task.Task, error) {
-	opts.Parent = ws
-
-	mod, err := s.modules.Get(ws.ModuleID())
-	if err != nil {
-		return nil, err
-	}
-	opts.Path = mod.Path
-
-	return s.tasks.Create(opts)
-}
+// func (s *Service) Cost(workspaceID resource.ID) (*task.Task, error) {
+// 	ws, err := s.table.Get(workspaceID)
+// 	if err != nil {
+// 		return nil, fmt.Errorf("costing workspace: %w", err)
+// 	}
+// 	return s.createTask(ws, task.CreateOptions{
+// 		Command: []string{"infracost"},
+// 		Args:    []string{"breakdown", "-p", ws.ModulePath(), "--terraform-workspace", ws.Name},
+// 		AfterExited: func(t *task.Task) {
+// 			cost, err := parseInfracostOutput(t.NewReader())
+// 			if err != nil {
+// 				s.logger.Error("parsing infracost output", "error", err, "workspace", ws)
+// 			}
+// 			t.SetSummary(cost)
+// 		},
+// 	})
+// }

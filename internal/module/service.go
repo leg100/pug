@@ -1,10 +1,12 @@
 package module
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
 	"path/filepath"
+	"slices"
 
 	"github.com/leg100/pug/internal"
 	"github.com/leg100/pug/internal/logging"
@@ -25,7 +27,7 @@ type Service struct {
 }
 
 type ServiceOptions struct {
-	TaskService *task.Service
+	Tasks       *task.Service
 	Workdir     internal.Workdir
 	PluginCache bool
 	Logger      logging.Interface
@@ -33,7 +35,7 @@ type ServiceOptions struct {
 }
 
 type taskCreator interface {
-	Create(spec task.CreateOptions) (*task.Task, error)
+	Create(spec task.Spec) (*task.Task, error)
 }
 
 type moduleTable interface {
@@ -53,7 +55,7 @@ func NewService(opts ServiceOptions) *Service {
 	return &Service{
 		table:       table,
 		Broker:      broker,
-		tasks:       opts.TaskService,
+		tasks:       opts.Tasks,
 		workdir:     opts.Workdir,
 		pluginCache: opts.PluginCache,
 		logger:      opts.Logger,
@@ -65,37 +67,44 @@ func NewService(opts ServiceOptions) *Service {
 // to the store before pruning those that are currently stored but can no longer
 // be found.
 func (s *Service) Reload() (added []string, removed []string, err error) {
-	found, err := findModules(s.logger, s.workdir)
-	if err != nil {
-		return nil, nil, err
-	}
-	for _, opts := range found {
-		// Add module if it isn't in pug already, otherwise update in-place
-		if mod, err := s.GetByPath(opts.Path); errors.Is(err, resource.ErrNotFound) {
-			mod := New(s.workdir, opts)
-			s.table.Add(mod.ID, mod)
-			added = append(added, opts.Path)
-		} else if err != nil {
-			return nil, nil, fmt.Errorf("retrieving module: %w", err)
-		} else {
-			// Update in-place; the backend may have changed.
-			s.table.Update(mod.ID, func(existing *Module) error {
-				existing.Backend = opts.Backend
-				return nil
-			})
-		}
-	}
-
-	// Cleanup existing modules, removing those that are no longer to be found
-	for _, existing := range s.table.List() {
-		var keep bool
-		for _, opts := range found {
-			if opts.Path == existing.Path {
-				keep = true
+	ch, errc := find(context.TODO(), s.workdir)
+	var found []string
+	for ch != nil || errc != nil {
+		select {
+		case opts, ok := <-ch:
+			if !ok {
+				ch = nil
 				break
 			}
+			found = append(found, opts.Path)
+			// handle found module
+			if mod, err := s.GetByPath(opts.Path); errors.Is(err, resource.ErrNotFound) {
+				// Not found, so add to pug
+				mod := New(s.workdir, opts)
+				s.table.Add(mod.ID, mod)
+				added = append(added, opts.Path)
+			} else if err != nil {
+				s.logger.Error("reloading modules", "error", err)
+			} else {
+				// Update in-place; the backend may have changed.
+				s.table.Update(mod.ID, func(existing *Module) error {
+					existing.Backend = opts.Backend
+					return nil
+				})
+			}
+		case err, ok := <-errc:
+			if !ok {
+				errc = nil
+				break
+			}
+			if err != nil {
+				s.logger.Error("reloading modules", "error", err)
+			}
 		}
-		if !keep {
+	}
+	// Cleanup existing modules, removing those that are no longer to be found
+	for _, existing := range s.table.List() {
+		if !slices.Contains(found, existing.Path) {
 			s.table.Delete(existing.ID)
 			removed = append(removed, existing.Path)
 		}
@@ -111,7 +120,7 @@ func (s *Service) Reload() (added []string, removed []string, err error) {
 }
 
 func (s *Service) loadTerragruntDependencies() error {
-	task, err := s.tasks.Create(task.CreateOptions{
+	task, err := s.tasks.Create(task.Spec{
 		Parent:  resource.GlobalResource,
 		Command: []string{"graph-dependencies"},
 		Wait:    true,
@@ -119,7 +128,7 @@ func (s *Service) loadTerragruntDependencies() error {
 	if err != nil {
 		return err
 	}
-	return s.loadTerragruntDependenciesFromDigraph(task.NewReader())
+	return s.loadTerragruntDependenciesFromDigraph(task.NewReader(false))
 }
 
 func (s *Service) loadTerragruntDependenciesFromDigraph(r io.Reader) error {
@@ -152,8 +161,8 @@ func (s *Service) loadTerragruntDependenciesFromDigraph(r io.Reader) error {
 			continue
 		}
 		// Convert dependency paths to module IDs
-		dependencyIDs := make([]resource.ID, len(depPaths))
-		for i, path := range depPaths {
+		dependencyIDs := make([]resource.ID, 0, len(depPaths))
+		for _, path := range depPaths {
 			// If absolute path then convert to path relative to pug's working
 			// directory.
 			if filepath.IsAbs(path) {
@@ -176,7 +185,7 @@ func (s *Service) loadTerragruntDependenciesFromDigraph(r io.Reader) error {
 				// Skip loading this dependency
 				continue
 			}
-			dependencyIDs[i] = mod.ID
+			dependencyIDs = append(dependencyIDs, mod.ID)
 		}
 		s.table.Update(mod.ID, func(existing *Module) error {
 			existing.Common = existing.WithDependencies(dependencyIDs...)
@@ -186,6 +195,7 @@ func (s *Service) loadTerragruntDependenciesFromDigraph(r io.Reader) error {
 	return nil
 }
 
+// TODO: fold into workdir type
 func (s *Service) stripWorkdirFromPath(path string) (string, error) {
 	if filepath.IsAbs(path) {
 		return filepath.Rel(s.workdir.String(), path)
@@ -194,32 +204,35 @@ func (s *Service) stripWorkdirFromPath(path string) (string, error) {
 }
 
 // Init invokes terraform init on the module.
-func (s *Service) Init(moduleID resource.ID) (*task.Task, error) {
-	mod, err := s.Get(moduleID)
-	if err != nil {
-		return nil, fmt.Errorf("initializing module: %w", err)
-	}
-
-	// create asynchronous task that runs terraform init
-	tsk, err := s.CreateTask(mod, task.CreateOptions{
+func (s *Service) Init(moduleID resource.ID) (task.Spec, error) {
+	return s.updateSpec(moduleID, task.Spec{
 		Command:  []string{"init"},
 		Args:     []string{"-input=false"},
 		Blocking: true,
 		// The terraform plugin cache is not concurrency-safe, so only allow one
 		// init task to run at any given time.
 		Exclusive: s.pluginCache,
-		AfterCreate: func(*task.Task) {
+		AfterCreate: func(task *task.Task) {
 			// Trigger a workspace reload if the module doesn't yet have a
 			// current workspace
+			mod := task.Module().(*Module)
 			if mod.CurrentWorkspaceID == nil {
 				s.Publish(resource.UpdatedEvent, mod)
 			}
 		},
 	})
-	if err != nil {
-		return nil, err
-	}
-	return tsk, nil
+}
+
+func (s *Service) Format(moduleID resource.ID) (task.Spec, error) {
+	return s.updateSpec(moduleID, task.Spec{
+		Command: []string{"fmt"},
+	})
+}
+
+func (s *Service) Validate(moduleID resource.ID) (task.Spec, error) {
+	return s.updateSpec(moduleID, task.Spec{
+		Command: []string{"validate"},
+	})
 }
 
 func (s *Service) List() []*Module {
@@ -239,44 +252,22 @@ func (s *Service) GetByPath(path string) (*Module, error) {
 	return nil, fmt.Errorf("%s: %w", path, resource.ErrNotFound)
 }
 
+// SetCurrent sets the current workspace for the module.
 func (s *Service) SetCurrent(moduleID, workspaceID resource.ID) error {
 	_, err := s.table.Update(moduleID, func(existing *Module) error {
 		existing.CurrentWorkspaceID = &workspaceID
 		return nil
 	})
-	if err != nil {
-		s.logger.Error("setting current workspace", "module", moduleID, "workspace", workspaceID, "error", err)
-		return err
-	}
-	s.logger.Debug("set current workspace", "module", moduleID, "workspace", workspaceID)
-	return nil
+	return err
 }
 
-func (s *Service) Format(moduleID resource.ID) (*task.Task, error) {
+// updateSpec updates the task spec with common module settings.
+func (s *Service) updateSpec(moduleID resource.ID, spec task.Spec) (task.Spec, error) {
 	mod, err := s.table.Get(moduleID)
 	if err != nil {
-		return nil, fmt.Errorf("formatting module: %w", err)
+		return task.Spec{}, err
 	}
-
-	return s.CreateTask(mod, task.CreateOptions{
-		Command: []string{"fmt"},
-	})
-}
-
-func (s *Service) Validate(moduleID resource.ID) (*task.Task, error) {
-	mod, err := s.table.Get(moduleID)
-	if err != nil {
-		return nil, fmt.Errorf("validating module: %w", err)
-	}
-
-	return s.CreateTask(mod, task.CreateOptions{
-		Command: []string{"validate"},
-	})
-}
-
-// TODO: move this logic into task.Create
-func (s *Service) CreateTask(mod *Module, opts task.CreateOptions) (*task.Task, error) {
-	opts.Parent = mod
-	opts.Path = mod.Path
-	return s.tasks.Create(opts)
+	spec.Parent = mod
+	spec.Path = mod.Path
+	return spec, nil
 }

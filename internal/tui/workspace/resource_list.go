@@ -8,14 +8,16 @@ import (
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/leg100/pug/internal/plan"
 	"github.com/leg100/pug/internal/resource"
-	"github.com/leg100/pug/internal/run"
 	"github.com/leg100/pug/internal/state"
 	"github.com/leg100/pug/internal/task"
 	"github.com/leg100/pug/internal/tui"
 	"github.com/leg100/pug/internal/tui/keys"
 	"github.com/leg100/pug/internal/tui/split"
 	"github.com/leg100/pug/internal/tui/table"
+	"github.com/leg100/pug/internal/workspace"
+	"golang.org/x/exp/maps"
 )
 
 var resourceColumn = table.Column{
@@ -25,15 +27,15 @@ var resourceColumn = table.Column{
 }
 
 type ResourceListMaker struct {
-	WorkspaceService tui.WorkspaceService
-	StateService     tui.StateService
-	RunService       tui.RunService
-	Spinner          *spinner.Model
-	Helpers          *tui.Helpers
+	Workspaces *workspace.Service
+	States     *state.Service
+	Plans      *plan.Service
+	Spinner    *spinner.Model
+	Helpers    *tui.Helpers
 }
 
 func (m *ResourceListMaker) Make(id resource.ID, width, height int) (tea.Model, error) {
-	ws, err := m.WorkspaceService.Get(id)
+	ws, err := m.Workspaces.Get(id)
 	if err != nil {
 		return nil, err
 	}
@@ -57,16 +59,16 @@ func (m *ResourceListMaker) Make(id resource.ID, width, height int) (tea.Model, 
 		Width:        width,
 		Height:       height,
 		Maker: &ResourceMaker{
-			StateService:   m.StateService,
-			RunService:     m.RunService,
+			States:         m.States,
+			Plans:          m.Plans,
 			Helpers:        m.Helpers,
 			disableBorders: true,
 		},
 	})
 	return resourceList{
 		Model:     splitModel,
-		states:    m.StateService,
-		runs:      m.RunService,
+		states:    m.States,
+		plans:     m.Plans,
 		workspace: ws,
 		spinner:   m.Spinner,
 		width:     width,
@@ -78,8 +80,8 @@ func (m *ResourceListMaker) Make(id resource.ID, width, height int) (tea.Model, 
 type resourceList struct {
 	split.Model[*state.Resource]
 
-	states    tui.StateService
-	runs      tui.RunService
+	states    *state.Service
+	plans     *plan.Service
 	workspace resource.Resource
 	state     *state.State
 	reloading bool
@@ -112,7 +114,7 @@ func (m resourceList) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var (
 		cmd              tea.Cmd
 		cmds             []tea.Cmd
-		createRunOptions run.CreateOptions
+		createRunOptions plan.CreateOptions
 	)
 
 	switch msg := msg.(type) {
@@ -135,10 +137,15 @@ func (m resourceList) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.reloading = true
 			return m, func() tea.Msg {
 				msg := reloadedMsg{workspaceID: m.workspace.GetID()}
-				if task, err := m.states.Reload(msg.workspaceID); err != nil {
+				if spec, err := m.states.Reload(msg.workspaceID); err != nil {
 					msg.err = err
-				} else if err := task.Wait(); err != nil {
-					msg.err = err
+				} else {
+					task, err := m.helpers.Tasks.Create(spec)
+					if err != nil {
+						msg.err = err
+					} else if err := task.Wait(); err != nil {
+						msg.err = err
+					}
 				}
 				return msg
 			}
@@ -148,19 +155,19 @@ func (m resourceList) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				// no rows; do nothing
 				return m, nil
 			}
-			fn := func(workspaceID resource.ID) (*task.Task, error) {
+			fn := func(workspaceID resource.ID) (task.Spec, error) {
 				return m.states.Delete(workspaceID, addrs...)
 			}
 			return m, tui.YesNoPrompt(
 				fmt.Sprintf("Delete %d resource(s)?", len(addrs)),
-				m.helpers.CreateTasks("state-rm", fn, m.workspace.GetID()),
+				m.helpers.CreateTasks(fn, m.workspace.GetID()),
 			)
 		case key.Matches(msg, resourcesKeys.Taint):
 			addrs := m.selectedOrCurrentAddresses()
-			return m, m.createStateCommand("taint", m.states.Taint, addrs...)
+			return m, m.createStateCommand(m.states.Taint, addrs...)
 		case key.Matches(msg, resourcesKeys.Untaint):
 			addrs := m.selectedOrCurrentAddresses()
-			return m, m.createStateCommand("untaint", m.states.Untaint, addrs...)
+			return m, m.createStateCommand(m.states.Untaint, addrs...)
 		case key.Matches(msg, resourcesKeys.Move):
 			if row, ok := m.Table.CurrentRow(); ok {
 				from := row.Value.Address
@@ -175,17 +182,17 @@ func (m resourceList) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			createRunOptions.TargetAddrs = m.selectedOrCurrentAddresses()
 			// NOTE: even if the user hasn't selected any rows, we still proceed
 			// to create a run without targeted resources.
-			fn := func(workspaceID resource.ID) (*task.Task, error) {
-				return m.runs.Plan(workspaceID, createRunOptions)
+			fn := func(workspaceID resource.ID) (task.Spec, error) {
+				return m.plans.Plan(workspaceID, createRunOptions)
 			}
-			return m, m.helpers.CreateTasks("plan", fn, m.workspace.GetID())
+			return m, m.helpers.CreateTasks(fn, m.workspace.GetID())
 		}
 	case initState:
 		if msg.WorkspaceID != m.workspace.GetID() {
 			return m, nil
 		}
 		m.state = (*state.State)(msg)
-		m.Table.SetItems(toTableItems(m.state))
+		m.Table.SetItems(maps.Values(m.state.Resources)...)
 	case resource.Event[*state.State]:
 		if msg.Payload.WorkspaceID != m.workspace.GetID() {
 			return m, nil
@@ -194,7 +201,7 @@ func (m resourceList) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case resource.CreatedEvent, resource.UpdatedEvent:
 			// Whenever state is created or updated, re-populate table with
 			// resources.
-			m.Table.SetItems(toTableItems(msg.Payload))
+			m.Table.SetItems(maps.Values(msg.Payload.Resources)...)
 			m.state = msg.Payload
 		}
 	case tea.WindowSizeMsg:
@@ -268,14 +275,6 @@ func (m resourceList) selectedOrCurrentAddresses() []state.ResourceAddress {
 		i++
 	}
 	return addrs
-}
-
-func toTableItems(s *state.State) map[resource.ID]*state.Resource {
-	to := make(map[resource.ID]*state.Resource, len(s.Resources))
-	for _, v := range s.Resources {
-		to[v.ID] = v
-	}
-	return to
 }
 
 func serialBreadcrumb(serial int64) string {

@@ -6,7 +6,7 @@ const (
 	Global Kind = iota
 	Module
 	Workspace
-	Run
+	Plan
 	Task
 	TaskGroup
 	Log

@@ -22,6 +22,4 @@ var (
 	TitleAddress   = Padded.Foreground(White).Background(Blue)
 	TitleSerial    = Padded.Foreground(White).Background(Orange)
 	TitleTainted   = Padded.Foreground(White).Background(Red)
-
-	RunReportStyle = Padded.Background(EvenLighterGrey)
 )

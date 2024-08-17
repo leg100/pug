@@ -10,7 +10,7 @@ import (
 func TestID_String(t *testing.T) {
 	mod := NewID(Module)
 	ws := NewID(Workspace)
-	run := NewID(Run)
+	run := NewID(Plan)
 	task := NewID(Task)
 
 	t.Run("string", func(t *testing.T) {

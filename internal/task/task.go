@@ -30,13 +30,14 @@ type Task struct {
 	Immediate     bool
 	AdditionalEnv []string
 	DependsOn     []resource.ID
-	description   string
-
-	// summary provides a summary the final result of the task.
-	summary string
+	// Summary summarises the outcome of a task to the end-user.
+	Summary     Summary
+	description string
 
 	program   string
 	exclusive bool
+	// terragrunt is true if terragrunt is in use.
+	terragrunt bool
 
 	// Nil until task has started
 	proc *os.Process
@@ -47,7 +48,10 @@ type Task struct {
 	// Nil until task finishes with an error
 	Err error
 
-	buf *buffer
+	// stdout contains only the stdout stream
+	stdout *buffer
+	// combined contains both the stderr and stdout streams
+	combined *buffer
 
 	// lock to ensure task state is switched atomically.
 	mu sync.Mutex
@@ -59,28 +63,20 @@ type Task struct {
 	// and out of a status.
 	timestamps map[Status]statusTimestamps
 
-	// Retain a copy of the options used to originally create the task so that
+	// Retain a copy of the Spec used to originally create the task so that
 	// the task can be retried.
-	createOptions CreateOptions
+	Spec Spec
 
-	// Call this function after the task has successfully finished
-	AfterExited func(*Task)
-	// Call this function after the task is enqueued.
-	AfterQueued func(*Task)
-	// Call this function after the task starts running.
-	AfterRunning func(*Task)
-	// Call this function after the task fails with an error
-	AfterError func(*Task)
-	// Call this function after the task is successfully canceled
+	AfterCreate   func(*Task)
+	AfterQueued   func(*Task)
+	AfterRunning  func(*Task)
+	BeforeExited  func(*Task) (Summary, error)
+	AfterExited   func(*Task)
+	AfterError    func(*Task)
 	AfterCanceled func(*Task)
-	// Call this function after the task terminates for whatever reason.
-	AfterFinish func(*Task)
-
-	// call this whenever state is updated
-	afterUpdate func(*Task)
-
-	// call this once the task has terminated
-	afterFinish func(*Task)
+	AfterFinish   func(*Task)
+	afterUpdate   func(*Task)
+	afterFinish   func(*Task)
 }
 
 type factory struct {
@@ -96,86 +92,52 @@ type factory struct {
 	terragrunt bool
 }
 
-type CreateOptions struct {
-	// Resource that the task belongs to.
-	Parent resource.Resource
-	// Program command and any sub commands, e.g. plan, state rm, etc.
-	Command []string
-	// Args to pass to program.
-	Args []string
-	// Path relative to the pug working directory in which to run the command.
-	Path string
-	// Environment variables.
-	Env []string
-	// A blocking task blocks other tasks from running on the module or
-	// workspace.
-	Blocking bool
-	// Globally exclusive task - at most only one such task can be running
-	Exclusive bool
-	// Set to true to indicate that the task produces JSON output
-	JSON bool
-	// Skip queue and immediately start task
-	Immediate bool
-	// Wait blocks until the task has finished
-	Wait bool
-	// DependsOn are other tasks that all must successfully exit before the
-	// task can be enqueued. If any of the other tasks are canceled or error
-	// then the task will be canceled.
-	DependsOn []resource.ID
-	// Description assigns an optional description to the task to display to the
-	// user, overriding the default of displaying the command.
-	Description string
-	// Call this function after the task has successfully finished
-	AfterExited func(*Task)
-	// Call this function after the task is enqueued.
-	AfterQueued func(*Task)
-	// Call this function after the task starts running.
-	AfterRunning func(*Task)
-	// Call this function after the task fails with an error
-	AfterError func(*Task)
-	// Call this function after the task is successfully canceled
-	AfterCanceled func(*Task)
-	// Call this function after the task is successfully created
-	AfterCreate func(*Task)
-	// Call this function after the task terminates for whatever reason.
-	AfterFinish func(*Task)
+// Summary summarises the outcome of a task.
+type Summary interface {
+	String() string
 }
 
 // TODO: check presence of mandatory options
-func (f *factory) newTask(opts CreateOptions) *Task {
+func (f *factory) newTask(spec Spec) *Task {
 	// In terragrunt mode add default terragrunt flags
-	args := append(f.userArgs, opts.Args...)
+	args := append(f.userArgs, spec.Args...)
 	if f.terragrunt {
 		args = append(args, "--terragrunt-non-interactive")
 	}
 
 	return &Task{
-		Common:        resource.New(resource.Task, opts.Parent),
+		Common:        resource.New(resource.Task, spec.Parent),
 		State:         Pending,
 		Created:       time.Now(),
 		Updated:       time.Now(),
 		finished:      make(chan struct{}),
-		buf:           newBuffer(),
+		stdout:        newBuffer(),
+		combined:      newBuffer(),
 		program:       f.program,
-		Command:       opts.Command,
-		Path:          filepath.Join(f.workdir.String(), opts.Path),
+		terragrunt:    f.terragrunt,
+		Command:       spec.Command,
+		Path:          filepath.Join(f.workdir.String(), spec.Path),
 		Args:          args,
-		AdditionalEnv: append(f.userEnvs, opts.Env...),
-		JSON:          opts.JSON,
-		Blocking:      opts.Blocking,
-		DependsOn:     opts.DependsOn,
-		Immediate:     opts.Immediate,
-		exclusive:     opts.Exclusive,
-		description:   opts.Description,
-		createOptions: opts,
-		AfterExited:   opts.AfterExited,
-		AfterError:    opts.AfterError,
-		AfterCanceled: opts.AfterCanceled,
-		AfterRunning:  opts.AfterRunning,
-		AfterQueued:   opts.AfterQueued,
-		AfterFinish:   opts.AfterFinish,
+		AdditionalEnv: append(f.userEnvs, spec.Env...),
+		JSON:          spec.JSON,
+		Blocking:      spec.Blocking,
+		DependsOn:     spec.DependsOn,
+		Immediate:     spec.Immediate,
+		exclusive:     spec.Exclusive,
+		description:   spec.Description,
+		Spec:          spec,
+		AfterCreate:   spec.AfterCreate,
+		AfterRunning:  spec.AfterRunning,
+		AfterQueued:   spec.AfterQueued,
+		BeforeExited:  spec.BeforeExited,
+		AfterExited:   spec.AfterExited,
+		AfterError:    spec.AfterError,
+		AfterCanceled: spec.AfterCanceled,
+		AfterFinish:   spec.AfterFinish,
 		// Publish an event whenever task state is updated
 		afterUpdate: func(t *Task) {
+			// TODO: remove nil-check that is only here to ensure tests don't
+			// have to mock publisher...
 			if f.publisher != nil {
 				f.publisher.Publish(resource.UpdatedEvent, t)
 			}
@@ -200,9 +162,12 @@ func (t *Task) String() string {
 }
 
 // NewReader provides a reader from which to read the task output from start to
-// end.
-func (t *Task) NewReader() io.Reader {
-	return &reader{buf: t.buf}
+// end. Set combined to true to receieve stderr as well as stdout.
+func (t *Task) NewReader(combined bool) io.Reader {
+	if combined {
+		return &reader{buf: t.combined}
+	}
+	return &reader{buf: t.stdout}
 }
 
 func (t *Task) IsActive() bool {
@@ -223,15 +188,6 @@ func (t *Task) Elapsed(s Status) time.Duration {
 	return st.Elapsed()
 }
 
-func (t *Task) IsFinished() bool {
-	switch t.State {
-	case Errored, Exited, Canceled:
-		return true
-	default:
-		return false
-	}
-}
-
 // Wait for task to complete successfully. If the task completes unsuccessfully
 // then the returned error is non-nil.
 func (t *Task) Wait() error {
@@ -243,12 +199,30 @@ func (t *Task) Wait() error {
 }
 
 func (t *Task) LogValue() slog.Value {
-	return slog.GroupValue(
+	attrs := []slog.Attr{
 		slog.String("id", t.ID.String()),
 		slog.Any("command", t.Command),
 		slog.Any("args", t.Args),
-		slog.Any("deps", t.DependsOn),
-	)
+	}
+	if t.terragrunt {
+		attrs = append(attrs, slog.Any("deps", t.DependsOn))
+	}
+	if t.Summary != nil {
+		// If task summary implements LogValuer and returns a group of
+		// attributes then "flatten" them into the rest of the task's
+		// attributes.
+		// Otherwise add its value to an attribute with the "summary" key.
+		if lg, ok := t.Summary.(slog.LogValuer); ok {
+			if lg.LogValue().Kind() == slog.KindGroup {
+				attrs = append(attrs, lg.LogValue().Group()...)
+			} else {
+				attrs = append(attrs, slog.Any("summary", t.Summary))
+			}
+		} else {
+			attrs = append(attrs, slog.String("summary", t.Summary.String()))
+		}
+	}
+	return slog.GroupValue(attrs...)
 }
 
 // cancel the task - if it is queued it'll skip the running state and enter the
@@ -279,8 +253,8 @@ func (t *Task) start(ctx context.Context) (func(), error) {
 		return cmd.Process.Signal(os.Interrupt)
 	}
 	cmd.Dir = t.Path
-	cmd.Stdout = t.buf
-	cmd.Stderr = t.buf
+	cmd.Stdout = io.MultiWriter(t.stdout, t.combined)
+	cmd.Stderr = t.combined
 	cmd.Env = append(t.AdditionalEnv, os.Environ()...)
 
 	t.mu.Lock()
@@ -320,17 +294,6 @@ func (t *Task) recordStatusEndTime(now time.Time) {
 	t.timestamps[t.State] = currentStateTimestamps
 }
 
-func (t *Task) SetSummary(summary string) {
-	t.summary = summary
-	if t.afterUpdate != nil {
-		t.afterUpdate(t)
-	}
-}
-
-func (t *Task) Summary() string {
-	return t.summary
-}
-
 func (t *Task) updateState(state Status) {
 	now := time.Now()
 	t.Updated = now
@@ -341,14 +304,30 @@ func (t *Task) updateState(state Status) {
 		started: now,
 	}
 
+	// Close output streams. It's important this is done before BeforeExited is
+	// called because it may want to consume the output streams until EOF.
+	if state.IsFinal() {
+		t.stdout.Close()
+		t.combined.Close()
+	}
+
+	// Before task exits trigger callback and if it fails set task's status to
+	// errored. Otherwise the returned summary summarises the task's outcome.
+	if state == Exited && t.BeforeExited != nil {
+		summary, err := t.BeforeExited(t)
+		if err != nil {
+			state = Errored
+		}
+		t.Summary = summary
+	}
+
 	t.State = state
 	if t.afterUpdate != nil {
 		t.afterUpdate(t)
 	}
 
-	if t.IsFinished() {
+	if t.State.IsFinal() {
 		t.recordStatusEndTime(now)
-		t.buf.Close()
 		close(t.finished)
 		if t.afterFinish != nil {
 			t.afterFinish(t)

@@ -119,7 +119,7 @@ Escape Sleep 0.5s
 # select all resources
 Ctrl+a Sleep 0.5s
 # taint all resources
-Ctrl+u
+Type "U"
 # we're taken to the untaint task group page
 Sleep 0.5s
 # preview output for several tasks

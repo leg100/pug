@@ -1,7 +1,6 @@
 package module
 
 import (
-	"errors"
 	"fmt"
 	"strings"
 
@@ -9,12 +8,13 @@ import (
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/leg100/pug/internal/module"
+	"github.com/leg100/pug/internal/plan"
 	"github.com/leg100/pug/internal/resource"
-	"github.com/leg100/pug/internal/run"
 	"github.com/leg100/pug/internal/task"
 	"github.com/leg100/pug/internal/tui"
 	"github.com/leg100/pug/internal/tui/keys"
 	"github.com/leg100/pug/internal/tui/table"
+	"github.com/leg100/pug/internal/workspace"
 )
 
 var (
@@ -37,13 +37,13 @@ var (
 
 // ListMaker makes module list models
 type ListMaker struct {
-	ModuleService    tui.ModuleService
-	WorkspaceService tui.WorkspaceService
-	RunService       tui.RunService
-	Spinner          *spinner.Model
-	Workdir          string
-	Helpers          *tui.Helpers
-	Terragrunt       bool
+	Modules    *module.Service
+	Workspaces *workspace.Service
+	Plans      *plan.Service
+	Spinner    *spinner.Model
+	Workdir    string
+	Helpers    *tui.Helpers
+	Terragrunt bool
 }
 
 func (m *ListMaker) Make(_ resource.ID, width, height int) (tea.Model, error) {
@@ -67,10 +67,15 @@ func (m *ListMaker) Make(_ resource.ID, width, height int) (tea.Model, error) {
 			currentWorkspace.Key:          m.Helpers.CurrentWorkspaceName(mod.CurrentWorkspaceID),
 			table.ResourceCountColumn.Key: m.Helpers.ModuleCurrentResourceCount(mod),
 		}
-		dependencyNames := make([]string, len(mod.Dependencies()))
-		for i, id := range mod.Dependencies() {
-			mod, _ := m.ModuleService.Get(id)
-			dependencyNames[i] = mod.Path
+		dependencyNames := make([]string, 0, len(mod.Dependencies()))
+		for _, id := range mod.Dependencies() {
+			mod, err := m.Modules.Get(id)
+			if err != nil {
+				// Should never happen
+				dependencyNames = append(dependencyNames, fmt.Sprintf("error: %s", err.Error()))
+				continue
+			}
+			dependencyNames = append(dependencyNames, mod.Path)
 		}
 		row[dependencies.Key] = strings.Join(dependencyNames, ",")
 		return row
@@ -80,20 +85,20 @@ func (m *ListMaker) Make(_ resource.ID, width, height int) (tea.Model, error) {
 	)
 
 	return list{
-		table:            table,
-		spinner:          m.Spinner,
-		ModuleService:    m.ModuleService,
-		WorkspaceService: m.WorkspaceService,
-		RunService:       m.RunService,
-		workdir:          m.Workdir,
-		helpers:          m.Helpers,
+		table:      table,
+		spinner:    m.Spinner,
+		Modules:    m.Modules,
+		Workspaces: m.Workspaces,
+		Plans:      m.Plans,
+		workdir:    m.Workdir,
+		helpers:    m.Helpers,
 	}, nil
 }
 
 type list struct {
-	ModuleService    tui.ModuleService
-	WorkspaceService tui.WorkspaceService
-	RunService       tui.RunService
+	Modules    *module.Service
+	Workspaces *workspace.Service
+	Plans      *plan.Service
 
 	table   table.Model[*module.Module]
 	spinner *spinner.Model
@@ -103,38 +108,44 @@ type list struct {
 
 func (m list) Init() tea.Cmd {
 	return func() tea.Msg {
-		return table.BulkInsertMsg[*module.Module](m.ModuleService.List())
+		return table.BulkInsertMsg[*module.Module](m.Modules.List())
 	}
 }
 
 func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var (
-		cmd              tea.Cmd
-		cmds             []tea.Cmd
-		createRunOptions run.CreateOptions
-		applyPrompt      = "Auto-apply %d modules?"
+		cmd            tea.Cmd
+		cmds           []tea.Cmd
+		createPlanOpts plan.CreateOptions
+		applyPrompt    = "Auto-apply %d modules?"
 	)
 
 	switch msg := msg.(type) {
+	case resource.Event[*task.Task]:
+		// Re-render module whenever a task event is received belonging to the
+		// module.
+		if mod := msg.Payload.Module(); mod != nil {
+			m.table.AddItems(mod.(*module.Module))
+		}
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, localKeys.ReloadModules):
-			return m, ReloadModules(false, m.ModuleService)
+			return m, ReloadModules(false, m.Modules)
 		case key.Matches(msg, keys.Common.Edit):
 			if row, ok := m.table.CurrentRow(); ok {
 				return m, tui.OpenEditor(row.Value.FullPath())
 			}
 		case key.Matches(msg, keys.Common.Init):
-			cmd := m.helpers.CreateTasks("init", m.ModuleService.Init, m.table.SelectedOrCurrentIDs()...)
+			cmd := m.helpers.CreateTasks(m.Modules.Init, m.table.SelectedOrCurrentIDs()...)
 			return m, cmd
 		case key.Matches(msg, keys.Common.Validate):
-			cmd := m.helpers.CreateTasks("validate", m.ModuleService.Validate, m.table.SelectedOrCurrentIDs()...)
+			cmd := m.helpers.CreateTasks(m.Modules.Validate, m.table.SelectedOrCurrentIDs()...)
 			return m, cmd
 		case key.Matches(msg, keys.Common.Format):
-			cmd := m.helpers.CreateTasks("format", m.ModuleService.Format, m.table.SelectedOrCurrentIDs()...)
+			cmd := m.helpers.CreateTasks(m.Modules.Format, m.table.SelectedOrCurrentIDs()...)
 			return m, cmd
 		case key.Matches(msg, localKeys.ReloadWorkspaces):
-			cmd := m.helpers.CreateTasks("reload-workspace", m.WorkspaceService.Reload, m.table.SelectedOrCurrentIDs()...)
+			cmd := m.helpers.CreateTasks(m.Workspaces.Reload, m.table.SelectedOrCurrentIDs()...)
 			return m, cmd
 		case key.Matches(msg, keys.Common.State):
 			if row, ok := m.table.CurrentRow(); ok {
@@ -143,30 +154,46 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 		case key.Matches(msg, keys.Common.PlanDestroy):
-			createRunOptions.Destroy = true
+			createPlanOpts.Destroy = true
 			fallthrough
 		case key.Matches(msg, keys.Common.Plan):
-			workspaceIDs, err := m.pruneModulesWithoutCurrentWorkspace()
+			// Create specs here, de-selecting any modules where an error is
+			// returned.
+			specs, err := m.table.Prune(func(mod *module.Module) (task.Spec, error) {
+				if workspaceID := mod.CurrentWorkspaceID; workspaceID == nil {
+					return task.Spec{}, fmt.Errorf("module %s does not have a current workspace", mod)
+				} else {
+					return m.Plans.Plan(*workspaceID, createPlanOpts)
+				}
+			})
 			if err != nil {
-				return m, tui.ReportError(fmt.Errorf("deselected items: %w", err))
+				// Modules were de-selected, so report error and give user
+				// another opportunity to plan any remaining modules.
+				return m, tui.ReportError(err)
 			}
-			fn := func(workspaceID resource.ID) (*task.Task, error) {
-				return m.RunService.Plan(workspaceID, createRunOptions)
-			}
-			desc := run.PlanTaskDescription(createRunOptions.Destroy)
-			return m, m.helpers.CreateTasks(desc, fn, workspaceIDs...)
+			return m, m.helpers.CreateTasksWithSpecs(specs...)
 		case key.Matches(msg, keys.Common.Destroy):
-			createRunOptions.Destroy = true
+			createPlanOpts.Destroy = true
 			applyPrompt = "Destroy resources of %d modules?"
 			fallthrough
 		case key.Matches(msg, keys.Common.Apply):
-			workspaceIDs, err := m.pruneModulesWithoutCurrentWorkspace()
+			// Create specs here, de-selecting any modules where an error is
+			// returned.
+			specs, err := m.table.Prune(func(mod *module.Module) (task.Spec, error) {
+				if workspaceID := mod.CurrentWorkspaceID; workspaceID == nil {
+					return task.Spec{}, fmt.Errorf("module %s does not have a current workspace", mod)
+				} else {
+					return m.Plans.Apply(*workspaceID, createPlanOpts)
+				}
+			})
 			if err != nil {
-				return m, tui.ReportError(fmt.Errorf("deselected items: %w", err))
+				// Modules were de-selected, so report error and give user
+				// another opportunity to apply any remaining modules.
+				return m, tui.ReportError(err)
 			}
 			return m, tui.YesNoPrompt(
-				fmt.Sprintf(applyPrompt, len(workspaceIDs)),
-				m.helpers.CreateApplyTasks(&createRunOptions, workspaceIDs...),
+				fmt.Sprintf(applyPrompt, len(specs)),
+				m.helpers.CreateTasksWithSpecs(specs...),
 			)
 		}
 	}
@@ -174,19 +201,6 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	m.table, cmd = m.table.Update(msg)
 	cmds = append(cmds, cmd)
 	return m, tea.Batch(cmds...)
-}
-
-func (m *list) pruneModulesWithoutCurrentWorkspace() ([]resource.ID, error) {
-	workspaceIDs, err := m.table.Prune(func(mod *module.Module) (resource.ID, bool) {
-		if workspaceID := mod.CurrentWorkspaceID; workspaceID != nil {
-			return *workspaceID, false
-		}
-		return resource.ID{}, true
-	})
-	if err != nil {
-		return nil, errors.New("module(s) do not have a current workspace")
-	}
-	return workspaceIDs, nil
 }
 
 func (m list) Title() string {

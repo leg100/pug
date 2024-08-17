@@ -1,7 +1,6 @@
 package task
 
 import (
-	"bufio"
 	"context"
 	"io"
 	"testing"
@@ -12,7 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestTask_stdout(t *testing.T) {
+func TestTask_NewReader(t *testing.T) {
 	t.Parallel()
 
 	f := factory{
@@ -20,26 +19,30 @@ func TestTask_stdout(t *testing.T) {
 		program:   "./testdata/task",
 		publisher: &fakePublisher[*Task]{},
 	}
-	task := f.newTask(CreateOptions{})
+	task := f.newTask(Spec{})
 	task.updateState(Queued)
 	waitfn, err := task.start(context.Background())
 	require.NoError(t, err)
 	waitfn()
 
-	scanner := bufio.NewScanner(task.NewReader())
-	want := []string{"foo", "bar", "baz", "bye"}
-	for i := 0; scanner.Scan(); i++ {
-		assert.Equal(t, want[i], scanner.Text())
-	}
-	require.NoError(t, scanner.Err())
-	assert.NoError(t, task.Err)
-	assert.Equal(t, Exited, task.State)
+	got, err := io.ReadAll(task.NewReader(false))
+	require.NoError(t, err)
+	assert.Equal(t, "foo\nbar\nbaz\nbye\n", string(got))
 
 	// create another reader, to demonstrate that reading resets to the
 	// beginning
-	got, err := io.ReadAll(task.NewReader())
+	got, err = io.ReadAll(task.NewReader(false))
 	require.NoError(t, err)
 	assert.Equal(t, "foo\nbar\nbaz\nbye\n", string(got))
+
+	// this time, create a combined reader, to demonstrate reading both stdout
+	// and stderr
+	got, err = io.ReadAll(task.NewReader(true))
+	require.NoError(t, err)
+	// stderr and stdout streams can be interwoven, so we use assert.Contains
+	// rather than assert.Equal
+	assert.Contains(t, string(got), "foo\nbar\nbaz\nbye\n")
+	assert.Contains(t, string(got), "err")
 }
 
 func TestTask_cancel(t *testing.T) {
@@ -50,7 +53,7 @@ func TestTask_cancel(t *testing.T) {
 		program:   "./testdata/killme",
 		publisher: &fakePublisher[*Task]{},
 	}
-	task := f.newTask(CreateOptions{})
+	task := f.newTask(Spec{})
 	task.updateState(Queued)
 
 	done := make(chan struct{})
@@ -61,7 +64,7 @@ func TestTask_cancel(t *testing.T) {
 		done <- struct{}{}
 	}()
 
-	assert.Equal(t, "ok, you can kill me now\n", <-iochan.DelimReader(task.NewReader(), '\n'))
+	assert.Equal(t, "ok, you can kill me now\n", <-iochan.DelimReader(task.NewReader(false), '\n'))
 	task.cancel()
 	<-done
 	assert.NoError(t, task.Err)

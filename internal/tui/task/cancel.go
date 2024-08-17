@@ -6,11 +6,12 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/leg100/pug/internal/resource"
+	"github.com/leg100/pug/internal/task"
 	"github.com/leg100/pug/internal/tui"
 )
 
 // cancel task(s)
-func cancel(svc tui.TaskService, taskIDs ...resource.ID) tea.Cmd {
+func cancel(tasks *task.Service, taskIDs ...resource.ID) tea.Cmd {
 	var (
 		prompt string
 		cmd    tea.Cmd
@@ -21,7 +22,7 @@ func cancel(svc tui.TaskService, taskIDs ...resource.ID) tea.Cmd {
 	case 1:
 		prompt = "Cancel task?"
 		cmd = func() tea.Msg {
-			if _, err := svc.Cancel(taskIDs[0]); err != nil {
+			if _, err := tasks.Cancel(taskIDs[0]); err != nil {
 				return tui.ErrorMsg(fmt.Errorf("cancelling task: %w", err))
 			}
 			return tui.InfoMsg("sent cancel signal to task")
@@ -31,7 +32,7 @@ func cancel(svc tui.TaskService, taskIDs ...resource.ID) tea.Cmd {
 		cmd = func() tea.Msg {
 			var errored bool
 			for _, id := range taskIDs {
-				if _, err := svc.Cancel(id); err != nil {
+				if _, err := tasks.Cancel(id); err != nil {
 					errored = true
 				}
 			}

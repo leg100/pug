@@ -3,6 +3,7 @@ package top
 import (
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/leg100/pug/internal/app"
 	"github.com/leg100/pug/internal/tui"
 	"github.com/leg100/pug/internal/tui/logs"
 	moduletui "github.com/leg100/pug/internal/tui/module"
@@ -16,74 +17,76 @@ type updateableMaker interface {
 }
 
 // makeMakers makes model makers for making models
-func makeMakers(opts Options, spinner *spinner.Model) map[tui.Kind]tui.Maker {
+func makeMakers(cfg app.Config, app *app.App, spinner *spinner.Model) map[tui.Kind]tui.Maker {
 	helpers := &tui.Helpers{
-		ModuleService:    opts.ModuleService,
-		WorkspaceService: opts.WorkspaceService,
-		RunService:       opts.RunService,
-		StateService:     opts.StateService,
-		TaskService:      opts.TaskService,
-		Logger:           opts.Logger,
+		Modules:    app.Modules,
+		Workspaces: app.Workspaces,
+		Plans:      app.Plans,
+		States:     app.States,
+		Tasks:      app.Tasks,
+		Logger:     app.Logger,
 	}
 
 	workspaceListMaker := &workspacetui.ListMaker{
-		WorkspaceService: opts.WorkspaceService,
-		ModuleService:    opts.ModuleService,
-		RunService:       opts.RunService,
-		Helpers:          helpers,
+		Workspaces: app.Workspaces,
+		Modules:    app.Modules,
+		Plans:      app.Plans,
+		Helpers:    helpers,
 	}
 	taskMaker := &tasktui.Maker{
-		RunService:  opts.RunService,
-		TaskService: opts.TaskService,
-		Spinner:     spinner,
-		Helpers:     helpers,
-		Logger:      opts.Logger,
-		Program:     opts.Program,
+		Plans:   app.Plans,
+		Tasks:   app.Tasks,
+		Spinner: spinner,
+		Helpers: helpers,
+		Logger:  app.Logger,
+		Program: cfg.Program,
 	}
 	taskListMaker := tasktui.NewListMaker(
-		opts.TaskService,
-		opts.RunService,
+		app.Tasks,
+		app.Plans,
 		taskMaker,
 		helpers,
 	)
 
 	makers := map[tui.Kind]tui.Maker{
 		tui.ModuleListKind: &moduletui.ListMaker{
-			ModuleService:    opts.ModuleService,
-			WorkspaceService: opts.WorkspaceService,
-			RunService:       opts.RunService,
-			Spinner:          spinner,
-			Workdir:          opts.Workdir.PrettyString(),
-			Helpers:          helpers,
-			Terragrunt:       opts.Terragrunt,
+			Modules:    app.Modules,
+			Workspaces: app.Workspaces,
+			Plans:      app.Plans,
+			Spinner:    spinner,
+			Workdir:    cfg.Workdir.PrettyString(),
+			Helpers:    helpers,
+			Terragrunt: cfg.Terragrunt,
 		},
 		tui.WorkspaceListKind: workspaceListMaker,
 		tui.TaskListKind:      taskListMaker,
 		tui.TaskKind:          taskMaker,
 		tui.TaskGroupListKind: &tasktui.GroupListMaker{
-			TaskService: opts.TaskService,
-			Helpers:     helpers,
+			Tasks:   app.Tasks,
+			Helpers: helpers,
 		},
 		tui.TaskGroupKind: tasktui.NewGroupMaker(
-			opts.TaskService,
-			opts.RunService,
+			app.Tasks,
+			app.Plans,
 			taskMaker,
 			helpers,
 		),
 		tui.LogListKind: &logs.ListMaker{
-			Logger: opts.Logger,
+			Logger: app.Logger,
 		},
 		tui.LogKind: &logs.Maker{
-			Logger: opts.Logger,
+			Logger: app.Logger,
 		},
 		tui.ResourceListKind: &workspacetui.ResourceListMaker{
-			WorkspaceService: opts.WorkspaceService,
-			StateService:     opts.StateService,
-			RunService:       opts.RunService,
-			Spinner:          spinner,
-			Helpers:          helpers,
+			Workspaces: app.Workspaces,
+			States:     app.States,
+			Plans:      app.Plans,
+			Spinner:    spinner,
+			Helpers:    helpers,
 		},
 		tui.ResourceKind: &workspacetui.ResourceMaker{
+			States:  app.States,
+			Plans:   app.Plans,
 			Helpers: helpers,
 		},
 	}

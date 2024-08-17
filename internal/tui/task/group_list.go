@@ -26,8 +26,8 @@ var (
 )
 
 type GroupListMaker struct {
-	TaskService tui.TaskService
-	Helpers     *tui.Helpers
+	Tasks   *task.Service
+	Helpers *tui.Helpers
 }
 
 func (m *GroupListMaker) Make(_ resource.ID, width, height int) (tea.Model, error) {
@@ -54,18 +54,18 @@ func (m *GroupListMaker) Make(_ resource.ID, width, height int) (tea.Model, erro
 
 	return groupList{
 		table: table,
-		svc:   m.TaskService,
+		tasks: m.Tasks,
 	}, nil
 }
 
 type groupList struct {
 	table table.Model[*task.Group]
-	svc   tui.TaskService
+	tasks *task.Service
 }
 
 func (m groupList) Init() tea.Cmd {
 	return func() tea.Msg {
-		groups := m.svc.ListGroups()
+		groups := m.tasks.ListGroups()
 		return table.BulkInsertMsg[*task.Group](groups)
 	}
 }

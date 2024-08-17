@@ -5,12 +5,14 @@ import (
 )
 
 type navigation struct {
-	LineUp     key.Binding
-	LineDown   key.Binding
-	PageUp     key.Binding
-	PageDown   key.Binding
-	GotoTop    key.Binding
-	GotoBottom key.Binding
+	LineUp       key.Binding
+	LineDown     key.Binding
+	PageUp       key.Binding
+	PageDown     key.Binding
+	HalfPageUp   key.Binding
+	HalfPageDown key.Binding
+	GotoTop      key.Binding
+	GotoBottom   key.Binding
 }
 
 // Navigation returns key bindings for navigation.
@@ -24,12 +26,20 @@ var Navigation = navigation{
 		key.WithHelp("↓/j", "down"),
 	),
 	PageUp: key.NewBinding(
-		key.WithKeys("b", "pgup"),
-		key.WithHelp("b/pgup", "page up"),
+		key.WithKeys("pgup"),
+		key.WithHelp("pgup", "page up"),
 	),
 	PageDown: key.NewBinding(
-		key.WithKeys("f", "pgdown"),
-		key.WithHelp("f/pgdn", "page down"),
+		key.WithKeys("pgdown"),
+		key.WithHelp("pgdn", "page down"),
+	),
+	HalfPageUp: key.NewBinding(
+		key.WithKeys("ctrl+u"),
+		key.WithHelp("ctrl+u", "½ page up"),
+	),
+	HalfPageDown: key.NewBinding(
+		key.WithKeys("ctrl+d"),
+		key.WithHelp("ctrl+d", "½ page down"),
 	),
 	GotoTop: key.NewBinding(
 		key.WithKeys("home", "g"),

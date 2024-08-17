@@ -46,28 +46,29 @@ func (mm *Maker) Make(id resource.ID, width, height int) (tea.Model, error) {
 			valueColumn.Key: attr.Value,
 		}
 	}
-	items := map[resource.ID]logging.Attr{
-		resource.NewID(resource.LogAttr): {
-			Key:   timeAttrKey,
-			Value: msg.Time.Format(timeFormat),
-		},
-		resource.NewID(resource.LogAttr): {
-			Key:   messageAttrKey,
-			Value: msg.Message,
-		},
-		resource.NewID(resource.LogAttr): {
-			Key:   levelAttrKey,
-			Value: coloredLogLevel(msg.Level),
-		},
-	}
-	for _, attr := range msg.Attributes {
-		items[resource.NewID(resource.LogAttr)] = attr
-	}
 	table := table.New(columns, renderer, width, height,
 		table.WithSortFunc(byAttribute),
 		table.WithSelectable[logging.Attr](false),
 	)
-	table.SetItems(items)
+	items := []logging.Attr{
+		{
+			Key:    timeAttrKey,
+			Value:  msg.Time.Format(timeFormat),
+			Common: resource.New(resource.LogAttr, resource.GlobalResource),
+		},
+		{
+			Key:    messageAttrKey,
+			Value:  msg.Message,
+			Common: resource.New(resource.LogAttr, resource.GlobalResource),
+		},
+		{
+			Key:    levelAttrKey,
+			Value:  coloredLogLevel(msg.Level),
+			Common: resource.New(resource.LogAttr, resource.GlobalResource),
+		},
+	}
+	items = append(items, msg.Attributes...)
+	table.SetItems(items...)
 
 	return model{
 		msg:    msg,

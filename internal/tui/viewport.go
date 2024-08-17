@@ -3,11 +3,13 @@ package tui
 import (
 	"fmt"
 
+	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/hokaccha/go-prettyjson"
+	"github.com/leg100/pug/internal/tui/keys"
 	"github.com/leg100/reflow/wrap"
 )
 
@@ -51,6 +53,16 @@ func (m Viewport) Update(msg tea.Msg) (Viewport, tea.Cmd) {
 		cmd  tea.Cmd
 		cmds []tea.Cmd
 	)
+
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		switch {
+		case key.Matches(msg, keys.Navigation.GotoTop):
+			m.viewport.SetYOffset(0)
+		case key.Matches(msg, keys.Navigation.GotoBottom):
+			m.viewport.SetYOffset(m.viewport.TotalLineCount())
+		}
+	}
 
 	// Handle keyboard and mouse events in the viewport
 	m.viewport, cmd = m.viewport.Update(msg)
@@ -107,7 +119,7 @@ func (m *Viewport) SetDimensions(width, height int) {
 	}
 }
 
-func (m *Viewport) AppendContent(content string, finished bool) error {
+func (m *Viewport) AppendContent(content string, finished bool) (err error) {
 	m.content += content
 	if finished {
 		if m.content == "" {
@@ -119,8 +131,10 @@ func (m *Viewport) AppendContent(content string, finished bool) error {
 			//
 			// TODO: avoid casting to string and back, thereby avoiding
 			// unnecessary allocations.
-			if b, err := prettyjson.Format([]byte(m.content)); err != nil {
-				return fmt.Errorf("pretty printing json content: %w", err)
+			if b, fmterr := prettyjson.Format([]byte(m.content)); fmterr != nil {
+				// In the event of an error, still set unprettified content
+				// below.
+				err = fmt.Errorf("pretty printing json content: %w", fmterr)
 			} else {
 				m.content = string(b)
 			}
@@ -130,7 +144,7 @@ func (m *Viewport) AppendContent(content string, finished bool) error {
 	if m.Autoscroll {
 		m.viewport.GotoBottom()
 	}
-	return nil
+	return err
 }
 
 func (m *Viewport) setContent() {

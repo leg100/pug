@@ -11,8 +11,8 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/leg100/pug/internal/logging"
 	"github.com/leg100/pug/internal/module"
+	"github.com/leg100/pug/internal/plan"
 	"github.com/leg100/pug/internal/resource"
-	"github.com/leg100/pug/internal/run"
 	"github.com/leg100/pug/internal/state"
 	"github.com/leg100/pug/internal/task"
 	"github.com/leg100/pug/internal/workspace"
@@ -25,12 +25,12 @@ import (
 // table with, say 40 visible rows, means they are invoked 40 times a render,
 // which is 40 lookups.
 type Helpers struct {
-	ModuleService    ModuleService
-	WorkspaceService WorkspaceService
-	RunService       RunService
-	TaskService      TaskService
-	StateService     StateService
-	Logger           logging.Interface
+	Modules    *module.Service
+	Workspaces *workspace.Service
+	Plans      *plan.Service
+	Tasks      *task.Service
+	States     *state.Service
+	Logger     logging.Interface
 }
 
 func (h *Helpers) ModulePath(res resource.Resource) string {
@@ -52,7 +52,7 @@ func (h *Helpers) ModuleCurrentWorkspace(mod *module.Module) *workspace.Workspac
 		h.Logger.Error("module does not have a current workspace", "module", mod)
 		return nil
 	}
-	ws, err := h.WorkspaceService.Get(*mod.CurrentWorkspaceID)
+	ws, err := h.Workspaces.Get(*mod.CurrentWorkspaceID)
 	if err != nil {
 		h.Logger.Error("retrieving current workspace for module", "error", err, "module", mod)
 		return nil
@@ -76,7 +76,7 @@ func (h *Helpers) CurrentWorkspaceName(workspaceID *resource.ID) string {
 	if workspaceID == nil {
 		return "-"
 	}
-	ws, err := h.WorkspaceService.Get(*workspaceID)
+	ws, err := h.Workspaces.Get(*workspaceID)
 	if err != nil {
 		h.Logger.Error("rendering current workspace name", "error", err)
 		return ""
@@ -88,7 +88,7 @@ func (h *Helpers) ModuleCurrentResourceCount(mod *module.Module) string {
 	if mod.CurrentWorkspaceID == nil {
 		return ""
 	}
-	ws, err := h.WorkspaceService.Get(*mod.CurrentWorkspaceID)
+	ws, err := h.Workspaces.Get(*mod.CurrentWorkspaceID)
 	if err != nil {
 		h.Logger.Error("rendering module current workspace resource count", "error", err)
 		return ""
@@ -99,7 +99,7 @@ func (h *Helpers) ModuleCurrentResourceCount(mod *module.Module) string {
 // WorkspaceCurrentCheckmark returns a check mark if the workspace is the
 // current workspace for its module.
 func (h *Helpers) WorkspaceCurrentCheckmark(ws *workspace.Workspace) string {
-	mod, err := h.ModuleService.Get(ws.ModuleID())
+	mod, err := h.Modules.Get(ws.ModuleID())
 	if err != nil {
 		h.Logger.Error("rendering current workspace checkmark", "error", err)
 		return ""
@@ -111,7 +111,7 @@ func (h *Helpers) WorkspaceCurrentCheckmark(ws *workspace.Workspace) string {
 }
 
 func (h *Helpers) WorkspaceResourceCount(ws *workspace.Workspace) string {
-	state, err := h.StateService.Get(ws.ID)
+	state, err := h.States.Get(ws.ID)
 	if errors.Is(err, resource.ErrNotFound) {
 		// not found most likely means state not loaded yet
 		return ""
@@ -162,19 +162,28 @@ func (h *Helpers) TaskStatus(t *task.Task, background bool) string {
 	}
 }
 
-func (h *Helpers) LatestRunReport(r *run.Run, table bool) string {
-	if r.ApplyReport != nil {
-		return h.RunReport(*r.ApplyReport, table)
+// TaskSummary renders a summary of the task's outcome. Set table to true if the
+// outcome is to be rendered within a table row.
+func (h *Helpers) TaskSummary(t *task.Task, table bool) string {
+	if t.Summary == nil {
+		return ""
 	}
-	if r.PlanReport != nil {
-		return h.RunReport(*r.PlanReport, table)
+	// Render special resource report
+	switch summary := t.Summary.(type) {
+	case plan.Report:
+		return h.ResourceReport(summary, table)
+	case workspace.ReloadSummary:
+		return h.WorkspaceReloadReport(summary, table)
+	case state.ReloadSummary:
+		return h.StateReloadReport(summary, table)
 	}
-	return ""
+	return t.Summary.String()
 }
 
-// RunReport renders a colored summary of a run's changes. Set table to true if
-// the report is rendered within a table row.
-func (h *Helpers) RunReport(report run.Report, table bool) string {
+// ResourceReport renders a colored summary of resource changes as a result of a
+// plan or apply. Set table to true if the report is rendered within a table
+// row.
+func (h *Helpers) ResourceReport(report plan.Report, table bool) string {
 	var background lipgloss.TerminalColor = lipgloss.NoColor{}
 	if !table {
 		background = RunReportBackgroundColor
@@ -190,7 +199,43 @@ func (h *Helpers) RunReport(report run.Report, table bool) string {
 	return s
 }
 
-// RunReport renders a colored summary of a run's changes. Set table to true if
+// WorkspaceReloadReport renders a colored summary of workspaces added or
+// removed as a result of a workspace reload. Set table to true if the report is
+// rendered within a table row.
+func (h *Helpers) WorkspaceReloadReport(report workspace.ReloadSummary, table bool) string {
+	var background lipgloss.TerminalColor = lipgloss.NoColor{}
+	if !table {
+		background = RunReportBackgroundColor
+	}
+	added := Regular.Background(background).Foreground(Green).Render(fmt.Sprintf("+%d", len(report.Added)))
+	removed := Regular.Background(background).Foreground(Red).Render(fmt.Sprintf("-%d", len(report.Removed)))
+
+	s := fmt.Sprintf("%s%s", added, removed)
+	if !table {
+		s = Padded.Background(background).Render(s)
+	}
+	return s
+}
+
+// StateReloadReport renders a colored summary of changes resulting from a
+// workspace reload. Set table to true if the report is rendered within a table
+// row.
+func (h *Helpers) StateReloadReport(report state.ReloadSummary, table bool) string {
+	var background lipgloss.TerminalColor = lipgloss.NoColor{}
+	if !table {
+		background = RunReportBackgroundColor
+	}
+	oldSerial := Regular.Background(background).Foreground(Red).Render(fmt.Sprintf("#%d", report.OldSerial()))
+	newSerial := Regular.Background(background).Foreground(Green).Render(fmt.Sprintf("#%d", report.NewSerial()))
+
+	s := fmt.Sprintf("%s<-%s", newSerial, oldSerial)
+	if !table {
+		s = Padded.Background(background).Render(s)
+	}
+	return s
+}
+
+// GroupReport renders a colored summary of a task group's task statuses. Set table to true if
 // the report is rendered within a table row.
 func (h *Helpers) GroupReport(group *task.Group, table bool) string {
 	var background lipgloss.TerminalColor = lipgloss.NoColor{}
@@ -213,50 +258,63 @@ func (h *Helpers) GroupReport(group *task.Group, table bool) string {
 	return s
 }
 
-func (h *Helpers) CreateTasks(cmd string, fn task.Func, ids ...resource.ID) tea.Cmd {
+// CreateTasks repeatedly invokes fn with each id in ids, creating a task for
+// each invocation. If there is more than one id then a task group is created
+// and the user sent to the task group's page; otherwise if only id is provided,
+// the user is sent to the task's page.
+func (h *Helpers) CreateTasks(fn task.SpecFunc, ids ...resource.ID) tea.Cmd {
 	return func() tea.Msg {
 		switch len(ids) {
 		case 0:
 			return nil
 		case 1:
-			task, err := fn(ids[0])
+			spec, err := fn(ids[0])
+			if err != nil {
+				return ReportError(fmt.Errorf("creating task: %w", err))
+			}
+			task, err := h.Tasks.Create(spec)
 			if err != nil {
 				return ReportError(fmt.Errorf("creating task: %w", err))
 			}
 			return NewNavigationMsg(TaskKind, WithParent(task))
 		default:
-			group, err := h.TaskService.CreateGroup(cmd, fn, ids...)
-			if err != nil {
-				return ReportError(fmt.Errorf("creating task group: %w", err))
+			specs := make([]task.Spec, 0, len(ids))
+			for _, id := range ids {
+				spec, err := fn(id)
+				if err != nil {
+					h.Logger.Error("creating task spec", "error", err, "id", id)
+					continue
+				}
+				specs = append(specs, spec)
 			}
-			return NewNavigationMsg(TaskGroupKind, WithParent(group))
+			return h.createTaskGroup(specs...)
 		}
 	}
 }
 
-func (h *Helpers) CreateApplyTasks(opts *run.CreateOptions, ids ...resource.ID) tea.Cmd {
+func (h *Helpers) CreateTasksWithSpecs(specs ...task.Spec) tea.Cmd {
 	return func() tea.Msg {
-		switch len(ids) {
+		switch len(specs) {
 		case 0:
 			return nil
 		case 1:
-			// Only one task is to be created. If successful send user directly to task
-			// page. Otherwise report an error.
-			task, err := h.RunService.Apply(ids[0], opts)
+			task, err := h.Tasks.Create(specs[0])
 			if err != nil {
-				return ReportError(fmt.Errorf("creating apply task: %w", err))
+				return ReportError(fmt.Errorf("creating task: %w", err))
 			}
 			return NewNavigationMsg(TaskKind, WithParent(task))
 		default:
-			// More than one task is to be created. If successful send user to
-			// task group page.
-			group, err := h.RunService.MultiApply(opts, ids...)
-			if err != nil {
-				return ReportError(fmt.Errorf("creating apply task group: %w", err))
-			}
-			return NewNavigationMsg(TaskGroupKind, WithParent(group))
+			return h.createTaskGroup(specs...)
 		}
 	}
+}
+
+func (h *Helpers) createTaskGroup(specs ...task.Spec) tea.Msg {
+	group, err := h.Tasks.CreateGroup(specs...)
+	if err != nil {
+		return ReportError(fmt.Errorf("creating task group: %w", err))
+	}
+	return NewNavigationMsg(TaskGroupKind, WithParent(group))
 }
 
 func (h *Helpers) Move(workspaceID resource.ID, from state.ResourceAddress) tea.Cmd {
@@ -267,10 +325,10 @@ func (h *Helpers) Move(workspaceID resource.ID, from state.ResourceAddress) tea.
 			if v == "" {
 				return nil
 			}
-			fn := func(workspaceID resource.ID) (*task.Task, error) {
-				return h.StateService.Move(workspaceID, from, state.ResourceAddress(v))
+			fn := func(workspaceID resource.ID) (task.Spec, error) {
+				return h.States.Move(workspaceID, from, state.ResourceAddress(v))
 			}
-			return h.CreateTasks("state-mv", fn, workspaceID)
+			return h.CreateTasks(fn, workspaceID)
 		},
 		Key:    key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", "confirm")),
 		Cancel: key.NewBinding(key.WithKeys("esc"), key.WithHelp("esc", "cancel")),
@@ -290,9 +348,6 @@ func Breadcrumbs(title string, res resource.Resource, crumbs ...string) string {
 		cmd := TitleCommand.Render(res.String())
 		id := TitleID.Render(res.GetID().String())
 		return Breadcrumbs(title, res.GetParent(), cmd, id)
-	case *run.Run:
-		// Skip run info in breadcrumbs
-		return Breadcrumbs(title, res.GetParent(), crumbs...)
 	case *workspace.Workspace:
 		name := TitleWorkspace.Render(res.String())
 		return Breadcrumbs(title, res.GetParent(), append(crumbs, name)...)

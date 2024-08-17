@@ -1,0 +1,163 @@
+time=2024-07-09T14:45:51+01:00 level=info msg=Downloading Terraform configurations from file:///home/louis/co/pug/internal/app/testdata/single_terragrunt_module/modules/a into /home/louis/co/pug/internal/app/testdata/single_terragrunt_module/modules/a/.terragrunt-cache/WGJQsw5-yRg0BNeeU3FfBO-gpwE/Ycl1nuTMdBEpJEsvdwy79_7LR0g
+time=2024-07-09T14:45:52+01:00 level=warning msg=Failed to parse HCL in file /home/louis/co/pug/_build/pug: /home/louis/co/pug/_build/pug:1,1-2: Invalid character; This character is not used within the language., and 1436932 other diagnostic(s)
+[0m[1mrandom_pet.pet[0]: Refreshing state... [id=informed-quail][0m
+[0m[1mrandom_pet.pet[6]: Refreshing state... [id=ready-husky][0m
+[0m[1mrandom_pet.pet[5]: Refreshing state... [id=uncommon-feline][0m
+[0m[1mrandom_pet.pet[2]: Refreshing state... [id=tight-gull][0m
+[0m[1mrandom_pet.pet[9]: Refreshing state... [id=sweeping-tahr][0m
+[0m[1mrandom_pet.pet[1]: Refreshing state... [id=charmed-ibex][0m
+[0m[1mrandom_pet.pet[7]: Refreshing state... [id=active-snail][0m
+[0m[1mrandom_pet.pet[3]: Refreshing state... [id=improved-jay][0m
+[0m[1mrandom_pet.pet[8]: Refreshing state... [id=hot-shiner][0m
+[0m[1mrandom_pet.pet[4]: Refreshing state... [id=whole-aphid][0m
+
+Terraform used the selected providers to generate the following execution
+plan. Resource actions are indicated with the following symbols:
+  [31m-[0m destroy[0m
+
+Terraform will perform the following actions:
+
+[1m  # random_pet.pet[0][0m will be [1m[31mdestroyed[0m
+[0m  [31m-[0m[0m resource "random_pet" "pet" {
+      [31m-[0m[0m id        = "informed-quail" [90m-> null[0m[0m
+      [31m-[0m[0m keepers   = {
+          [31m-[0m[0m "now" = "2024-07-09T13:45:47Z"
+        } [90m-> null[0m[0m
+      [31m-[0m[0m length    = 2 [90m-> null[0m[0m
+      [31m-[0m[0m separator = "-" [90m-> null[0m[0m
+    }
+
+[1m  # random_pet.pet[1][0m will be [1m[31mdestroyed[0m
+[0m  [31m-[0m[0m resource "random_pet" "pet" {
+      [31m-[0m[0m id        = "charmed-ibex" [90m-> null[0m[0m
+      [31m-[0m[0m keepers   = {
+          [31m-[0m[0m "now" = "2024-07-09T13:45:47Z"
+        } [90m-> null[0m[0m
+      [31m-[0m[0m length    = 2 [90m-> null[0m[0m
+      [31m-[0m[0m separator = "-" [90m-> null[0m[0m
+    }
+
+[1m  # random_pet.pet[2][0m will be [1m[31mdestroyed[0m
+[0m  [31m-[0m[0m resource "random_pet" "pet" {
+      [31m-[0m[0m id        = "tight-gull" [90m-> null[0m[0m
+      [31m-[0m[0m keepers   = {
+          [31m-[0m[0m "now" = "2024-07-09T13:45:47Z"
+        } [90m-> null[0m[0m
+      [31m-[0m[0m length    = 2 [90m-> null[0m[0m
+      [31m-[0m[0m separator = "-" [90m-> null[0m[0m
+    }
+
+[1m  # random_pet.pet[3][0m will be [1m[31mdestroyed[0m
+[0m  [31m-[0m[0m resource "random_pet" "pet" {
+      [31m-[0m[0m id        = "improved-jay" [90m-> null[0m[0m
+      [31m-[0m[0m keepers   = {
+          [31m-[0m[0m "now" = "2024-07-09T13:45:47Z"
+        } [90m-> null[0m[0m
+      [31m-[0m[0m length    = 2 [90m-> null[0m[0m
+      [31m-[0m[0m separator = "-" [90m-> null[0m[0m
+    }
+
+[1m  # random_pet.pet[4][0m will be [1m[31mdestroyed[0m
+[0m  [31m-[0m[0m resource "random_pet" "pet" {
+      [31m-[0m[0m id        = "whole-aphid" [90m-> null[0m[0m
+      [31m-[0m[0m keepers   = {
+          [31m-[0m[0m "now" = "2024-07-09T13:45:47Z"
+        } [90m-> null[0m[0m
+      [31m-[0m[0m length    = 2 [90m-> null[0m[0m
+      [31m-[0m[0m separator = "-" [90m-> null[0m[0m
+    }
+
+[1m  # random_pet.pet[5][0m will be [1m[31mdestroyed[0m
+[0m  [31m-[0m[0m resource "random_pet" "pet" {
+      [31m-[0m[0m id        = "uncommon-feline" [90m-> null[0m[0m
+      [31m-[0m[0m keepers   = {
+          [31m-[0m[0m "now" = "2024-07-09T13:45:47Z"
+        } [90m-> null[0m[0m
+      [31m-[0m[0m length    = 2 [90m-> null[0m[0m
+      [31m-[0m[0m separator = "-" [90m-> null[0m[0m
+    }
+
+[1m  # random_pet.pet[6][0m will be [1m[31mdestroyed[0m
+[0m  [31m-[0m[0m resource "random_pet" "pet" {
+      [31m-[0m[0m id        = "ready-husky" [90m-> null[0m[0m
+      [31m-[0m[0m keepers   = {
+          [31m-[0m[0m "now" = "2024-07-09T13:45:47Z"
+        } [90m-> null[0m[0m
+      [31m-[0m[0m length    = 2 [90m-> null[0m[0m
+      [31m-[0m[0m separator = "-" [90m-> null[0m[0m
+    }
+
+[1m  # random_pet.pet[7][0m will be [1m[31mdestroyed[0m
+[0m  [31m-[0m[0m resource "random_pet" "pet" {
+      [31m-[0m[0m id        = "active-snail" [90m-> null[0m[0m
+      [31m-[0m[0m keepers   = {
+          [31m-[0m[0m "now" = "2024-07-09T13:45:47Z"
+        } [90m-> null[0m[0m
+      [31m-[0m[0m length    = 2 [90m-> null[0m[0m
+      [31m-[0m[0m separator = "-" [90m-> null[0m[0m
+    }
+
+[1m  # random_pet.pet[8][0m will be [1m[31mdestroyed[0m
+[0m  [31m-[0m[0m resource "random_pet" "pet" {
+      [31m-[0m[0m id        = "hot-shiner" [90m-> null[0m[0m
+      [31m-[0m[0m keepers   = {
+          [31m-[0m[0m "now" = "2024-07-09T13:45:47Z"
+        } [90m-> null[0m[0m
+      [31m-[0m[0m length    = 2 [90m-> null[0m[0m
+      [31m-[0m[0m separator = "-" [90m-> null[0m[0m
+    }
+
+[1m  # random_pet.pet[9][0m will be [1m[31mdestroyed[0m
+[0m  [31m-[0m[0m resource "random_pet" "pet" {
+      [31m-[0m[0m id        = "sweeping-tahr" [90m-> null[0m[0m
+      [31m-[0m[0m keepers   = {
+          [31m-[0m[0m "now" = "2024-07-09T13:45:47Z"
+        } [90m-> null[0m[0m
+      [31m-[0m[0m length    = 2 [90m-> null[0m[0m
+      [31m-[0m[0m separator = "-" [90m-> null[0m[0m
+    }
+
+[1mPlan:[0m 0 to add, 0 to change, 10 to destroy.
+[0m
+Changes to Outputs:
+  [31m-[0m[0m pets = [
+      [31m-[0m[0m "informed-quail",
+      [31m-[0m[0m "charmed-ibex",
+      [31m-[0m[0m "tight-gull",
+      [31m-[0m[0m "improved-jay",
+      [31m-[0m[0m "whole-aphid",
+      [31m-[0m[0m "uncommon-feline",
+      [31m-[0m[0m "ready-husky",
+      [31m-[0m[0m "active-snail",
+      [31m-[0m[0m "hot-shiner",
+      [31m-[0m[0m "sweeping-tahr",
+    ] [90m-> null[0m[0m
+[0m[1m
+Do you really want to destroy all resources?[0m
+  Terraform will destroy all your managed infrastructure, as shown above.
+  There is no undo. Only 'yes' will be accepted to confirm.
+
+  [1mEnter a value:[0m [0m
+[0m[1mrandom_pet.pet[1]: Destroying... [id=charmed-ibex][0m[0m
+[0m[1mrandom_pet.pet[4]: Destroying... [id=whole-aphid][0m[0m
+[0m[1mrandom_pet.pet[8]: Destroying... [id=hot-shiner][0m[0m
+[0m[1mrandom_pet.pet[2]: Destroying... [id=tight-gull][0m[0m
+[0m[1mrandom_pet.pet[5]: Destroying... [id=uncommon-feline][0m[0m
+[0m[1mrandom_pet.pet[0]: Destroying... [id=informed-quail][0m[0m
+[0m[1mrandom_pet.pet[9]: Destroying... [id=sweeping-tahr][0m[0m
+[0m[1mrandom_pet.pet[7]: Destroying... [id=active-snail][0m[0m
+[0m[1mrandom_pet.pet[6]: Destroying... [id=ready-husky][0m[0m
+[0m[1mrandom_pet.pet[3]: Destroying... [id=improved-jay][0m[0m
+[0m[1mrandom_pet.pet[0]: Destruction complete after 0s[0m
+[0m[1mrandom_pet.pet[3]: Destruction complete after 0s[0m
+[0m[1mrandom_pet.pet[8]: Destruction complete after 0s[0m
+[0m[1mrandom_pet.pet[5]: Destruction complete after 0s[0m
+[0m[1mrandom_pet.pet[9]: Destruction complete after 0s[0m
+[0m[1mrandom_pet.pet[1]: Destruction complete after 0s[0m
+[0m[1mrandom_pet.pet[6]: Destruction complete after 0s[0m
+[0m[1mrandom_pet.pet[4]: Destruction complete after 0s[0m
+[0m[1mrandom_pet.pet[7]: Destruction complete after 0s[0m
+[0m[1mrandom_pet.pet[2]: Destruction complete after 0s[0m
+[0m[1m[32m
+Destroy complete! Resources: 10 destroyed.
+[0m

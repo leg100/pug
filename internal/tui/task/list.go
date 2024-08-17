@@ -7,8 +7,8 @@ import (
 
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/leg100/pug/internal/plan"
 	"github.com/leg100/pug/internal/resource"
-	runpkg "github.com/leg100/pug/internal/run"
 	"github.com/leg100/pug/internal/task"
 	"github.com/leg100/pug/internal/tui"
 	"github.com/leg100/pug/internal/tui/keys"
@@ -54,21 +54,22 @@ func (m *ListTaskMaker) Make(id resource.ID, width, height int) (tea.Model, erro
 }
 
 // NewListMaker constructs a task list model maker
-func NewListMaker(tasks tui.TaskService, runs tui.RunService, taskMaker *Maker, helpers *tui.Helpers) *ListMaker {
+func NewListMaker(tasks *task.Service, plans *plan.Service, taskMaker *Maker, helpers *tui.Helpers) *ListMaker {
 	return &ListMaker{
-		TaskService: tasks,
-		RunService:  runs,
-		TaskMaker:   &ListTaskMaker{Maker: taskMaker},
-		Helpers:     helpers,
+		Tasks:     tasks,
+		Plans:     plans,
+		TaskMaker: &ListTaskMaker{Maker: taskMaker},
+		Helpers:   helpers,
 	}
 }
 
 // ListMaker makes task list models
 type ListMaker struct {
-	RunService  tui.RunService
-	TaskService tui.TaskService
-	TaskMaker   tui.Maker
-	Helpers     *tui.Helpers
+	Plans *plan.Service
+	Tasks *task.Service
+
+	TaskMaker tui.Maker
+	Helpers   *tui.Helpers
 }
 
 func (mm *ListMaker) Make(_ resource.ID, width, height int) (tea.Model, error) {
@@ -83,31 +84,15 @@ func (mm *ListMaker) Make(_ resource.ID, width, height int) (tea.Model, error) {
 	}
 
 	renderer := func(t *task.Task) table.RenderedRow {
-		row := table.RenderedRow{
+		return table.RenderedRow{
 			taskIDColumn.Key:          t.ID.String(),
 			table.ModuleColumn.Key:    mm.Helpers.ModulePath(t),
 			table.WorkspaceColumn.Key: mm.Helpers.WorkspaceName(t),
 			commandColumn.Key:         t.String(),
 			ageColumn.Key:             tui.Ago(time.Now(), t.Updated),
 			statusColumn.Key:          mm.Helpers.TaskStatus(t, false),
+			runChangesColumn.Key:      mm.Helpers.TaskSummary(t, true),
 		}
-
-		if rr := t.Run(); rr != nil {
-			run := rr.(*runpkg.Run)
-			if t.Command[0] == "plan" && run.PlanReport != nil {
-				row[runChangesColumn.Key] = mm.Helpers.RunReport(*run.PlanReport, true)
-			} else if t.Command[0] == "apply" && run.ApplyReport != nil {
-				row[runChangesColumn.Key] = mm.Helpers.RunReport(*run.ApplyReport, true)
-			}
-		} else {
-			// If task doesn't belong to a run, then set the content of the
-			// "changes" column to the task summary.
-			//
-			// TODO: use task summary for run changes too.
-			row[runChangesColumn.Key] = t.Summary()
-		}
-
-		return row
 	}
 
 	splitModel := split.New(split.Options[*task.Task]{
@@ -120,8 +105,8 @@ func (mm *ListMaker) Make(_ resource.ID, width, height int) (tea.Model, error) {
 	})
 	m := List{
 		Model:   splitModel,
-		runs:    mm.RunService,
-		tasks:   mm.TaskService,
+		plans:   mm.Plans,
+		tasks:   mm.Tasks,
 		helpers: mm.Helpers,
 	}
 	return m, nil
@@ -130,8 +115,8 @@ func (mm *ListMaker) Make(_ resource.ID, width, height int) (tea.Model, error) {
 type List struct {
 	split.Model[*task.Task]
 
-	runs    tui.RunService
-	tasks   tui.TaskService
+	plans   *plan.Service
+	tasks   *task.Service
 	helpers *tui.Helpers
 }
 
@@ -154,13 +139,16 @@ func (m List) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, tui.NavigateTo(tui.TaskKind, tui.WithParent(row.Value))
 			}
 		case key.Matches(msg, keys.Common.Apply):
-			runIDs, err := m.pruneApplyableTasks()
+			specs, err := m.Table.Prune(func(t *task.Task) (task.Spec, error) {
+				// Task must be a plan in order to be applied
+				return m.plans.ApplyPlan(t.ID)
+			})
 			if err != nil {
 				return m, tui.ReportError(fmt.Errorf("applying tasks: %w", err))
 			}
 			return m, tui.YesNoPrompt(
-				fmt.Sprintf("Apply %d plans?", len(runIDs)),
-				m.helpers.CreateApplyTasks(nil, runIDs...),
+				fmt.Sprintf("Apply %d plans?", len(specs)),
+				m.helpers.CreateTasksWithSpecs(specs...),
 			)
 		case key.Matches(msg, keys.Common.State):
 			if row, ok := m.Table.CurrentRow(); ok {
@@ -171,22 +159,14 @@ func (m List) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 		case key.Matches(msg, keys.Common.Retry):
-			// If all tasks have the same stringified identifier (which reveals
-			// the underlying command), then use that. Otherwise use the string
-			// "multi".
-			var cmd string
-			for _, task := range m.Table.SelectedOrCurrent() {
-				if cmd == "" {
-					cmd = task.Value.String()
-				} else if cmd != task.Value.String() {
-					cmd = "multi"
-					break
-				}
+			rows := m.Table.SelectedOrCurrent()
+			specs := make([]task.Spec, len(rows))
+			for i, row := range rows {
+				specs[i] = row.Value.Spec
 			}
-			taskIDs := m.Table.SelectedOrCurrentIDs()
 			return m, tui.YesNoPrompt(
-				fmt.Sprintf("Retry %d tasks?", len(taskIDs)),
-				m.helpers.CreateTasks(cmd, m.tasks.Retry, taskIDs...),
+				fmt.Sprintf("Retry %d tasks?", len(rows)),
+				m.helpers.CreateTasksWithSpecs(specs...),
 			)
 		}
 	}
@@ -208,21 +188,4 @@ func (m List) HelpBindings() []key.Binding {
 		keys.Common.Retry,
 	}
 	return append(bindings, keys.KeyMapToSlice(split.Keys)...)
-}
-
-// pruneApplyableTasks removes from the selection any tasks that cannot be
-// applied, i.e all tasks other than those that are a plan and are in the
-// planned state. The run ID of each task after pruning is returned.
-func (m *List) pruneApplyableTasks() ([]resource.ID, error) {
-	return m.Table.Prune(func(task *task.Task) (resource.ID, bool) {
-		rr := task.Run()
-		if rr == nil {
-			return resource.ID{}, true
-		}
-		run := rr.(*runpkg.Run)
-		if run.Status != runpkg.Planned {
-			return resource.ID{}, true
-		}
-		return run.ID, false
-	})
 }

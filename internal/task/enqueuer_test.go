@@ -16,27 +16,27 @@ func TestEnqueuer(t *testing.T) {
 
 	mod1 := resource.New(resource.Module, resource.GlobalResource)
 	ws1 := resource.New(resource.Workspace, mod1)
-	run1 := resource.New(resource.Run, ws1)
-	run2 := resource.New(resource.Run, ws1)
+	run1 := resource.New(resource.Plan, ws1)
+	run2 := resource.New(resource.Plan, ws1)
 
-	mod1Task1 := f.newTask(CreateOptions{Parent: mod1})
-	mod1TaskBlocking1 := f.newTask(CreateOptions{Parent: mod1, Blocking: true})
+	mod1Task1 := f.newTask(Spec{Parent: mod1})
+	mod1TaskBlocking1 := f.newTask(Spec{Parent: mod1, Blocking: true})
 
-	ws1Task1 := f.newTask(CreateOptions{Parent: ws1})
-	ws1Task2 := f.newTask(CreateOptions{Parent: ws1})
-	ws1TaskBlocking1 := f.newTask(CreateOptions{Parent: ws1, Blocking: true})
-	ws1TaskBlocking2 := f.newTask(CreateOptions{Parent: ws1, Blocking: true})
-	ws1TaskBlocking3 := f.newTask(CreateOptions{Parent: ws1, Blocking: true})
-	ws1TaskImmediate := f.newTask(CreateOptions{Parent: ws1, Immediate: true})
-	ws1TaskDependOnTask1 := f.newTask(CreateOptions{Parent: ws1, DependsOn: []resource.ID{ws1Task1.ID}})
+	ws1Task1 := f.newTask(Spec{Parent: ws1})
+	ws1Task2 := f.newTask(Spec{Parent: ws1})
+	ws1TaskBlocking1 := f.newTask(Spec{Parent: ws1, Blocking: true})
+	ws1TaskBlocking2 := f.newTask(Spec{Parent: ws1, Blocking: true})
+	ws1TaskBlocking3 := f.newTask(Spec{Parent: ws1, Blocking: true})
+	ws1TaskImmediate := f.newTask(Spec{Parent: ws1, Immediate: true})
+	ws1TaskDependOnTask1 := f.newTask(Spec{Parent: ws1, DependsOn: []resource.ID{ws1Task1.ID}})
 
-	ws1TaskCompleted := f.newTask(CreateOptions{Parent: ws1})
+	ws1TaskCompleted := f.newTask(Spec{Parent: ws1})
 	ws1TaskCompleted.updateState(Exited)
 
-	ws1TaskDependOnCompletedTask := f.newTask(CreateOptions{Parent: ws1, DependsOn: []resource.ID{ws1TaskCompleted.ID}})
+	ws1TaskDependOnCompletedTask := f.newTask(Spec{Parent: ws1, DependsOn: []resource.ID{ws1TaskCompleted.ID}})
 
-	run1TaskBlocking1 := f.newTask(CreateOptions{Parent: run1, Blocking: true})
-	run2Task1 := f.newTask(CreateOptions{Parent: run2})
+	run1TaskBlocking1 := f.newTask(Spec{Parent: run1, Blocking: true})
+	run2Task1 := f.newTask(Spec{Parent: run2})
 
 	tests := []struct {
 		name string

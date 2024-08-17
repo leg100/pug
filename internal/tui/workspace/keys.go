@@ -28,8 +28,8 @@ var resourcesKeys = resourcesKeyMap{
 		key.WithHelp("ctrl+t", "taint"),
 	),
 	Untaint: key.NewBinding(
-		key.WithKeys("ctrl+u"),
-		key.WithHelp("ctrl+u", "untaint"),
+		key.WithKeys("U"),
+		key.WithHelp("U", "untaint"),
 	),
 	Move: key.NewBinding(
 		key.WithKeys("M"),

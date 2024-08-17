@@ -1,6 +1,8 @@
 package task
 
 import (
+	"context"
+
 	"github.com/leg100/pug/internal/resource"
 )
 
@@ -18,7 +20,7 @@ type enqueuerTaskService interface {
 
 func StartEnqueuer(tasks *Service) {
 	e := enqueuer{tasks: tasks}
-	sub := tasks.TaskBroker.Subscribe()
+	sub := tasks.TaskBroker.Subscribe(context.Background())
 
 	go func() {
 		for range sub {
@@ -90,7 +92,7 @@ func (e *enqueuer) enqueueDependentTask(t *Task) bool {
 		case Canceled, Errored:
 			// Dependency failed so mark task as failed too by cancelling it
 			// along with a reason why it was canceled.
-			t.buf.Write([]byte("task dependency failed"))
+			t.stdout.Write([]byte("task dependency failed"))
 			t.updateState(Canceled)
 			return false
 		default:

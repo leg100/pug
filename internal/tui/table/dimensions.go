@@ -9,11 +9,11 @@ package table
 // Update column widths in-place.
 //
 // TODO: unit test
-func (m *Model[V]) recalculateWidth() {
+func (m *Model[V]) setColumnWidths() {
 	var (
 		// total available flex width initialized to total viewport width minus
 		// the padding on each col (2)
-		totalFlexWidth  = m.viewport.Width - 2*len(m.cols)
+		totalFlexWidth  = m.tableWidth() - 2*len(m.cols)
 		totalFlexFactor int
 		flexGCD         int
 	)

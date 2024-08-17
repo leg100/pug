@@ -1,5 +1,44 @@
 # Changelog
 
+## [0.4.3](https://github.com/leg100/pug/compare/v0.4.2...v0.4.3) (2024-07-25)
+
+
+### Bug Fixes
+
+* detect terragrunt modules without `remote_state` block ([#108](https://github.com/leg100/pug/issues/108)) ([379bea9](https://github.com/leg100/pug/commit/379bea9c477840dcd85a8f76f863b0d5e31a6220))
+* flaky terragrunt test ([5ffc73c](https://github.com/leg100/pug/commit/5ffc73ce78ae2cc6954e44abb29d91d76db3803d))
+* incorrect width for task info sidebar ([dd6b918](https://github.com/leg100/pug/commit/dd6b918bbed9902e0d1a6b6cb64f2fbaf117bd07))
+* make stdout available separate from stderr ([#104](https://github.com/leg100/pug/issues/104)) ([07ed378](https://github.com/leg100/pug/commit/07ed37824dd7febdb251dbaa6fc69be35726f29c))
+* still print content if json prettification fails ([fa0df2d](https://github.com/leg100/pug/commit/fa0df2dda544f5d292290413ed5c35b36043c96f))
+
+
+### Miscellaneous
+
+* bump bubbletea and lipgloss ([361ae18](https://github.com/leg100/pug/commit/361ae1859435d198a44d220f9ae7db2b75933616))
+* make copy() do something ([e90bd2b](https://github.com/leg100/pug/commit/e90bd2b11e285b721c613ea9f1e67903e297f280))
+* standardize service variable naming ([dc01899](https://github.com/leg100/pug/commit/dc01899596a3a7ebfc99e2663ede95d3eb658f40))
+
+## [0.4.2](https://github.com/leg100/pug/compare/v0.4.1...v0.4.2) (2024-07-15)
+
+
+### Bug Fixes
+
+* handle external terragrunt dep without panic ([#101](https://github.com/leg100/pug/issues/101)) ([518b60f](https://github.com/leg100/pug/commit/518b60f570f9b0d8cb4087fa976f55eeadfbe82c))
+
+## [0.4.1](https://github.com/leg100/pug/compare/v0.4.0...v0.4.1) (2024-07-15)
+
+
+### Bug Fixes
+
+* panic when pressing enter on state resource ([#98](https://github.com/leg100/pug/issues/98)) ([142dde7](https://github.com/leg100/pug/commit/142dde7df8af36914f573bf5edc52dec8f04997a))
+* state parsing string index keys ([#99](https://github.com/leg100/pug/issues/99)) ([dd0b91f](https://github.com/leg100/pug/commit/dd0b91fc6ba148d9eaa35068f78f5e61c3cb89f4))
+
+
+### Miscellaneous
+
+* update readme ([66cf084](https://github.com/leg100/pug/commit/66cf084ddfb2a09591f9e0c8c4ba90068933b369))
+* update readme ([6e6f2a5](https://github.com/leg100/pug/commit/6e6f2a5dd72911ce6a07d846a1237dc5d3be012c))
+
 ## [0.4.0](https://github.com/leg100/pug/compare/v0.3.4...v0.4.0) (2024-07-12)
 
 

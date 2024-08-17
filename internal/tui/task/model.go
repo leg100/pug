@@ -13,8 +13,8 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/google/uuid"
 	"github.com/leg100/pug/internal/logging"
+	"github.com/leg100/pug/internal/plan"
 	"github.com/leg100/pug/internal/resource"
-	"github.com/leg100/pug/internal/run"
 	"github.com/leg100/pug/internal/task"
 	"github.com/leg100/pug/internal/tui"
 	"github.com/leg100/pug/internal/tui/keys"
@@ -22,12 +22,12 @@ import (
 )
 
 type Maker struct {
-	RunService  tui.RunService
-	TaskService tui.TaskService
-	Spinner     *spinner.Model
-	Helpers     *tui.Helpers
-	Logger      *logging.Logger
-	Program     string
+	Plans   *plan.Service
+	Tasks   *task.Service
+	Spinner *spinner.Model
+	Helpers *tui.Helpers
+	Logger  *logging.Logger
+	Program string
 
 	disableAutoscroll bool
 	showInfo          bool
@@ -38,17 +38,17 @@ func (mm *Maker) Make(id resource.ID, width, height int) (tea.Model, error) {
 }
 
 func (mm *Maker) make(id resource.ID, width, height int, border bool) (tea.Model, error) {
-	task, err := mm.TaskService.Get(id)
+	task, err := mm.Tasks.Get(id)
 	if err != nil {
 		return model{}, err
 	}
 
 	m := model{
 		id:      uuid.New(),
-		svc:     mm.TaskService,
-		runs:    mm.RunService,
+		tasks:   mm.Tasks,
+		plans:   mm.Plans,
 		task:    task,
-		output:  task.NewReader(),
+		output:  task.NewReader(true),
 		spinner: mm.Spinner,
 		// read upto 1kb at a time
 		buf:      make([]byte, 1024),
@@ -59,10 +59,6 @@ func (mm *Maker) make(id resource.ID, width, height int, border bool) (tea.Model
 		program:  mm.Program,
 	}
 	m.setHeight(height)
-
-	if rr := m.task.Run(); rr != nil {
-		m.run = rr.(*run.Run)
-	}
 
 	m.viewport = tui.NewViewport(tui.ViewportOptions{
 		JSON:       m.task.JSON,
@@ -101,10 +97,9 @@ func (mm *Maker) Update(msg tea.Msg) tea.Cmd {
 type model struct {
 	id uuid.UUID
 
-	svc  tui.TaskService
-	task *task.Task
-	run  *run.Run
-	runs tui.RunService
+	tasks *task.Service
+	task  *task.Task
+	plans *plan.Service
 
 	output io.Reader
 	buf    []byte
@@ -136,18 +131,16 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, keys.Common.Cancel):
-			return m, cancel(m.svc, m.task.ID)
+			return m, cancel(m.tasks, m.task.ID)
 		case key.Matches(msg, keys.Common.Apply):
-			if m.run != nil {
-				// Only trigger an apply if run is in the planned state
-				if m.run.Status != run.Planned {
-					return m, nil
-				}
-				return m, tui.YesNoPrompt(
-					"Apply plan?",
-					m.helpers.CreateApplyTasks(nil, m.run.ID),
-				)
+			spec, err := m.plans.ApplyPlan(m.task.ID)
+			if err != nil {
+				return m, tui.ReportError(err)
 			}
+			return m, tui.YesNoPrompt(
+				"Apply plan?",
+				m.helpers.CreateTasksWithSpecs(spec),
+			)
 		case key.Matches(msg, keys.Common.State):
 			if ws, ok := m.helpers.TaskWorkspace(m.task); ok {
 				return m, tui.NavigateTo(tui.ResourceListKind, tui.WithParent(ws))
@@ -157,7 +150,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, keys.Common.Retry):
 			return m, tui.YesNoPrompt(
 				"Retry task?",
-				m.helpers.CreateTasks("retry", m.svc.Retry, m.task.ID),
+				m.helpers.CreateTasksWithSpecs(m.task.Spec),
 			)
 		}
 	case toggleAutoscrollMsg:
@@ -219,8 +212,8 @@ const (
 	// viewport.
 	infoWidth = 40
 	// infoContentWidth is the width available to the content inside the task
-	// info sidebar, after subtracting 2 to account for margins, and 1 for border
-	infoContentWidth = infoWidth - 2 - 1
+	// info sidebar, after subtracting 1 to accomodate its border to the right
+	infoContentWidth = infoWidth - 1
 )
 
 // View renders the viewport
@@ -300,13 +293,10 @@ func (m model) Title() string {
 }
 
 func (m model) Status() string {
-	if m.run != nil {
-		return lipgloss.JoinHorizontal(lipgloss.Top,
-			m.helpers.LatestRunReport(m.run, false),
-			m.helpers.TaskStatus(m.task, true),
-		)
-	}
-	return m.helpers.TaskStatus(m.task, true)
+	return lipgloss.JoinHorizontal(lipgloss.Top,
+		m.helpers.TaskSummary(m.task, false),
+		m.helpers.TaskStatus(m.task, true),
+	)
 }
 
 func (m model) HelpBindings() []key.Binding {
@@ -322,7 +312,7 @@ func (m model) HelpBindings() []key.Binding {
 	if ws := m.task.Workspace(); ws != nil {
 		bindings = append(bindings, keys.Common.Workspace)
 	}
-	if run := m.task.Run(); run != nil {
+	if plan.IsApplyTask(m.task) {
 		bindings = append(bindings, keys.Common.Apply)
 	}
 	return bindings

@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
-	"strconv"
 	"strings"
 
 	"github.com/leg100/pug/internal/resource"
@@ -59,11 +58,20 @@ func newState(ws resource.Resource, r io.Reader) (*State, error) {
 			b.WriteString(res.Type)
 			b.WriteRune('.')
 			b.WriteString(res.Name)
+
 			if instance.IndexKey != nil {
-				b.WriteRune('[')
-				b.WriteString(strconv.Itoa(*instance.IndexKey))
-				b.WriteRune(']')
+				switch key := instance.IndexKey.(type) {
+				case int:
+					b.WriteString(fmt.Sprintf("[%d]", int(key)))
+				case float64:
+					b.WriteString(fmt.Sprintf("[%d]", int(key)))
+				case string:
+					b.WriteString(fmt.Sprintf(`["%s"]`, string(key)))
+				default:
+					return nil, fmt.Errorf("invalid index key: %#v", instance.IndexKey)
+				}
 			}
+
 			addr := ResourceAddress(b.String())
 			var err error
 			m[addr], err = newResource(state, addr, instance.Attributes)

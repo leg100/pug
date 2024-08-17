@@ -11,7 +11,7 @@ type (
 	EventType string
 
 	// Event represents an event in the lifecycle of a resource
-	Event[T any] struct {
+	Event[T Resource] struct {
 		Type    EventType
 		Payload T
 	}
@@ -20,7 +20,3 @@ type (
 		Publish(EventType, T)
 	}
 )
-
-func NewEvent[T any](t EventType, payload T) Event[T] {
-	return Event[T]{Type: t, Payload: payload}
-}
