@@ -56,7 +56,6 @@ func NewService(opts ServiceOptions) *Service {
 		factory: &factory{
 			dataDir:    opts.DataDir,
 			workspaces: opts.Workspaces,
-			broker:     broker,
 			terragrunt: opts.Terragrunt,
 		},
 	}
@@ -95,7 +94,7 @@ func (s *Service) Plan(workspaceID resource.ID, opts CreateOptions) (task.Spec, 
 	}
 	s.table.Add(plan.ID, plan)
 
-	return plan.planTaskSpec(s.logger), nil
+	return plan.planTaskSpec(), nil
 }
 
 // Apply creates a task spec to auto-apply a plan, i.e. `terraform apply`. To
@@ -105,7 +104,7 @@ func (s *Service) Apply(workspaceID resource.ID, opts CreateOptions) (task.Spec,
 	if err != nil {
 		return task.Spec{}, err
 	}
-	return plan.applyTaskSpec(s.logger)
+	return plan.applyTaskSpec()
 }
 
 // ApplyPlan creates a task spec to apply an existing plan, i.e. `terraform
@@ -123,7 +122,7 @@ func (s *Service) ApplyPlan(taskID resource.ID) (task.Spec, error) {
 	if err != nil {
 		return task.Spec{}, err
 	}
-	return plan.applyTaskSpec(s.logger)
+	return plan.applyTaskSpec()
 }
 
 func (s *Service) Get(runID resource.ID) (*plan, error) {
