@@ -168,9 +168,14 @@ func (h *Helpers) TaskSummary(t *task.Task, table bool) string {
 	if t.Summary == nil {
 		return ""
 	}
-	if report, ok := t.Summary.(plan.Report); ok {
-		// Render special resource report
-		return h.ResourceReport(report, table)
+	// Render special resource report
+	switch summary := t.Summary.(type) {
+	case plan.Report:
+		return h.ResourceReport(summary, table)
+	case workspace.ReloadSummary:
+		return h.WorkspaceReloadReport(summary, table)
+	case state.ReloadSummary:
+		return h.StateReloadReport(summary, table)
 	}
 	return t.Summary.String()
 }
@@ -188,6 +193,42 @@ func (h *Helpers) ResourceReport(report plan.Report, table bool) string {
 	destructions := Regular.Background(background).Foreground(Red).Render(fmt.Sprintf("-%d", report.Destructions))
 
 	s := fmt.Sprintf("%s%s%s", additions, changes, destructions)
+	if !table {
+		s = Padded.Background(background).Render(s)
+	}
+	return s
+}
+
+// WorkspaceReloadReport renders a colored summary of workspaces added or
+// removed as a result of a workspace reload. Set table to true if the report is
+// rendered within a table row.
+func (h *Helpers) WorkspaceReloadReport(report workspace.ReloadSummary, table bool) string {
+	var background lipgloss.TerminalColor = lipgloss.NoColor{}
+	if !table {
+		background = RunReportBackgroundColor
+	}
+	added := Regular.Background(background).Foreground(Green).Render(fmt.Sprintf("+%d", len(report.Added)))
+	removed := Regular.Background(background).Foreground(Red).Render(fmt.Sprintf("-%d", len(report.Removed)))
+
+	s := fmt.Sprintf("%s%s", added, removed)
+	if !table {
+		s = Padded.Background(background).Render(s)
+	}
+	return s
+}
+
+// StateReloadReport renders a colored summary of changes resulting from a
+// workspace reload. Set table to true if the report is rendered within a table
+// row.
+func (h *Helpers) StateReloadReport(report state.ReloadSummary, table bool) string {
+	var background lipgloss.TerminalColor = lipgloss.NoColor{}
+	if !table {
+		background = RunReportBackgroundColor
+	}
+	oldSerial := Regular.Background(background).Foreground(Red).Render(fmt.Sprintf("#%d", report.OldSerial()))
+	newSerial := Regular.Background(background).Foreground(Green).Render(fmt.Sprintf("#%d", report.NewSerial()))
+
+	s := fmt.Sprintf("%s<-%s", newSerial, oldSerial)
 	if !table {
 		s = Padded.Background(background).Render(s)
 	}

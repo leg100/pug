@@ -19,6 +19,7 @@ type Service struct {
 	cache *resource.Table[*State]
 
 	*pubsub.Broker[*State]
+	*reloader
 }
 
 type ServiceOptions struct {
@@ -30,7 +31,7 @@ type ServiceOptions struct {
 
 func NewService(opts ServiceOptions) *Service {
 	broker := pubsub.NewBroker[*State](opts.Logger)
-	return &Service{
+	s := &Service{
 		modules:    opts.Modules,
 		workspaces: opts.Workspaces,
 		tasks:      opts.Tasks,
@@ -38,6 +39,8 @@ func NewService(opts ServiceOptions) *Service {
 		Broker:     broker,
 		logger:     opts.Logger,
 	}
+	s.reloader = &reloader{s}
+	return s
 }
 
 // Get retrieves the state for a workspace.
@@ -57,46 +60,6 @@ func (s *Service) GetResource(resourceID resource.ID) (*Resource, error) {
 		}
 	}
 	return nil, resource.ErrNotFound
-}
-
-// Reload creates a task to repopulate the local cache of the state of the given
-// workspace.
-func (s *Service) Reload(workspaceID resource.ID) (task.Spec, error) {
-	return s.createTaskSpec(workspaceID, task.Spec{
-		Command: []string{"state", "pull"},
-		JSON:    true,
-		AfterExited: func(t *task.Task) {
-			state, err := newState(t.Workspace(), t.NewReader(false))
-			if err != nil {
-				s.logger.Error("reloading state", "error", err, "workspace", t.Workspace())
-				return
-			}
-			// Skip caching state if identical to already cached state.
-			//
-			// NOTE: re-caching the same state is harmless, but each re-caching
-			// generates an event, which reloads the state in the TUI, which
-			// makes for unreliable integration tests....instead the tests can
-			// wait for a certain serial to appear and be sure no further
-			// updates will be made before checking for content.
-			if cached, err := s.cache.Get(workspaceID); err == nil {
-				if cached.Serial == state.Serial {
-					s.logger.Info("skipping caching of reloaded state: identical serial", "state", state)
-					return
-				}
-			}
-			// Add/replace state in cache.
-			s.cache.Add(workspaceID, state)
-			s.logger.Info("reloaded state", "state", state)
-		},
-	})
-}
-
-func (s *Service) CreateReloadTask(workspaceID resource.ID) (*task.Task, error) {
-	spec, err := s.Reload(workspaceID)
-	if err != nil {
-		return nil, err
-	}
-	return s.tasks.Create(spec)
 }
 
 func (s *Service) Delete(workspaceID resource.ID, addrs ...ResourceAddress) (task.Spec, error) {

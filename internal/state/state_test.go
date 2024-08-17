@@ -58,6 +58,7 @@ func TestState(t *testing.T) {
 		require.NoError(t, err)
 
 		assert.Len(t, got.Resources, 0)
+		assert.Equal(t, int64(-1), got.Serial)
 	})
 
 	t.Run("state resource with string index key", func(t *testing.T) {

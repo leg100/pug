@@ -64,7 +64,7 @@ func NewService(opts ServiceOptions) *Service {
 func (s *Service) Create(spec Spec) (*Task, error) {
 	task := s.newTask(spec)
 
-	s.logger.Debug("created task", "task", task)
+	s.logger.Info("created task", "task", task)
 
 	// Add to db
 	s.tasks.Add(task.ID, task)
@@ -83,7 +83,7 @@ func (s *Service) Create(spec Spec) (*Task, error) {
 			s.logger.Error("task failed", "error", err, "task", task)
 			return
 		}
-		s.logger.Debug("completed task", "task", task)
+		s.logger.Info("completed task", "task", task)
 	}()
 	if spec.Wait {
 		return task, <-wait

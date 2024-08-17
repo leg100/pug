@@ -36,6 +36,8 @@ type Task struct {
 
 	program   string
 	exclusive bool
+	// terragrunt is true if terragrunt is in use.
+	terragrunt bool
 
 	// Nil until task has started
 	proc *os.Process
@@ -112,6 +114,7 @@ func (f *factory) newTask(spec Spec) *Task {
 		stdout:        newBuffer(),
 		combined:      newBuffer(),
 		program:       f.program,
+		terragrunt:    f.terragrunt,
 		Command:       spec.Command,
 		Path:          filepath.Join(f.workdir.String(), spec.Path),
 		Args:          args,
@@ -196,12 +199,30 @@ func (t *Task) Wait() error {
 }
 
 func (t *Task) LogValue() slog.Value {
-	return slog.GroupValue(
+	attrs := []slog.Attr{
 		slog.String("id", t.ID.String()),
 		slog.Any("command", t.Command),
 		slog.Any("args", t.Args),
-		slog.Any("deps", t.DependsOn),
-	)
+	}
+	if t.terragrunt {
+		attrs = append(attrs, slog.Any("deps", t.DependsOn))
+	}
+	if t.Summary != nil {
+		// If task summary implements LogValuer and returns a group of
+		// attributes then "flatten" them into the rest of the task's
+		// attributes.
+		// Otherwise add its value to an attribute with the "summary" key.
+		if lg, ok := t.Summary.(slog.LogValuer); ok {
+			if lg.LogValue().Kind() == slog.KindGroup {
+				attrs = append(attrs, lg.LogValue().Group()...)
+			} else {
+				attrs = append(attrs, slog.Any("summary", t.Summary))
+			}
+		} else {
+			attrs = append(attrs, slog.String("summary", t.Summary.String()))
+		}
+	}
+	return slog.GroupValue(attrs...)
 }
 
 // cancel the task - if it is queued it'll skip the running state and enter the

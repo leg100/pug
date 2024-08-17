@@ -195,6 +195,7 @@ func (s *Service) loadTerragruntDependenciesFromDigraph(r io.Reader) error {
 	return nil
 }
 
+// TODO: fold into workdir type
 func (s *Service) stripWorkdirFromPath(path string) (string, error) {
 	if filepath.IsAbs(path) {
 		return filepath.Rel(s.workdir.String(), path)
