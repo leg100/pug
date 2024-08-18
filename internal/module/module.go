@@ -125,8 +125,6 @@ func find(ctx context.Context, workdir internal.Workdir) (<-chan Options, <-chan
 						Backend: backend,
 					}
 				}()
-				// Skip walking remainder of parent directory
-				return fs.SkipDir
 			}
 			// Abort walk if context canceled
 			select {
