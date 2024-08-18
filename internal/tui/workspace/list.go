@@ -16,16 +16,15 @@ import (
 )
 
 var currentColumn = table.Column{
-	Key:        "current",
-	Title:      "CURRENT",
-	Width:      len("CURRENT"),
-	FlexFactor: 1,
+	Key:   "current",
+	Title: "CURRENT",
+	Width: len("CURRENT"),
 }
 
 var costColumn = table.Column{
-	Key:   "cost",
-	Title: "COST",
-	Width: 6,
+	Key:        "cost",
+	Title:      "COST",
+	FlexFactor: 1,
 }
 
 type ListMaker struct {
