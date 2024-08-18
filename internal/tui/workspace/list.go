@@ -22,6 +22,12 @@ var currentColumn = table.Column{
 	FlexFactor: 1,
 }
 
+var costColumn = table.Column{
+	Key:   "cost",
+	Title: "COST",
+	Width: 6,
+}
+
 type ListMaker struct {
 	Modules    *module.Service
 	Workspaces *workspace.Service
@@ -34,6 +40,7 @@ func (m *ListMaker) Make(_ resource.ID, width, height int) (tea.Model, error) {
 		table.ModuleColumn,
 		table.WorkspaceColumn,
 		currentColumn,
+		costColumn,
 		table.ResourceCountColumn,
 	}
 
@@ -42,6 +49,7 @@ func (m *ListMaker) Make(_ resource.ID, width, height int) (tea.Model, error) {
 			table.ModuleColumn.Key:        ws.ModulePath(),
 			table.WorkspaceColumn.Key:     ws.Name,
 			table.ResourceCountColumn.Key: m.Helpers.WorkspaceResourceCount(ws),
+			costColumn.Key:                m.Helpers.WorkspaceCost(ws),
 			currentColumn.Key:             m.Helpers.WorkspaceCurrentCheckmark(ws),
 		}
 	}
@@ -154,6 +162,13 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if row, ok := m.table.CurrentRow(); ok {
 				return m, tui.NavigateTo(tui.ResourceListKind, tui.WithParent(row.Value))
 			}
+		case key.Matches(msg, keys.Common.Cost):
+			workspaceIDs := m.table.SelectedOrCurrentIDs()
+			spec, err := m.Workspaces.Cost(workspaceIDs...)
+			if err != nil {
+				return m, tui.ReportError(fmt.Errorf("creating task: %w", err))
+			}
+			return m, m.helpers.CreateTasksWithSpecs(spec)
 		}
 	}
 
@@ -182,6 +197,7 @@ func (m list) HelpBindings() []key.Binding {
 		keys.Common.Apply,
 		keys.Common.Destroy,
 		keys.Common.Delete,
+		keys.Common.Cost,
 		localKeys.SetCurrent,
 	}
 }

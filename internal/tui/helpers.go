@@ -110,6 +110,15 @@ func (h *Helpers) WorkspaceCurrentCheckmark(ws *workspace.Workspace) string {
 	return ""
 }
 
+// WorkspaceCurrentCheckmark returns a check mark if the workspace is the
+// current workspace for its module.
+func (h *Helpers) WorkspaceCost(ws *workspace.Workspace) string {
+	if ws.Cost == "" {
+		return "-"
+	}
+	return fmt.Sprintf("$%s", ws.Cost)
+}
+
 func (h *Helpers) WorkspaceResourceCount(ws *workspace.Workspace) string {
 	state, err := h.States.Get(ws.ID)
 	if errors.Is(err, resource.ErrNotFound) {
@@ -270,11 +279,11 @@ func (h *Helpers) CreateTasks(fn task.SpecFunc, ids ...resource.ID) tea.Cmd {
 		case 1:
 			spec, err := fn(ids[0])
 			if err != nil {
-				return ReportError(fmt.Errorf("creating task: %w", err))
+				return ErrorMsg(fmt.Errorf("creating task: %w", err))
 			}
 			task, err := h.Tasks.Create(spec)
 			if err != nil {
-				return ReportError(fmt.Errorf("creating task: %w", err))
+				return ErrorMsg(fmt.Errorf("creating task: %w", err))
 			}
 			return NewNavigationMsg(TaskKind, WithParent(task))
 		default:
@@ -300,7 +309,7 @@ func (h *Helpers) CreateTasksWithSpecs(specs ...task.Spec) tea.Cmd {
 		case 1:
 			task, err := h.Tasks.Create(specs[0])
 			if err != nil {
-				return ReportError(fmt.Errorf("creating task: %w", err))
+				return ErrorMsg(fmt.Errorf("creating task: %w", err))
 			}
 			return NewNavigationMsg(TaskKind, WithParent(task))
 		default:

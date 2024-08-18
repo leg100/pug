@@ -63,6 +63,7 @@ func New(cfg Config) (*App, error) {
 		Tasks:   tasks,
 		Modules: modules,
 		Logger:  logger,
+		DataDir: cfg.DataDir,
 	})
 	states := state.NewService(state.ServiceOptions{
 		Modules:    modules,

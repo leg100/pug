@@ -1,32 +1,10 @@
 package workspace
 
 import (
-	"errors"
-	"io"
-	"regexp"
+	"encoding/json"
 
-	"github.com/leg100/pug/internal"
-	"github.com/leg100/pug/internal/module"
-	"github.com/leg100/pug/internal/resource"
 	"gopkg.in/yaml.v3"
 )
-
-var (
-	overallCostRegex = regexp.MustCompile(`OVERALL TOTAL.*(\$\d+.\d+)`)
-)
-
-func parseInfracostOutput(r io.Reader) (string, error) {
-	out, err := io.ReadAll(r)
-	if err != nil {
-		return "", err
-	}
-	raw := internal.StripAnsi(string(out))
-
-	if matches := overallCostRegex.FindStringSubmatch(raw); len(matches) > 1 {
-		return matches[1], nil
-	}
-	return "", errors.New("failed to parsed overall cost from infracost output")
-}
 
 type infracostConfig struct {
 	Version  string
@@ -40,26 +18,60 @@ type infracostProjectConfig struct {
 	TerraformVarFiles  []string `yaml:"terraform_var_files,omitempty"`
 }
 
-func generateInfracostConfig(modulesAndWorkspaces ...resource.Resource) ([]byte, error) {
+func generateCostConfig(workspaces ...*Workspace) ([]byte, error) {
 	cfg := infracostConfig{Version: "0.1"}
-	cfg.Projects = make([]infracostProjectConfig, len(modulesAndWorkspaces))
+	cfg.Projects = make([]infracostProjectConfig, len(workspaces))
 
-	for i, res := range modulesAndWorkspaces {
-		switch res := res.(type) {
-		case *module.Module:
-			cfg.Projects[i] = infracostProjectConfig{
-				Path: res.Path,
-			}
-		case *Workspace:
-			cfg.Projects[i] = infracostProjectConfig{
-				Path:               res.ModulePath(),
-				TerraformWorkspace: res.Name,
-			}
-			if fname, ok := res.VarsFile(); ok {
-				cfg.Projects[i].TerraformVarFiles = []string{fname}
-			}
+	for i, ws := range workspaces {
+		cfg.Projects[i] = infracostProjectConfig{
+			Path:               ws.ModulePath(),
+			TerraformWorkspace: ws.Name,
+		}
+		if fname, ok := ws.VarsFile(); ok {
+			cfg.Projects[i].TerraformVarFiles = []string{fname}
 		}
 	}
 
 	return yaml.Marshal(cfg)
+}
+
+type infracostBreakdown struct {
+	Version  string
+	Projects []infracostBreakdownProject
+}
+
+type infracostBreakdownProject struct {
+	Metadata  infracostBreakdownProjectMetadata
+	Breakdown infracostBreakdownBreakdown
+}
+
+type infracostBreakdownProjectMetadata struct {
+	TerraformModulePath string `json:"terraformModulePath"`
+	TerraformWorkspace  string `json:"terraformWorkspace"`
+}
+
+type infracostBreakdownBreakdown struct {
+	TotalMonthlyCost string `json:"totalMonthlyCost"`
+}
+
+type breakdownResult struct {
+	path      string
+	workspace string
+	cost      string
+}
+
+func parseBreakdown(jsonPayload []byte) ([]breakdownResult, error) {
+	var breakdown infracostBreakdown
+	if err := json.Unmarshal(jsonPayload, &breakdown); err != nil {
+		return nil, err
+	}
+	results := make([]breakdownResult, len(breakdown.Projects))
+	for i, proj := range breakdown.Projects {
+		results[i] = breakdownResult{
+			path:      proj.Metadata.TerraformModulePath,
+			workspace: proj.Metadata.TerraformWorkspace,
+			cost:      proj.Breakdown.TotalMonthlyCost,
+		}
+	}
+	return results, nil
 }

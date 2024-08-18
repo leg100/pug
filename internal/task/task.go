@@ -21,15 +21,16 @@ import (
 type Task struct {
 	resource.Common
 
-	Command       []string
-	Args          []string
-	Path          string
-	Blocking      bool
-	State         Status
-	JSON          bool
-	Immediate     bool
-	AdditionalEnv []string
-	DependsOn     []resource.ID
+	Command             []string
+	Args                []string
+	AdditionalExecution *AdditionalExecution
+	Path                string
+	Blocking            bool
+	State               Status
+	JSON                bool
+	Immediate           bool
+	AdditionalEnv       []string
+	DependsOn           []resource.ID
 	// Summary summarises the outcome of a task to the end-user.
 	Summary     Summary
 	description string
@@ -100,34 +101,35 @@ type Summary interface {
 // TODO: check presence of mandatory options
 func (f *factory) newTask(spec Spec) *Task {
 	task := &Task{
-		Common:        resource.New(resource.Task, spec.Parent),
-		State:         Pending,
-		Created:       time.Now(),
-		Updated:       time.Now(),
-		finished:      make(chan struct{}),
-		stdout:        newBuffer(),
-		combined:      newBuffer(),
-		program:       f.program,
-		terragrunt:    f.terragrunt,
-		Command:       spec.Command,
-		Path:          filepath.Join(f.workdir.String(), spec.Path),
-		Args:          append(f.userArgs, spec.Args...),
-		AdditionalEnv: append(f.userEnvs, spec.Env...),
-		JSON:          spec.JSON,
-		Blocking:      spec.Blocking,
-		DependsOn:     spec.DependsOn,
-		Immediate:     spec.Immediate,
-		exclusive:     spec.Exclusive,
-		description:   spec.Description,
-		Spec:          spec,
-		AfterCreate:   spec.AfterCreate,
-		AfterRunning:  spec.AfterRunning,
-		AfterQueued:   spec.AfterQueued,
-		BeforeExited:  spec.BeforeExited,
-		AfterExited:   spec.AfterExited,
-		AfterError:    spec.AfterError,
-		AfterCanceled: spec.AfterCanceled,
-		AfterFinish:   spec.AfterFinish,
+		Common:              resource.New(resource.Task, spec.Parent),
+		State:               Pending,
+		Created:             time.Now(),
+		Updated:             time.Now(),
+		finished:            make(chan struct{}),
+		stdout:              newBuffer(),
+		combined:            newBuffer(),
+		program:             f.program,
+		terragrunt:          f.terragrunt,
+		Command:             spec.Command,
+		Path:                filepath.Join(f.workdir.String(), spec.Path),
+		Args:                append(f.userArgs, spec.Args...),
+		AdditionalExecution: spec.AdditionalExecution,
+		AdditionalEnv:       append(f.userEnvs, spec.Env...),
+		JSON:                spec.JSON,
+		Blocking:            spec.Blocking,
+		DependsOn:           spec.DependsOn,
+		Immediate:           spec.Immediate,
+		exclusive:           spec.Exclusive,
+		description:         spec.Description,
+		Spec:                spec,
+		AfterCreate:         spec.AfterCreate,
+		AfterRunning:        spec.AfterRunning,
+		AfterQueued:         spec.AfterQueued,
+		BeforeExited:        spec.BeforeExited,
+		AfterExited:         spec.AfterExited,
+		AfterError:          spec.AfterError,
+		AfterCanceled:       spec.AfterCanceled,
+		AfterFinish:         spec.AfterFinish,
 		// Publish an event whenever task state is updated
 		afterUpdate: func(t *Task) {
 			// TODO: remove nil-check that is only here to ensure tests don't
@@ -251,17 +253,7 @@ func (t *Task) cancel() error {
 }
 
 func (t *Task) start(ctx context.Context) (func(), error) {
-	// Use the provided context to kill the program if the context becomes done,
-	// but also to prevent the program from starting if the context becomes done.
-	cmd := exec.CommandContext(ctx, t.program, append(t.Command, t.Args...)...)
-	cmd.Cancel = func() error {
-		// Kill program gracefully
-		return cmd.Process.Signal(os.Interrupt)
-	}
-	cmd.Dir = t.Path
-	cmd.Stdout = io.MultiWriter(t.stdout, t.combined)
-	cmd.Stderr = t.combined
-	cmd.Env = append(t.AdditionalEnv, os.Environ()...)
+	cmd := t.execute(ctx, t.program, append(t.Command, t.Args...))
 
 	t.mu.Lock()
 	defer t.mu.Unlock()
@@ -281,9 +273,18 @@ func (t *Task) start(ctx context.Context) (func(), error) {
 
 	wait := func() {
 		state := Exited
-		if werr := cmd.Wait(); werr != nil {
+		if err := cmd.Wait(); err != nil {
 			state = Errored
-			t.Err = fmt.Errorf("task failed: %w", werr)
+			t.Err = fmt.Errorf("task failed: %w", err)
+		}
+
+		if t.AdditionalExecution != nil {
+			args := append(t.AdditionalExecution.Command, t.AdditionalExecution.Args...)
+			cmd = t.execute(ctx, t.AdditionalExecution.Program, args)
+			if err := cmd.Run(); err != nil {
+				state = Errored
+				t.Err = fmt.Errorf("task failed: %w", err)
+			}
 		}
 
 		t.mu.Lock()
@@ -291,6 +292,21 @@ func (t *Task) start(ctx context.Context) (func(), error) {
 		t.mu.Unlock()
 	}
 	return wait, nil
+}
+
+func (t *Task) execute(ctx context.Context, program string, args []string) *exec.Cmd {
+	// Use the provided context to kill the program if the context becomes done,
+	// but also to prevent the program from starting if the context becomes done.
+	cmd := exec.CommandContext(ctx, program, args...)
+	cmd.Cancel = func() error {
+		// Kill program gracefully
+		return cmd.Process.Signal(os.Interrupt)
+	}
+	cmd.Dir = t.Path
+	cmd.Stdout = io.MultiWriter(t.stdout, t.combined)
+	cmd.Stderr = t.combined
+	cmd.Env = append(t.AdditionalEnv, os.Environ()...)
+	return cmd
 }
 
 // record time at which current status finished

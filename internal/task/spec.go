@@ -12,6 +12,9 @@ type Spec struct {
 	Command []string
 	// Args to pass to program.
 	Args []string
+	// AdditionalExecution specifies the execution of another program. The
+	// program is only executed if the first program exits successfully.
+	AdditionalExecution *AdditionalExecution
 	// Path relative to the pug working directory in which to run the command.
 	Path string
 	// Environment variables.
@@ -72,3 +75,12 @@ type Spec struct {
 
 // SpecFunc is a function that creates a spec.
 type SpecFunc func(resource.ID) (Spec, error)
+
+type AdditionalExecution struct {
+	// Program to execute. Defaults to the `program` pug config option.
+	Program string
+	// Program command and any sub commands, e.g. plan, state rm, etc.
+	Command []string
+	// Args to pass to program.
+	Args []string
+}

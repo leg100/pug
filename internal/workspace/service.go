@@ -3,7 +3,9 @@ package workspace
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 
+	"github.com/google/uuid"
 	"github.com/leg100/pug/internal/logging"
 	"github.com/leg100/pug/internal/module"
 	"github.com/leg100/pug/internal/pubsub"
@@ -17,6 +19,7 @@ type Service struct {
 
 	modules modules
 	tasks   *task.Service
+	datadir string
 
 	*pubsub.Broker[*Workspace]
 	*reloader
@@ -26,6 +29,7 @@ type ServiceOptions struct {
 	Tasks   *task.Service
 	Modules *module.Service
 	Logger  logging.Interface
+	DataDir string
 }
 
 type workspaceTable interface {
@@ -56,6 +60,7 @@ func NewService(opts ServiceOptions) *Service {
 		modules: opts.Modules,
 		tasks:   opts.Tasks,
 		logger:  opts.Logger,
+		datadir: opts.DataDir,
 	}
 	s.reloader = &reloader{s}
 	return s
@@ -127,9 +132,9 @@ func (s *Service) Get(workspaceID resource.ID) (*Workspace, error) {
 	return s.table.Get(workspaceID)
 }
 
-func (s *Service) GetByName(moduleID resource.ID, name string) (*Workspace, error) {
+func (s *Service) GetByName(modulePath, name string) (*Workspace, error) {
 	for _, ws := range s.table.List() {
-		if ws.ModuleID() == moduleID && ws.Name == name {
+		if ws.ModulePath() == modulePath && ws.Name == name {
 			return ws, nil
 		}
 	}
@@ -211,55 +216,75 @@ func (s *Service) Delete(workspaceID resource.ID) (task.Spec, error) {
 
 // Cost creates a task that retrieves a breakdown of the costs of the
 // infrastructure deployed by the workspace.
-func (s *Service) Cost(moduleAndWorkspaceIDs ...resource.ID) (task.Spec, error) {
+func (s *Service) Cost(workspaceIDs ...resource.ID) (task.Spec, error) {
+	workspaces := make([]*Workspace, len(workspaceIDs))
+	for i, id := range workspaceIDs {
+		ws, err := s.Get(id)
+		if err != nil {
+			return task.Spec{}, err
+		}
+		workspaces[i] = ws
+	}
 	var (
-		workspaces []*Workspace
-		modules    []*module.Module
+		configPath    string
+		breakdownPath string
 	)
-	for _, id := range moduleAndWorkspaceIDs {
-		switch id.Kind {
-		case resource.Module:
-			mod, err := s.modules.Get(id)
-			if err != nil {
-				// log
-				continue
-			}
-			modules = append(modules, mod)
-		case resource.Workspace:
-			ws, err := s.Get(id)
-			if err != nil {
-				// log
-				continue
-			}
-			workspaces = append(workspaces, ws)
+	{
+		// generate unique names for temporary files
+		id := uuid.New()
+		configPath = filepath.Join(s.datadir, fmt.Sprintf("cost-%s.yaml", id.String()))
+		breakdownPath = filepath.Join(s.datadir, fmt.Sprintf("breakdown-%s.json", id.String()))
+	}
+	{
+		// generate config for infracost
+		configBody, err := generateCostConfig(workspaces...)
+		if err != nil {
+			return task.Spec{}, err
+		}
+		if err := os.WriteFile(configPath, configBody, 0o644); err != nil {
+			return task.Spec{}, err
 		}
 	}
-	// check more than zero
-	//
-	configBody, err := generateInfracostConfig([]resource.Resource{})
-	if err != nil {
-		return task.Spec{}, err
-	}
-	cfg, err := os.CreateTemp("", "")
-	if err != nil {
-		return task.Spec{}, err
-	}
-	if _, err := cfg.Write(configBody); err != nil {
-		return task.Spec{}, err
-	}
-	outFile := s.
 	return task.Spec{
-		Parent: resource.GlobalResource,
+		Parent:  resource.GlobalResource,
+		Program: "infracost",
+		Command: []string{"breakdown"},
+		Args:    []string{"--config-file", configPath, "--format", "json", "--out-file", breakdownPath},
 		// Update task to chain commands
-		Program:  "infracost",
-		Command:  []string{"breakdown"},
-		Args:     []string{"--config-file", cfg.Name(), "--format", "json", "--out-file", "<f>"},
+		AdditionalExecution: &task.AdditionalExecution{
+			Program: "infracost",
+			Command: []string{"output"},
+			Args:    []string{"--format", "table", "--path", breakdownPath},
+		},
 		Blocking: true,
 		BeforeExited: func(*task.Task) (task.Summary, error) {
-			// Parse JSON output
+			// Parse JSON output and update workspaces.
+			breakdown, err := os.ReadFile(breakdownPath)
+			if err != nil {
+				return nil, err
+			}
+			results, err := parseBreakdown(breakdown)
+			if err != nil {
+				return nil, err
+			}
+			for _, result := range results {
+				ws, err := s.GetByName(result.path, result.workspace)
+				if err != nil {
+					return nil, err
+				}
+				_, err = s.table.Update(ws.ID, func(existing *Workspace) error {
+					existing.Cost = result.cost
+					return nil
+				})
+				if err != nil {
+					return nil, err
+				}
+			}
+			return nil, nil
 		},
 		AfterFinish: func(*task.Task) {
-			cfg.Close()
+			os.Remove(configPath)
+			os.Remove(breakdownPath)
 		},
 	}, nil
 }

@@ -15,6 +15,7 @@ type Workspace struct {
 	resource.Common
 
 	Name string
+	Cost string
 }
 
 func New(mod *module.Module, name string) (*Workspace, error) {
