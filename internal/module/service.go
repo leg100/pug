@@ -23,15 +23,17 @@ type Service struct {
 	logger      logging.Interface
 	terragrunt  bool
 
+	*factory
 	*pubsub.Broker[*Module]
 }
 
 type ServiceOptions struct {
-	Tasks       *task.Service
-	Workdir     internal.Workdir
-	PluginCache bool
-	Logger      logging.Interface
-	Terragrunt  bool
+	Tasks           *task.Service
+	Workdir         internal.Workdir
+	PluginCache     bool
+	Logger          logging.Interface
+	Terragrunt      bool
+	WorkspaceLoader WorkspaceLoader
 }
 
 type taskCreator interface {
@@ -60,12 +62,17 @@ func NewService(opts ServiceOptions) *Service {
 		pluginCache: opts.PluginCache,
 		logger:      opts.Logger,
 		terragrunt:  opts.Terragrunt,
+		factory: &factory{
+			WorkspaceLoader: opts.WorkspaceLoader,
+		},
 	}
 }
 
 // Reload searches the working directory recursively for modules and adds them
 // to the store before pruning those that are currently stored but can no longer
 // be found.
+//
+// TODO: separate into Load and Reload
 func (s *Service) Reload() (added []string, removed []string, err error) {
 	ch, errc := find(context.TODO(), s.workdir)
 	var found []string
@@ -80,7 +87,11 @@ func (s *Service) Reload() (added []string, removed []string, err error) {
 			// handle found module
 			if mod, err := s.GetByPath(opts.Path); errors.Is(err, resource.ErrNotFound) {
 				// Not found, so add to pug
-				mod := New(s.workdir, opts)
+				mod, err := s.newModule(opts)
+				if err != nil {
+					s.logger.Error("reloading modules", "error", err)
+					continue
+				}
 				s.table.Add(mod.ID, mod)
 				added = append(added, opts.Path)
 			} else if err != nil {
@@ -223,6 +234,10 @@ func (s *Service) Init(moduleID resource.ID) (task.Spec, error) {
 	})
 }
 
+func IsInitTask(t *task.Task) bool {
+	return len(t.Command) > 0 && t.Command[0] == "init"
+}
+
 func (s *Service) Format(moduleID resource.ID) (task.Spec, error) {
 	return s.updateSpec(moduleID, task.Spec{
 		Command: []string{"fmt"},
@@ -250,6 +265,14 @@ func (s *Service) GetByPath(path string) (*Module, error) {
 		}
 	}
 	return nil, fmt.Errorf("%s: %w", path, resource.ErrNotFound)
+}
+
+func (s *Service) SetLoadedWorkspaces(moduleID resource.ID) error {
+	_, err := s.table.Update(moduleID, func(existing *Module) error {
+		existing.LoadedWorkspaces = true
+		return nil
+	})
+	return err
 }
 
 // SetCurrent sets the current workspace for the module.

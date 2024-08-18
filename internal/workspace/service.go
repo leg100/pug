@@ -1,7 +1,12 @@
 package workspace
 
 import (
+	"bytes"
+	"errors"
 	"fmt"
+	"io/fs"
+	"os"
+	"path/filepath"
 
 	"github.com/leg100/pug/internal/logging"
 	"github.com/leg100/pug/internal/module"
@@ -39,6 +44,7 @@ type modules interface {
 	Get(id resource.ID) (*module.Module, error)
 	GetByPath(path string) (*module.Module, error)
 	SetCurrent(moduleID, workspaceID resource.ID) error
+	SetLoadedWorkspaces(moduleID resource.ID) error
 	Reload() ([]string, []string, error)
 	List() []*module.Module
 }
@@ -60,38 +66,80 @@ func NewService(opts ServiceOptions) *Service {
 	return s
 }
 
-// LoadWorkspacesUponModuleLoad automatically loads workspaces for a module
-// whenever:
-// * a new module is loaded into pug for the first time
-// * an existing module is updated and does not yet have a current workspace.
-//
-// TODO: "load" is ambiguous, it often means the opposite of save, i.e. read
-// from a system, whereas what is intended is to save or add workspaces to pug.
-func (s *Service) LoadWorkspacesUponModuleLoad(sub <-chan resource.Event[*module.Module]) {
-	reload := func(moduleID resource.ID) error {
-		spec, err := s.Reload(moduleID)
-		if err != nil {
-			return err
+// LoadWorkspaces is called by the module constructor to load its
+// initial workspaces including a default workspace as well its
+// current workspace, the ID of which is returned.
+func (s *Service) LoadWorkspaces(mod *module.Module) (resource.ID, error) {
+	// Load default workspace
+	defaultWorkspace, err := New(mod, "default")
+	if err != nil {
+		return resource.ID{}, fmt.Errorf("loading default workspace: %w", err)
+	}
+	s.table.Add(defaultWorkspace.ID, defaultWorkspace)
+
+	// Determine current workspace. If a .terraform/environment file exists then
+	// read current workspace from there.
+	envfile, err := os.ReadFile(filepath.Join(mod.FullPath(), ".terraform", "environment"))
+	if err != nil {
+		if !errors.Is(err, fs.ErrNotExist) {
+			s.logger.Error("reading current workspace from file", "error", err)
 		}
-		_, err = s.tasks.Create(spec)
-		return err
+		// Current workspace is the default workspace if there is any error
+		// reading the environment file.
+		return defaultWorkspace.ID, nil
+	}
+	current := string(bytes.TrimSpace(envfile))
+	if current == "default" {
+		// Nothing more to be done.
+		return defaultWorkspace.ID, nil
 	}
 
+	// Load non-default workspace and return it as the current worskpace.
+	nonDefaultWorkspace, err := New(mod, current)
+	if err != nil {
+		return resource.ID{}, fmt.Errorf("loading current workspace: %w", err)
+	}
+	s.table.Add(nonDefaultWorkspace.ID, nonDefaultWorkspace)
+	return nonDefaultWorkspace.ID, nil
+}
+
+// LoadWorkspacesUponModuleLoad automatically loads workspaces for a module
+// that has been newly loaded into pug.
+func (s *Service) LoadWorkspacesUponModuleLoad(sub <-chan resource.Event[*module.Module]) {
 	for event := range sub {
-		switch event.Type {
-		case resource.CreatedEvent:
-			if err := reload(event.Payload.ID); err != nil {
-				s.logger.Error("reloading workspaces", "module", event.Payload)
-			}
-		case resource.UpdatedEvent:
-			if event.Payload.CurrentWorkspaceID != nil {
-				// Module already has a current workspace; no need to reload
-				// workspaces
-				continue
-			}
-			if err := reload(event.Payload.ID); err != nil {
-				s.logger.Error("reloading workspaces", "module", event.Payload)
-			}
+		if event.Type != resource.CreatedEvent {
+			continue
+		}
+		// Should be false on a new module.
+		if event.Payload.LoadedWorkspaces {
+			continue
+		}
+		if err := s.createReloadTask(event.Payload.ID); err != nil {
+			s.logger.Error("reloading workspaces", "module", event.Payload)
+		}
+	}
+}
+
+// LoadWorkspacesUponInit automatically loads workspaces for a module whenever
+// it is successfully initialized and the module has not yet had its workspaces
+// loaded.
+func (s *Service) LoadWorkspacesUponInit(sub <-chan resource.Event[*task.Task]) {
+	for event := range sub {
+		if !module.IsInitTask(event.Payload) {
+			continue
+		}
+		if event.Payload.State != task.Exited {
+			continue
+		}
+		mod, err := s.modules.Get(event.Payload.Module().GetID())
+		if err != nil {
+			continue
+		}
+		if mod.LoadedWorkspaces {
+			continue
+		}
+		if err := s.createReloadTask(mod.ID); err != nil {
+			s.logger.Error("reloading workspaces", "module", event.Payload)
 		}
 	}
 }

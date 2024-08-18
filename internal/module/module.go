@@ -18,15 +18,14 @@ import (
 type Module struct {
 	resource.Common
 
-	// Pug working directory
-	Workdir internal.Workdir
-
 	// Path relative to pug working directory
 	Path string
-
 	// The module's current workspace.
+	//
+	// TODO: remove pointer
 	CurrentWorkspaceID *resource.ID
-
+	// Whether workspaces have been successfully loaded.
+	LoadedWorkspaces bool
 	// The module's backend type
 	Backend string
 }
@@ -38,24 +37,32 @@ type Options struct {
 	Backend string
 }
 
+type WorkspaceLoader interface {
+	LoadWorkspaces(mod *Module) (resource.ID, error)
+}
+
+type factory struct {
+	WorkspaceLoader
+}
+
 // New constructs a module. Workdir is the pug working directory, and path is
 // the module path relative to the working directory.
-func New(workdir internal.Workdir, opts Options) *Module {
-	return &Module{
+func (f *factory) newModule(opts Options) (*Module, error) {
+	mod := &Module{
 		Common:  resource.New(resource.Module, resource.GlobalResource),
-		Workdir: workdir,
 		Path:    opts.Path,
 		Backend: opts.Backend,
 	}
+	currentWorkspaceID, err := f.LoadWorkspaces(mod)
+	if err != nil {
+		return nil, err
+	}
+	mod.CurrentWorkspaceID = &currentWorkspaceID
+	return mod, nil
 }
 
 func (m *Module) String() string {
 	return m.Path
-}
-
-// FullPath returns the absolute path to the module.
-func (m *Module) FullPath() string {
-	return filepath.Join(m.Workdir.String(), m.Path)
 }
 
 func (m *Module) LogValue() slog.Value {
