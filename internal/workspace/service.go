@@ -2,6 +2,7 @@ package workspace
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/leg100/pug/internal/logging"
 	"github.com/leg100/pug/internal/module"
@@ -210,20 +211,55 @@ func (s *Service) Delete(workspaceID resource.ID) (task.Spec, error) {
 
 // Cost creates a task that retrieves a breakdown of the costs of the
 // infrastructure deployed by the workspace.
-// func (s *Service) Cost(workspaceID resource.ID) (*task.Task, error) {
-// 	ws, err := s.table.Get(workspaceID)
-// 	if err != nil {
-// 		return nil, fmt.Errorf("costing workspace: %w", err)
-// 	}
-// 	return s.createTask(ws, task.CreateOptions{
-// 		Command: []string{"infracost"},
-// 		Args:    []string{"breakdown", "-p", ws.ModulePath(), "--terraform-workspace", ws.Name},
-// 		AfterExited: func(t *task.Task) {
-// 			cost, err := parseInfracostOutput(t.NewReader())
-// 			if err != nil {
-// 				s.logger.Error("parsing infracost output", "error", err, "workspace", ws)
-// 			}
-// 			t.SetSummary(cost)
-// 		},
-// 	})
-// }
+func (s *Service) Cost(moduleAndWorkspaceIDs ...resource.ID) (task.Spec, error) {
+	var (
+		workspaces []*Workspace
+		modules    []*module.Module
+	)
+	for _, id := range moduleAndWorkspaceIDs {
+		switch id.Kind {
+		case resource.Module:
+			mod, err := s.modules.Get(id)
+			if err != nil {
+				// log
+				continue
+			}
+			modules = append(modules, mod)
+		case resource.Workspace:
+			ws, err := s.Get(id)
+			if err != nil {
+				// log
+				continue
+			}
+			workspaces = append(workspaces, ws)
+		}
+	}
+	// check more than zero
+	//
+	configBody, err := generateInfracostConfig([]resource.Resource{})
+	if err != nil {
+		return task.Spec{}, err
+	}
+	cfg, err := os.CreateTemp("", "")
+	if err != nil {
+		return task.Spec{}, err
+	}
+	if _, err := cfg.Write(configBody); err != nil {
+		return task.Spec{}, err
+	}
+	outFile := s.
+	return task.Spec{
+		Parent: resource.GlobalResource,
+		// Update task to chain commands
+		Program:  "infracost",
+		Command:  []string{"breakdown"},
+		Args:     []string{"--config-file", cfg.Name(), "--format", "json", "--out-file", "<f>"},
+		Blocking: true,
+		BeforeExited: func(*task.Task) (task.Summary, error) {
+			// Parse JSON output
+		},
+		AfterFinish: func(*task.Task) {
+			cfg.Close()
+		},
+	}, nil
+}

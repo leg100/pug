@@ -99,13 +99,7 @@ type Summary interface {
 
 // TODO: check presence of mandatory options
 func (f *factory) newTask(spec Spec) *Task {
-	// In terragrunt mode add default terragrunt flags
-	args := append(f.userArgs, spec.Args...)
-	if f.terragrunt {
-		args = append(args, "--terragrunt-non-interactive")
-	}
-
-	return &Task{
+	task := &Task{
 		Common:        resource.New(resource.Task, spec.Parent),
 		State:         Pending,
 		Created:       time.Now(),
@@ -117,7 +111,7 @@ func (f *factory) newTask(spec Spec) *Task {
 		terragrunt:    f.terragrunt,
 		Command:       spec.Command,
 		Path:          filepath.Join(f.workdir.String(), spec.Path),
-		Args:          args,
+		Args:          append(f.userArgs, spec.Args...),
 		AdditionalEnv: append(f.userEnvs, spec.Env...),
 		JSON:          spec.JSON,
 		Blocking:      spec.Blocking,
@@ -152,6 +146,18 @@ func (f *factory) newTask(spec Spec) *Task {
 			},
 		},
 	}
+	// Override program if specified
+	if spec.Program != "" {
+		task.program = spec.Program
+	}
+	// In terragrunt mode add default terragrunt flags
+	//
+	// TODO: introduce a better way to determine whether terrarunt is in use.
+	// Perhaps use constants for terraform, tofu, and terragrunt.
+	if task.program == "terragrunt" && f.terragrunt {
+		task.Args = append(task.Args, "--terragrunt-non-interactive")
+	}
+	return task
 }
 
 func (t *Task) String() string {
