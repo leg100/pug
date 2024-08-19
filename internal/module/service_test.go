@@ -15,17 +15,11 @@ import (
 func TestLoadTerragruntDependenciesFromDigraph(t *testing.T) {
 	// Setup modules and load into table
 	workdir := internal.NewTestWorkdir(t)
-	factory := &factory{&fakeWorkspaceLoader{}}
-	vpc, err := factory.newModule(Options{Path: "root/vpc"})
-	require.NoError(t, err)
-	redis, err := factory.newModule(Options{Path: "root/redis"})
-	require.NoError(t, err)
-	mysql, err := factory.newModule(Options{Path: "root/mysql"})
-	require.NoError(t, err)
-	frontend, err := factory.newModule(Options{Path: "root/frontend-app"})
-	require.NoError(t, err)
-	backend, err := factory.newModule(Options{Path: "root/backend-app"})
-	require.NoError(t, err)
+	vpc := NewTestModule(t, Options{Path: "root/vpc"})
+	redis := NewTestModule(t, Options{Path: "root/redis"})
+	mysql := NewTestModule(t, Options{Path: "root/mysql"})
+	frontend := NewTestModule(t, Options{Path: "root/frontend-app"})
+	backend := NewTestModule(t, Options{Path: "root/backend-app"})
 	svc := &Service{
 		table:   &fakeModuleTable{modules: []*Module{vpc, redis, mysql, backend, frontend}},
 		workdir: workdir,
