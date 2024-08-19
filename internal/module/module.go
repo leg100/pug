@@ -6,12 +6,14 @@ import (
 	"log/slog"
 	"path/filepath"
 	"sync"
+	"testing"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
 	"github.com/hashicorp/hcl/v2/hclparse"
 	"github.com/leg100/pug/internal"
 	"github.com/leg100/pug/internal/resource"
+	"github.com/stretchr/testify/require"
 )
 
 // Module is a terraform root module.
@@ -30,6 +32,7 @@ type Module struct {
 	Backend string
 }
 
+// Options for constructing a module.
 type Options struct {
 	// Path is the module path relative to the working directory.
 	Path string
@@ -45,20 +48,27 @@ type factory struct {
 	WorkspaceLoader
 }
 
-// New constructs a module. Workdir is the pug working directory, and path is
-// the module path relative to the working directory.
+// newModule constructs a module.
 func (f *factory) newModule(opts Options) (*Module, error) {
 	mod := &Module{
 		Common:  resource.New(resource.Module, resource.GlobalResource),
 		Path:    opts.Path,
 		Backend: opts.Backend,
 	}
+	// A module always has a current workspace.
 	currentWorkspaceID, err := f.LoadWorkspaces(mod)
 	if err != nil {
 		return nil, err
 	}
 	mod.CurrentWorkspaceID = &currentWorkspaceID
 	return mod, nil
+}
+
+func NewTestModule(t *testing.T, opts Options) *Module {
+	factory := &factory{&fakeWorkspaceLoader{}}
+	mod, err := factory.newModule(opts)
+	require.NoError(t, err)
+	return mod
 }
 
 func (m *Module) String() string {
@@ -219,4 +229,12 @@ func detectBackend(path string) (string, bool, error) {
 		return remoteStateBlock.RemoteState.Backend, true, nil
 	}
 	return "", false, nil
+}
+
+type fakeWorkspaceLoader struct {
+	workspaceID resource.ID
+}
+
+func (f *fakeWorkspaceLoader) LoadWorkspaces(*Module) (resource.ID, error) {
+	return f.workspaceID, nil
 }

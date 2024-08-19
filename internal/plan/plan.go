@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/leg100/pug/internal"
 	"github.com/leg100/pug/internal/logging"
 	"github.com/leg100/pug/internal/pubsub"
 	"github.com/leg100/pug/internal/resource"
@@ -45,6 +46,7 @@ type CreateOptions struct {
 
 type factory struct {
 	dataDir    string
+	workdir    internal.Workdir
 	workspaces workspaceGetter
 	broker     *pubsub.Broker[*plan]
 	terragrunt bool
@@ -71,7 +73,7 @@ func (f *factory) newPlan(workspaceID resource.ID, opts CreateOptions) (*plan, e
 	for _, addr := range plan.TargetAddrs {
 		plan.targetArgs = append(plan.targetArgs, fmt.Sprintf("-target=%s", addr))
 	}
-	if fname, ok := ws.VarsFile(); ok {
+	if fname, ok := ws.VarsFile(f.workdir); ok {
 		flag := fmt.Sprintf("-var-file=%s", fname)
 		plan.varsFileArg = &flag
 	}

@@ -8,7 +8,6 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/x/exp/teatest"
 	"github.com/leg100/pug/internal/app"
-	"github.com/leg100/pug/internal/resource"
 	"github.com/stretchr/testify/require"
 )
 
@@ -167,16 +166,22 @@ func setupSubscriptions(app *app.App, cfg app.Config) (chan tea.Msg, func()) {
 		sub := app.Modules.Subscribe(ctx)
 		go app.Workspaces.LoadWorkspacesUponModuleLoad(sub)
 	}
+	// Automatically load workspaces whenever init is run and workspaces have
+	// not yet been loaded.
+	{
+		sub := app.Tasks.TaskBroker.Subscribe(ctx)
+		go app.Workspaces.LoadWorkspacesUponInit(sub)
+	}
 	// Whenever a workspace is loaded, pull its state
 	{
 		sub := app.Workspaces.Subscribe(ctx)
-		go func() {
-			for event := range sub {
-				if event.Type == resource.CreatedEvent {
-					_, _ = app.States.CreateReloadTask(event.Payload.ID)
-				}
-			}
-		}()
+		go app.States.LoadStateUponWorkspaceLoad(sub)
+	}
+	// Whenever a module is initialised, ensure each workspace belonging to the
+	// module has its state loaded into pug.
+	{
+		sub := app.Tasks.TaskBroker.Subscribe(ctx)
+		go app.States.LoadStateUponInit(sub)
 	}
 	// Whenever an apply is successful, pull workspace state
 	if !cfg.DisableReloadAfterApply {

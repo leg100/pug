@@ -43,6 +43,39 @@ func NewService(opts ServiceOptions) *Service {
 	return s
 }
 
+// LoadStateUponWorkspaceLoad automatically loads state for a workspace when it
+// is loaded into pug for the first time.
+func (s *Service) LoadStateUponWorkspaceLoad(sub <-chan resource.Event[*workspace.Workspace]) {
+	for event := range sub {
+		if event.Type == resource.CreatedEvent {
+			_, _ = s.CreateReloadTask(event.Payload.ID)
+		}
+	}
+}
+
+// LoadStateUponInit automatically loads state whenever a module is successfully
+// initialised, and the state for a workspace belonging to the module has not
+// been loaded yet.
+func (s *Service) LoadStateUponInit(sub <-chan resource.Event[*task.Task]) {
+	for event := range sub {
+		if !module.IsInitTask(event.Payload) {
+			continue
+		}
+		if event.Payload.State != task.Exited {
+			continue
+		}
+		opts := workspace.ListOptions{ModuleID: event.Payload.Module().GetID()}
+		workspaces := s.workspaces.List(opts)
+		for _, ws := range workspaces {
+			if _, err := s.cache.Get(ws.ID); err == nil {
+				// State already loaded
+				continue
+			}
+			_, _ = s.CreateReloadTask(ws.ID)
+		}
+	}
+}
+
 // Get retrieves the state for a workspace.
 func (s *Service) Get(workspaceID resource.ID) (*State, error) {
 	return s.cache.Get(workspaceID)

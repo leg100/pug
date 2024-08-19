@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
-	"path/filepath"
 
+	"github.com/leg100/pug/internal"
 	"github.com/leg100/pug/internal/logging"
 	"github.com/leg100/pug/internal/module"
 	"github.com/leg100/pug/internal/pubsub"
@@ -21,6 +21,7 @@ type Service struct {
 
 	modules modules
 	tasks   *task.Service
+	workdir internal.Workdir
 
 	*pubsub.Broker[*Workspace]
 	*reloader
@@ -30,6 +31,7 @@ type ServiceOptions struct {
 	Tasks   *task.Service
 	Modules *module.Service
 	Logger  logging.Interface
+	Workdir internal.Workdir
 }
 
 type workspaceTable interface {
@@ -61,6 +63,7 @@ func NewService(opts ServiceOptions) *Service {
 		modules: opts.Modules,
 		tasks:   opts.Tasks,
 		logger:  opts.Logger,
+		workdir: opts.Workdir,
 	}
 	s.reloader = &reloader{s}
 	return s
@@ -79,7 +82,7 @@ func (s *Service) LoadWorkspaces(mod *module.Module) (resource.ID, error) {
 
 	// Determine current workspace. If a .terraform/environment file exists then
 	// read current workspace from there.
-	envfile, err := os.ReadFile(filepath.Join(mod.FullPath(), ".terraform", "environment"))
+	envfile, err := os.ReadFile(s.workdir.Join(".terraform", "environment"))
 	if err != nil {
 		if !errors.Is(err, fs.ErrNotExist) {
 			s.logger.Error("reading current workspace from file", "error", err)

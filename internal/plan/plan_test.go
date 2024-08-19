@@ -19,8 +19,9 @@ func TestPlan_VarsFile(t *testing.T) {
 	f, mod, ws := setupTest(t)
 
 	// Create a workspace tfvars file for dev
-	os.MkdirAll(mod.FullPath(), 0o755)
-	_, err := os.Create(filepath.Join(mod.FullPath(), "dev.tfvars"))
+	path := f.workdir.Join(mod.Path, "dev.tfvars")
+	os.MkdirAll(filepath.Dir(path), 0o755)
+	_, err := os.Create(path)
 	require.NoError(t, err)
 
 	run, err := f.newPlan(ws.ID, CreateOptions{})
@@ -44,12 +45,13 @@ func setupTest(t *testing.T) (*factory, *module.Module, *workspace.Workspace) {
 	workdir := internal.NewTestWorkdir(t)
 	testutils.ChTempDir(t, workdir.String())
 
-	mod := module.New(workdir, module.Options{Path: "a/b/c"})
+	mod := module.NewTestModule(t, module.Options{Path: "a/b/c"})
 	ws, err := workspace.New(mod, "dev")
 	require.NoError(t, err)
 	factory := factory{
 		workspaces: &fakeWorkspaceGetter{ws: ws},
 		dataDir:    t.TempDir(),
+		workdir:    workdir,
 	}
 	return &factory, mod, ws
 }

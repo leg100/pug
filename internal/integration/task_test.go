@@ -25,7 +25,7 @@ func TestTaskList_Split(t *testing.T) {
 	// Expect tasks that are automatically triggered when a module is loaded
 	waitFor(t, tm, func(s string) bool {
 		return strings.Contains(s, "Tasks") &&
-			strings.Contains(s, "1-4 of 4") &&
+			strings.Contains(s, "1-5 of 5") &&
 			matchPattern(t, `modules/a.*init.*exited`, s) &&
 			matchPattern(t, `modules/a.*workspace list.*exited`, s) &&
 			matchPattern(t, `modules/a.*default.*state pull.*exited`, s)
@@ -38,16 +38,16 @@ func TestTaskList_Split(t *testing.T) {
 
 	waitFor(t, tm, func(s string) bool {
 		return strings.Contains(s, "Tasks") &&
-			strings.Contains(s, "1-3 of 4")
+			strings.Contains(s, "1-3 of 5")
 	})
 
-	// Increase the split until all 4 tasks are visible. That means the split
-	// needs to be increased once.
-	tm.Type(strings.Repeat("+", 1))
+	// Increase the split until all 5 tasks are visible. That means the split
+	// needs to be increased twice.
+	tm.Type(strings.Repeat("+", 2))
 
 	waitFor(t, tm, func(s string) bool {
 		return strings.Contains(s, "Tasks") &&
-			strings.Contains(s, "1-4 of 4")
+			strings.Contains(s, "1-5 of 5")
 	})
 
 }

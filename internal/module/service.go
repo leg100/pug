@@ -28,12 +28,11 @@ type Service struct {
 }
 
 type ServiceOptions struct {
-	Tasks           *task.Service
-	Workdir         internal.Workdir
-	PluginCache     bool
-	Logger          logging.Interface
-	Terragrunt      bool
-	WorkspaceLoader WorkspaceLoader
+	Tasks       *task.Service
+	Workdir     internal.Workdir
+	PluginCache bool
+	Logger      logging.Interface
+	Terragrunt  bool
 }
 
 type taskCreator interface {
@@ -62,9 +61,7 @@ func NewService(opts ServiceOptions) *Service {
 		pluginCache: opts.PluginCache,
 		logger:      opts.Logger,
 		terragrunt:  opts.Terragrunt,
-		factory: &factory{
-			WorkspaceLoader: opts.WorkspaceLoader,
-		},
+		factory:     &factory{},
 	}
 }
 

@@ -7,14 +7,16 @@ import (
 
 	"github.com/leg100/pug/internal"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestNew(t *testing.T) {
 	os.MkdirAll("./testdata/modules/with_both_s3_backend_and_dot_terraform_dir/.terraform", 0o755)
 
-	workdir, _ := internal.NewWorkdir("./testdata/modules")
+	factory := &factory{&fakeWorkspaceLoader{}}
 
-	got := New(workdir, Options{Path: "with_s3_backend", Backend: "s3"})
+	got, err := factory.newModule(Options{Path: "with_s3_backend", Backend: "s3"})
+	require.NoError(t, err)
 	assert.Equal(t, "with_s3_backend", got.Path)
 }
 

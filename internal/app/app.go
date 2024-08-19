@@ -64,6 +64,7 @@ func New(cfg Config) (*App, error) {
 		Modules: modules,
 		Logger:  logger,
 	})
+	modules.WorkspaceLoader = workspaces
 	states := state.NewService(state.ServiceOptions{
 		Modules:    modules,
 		Workspaces: workspaces,
@@ -76,6 +77,7 @@ func New(cfg Config) (*App, error) {
 		Workspaces: workspaces,
 		States:     states,
 		DataDir:    cfg.DataDir,
+		Workdir:    cfg.Workdir,
 		Logger:     logger,
 		Terragrunt: cfg.Terragrunt,
 	})

@@ -54,7 +54,7 @@ func makeMakers(cfg app.Config, app *app.App, spinner *spinner.Model) map[tui.Ki
 			Workspaces: app.Workspaces,
 			Plans:      app.Plans,
 			Spinner:    spinner,
-			Workdir:    cfg.Workdir.PrettyString(),
+			Workdir:    cfg.Workdir,
 			Helpers:    helpers,
 			Terragrunt: cfg.Terragrunt,
 		},
