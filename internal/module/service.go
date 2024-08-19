@@ -143,7 +143,7 @@ func (s *Service) loadTerragruntDependenciesFromDigraph(r io.Reader) error {
 		// directory.
 		if filepath.IsAbs(path) {
 			var err error
-			if path, err = s.stripWorkdirFromPath(path); err != nil {
+			if path, err = s.workdir.Rel(path); err != nil {
 				s.logger.Error("loading terragrunt dependencies", "error", err)
 				// Skip loading dependencies for this module
 				continue
@@ -169,7 +169,7 @@ func (s *Service) loadTerragruntDependenciesFromDigraph(r io.Reader) error {
 			// directory.
 			if filepath.IsAbs(path) {
 				var err error
-				if path, err = s.stripWorkdirFromPath(path); err != nil {
+				if path, err = s.workdir.Rel(path); err != nil {
 					// Skip loading this dependency
 					return err
 				}
@@ -195,14 +195,6 @@ func (s *Service) loadTerragruntDependenciesFromDigraph(r io.Reader) error {
 		})
 	}
 	return nil
-}
-
-// TODO: fold into workdir type
-func (s *Service) stripWorkdirFromPath(path string) (string, error) {
-	if filepath.IsAbs(path) {
-		return filepath.Rel(s.workdir.String(), path)
-	}
-	return path, nil
 }
 
 // Init invokes terraform init on the module.

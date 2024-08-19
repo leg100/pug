@@ -48,6 +48,11 @@ func (wd Workdir) Join(paths ...string) string {
 	return filepath.Join(paths...)
 }
 
+// Rel returns a relative path to the working directory.
+func (wd Workdir) Rel(path string) (string, error) {
+	return filepath.Rel(wd.String(), path)
+}
+
 func (wd Workdir) String() string {
 	return wd.path
 }
