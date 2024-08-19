@@ -151,7 +151,9 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, cmd
 		case key.Matches(msg, keys.Common.State):
 			if row, ok := m.table.CurrentRow(); ok {
-				return m, tui.NavigateTo(tui.ResourceListKind, tui.WithParent(row.Value.CurrentWorkspaceID))
+				if ws := m.helpers.ModuleCurrentWorkspace(row.Value); ws != nil {
+					return m, tui.NavigateTo(tui.ResourceListKind, tui.WithParent(ws.ID))
+				}
 			}
 		case key.Matches(msg, keys.Common.PlanDestroy):
 			createPlanOpts.Destroy = true
@@ -160,11 +162,7 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// Create specs here, de-selecting any modules where an error is
 			// returned.
 			specs, err := m.table.Prune(func(mod *module.Module) (task.Spec, error) {
-				if workspaceID := mod.CurrentWorkspaceID; workspaceID == nil {
-					return task.Spec{}, fmt.Errorf("module %s does not have a current workspace", mod)
-				} else {
-					return m.Plans.Plan(*workspaceID, createPlanOpts)
-				}
+				return m.Plans.Plan(mod.CurrentWorkspaceID, createPlanOpts)
 			})
 			if err != nil {
 				// Modules were de-selected, so report error and give user
@@ -180,11 +178,7 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// Create specs here, de-selecting any modules where an error is
 			// returned.
 			specs, err := m.table.Prune(func(mod *module.Module) (task.Spec, error) {
-				if workspaceID := mod.CurrentWorkspaceID; workspaceID == nil {
-					return task.Spec{}, fmt.Errorf("module %s does not have a current workspace", mod)
-				} else {
-					return m.Plans.Apply(*workspaceID, createPlanOpts)
-				}
+				return m.Plans.Apply(mod.CurrentWorkspaceID, createPlanOpts)
 			})
 			if err != nil {
 				// Modules were de-selected, so report error and give user

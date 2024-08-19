@@ -48,11 +48,7 @@ func (h *Helpers) WorkspaceName(res resource.Resource) string {
 }
 
 func (h *Helpers) ModuleCurrentWorkspace(mod *module.Module) *workspace.Workspace {
-	if mod.CurrentWorkspaceID == nil {
-		h.Logger.Error("module does not have a current workspace", "module", mod)
-		return nil
-	}
-	ws, err := h.Workspaces.Get(*mod.CurrentWorkspaceID)
+	ws, err := h.Workspaces.Get(mod.CurrentWorkspaceID)
 	if err != nil {
 		h.Logger.Error("retrieving current workspace for module", "error", err, "module", mod)
 		return nil
@@ -72,11 +68,8 @@ func (h *Helpers) Module(res resource.Resource) *module.Module {
 	return mod
 }
 
-func (h *Helpers) CurrentWorkspaceName(workspaceID *resource.ID) string {
-	if workspaceID == nil {
-		return "-"
-	}
-	ws, err := h.Workspaces.Get(*workspaceID)
+func (h *Helpers) CurrentWorkspaceName(workspaceID resource.ID) string {
+	ws, err := h.Workspaces.Get(workspaceID)
 	if err != nil {
 		h.Logger.Error("rendering current workspace name", "error", err)
 		return ""
@@ -85,10 +78,7 @@ func (h *Helpers) CurrentWorkspaceName(workspaceID *resource.ID) string {
 }
 
 func (h *Helpers) ModuleCurrentResourceCount(mod *module.Module) string {
-	if mod.CurrentWorkspaceID == nil {
-		return ""
-	}
-	ws, err := h.Workspaces.Get(*mod.CurrentWorkspaceID)
+	ws, err := h.Workspaces.Get(mod.CurrentWorkspaceID)
 	if err != nil {
 		h.Logger.Error("rendering module current workspace resource count", "error", err)
 		return ""
@@ -104,7 +94,7 @@ func (h *Helpers) WorkspaceCurrentCheckmark(ws *workspace.Workspace) string {
 		h.Logger.Error("rendering current workspace checkmark", "error", err)
 		return ""
 	}
-	if mod.CurrentWorkspaceID != nil && *mod.CurrentWorkspaceID == ws.ID {
+	if mod.CurrentWorkspaceID == ws.ID {
 		return "✓"
 	}
 	return ""
@@ -276,7 +266,7 @@ func (h *Helpers) CreateTasks(fn task.SpecFunc, ids ...resource.ID) tea.Cmd {
 			if err != nil {
 				return ReportError(fmt.Errorf("creating task: %w", err))
 			}
-			return NewNavigationMsg(TaskKind, WithParent(task))
+			return NewNavigationMsg(TaskKind, WithParent(task.ID))
 		default:
 			specs := make([]task.Spec, 0, len(ids))
 			for _, id := range ids {
@@ -302,7 +292,7 @@ func (h *Helpers) CreateTasksWithSpecs(specs ...task.Spec) tea.Cmd {
 			if err != nil {
 				return ReportError(fmt.Errorf("creating task: %w", err))
 			}
-			return NewNavigationMsg(TaskKind, WithParent(task))
+			return NewNavigationMsg(TaskKind, WithParent(task.ID))
 		default:
 			return h.createTaskGroup(specs...)
 		}
@@ -314,7 +304,7 @@ func (h *Helpers) createTaskGroup(specs ...task.Spec) tea.Msg {
 	if err != nil {
 		return ReportError(fmt.Errorf("creating task group: %w", err))
 	}
-	return NewNavigationMsg(TaskGroupKind, WithParent(group))
+	return NewNavigationMsg(TaskGroupKind, WithParent(group.ID))
 }
 
 func (h *Helpers) Move(workspaceID resource.ID, from state.ResourceAddress) tea.Cmd {

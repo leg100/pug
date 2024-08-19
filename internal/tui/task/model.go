@@ -143,7 +143,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			)
 		case key.Matches(msg, keys.Common.State):
 			if ws, ok := m.helpers.TaskWorkspace(m.task); ok {
-				return m, tui.NavigateTo(tui.ResourceListKind, tui.WithParent(ws))
+				return m, tui.NavigateTo(tui.ResourceListKind, tui.WithParent(ws.GetID()))
 			} else {
 				return m, tui.ReportError(errors.New("task not associated with a workspace"))
 			}
