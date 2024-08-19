@@ -167,6 +167,12 @@ func setupSubscriptions(app *app.App, cfg app.Config) (chan tea.Msg, func()) {
 		sub := app.Modules.Subscribe(ctx)
 		go app.Workspaces.LoadWorkspacesUponModuleLoad(sub)
 	}
+	// Automatically load workspaces whenever init is run and workspaces have
+	// not yet been loaded.
+	{
+		sub := app.Tasks.TaskBroker.Subscribe(ctx)
+		go app.Workspaces.LoadWorkspacesUponInit(sub)
+	}
 	// Whenever a workspace is loaded, pull its state
 	{
 		sub := app.Workspaces.Subscribe(ctx)

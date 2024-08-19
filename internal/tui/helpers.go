@@ -285,7 +285,7 @@ func (h *Helpers) CreateTasks(fn task.SpecFunc, ids ...resource.ID) tea.Cmd {
 			if err != nil {
 				return ErrorMsg(fmt.Errorf("creating task: %w", err))
 			}
-			return NewNavigationMsg(TaskKind, WithParent(task))
+			return NewNavigationMsg(TaskKind, WithParent(task.ID))
 		default:
 			specs := make([]task.Spec, 0, len(ids))
 			for _, id := range ids {
@@ -311,7 +311,7 @@ func (h *Helpers) CreateTasksWithSpecs(specs ...task.Spec) tea.Cmd {
 			if err != nil {
 				return ErrorMsg(fmt.Errorf("creating task: %w", err))
 			}
-			return NewNavigationMsg(TaskKind, WithParent(task))
+			return NewNavigationMsg(TaskKind, WithParent(task.ID))
 		default:
 			return h.createTaskGroup(specs...)
 		}
@@ -323,7 +323,7 @@ func (h *Helpers) createTaskGroup(specs ...task.Spec) tea.Msg {
 	if err != nil {
 		return ReportError(fmt.Errorf("creating task group: %w", err))
 	}
-	return NewNavigationMsg(TaskGroupKind, WithParent(group))
+	return NewNavigationMsg(TaskGroupKind, WithParent(group.ID))
 }
 
 func (h *Helpers) Move(workspaceID resource.ID, from state.ResourceAddress) tea.Cmd {

@@ -4,7 +4,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/leg100/pug/internal"
 	"github.com/leg100/pug/internal/module"
 	"github.com/leg100/pug/internal/resource"
 	"github.com/stretchr/testify/assert"
@@ -30,7 +29,7 @@ func TestWorkspace_parseList(t *testing.T) {
 }
 
 func TestWorkspace_resetWorkspaces(t *testing.T) {
-	mod := module.New(internal.NewTestWorkdir(t), module.Options{Path: "a/b/c"})
+	mod := &module.Module{Path: "a/b/c"}
 	dev, err := New(mod, "dev")
 	require.NoError(t, err)
 	staging, err := New(mod, "staging")

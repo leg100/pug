@@ -18,12 +18,8 @@ import (
 type Module struct {
 	resource.Common
 
-	// Pug working directory
-	Workdir internal.Workdir
-
 	// Path relative to pug working directory
 	Path string
-
 	// The module's current workspace.
 	CurrentWorkspaceID *resource.ID
 
@@ -31,6 +27,7 @@ type Module struct {
 	Backend string
 }
 
+// Options for constructing a module.
 type Options struct {
 	// Path is the module path relative to the working directory.
 	Path string
@@ -38,12 +35,10 @@ type Options struct {
 	Backend string
 }
 
-// New constructs a module. Workdir is the pug working directory, and path is
-// the module path relative to the working directory.
-func New(workdir internal.Workdir, opts Options) *Module {
+// New constructs a module.
+func New(opts Options) *Module {
 	return &Module{
 		Common:  resource.New(resource.Module, resource.GlobalResource),
-		Workdir: workdir,
 		Path:    opts.Path,
 		Backend: opts.Backend,
 	}
@@ -51,11 +46,6 @@ func New(workdir internal.Workdir, opts Options) *Module {
 
 func (m *Module) String() string {
 	return m.Path
-}
-
-// FullPath returns the absolute path to the module.
-func (m *Module) FullPath() string {
-	return filepath.Join(m.Workdir.String(), m.Path)
 }
 
 func (m *Module) LogValue() slog.Value {

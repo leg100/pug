@@ -66,6 +66,8 @@ func NewService(opts ServiceOptions) *Service {
 // Reload searches the working directory recursively for modules and adds them
 // to the store before pruning those that are currently stored but can no longer
 // be found.
+//
+// TODO: separate into Load and Reload
 func (s *Service) Reload() (added []string, removed []string, err error) {
 	ch, errc := find(context.TODO(), s.workdir)
 	var found []string
@@ -80,7 +82,7 @@ func (s *Service) Reload() (added []string, removed []string, err error) {
 			// handle found module
 			if mod, err := s.GetByPath(opts.Path); errors.Is(err, resource.ErrNotFound) {
 				// Not found, so add to pug
-				mod := New(s.workdir, opts)
+				mod := New(opts)
 				s.table.Add(mod.ID, mod)
 				added = append(added, opts.Path)
 			} else if err != nil {
@@ -141,7 +143,7 @@ func (s *Service) loadTerragruntDependenciesFromDigraph(r io.Reader) error {
 		// directory.
 		if filepath.IsAbs(path) {
 			var err error
-			if path, err = s.stripWorkdirFromPath(path); err != nil {
+			if path, err = s.workdir.Rel(path); err != nil {
 				s.logger.Error("loading terragrunt dependencies", "error", err)
 				// Skip loading dependencies for this module
 				continue
@@ -167,7 +169,7 @@ func (s *Service) loadTerragruntDependenciesFromDigraph(r io.Reader) error {
 			// directory.
 			if filepath.IsAbs(path) {
 				var err error
-				if path, err = s.stripWorkdirFromPath(path); err != nil {
+				if path, err = s.workdir.Rel(path); err != nil {
 					// Skip loading this dependency
 					return err
 				}
@@ -195,14 +197,6 @@ func (s *Service) loadTerragruntDependenciesFromDigraph(r io.Reader) error {
 	return nil
 }
 
-// TODO: fold into workdir type
-func (s *Service) stripWorkdirFromPath(path string) (string, error) {
-	if filepath.IsAbs(path) {
-		return filepath.Rel(s.workdir.String(), path)
-	}
-	return path, nil
-}
-
 // Init invokes terraform init on the module.
 func (s *Service) Init(moduleID resource.ID) (task.Spec, error) {
 	return s.updateSpec(moduleID, task.Spec{
@@ -212,15 +206,11 @@ func (s *Service) Init(moduleID resource.ID) (task.Spec, error) {
 		// The terraform plugin cache is not concurrency-safe, so only allow one
 		// init task to run at any given time.
 		Exclusive: s.pluginCache,
-		AfterCreate: func(task *task.Task) {
-			// Trigger a workspace reload if the module doesn't yet have a
-			// current workspace
-			mod := task.Module().(*Module)
-			if mod.CurrentWorkspaceID == nil {
-				s.Publish(resource.UpdatedEvent, mod)
-			}
-		},
 	})
+}
+
+func IsInitTask(t *task.Task) bool {
+	return len(t.Command) > 0 && t.Command[0] == "init"
 }
 
 func (s *Service) Format(moduleID resource.ID) (task.Spec, error) {

@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/leg100/pug/internal"
 	"github.com/leg100/pug/internal/module"
 	"github.com/leg100/pug/internal/resource"
 )
@@ -52,10 +53,10 @@ func (ws *Workspace) LogValue() slog.Value {
 
 // VarsFile returns the filename of the workspace's terraform variables file
 // and whether it exists or not.
-func (ws *Workspace) VarsFile() (string, bool) {
+func (ws *Workspace) VarsFile(workdir internal.Workdir) (string, bool) {
 	fname := fmt.Sprintf("%s.tfvars", ws.Name)
 	mod := ws.Module().(*module.Module)
-	path := filepath.Join(mod.FullPath(), fname)
+	path := filepath.Join(workdir.String(), mod.Path, fname)
 	_, err := os.Stat(path)
 	return fname, err == nil
 }

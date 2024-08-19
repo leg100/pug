@@ -7,6 +7,7 @@ import (
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/leg100/pug/internal"
 	"github.com/leg100/pug/internal/module"
 	"github.com/leg100/pug/internal/plan"
 	"github.com/leg100/pug/internal/resource"
@@ -41,7 +42,7 @@ type ListMaker struct {
 	Workspaces *workspace.Service
 	Plans      *plan.Service
 	Spinner    *spinner.Model
-	Workdir    string
+	Workdir    internal.Workdir
 	Helpers    *tui.Helpers
 	Terragrunt bool
 }
@@ -102,7 +103,7 @@ type list struct {
 
 	table   table.Model[*module.Module]
 	spinner *spinner.Model
-	workdir string
+	workdir internal.Workdir
 	helpers *tui.Helpers
 }
 
@@ -133,7 +134,8 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, ReloadModules(false, m.Modules)
 		case key.Matches(msg, keys.Common.Edit):
 			if row, ok := m.table.CurrentRow(); ok {
-				return m, tui.OpenEditor(row.Value.FullPath())
+				path := m.workdir.Join(row.Value.Path)
+				return m, tui.OpenEditor(path)
 			}
 		case key.Matches(msg, keys.Common.Init):
 			cmd := m.helpers.CreateTasks(m.Modules.Init, m.table.SelectedOrCurrentIDs()...)
@@ -150,7 +152,7 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, keys.Common.State):
 			if row, ok := m.table.CurrentRow(); ok {
 				if ws := m.helpers.ModuleCurrentWorkspace(row.Value); ws != nil {
-					return m, tui.NavigateTo(tui.ResourceListKind, tui.WithParent(ws))
+					return m, tui.NavigateTo(tui.ResourceListKind, tui.WithParent(ws.ID))
 				}
 			}
 		case key.Matches(msg, keys.Common.PlanDestroy):

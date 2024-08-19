@@ -3,6 +3,7 @@ package plan
 import (
 	"fmt"
 
+	"github.com/leg100/pug/internal"
 	"github.com/leg100/pug/internal/logging"
 	"github.com/leg100/pug/internal/module"
 	"github.com/leg100/pug/internal/pubsub"
@@ -31,6 +32,7 @@ type ServiceOptions struct {
 	Workspaces *workspace.Service
 	States     *state.Service
 	DataDir    string
+	Workdir    internal.Workdir
 	Logger     logging.Interface
 	Terragrunt bool
 }
@@ -55,6 +57,7 @@ func NewService(opts ServiceOptions) *Service {
 		logger:     opts.Logger,
 		factory: &factory{
 			dataDir:    opts.DataDir,
+			workdir:    opts.Workdir,
 			workspaces: opts.Workspaces,
 			broker:     broker,
 			terragrunt: opts.Terragrunt,
