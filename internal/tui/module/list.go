@@ -151,9 +151,7 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, cmd
 		case key.Matches(msg, keys.Common.State):
 			if row, ok := m.table.CurrentRow(); ok {
-				if ws := m.helpers.ModuleCurrentWorkspace(row.Value); ws != nil {
-					return m, tui.NavigateTo(tui.ResourceListKind, tui.WithParent(ws))
-				}
+				return m, tui.NavigateTo(tui.ResourceListKind, tui.WithParent(row.Value.CurrentWorkspaceID))
 			}
 		case key.Matches(msg, keys.Common.PlanDestroy):
 			createPlanOpts.Destroy = true

@@ -220,14 +220,6 @@ func (s *Service) Init(moduleID resource.ID) (task.Spec, error) {
 		// The terraform plugin cache is not concurrency-safe, so only allow one
 		// init task to run at any given time.
 		Exclusive: s.pluginCache,
-		AfterCreate: func(task *task.Task) {
-			// Trigger a workspace reload if the module doesn't yet have a
-			// current workspace
-			mod := task.Module().(*Module)
-			if mod.CurrentWorkspaceID == nil {
-				s.Publish(resource.UpdatedEvent, mod)
-			}
-		},
 	})
 }
 
@@ -275,7 +267,7 @@ func (s *Service) SetLoadedWorkspaces(moduleID resource.ID) error {
 // SetCurrent sets the current workspace for the module.
 func (s *Service) SetCurrent(moduleID, workspaceID resource.ID) error {
 	_, err := s.table.Update(moduleID, func(existing *Module) error {
-		existing.CurrentWorkspaceID = &workspaceID
+		existing.CurrentWorkspaceID = workspaceID
 		return nil
 	})
 	return err

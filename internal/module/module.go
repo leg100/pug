@@ -23,9 +23,7 @@ type Module struct {
 	// Path relative to pug working directory
 	Path string
 	// The module's current workspace.
-	//
-	// TODO: remove pointer
-	CurrentWorkspaceID *resource.ID
+	CurrentWorkspaceID resource.ID
 	// Whether workspaces have been successfully loaded.
 	LoadedWorkspaces bool
 	// The module's backend type
@@ -60,7 +58,7 @@ func (f *factory) newModule(opts Options) (*Module, error) {
 	if err != nil {
 		return nil, err
 	}
-	mod.CurrentWorkspaceID = &currentWorkspaceID
+	mod.CurrentWorkspaceID = currentWorkspaceID
 	return mod, nil
 }
 
