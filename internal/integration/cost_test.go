@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"os/exec"
 	"strings"
 	"testing"
 
@@ -14,6 +15,9 @@ import (
 )
 
 func TestCost(t *testing.T) {
+	t.Parallel()
+	skipIfInfracostNotFound(t)
+
 	tm := setupInfracostWorkspaces(t)
 
 	// Calculate cost for all four workspaces
@@ -95,5 +99,11 @@ func withInfracostEnvs(pricingEndpoint string) configOption {
 			fmt.Sprintf("PRICING_API_ENDPOINT=%s", pricingEndpoint),
 			"INFRACOST_API_KEY=ico-abc",
 		}
+	}
+}
+
+func skipIfInfracostNotFound(t *testing.T) {
+	if _, err := exec.LookPath("infracost"); err != nil {
+		t.Skip("skipping test: infracost not found")
 	}
 }
