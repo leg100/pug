@@ -49,7 +49,6 @@ func (h *Helpers) WorkspaceName(res resource.Resource) string {
 
 func (h *Helpers) ModuleCurrentWorkspace(mod *module.Module) *workspace.Workspace {
 	if mod.CurrentWorkspaceID == nil {
-		h.Logger.Error("module does not have a current workspace", "module", mod)
 		return nil
 	}
 	ws, err := h.Workspaces.Get(*mod.CurrentWorkspaceID)
@@ -110,8 +109,15 @@ func (h *Helpers) WorkspaceCurrentCheckmark(ws *workspace.Workspace) string {
 	return ""
 }
 
-// WorkspaceCurrentCheckmark returns a check mark if the workspace is the
-// current workspace for its module.
+// ModuleCost renders the cost of the module's current workspace, if it has one.
+func (h *Helpers) ModuleCost(mod *module.Module) string {
+	if ws := h.ModuleCurrentWorkspace(mod); ws != nil {
+		return h.WorkspaceCost(ws)
+	}
+	return ""
+}
+
+// WorkspaceCost renders the cost of the given workspace.
 func (h *Helpers) WorkspaceCost(ws *workspace.Workspace) string {
 	if ws.Cost == "" {
 		return "-"

@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 
 	"github.com/google/uuid"
+	"github.com/leg100/pug/internal"
 	"github.com/leg100/pug/internal/logging"
 	"github.com/leg100/pug/internal/module"
 	"github.com/leg100/pug/internal/pubsub"
@@ -20,6 +21,7 @@ type Service struct {
 	modules modules
 	tasks   *task.Service
 	datadir string
+	workdir internal.Workdir
 
 	*pubsub.Broker[*Workspace]
 	*reloader
@@ -30,6 +32,7 @@ type ServiceOptions struct {
 	Modules *module.Service
 	Logger  logging.Interface
 	DataDir string
+	Workdir internal.Workdir
 }
 
 type workspaceTable interface {
@@ -61,6 +64,7 @@ func NewService(opts ServiceOptions) *Service {
 		tasks:   opts.Tasks,
 		logger:  opts.Logger,
 		datadir: opts.DataDir,
+		workdir: opts.Workdir,
 	}
 	s.reloader = &reloader{s}
 	return s
@@ -238,7 +242,7 @@ func (s *Service) Cost(workspaceIDs ...resource.ID) (task.Spec, error) {
 	}
 	{
 		// generate config for infracost
-		configBody, err := generateCostConfig(workspaces...)
+		configBody, err := generateCostConfig(s.workdir, workspaces...)
 		if err != nil {
 			return task.Spec{}, err
 		}
@@ -257,7 +261,8 @@ func (s *Service) Cost(workspaceIDs ...resource.ID) (task.Spec, error) {
 			Command: []string{"output"},
 			Args:    []string{"--format", "table", "--path", breakdownPath},
 		},
-		Blocking: true,
+		Blocking:    true,
+		Description: "cost",
 		BeforeExited: func(*task.Task) (task.Summary, error) {
 			// Parse JSON output and update workspaces.
 			breakdown, err := os.ReadFile(breakdownPath)

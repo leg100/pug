@@ -276,9 +276,8 @@ func (t *Task) start(ctx context.Context) (func(), error) {
 		if err := cmd.Wait(); err != nil {
 			state = Errored
 			t.Err = fmt.Errorf("task failed: %w", err)
-		}
-
-		if t.AdditionalExecution != nil {
+		} else if t.AdditionalExecution != nil {
+			// Execute additional program.
 			args := append(t.AdditionalExecution.Command, t.AdditionalExecution.Args...)
 			cmd = t.execute(ctx, t.AdditionalExecution.Program, args)
 			if err := cmd.Run(); err != nil {

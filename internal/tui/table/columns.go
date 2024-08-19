@@ -22,4 +22,9 @@ var (
 		Title: "RESOURCES",
 		Width: len("RESOURCES"),
 	}
+	CostColumn = Column{
+		Key:        "cost",
+		Title:      "COST",
+		FlexFactor: 1,
+	}
 )

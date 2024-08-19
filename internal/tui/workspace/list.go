@@ -21,12 +21,6 @@ var currentColumn = table.Column{
 	Width: len("CURRENT"),
 }
 
-var costColumn = table.Column{
-	Key:        "cost",
-	Title:      "COST",
-	FlexFactor: 1,
-}
-
 type ListMaker struct {
 	Modules    *module.Service
 	Workspaces *workspace.Service
@@ -39,7 +33,7 @@ func (m *ListMaker) Make(_ resource.ID, width, height int) (tea.Model, error) {
 		table.ModuleColumn,
 		table.WorkspaceColumn,
 		currentColumn,
-		costColumn,
+		table.CostColumn,
 		table.ResourceCountColumn,
 	}
 
@@ -48,7 +42,7 @@ func (m *ListMaker) Make(_ resource.ID, width, height int) (tea.Model, error) {
 			table.ModuleColumn.Key:        ws.ModulePath(),
 			table.WorkspaceColumn.Key:     ws.Name,
 			table.ResourceCountColumn.Key: m.Helpers.WorkspaceResourceCount(ws),
-			costColumn.Key:                m.Helpers.WorkspaceCost(ws),
+			table.CostColumn.Key:          m.Helpers.WorkspaceCost(ws),
 			currentColumn.Key:             m.Helpers.WorkspaceCurrentCheckmark(ws),
 		}
 	}

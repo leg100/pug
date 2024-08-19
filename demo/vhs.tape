@@ -8,7 +8,6 @@ Set Framerate 24
 Set Padding 5
 
 Hide
-Type "demo/reset.sh" Enter
 Type `TF_CLI_CONFIG_FILE=$PWD/mirror/mirror.tfrc go run main.go -w demo` Enter
 Sleep 1s
 Show

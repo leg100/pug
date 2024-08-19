@@ -3,6 +3,7 @@ package workspace
 import (
 	"encoding/json"
 
+	"github.com/leg100/pug/internal"
 	"gopkg.in/yaml.v3"
 )
 
@@ -18,7 +19,7 @@ type infracostProjectConfig struct {
 	TerraformVarFiles  []string `yaml:"terraform_var_files,omitempty"`
 }
 
-func generateCostConfig(workspaces ...*Workspace) ([]byte, error) {
+func generateCostConfig(workdir internal.Workdir, workspaces ...*Workspace) ([]byte, error) {
 	cfg := infracostConfig{Version: "0.1"}
 	cfg.Projects = make([]infracostProjectConfig, len(workspaces))
 
@@ -27,7 +28,7 @@ func generateCostConfig(workspaces ...*Workspace) ([]byte, error) {
 			Path:               ws.ModulePath(),
 			TerraformWorkspace: ws.Name,
 		}
-		if fname, ok := ws.VarsFile(); ok {
+		if fname, ok := ws.VarsFile(workdir); ok {
 			cfg.Projects[i].TerraformVarFiles = []string{fname}
 		}
 	}

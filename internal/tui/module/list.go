@@ -58,6 +58,7 @@ func (m *ListMaker) Make(_ resource.ID, width, height int) (tea.Model, error) {
 	columns = append(columns,
 		backendType,
 		currentWorkspace,
+		table.CostColumn,
 		table.ResourceCountColumn,
 	)
 
@@ -67,6 +68,7 @@ func (m *ListMaker) Make(_ resource.ID, width, height int) (tea.Model, error) {
 			backendType.Key:               mod.Backend,
 			currentWorkspace.Key:          m.Helpers.CurrentWorkspaceName(mod.CurrentWorkspaceID),
 			table.ResourceCountColumn.Key: m.Helpers.ModuleCurrentResourceCount(mod),
+			table.CostColumn.Key:          m.Helpers.ModuleCost(mod),
 		}
 		dependencyNames := make([]string, 0, len(mod.Dependencies()))
 		for _, id := range mod.Dependencies() {
@@ -122,6 +124,12 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	)
 
 	switch msg := msg.(type) {
+	case resource.Event[*workspace.Workspace]:
+		// Re-render module whenever a workspace event is received belonging to the
+		// module.
+		if mod := msg.Payload.Module(); mod != nil {
+			m.table.AddItems(mod.(*module.Module))
+		}
 	case resource.Event[*task.Task]:
 		// Re-render module whenever a task event is received belonging to the
 		// module.
@@ -197,6 +205,19 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				fmt.Sprintf(applyPrompt, len(specs)),
 				m.helpers.CreateTasksWithSpecs(specs...),
 			)
+		case key.Matches(msg, keys.Common.Cost):
+			// Retrieve all selected or current rows with a current workspace.
+			var workspaceIDs []resource.ID
+			for _, row := range m.table.SelectedOrCurrent() {
+				if row.Value.CurrentWorkspaceID != nil {
+					workspaceIDs = append(workspaceIDs, *row.Value.CurrentWorkspaceID)
+				}
+			}
+			spec, err := m.Workspaces.Cost(workspaceIDs...)
+			if err != nil {
+				return m, tui.ReportError(fmt.Errorf("creating task: %w", err))
+			}
+			return m, m.helpers.CreateTasksWithSpecs(spec)
 		}
 	}
 
@@ -223,6 +244,7 @@ func (m list) HelpBindings() (bindings []key.Binding) {
 		keys.Common.Apply,
 		keys.Common.Destroy,
 		keys.Common.Edit,
+		keys.Common.Cost,
 		localKeys.ReloadModules,
 		localKeys.ReloadWorkspaces,
 	}

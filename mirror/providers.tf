@@ -9,5 +9,8 @@ terraform {
     http = {
       version = "= 3.4.3"
     }
+    aws = {
+      version = "= 5.63.0"
+    }
   }
 }
