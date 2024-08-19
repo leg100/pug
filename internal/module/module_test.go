@@ -12,9 +12,7 @@ import (
 func TestNew(t *testing.T) {
 	os.MkdirAll("./testdata/modules/with_both_s3_backend_and_dot_terraform_dir/.terraform", 0o755)
 
-	workdir, _ := internal.NewWorkdir("./testdata/modules")
-
-	got := New(workdir, Options{Path: "with_s3_backend", Backend: "s3"})
+	got := New(Options{Path: "with_s3_backend", Backend: "s3"})
 	assert.Equal(t, "with_s3_backend", got.Path)
 }
 

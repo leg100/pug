@@ -43,6 +43,11 @@ func NewWorkdir(path string) (Workdir, error) {
 	return wd, nil
 }
 
+func (wd Workdir) Join(paths ...string) string {
+	paths = append([]string{wd.path}, paths...)
+	return filepath.Join(paths...)
+}
+
 func (wd Workdir) String() string {
 	return wd.path
 }

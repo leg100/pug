@@ -61,37 +61,38 @@ func NewService(opts ServiceOptions) *Service {
 }
 
 // LoadWorkspacesUponModuleLoad automatically loads workspaces for a module
-// whenever:
-// * a new module is loaded into pug for the first time
-// * an existing module is updated and does not yet have a current workspace.
-//
-// TODO: "load" is ambiguous, it often means the opposite of save, i.e. read
-// from a system, whereas what is intended is to save or add workspaces to pug.
+// loaded into pug.
 func (s *Service) LoadWorkspacesUponModuleLoad(sub <-chan resource.Event[*module.Module]) {
-	reload := func(moduleID resource.ID) error {
-		spec, err := s.Reload(moduleID)
-		if err != nil {
-			return err
-		}
-		_, err = s.tasks.Create(spec)
-		return err
-	}
-
 	for event := range sub {
-		switch event.Type {
-		case resource.CreatedEvent:
-			if err := reload(event.Payload.ID); err != nil {
-				s.logger.Error("reloading workspaces", "module", event.Payload)
-			}
-		case resource.UpdatedEvent:
-			if event.Payload.CurrentWorkspaceID != nil {
-				// Module already has a current workspace; no need to reload
-				// workspaces
-				continue
-			}
-			if err := reload(event.Payload.ID); err != nil {
-				s.logger.Error("reloading workspaces", "module", event.Payload)
-			}
+		if event.Type != resource.CreatedEvent {
+			continue
+		}
+		if err := s.createReloadTask(event.Payload.ID); err != nil {
+			s.logger.Error("reloading workspaces", "module", event.Payload)
+		}
+	}
+}
+
+// LoadWorkspacesUponInit automatically loads workspaces for a module whenever
+// it is successfully initialized and the module does not yet have a current
+// workspace.
+func (s *Service) LoadWorkspacesUponInit(sub <-chan resource.Event[*task.Task]) {
+	for event := range sub {
+		if !module.IsInitTask(event.Payload) {
+			continue
+		}
+		if event.Payload.State != task.Exited {
+			continue
+		}
+		mod, err := s.modules.Get(event.Payload.Module().GetID())
+		if err != nil {
+			continue
+		}
+		if mod.CurrentWorkspaceID != nil {
+			continue
+		}
+		if err := s.createReloadTask(mod.ID); err != nil {
+			s.logger.Error("reloading workspaces", "module", event.Payload)
 		}
 	}
 }

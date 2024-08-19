@@ -5,7 +5,6 @@ import (
 	"os"
 	"testing"
 
-	"github.com/leg100/pug/internal"
 	"github.com/leg100/pug/internal/module"
 	"github.com/leg100/pug/internal/workspace"
 	"github.com/stretchr/testify/assert"
@@ -13,7 +12,7 @@ import (
 )
 
 func TestState(t *testing.T) {
-	mod := module.New(internal.NewTestWorkdir(t), module.Options{Path: "a/b/c"})
+	mod := module.New(module.Options{Path: "a/b/c"})
 	ws, err := workspace.New(mod, "dev")
 	require.NoError(t, err)
 

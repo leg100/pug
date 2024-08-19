@@ -15,11 +15,11 @@ import (
 func TestLoadTerragruntDependenciesFromDigraph(t *testing.T) {
 	// Setup modules and load into table
 	workdir := internal.NewTestWorkdir(t)
-	vpc := New(workdir, Options{Path: "root/vpc"})
-	redis := New(workdir, Options{Path: "root/redis"})
-	mysql := New(workdir, Options{Path: "root/mysql"})
-	frontend := New(workdir, Options{Path: "root/frontend-app"})
-	backend := New(workdir, Options{Path: "root/backend-app"})
+	vpc := New(Options{Path: "root/vpc"})
+	redis := New(Options{Path: "root/redis"})
+	mysql := New(Options{Path: "root/mysql"})
+	frontend := New(Options{Path: "root/frontend-app"})
+	backend := New(Options{Path: "root/backend-app"})
 	svc := &Service{
 		table:   &fakeModuleTable{modules: []*Module{vpc, redis, mysql, backend, frontend}},
 		workdir: workdir,

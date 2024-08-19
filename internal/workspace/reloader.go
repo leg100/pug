@@ -33,9 +33,20 @@ func (s ReloadSummary) LogValue() slog.Value {
 	)
 }
 
+func (r *reloader) createReloadTask(moduleID resource.ID) error {
+	spec, err := r.Reload(moduleID)
+	if err != nil {
+		return err
+	}
+	_, err = r.tasks.Create(spec)
+	return err
+}
+
 // Reload returns a task spec that runs `terraform workspace list` on a
 // module and updates pug with the results, adding any newly discovered
 // workspaces and pruning any workspaces no longer found to exist.
+//
+// TODO: separate into Load and Reload
 func (r *reloader) Reload(moduleID resource.ID) (task.Spec, error) {
 	mod, err := r.modules.Get(moduleID)
 	if err != nil {
