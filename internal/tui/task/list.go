@@ -136,7 +136,7 @@ func (m List) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, cancel(m.tasks, taskIDs...)
 		case key.Matches(msg, keys.Global.Enter):
 			if row, ok := m.Table.CurrentRow(); ok {
-				return m, tui.NavigateTo(tui.TaskKind, tui.WithParent(row.Value))
+				return m, tui.NavigateTo(tui.TaskKind, tui.WithParent(row.ID))
 			}
 		case key.Matches(msg, keys.Common.Apply):
 			specs, err := m.Table.Prune(func(t *task.Task) (task.Spec, error) {
@@ -153,7 +153,7 @@ func (m List) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, keys.Common.State):
 			if row, ok := m.Table.CurrentRow(); ok {
 				if ws, ok := m.helpers.TaskWorkspace(row.Value); ok {
-					return m, tui.NavigateTo(tui.ResourceListKind, tui.WithParent(ws))
+					return m, tui.NavigateTo(tui.ResourceListKind, tui.WithParent(ws.GetID()))
 				} else {
 					return m, tui.ReportError(errors.New("task not associated with a workspace"))
 				}

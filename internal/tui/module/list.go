@@ -150,7 +150,7 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, keys.Common.State):
 			if row, ok := m.table.CurrentRow(); ok {
 				if ws := m.helpers.ModuleCurrentWorkspace(row.Value); ws != nil {
-					return m, tui.NavigateTo(tui.ResourceListKind, tui.WithParent(ws))
+					return m, tui.NavigateTo(tui.ResourceListKind, tui.WithParent(ws.ID))
 				}
 			}
 		case key.Matches(msg, keys.Common.PlanDestroy):

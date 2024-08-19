@@ -21,9 +21,9 @@ func NewNavigationMsg(kind Kind, opts ...NavigateOption) NavigationMsg {
 
 type NavigateOption func(msg *NavigationMsg)
 
-func WithParent(parent resource.Resource) NavigateOption {
+func WithParent(parent resource.ID) NavigateOption {
 	return func(msg *NavigationMsg) {
-		msg.Page.ID = parent.GetID()
+		msg.Page.ID = parent
 	}
 }
 
