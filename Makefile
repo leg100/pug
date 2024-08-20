@@ -57,5 +57,6 @@ install-terragrunt:
 .PHONY: install-infracost
 install-infracost:
 	mkdir -p ~/.local/bin
-	curl -L https://github.com/infracost/infracost/releases/download/v0.10.38/infracost-linux-amd64.tar.gz -o ~/.local/bin/infracost
+	curl -L https://github.com/infracost/infracost/releases/download/v0.10.38/infracost-linux-amd64.tar.gz | tar -zxf -
+	mv infracost-linux-amd64 ~/.local/bin/infracost
 	chmod +x ~/.local/bin/infracost
