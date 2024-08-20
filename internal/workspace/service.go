@@ -1,12 +1,8 @@
 package workspace
 
 import (
-	"errors"
 	"fmt"
-	"os"
-	"path/filepath"
 
-	"github.com/google/uuid"
 	"github.com/leg100/pug/internal"
 	"github.com/leg100/pug/internal/logging"
 	"github.com/leg100/pug/internal/module"
@@ -26,6 +22,7 @@ type Service struct {
 
 	*pubsub.Broker[*Workspace]
 	*reloader
+	*costTaskSpecCreator
 }
 
 type ServiceOptions struct {
@@ -68,6 +65,7 @@ func NewService(opts ServiceOptions) *Service {
 		workdir: opts.Workdir,
 	}
 	s.reloader = &reloader{s}
+	s.costTaskSpecCreator = &costTaskSpecCreator{s}
 	return s
 }
 
@@ -216,85 +214,6 @@ func (s *Service) Delete(workspaceID resource.ID) (task.Spec, error) {
 		Blocking: true,
 		AfterExited: func(*task.Task) {
 			s.table.Delete(ws.ID)
-		},
-	}, nil
-}
-
-// Cost creates a task that retrieves a breakdown of the costs of the
-// infrastructure deployed by the workspace.
-func (s *Service) Cost(workspaceIDs ...resource.ID) (task.Spec, error) {
-	if len(workspaceIDs) == 0 {
-		return task.Spec{}, errors.New("no workspaces specified")
-	}
-	workspaces := make([]*Workspace, len(workspaceIDs))
-	for i, id := range workspaceIDs {
-		ws, err := s.Get(id)
-		if err != nil {
-			return task.Spec{}, err
-		}
-		workspaces[i] = ws
-	}
-	var (
-		configPath    string
-		breakdownPath string
-	)
-	{
-		// generate unique names for temporary files
-		id := uuid.New()
-		configPath = filepath.Join(s.datadir, fmt.Sprintf("cost-%s.yaml", id.String()))
-		breakdownPath = filepath.Join(s.datadir, fmt.Sprintf("breakdown-%s.json", id.String()))
-	}
-	{
-		// generate config for infracost
-		configBody, err := generateCostConfig(s.workdir, workspaces...)
-		if err != nil {
-			return task.Spec{}, err
-		}
-		if err := os.WriteFile(configPath, configBody, 0o644); err != nil {
-			return task.Spec{}, err
-		}
-	}
-	return task.Spec{
-		Parent:  resource.GlobalResource,
-		Program: "infracost",
-		Command: []string{"breakdown"},
-		Args:    []string{"--config-file", configPath, "--format", "json", "--out-file", breakdownPath},
-		// Update task to chain commands
-		AdditionalExecution: &task.AdditionalExecution{
-			Program: "infracost",
-			Command: []string{"output"},
-			Args:    []string{"--format", "table", "--path", breakdownPath},
-		},
-		Blocking:    true,
-		Description: "cost",
-		BeforeExited: func(*task.Task) (task.Summary, error) {
-			// Parse JSON output and update workspaces.
-			breakdown, err := os.ReadFile(breakdownPath)
-			if err != nil {
-				return nil, err
-			}
-			results, err := parseBreakdown(breakdown)
-			if err != nil {
-				return nil, err
-			}
-			for _, result := range results {
-				ws, err := s.GetByName(result.path, result.workspace)
-				if err != nil {
-					return nil, err
-				}
-				_, err = s.table.Update(ws.ID, func(existing *Workspace) error {
-					existing.Cost = result.cost
-					return nil
-				})
-				if err != nil {
-					return nil, err
-				}
-			}
-			return nil, nil
-		},
-		AfterFinish: func(*task.Task) {
-			os.Remove(configPath)
-			os.Remove(breakdownPath)
 		},
 	}, nil
 }

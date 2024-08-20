@@ -189,6 +189,8 @@ func (h *Helpers) TaskSummary(t *task.Task, table bool) string {
 		return h.ResourceReport(summary, table)
 	case workspace.ReloadSummary:
 		return h.WorkspaceReloadReport(summary, table)
+	case workspace.CostSummary:
+		return h.CostSummary(summary, table)
 	case state.ReloadSummary:
 		return h.StateReloadReport(summary, table)
 	}
@@ -244,6 +246,20 @@ func (h *Helpers) StateReloadReport(report state.ReloadSummary, table bool) stri
 	newSerial := Regular.Background(background).Foreground(Green).Render(fmt.Sprintf("#%d", report.NewSerial()))
 
 	s := fmt.Sprintf("%s<-%s", newSerial, oldSerial)
+	if !table {
+		s = Padded.Background(background).Render(s)
+	}
+	return s
+}
+
+// CostSummary renders a summary of the costs for a workspace. Set table to true
+// if the report is rendered within a table row.
+func (h *Helpers) CostSummary(report workspace.CostSummary, table bool) string {
+	var background lipgloss.TerminalColor = lipgloss.NoColor{}
+	if !table {
+		background = RunReportBackgroundColor
+	}
+	s := Regular.Background(background).Foreground(Green).Render(report.String())
 	if !table {
 		s = Padded.Background(background).Render(s)
 	}

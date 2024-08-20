@@ -104,14 +104,8 @@ func (l *testLogger) Write(b []byte) (int, error) {
 	return len(b), nil
 }
 
-func waitFor(t *testing.T, tm *testModel, cond func(s string) bool, opts ...teatest.WaitForOption) {
+func waitFor(t *testing.T, tm *testModel, cond func(s string) bool) {
 	t.Helper()
-
-	defaultOpts := []teatest.WaitForOption{
-		teatest.WithCheckInterval(time.Millisecond * 100),
-		teatest.WithDuration(time.Second * 10),
-	}
-	defaultOpts = append(defaultOpts, opts...)
 
 	teatest.WaitFor(
 		t,
@@ -119,7 +113,8 @@ func waitFor(t *testing.T, tm *testModel, cond func(s string) bool, opts ...teat
 		func(b []byte) bool {
 			return cond(string(b))
 		},
-		defaultOpts...,
+		teatest.WithCheckInterval(time.Millisecond*100),
+		teatest.WithDuration(time.Second*10),
 	)
 }
 

@@ -48,8 +48,9 @@ func TestCost_parseBreakdown(t *testing.T) {
 	got, err := parseBreakdown(breakdown)
 	require.NoError(t, err)
 
-	assert.Len(t, got, 4)
-	assert.Contains(t, got, breakdownResult{
+	assert.Equal(t, "264.248", got.total)
+	assert.Len(t, got.projects, 4)
+	assert.Contains(t, got.projects, breakdownResultProject{
 		path:      "modules/a",
 		workspace: "dev",
 		cost:      "239.072",
