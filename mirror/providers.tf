@@ -9,8 +9,8 @@ terraform {
     http = {
       version = "= 3.4.3"
     }
-    aws = {
-      version = "= 5.63.0"
+    google = {
+      version = "= 5.42.0"
     }
   }
 }

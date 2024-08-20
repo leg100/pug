@@ -3,19 +3,57 @@ terraform {
 }
 
 # Configure the AWS Provider
-provider "aws" {
+provider "google" {
   region = "us-east-1"
 }
 
-resource "aws_instance" "web" {
-  ami           = data.aws_ami.ubuntu.id
-  instance_type = var.instance_type
+resource "google_compute_instance" "default" {
+  name         = "my-instance"
+  machine_type = var.instance_type
+  zone         = "us-central1-a"
 
-  tags = {
-    Name = "HelloWorld"
+  tags = ["foo", "bar"]
+
+  boot_disk {
+    initialize_params {
+      image = "debian-cloud/debian-11"
+      labels = {
+        my_label = "value"
+      }
+    }
+  }
+
+  // Local SSD disk
+  scratch_disk {
+    interface = "NVME"
+  }
+
+  network_interface {
+    network = "default"
+
+    access_config {
+      // Ephemeral public IP
+    }
+  }
+
+  metadata = {
+    foo = "bar"
+  }
+
+  metadata_startup_script = "echo hi > /test.txt"
+
+  service_account {
+    # Google recommends custom service accounts that have cloud-platform scope and permissions granted via IAM Roles.
+    email  = google_service_account.default.email
+    scopes = ["cloud-platform"]
   }
 }
 
+resource "google_service_account" "default" {
+  account_id   = "my-custom-sa"
+  display_name = "Custom SA for VM Instance"
+}
+
 variable "instance_type" {
-  default = "t3.micro"
+  default = "n2-standard-2"
 }

@@ -26,8 +26,9 @@ func TestCost(t *testing.T) {
 
 	// Wait for infracost task to produce overall total
 	waitFor(t, tm, func(s string) bool {
+		t.Log(s)
 		return matchPattern(t, `Task.*cost.*exited`, s) &&
-			matchPattern(t, `OVERALL TOTAL.*\$264.25`, s)
+			matchPattern(t, `OVERALL TOTAL.*\$2\,621\.90`, s)
 	})
 
 	// Go back to workspace listing
@@ -35,17 +36,18 @@ func TestCost(t *testing.T) {
 
 	// Each workspace should now have a cost.
 	waitFor(t, tm, func(s string) bool {
-		return matchPattern(t, `modules/a.*default.*\$8.392`, s) &&
-			matchPattern(t, `modules/a.*dev.*\$239.072`, s) &&
-			matchPattern(t, `modules/b.*default.*\$8.392`, s) &&
-			matchPattern(t, `modules/c.*default.*\$8.392`, s)
+		t.Log(s)
+		return matchPattern(t, `modules/a.*default.*\$87.116912`, s) &&
+			matchPattern(t, `modules/a.*dev.*\$2360.547736`, s) &&
+			matchPattern(t, `modules/b.*default.*\$87.116912`, s) &&
+			matchPattern(t, `modules/c.*default.*\$87.116912`, s)
 	})
 }
 
 func setupInfracostWorkspaces(t *testing.T) *testModel {
 	responses := map[string][]byte{
-		"t3.micro":    []byte(`[{"data":{"products":[{"prices":[{"priceHash":"2f1bc092c9e34dc084a4d96d19ef47ca-d2c98780d7b6e36641b521f1f8145c6f","USD":"0.0104"}]}]}},{"data":{"products":[{"prices":[{"priceHash":"ccdf11d8e4c0267d78a19b6663a566c1-e8e892be2fbd1c8f42fd6761ad8977d8","USD":"0.05"}]}]}},{"data":{"products":[{"prices":[{"priceHash":"efa8e70ebe004d2e9527fd30d50d09b2-ee3dd7e4624338037ca6fea0933a662f","USD":"0.1"}]}]}}]}]}}]`),
-		"m7g.2xlarge": []byte(`[{"data":{"products":[{"prices":[{"priceHash":"9e451d8e8608d394a391b3709c9c8099-d2c98780d7b6e36641b521f1f8145c6f","USD":"0.3264"}]}]}},{"data":{"products":[{"prices":[{"priceHash":"efa8e70ebe004d2e9527fd30d50d09b2-ee3dd7e4624338037ca6fea0933a662f","USD":"0.1"}]}]}}]`),
+		"n2-standard-2":  []byte(`[{"data":{"products":[{"prices":[{"priceHash":"3460e5656b29ac302574c1c49d98a379-66d0d770bee368b4f2a8f2f597eeb417","USD":"0.097118"}]}]}},{"data":{"products":[{"prices":[{"priceHash":"4e58b7b536714dfce35b3050caa6034b-af6a951f170fc579633ad2c8f86a9dca","USD":"0.04"}]}]}},{"data":{"products":[{"prices":[{"priceHash":"dae3672d3f7605d4e5c6d48aa342d66c-57bc5d148491a8381abaccb21ca6b4e9","USD":"0.08"}]}]}}]`),
+		"n1-standard-96": []byte(`[{"data":{"products":[{"prices":[{"priceHash":"84f8a08589f2331eac14c963f98e7f73-66d0d770bee368b4f2a8f2f597eeb417","USD":"4.559976"}]}]}},{"data":{"products":[{"prices":[{"priceHash":"4e58b7b536714dfce35b3050caa6034b-af6a951f170fc579633ad2c8f86a9dca","USD":"0.04"}]}]}},{"data":{"products":[{"prices":[{"priceHash":"dae3672d3f7605d4e5c6d48aa342d66c-57bc5d148491a8381abaccb21ca6b4e9","USD":"0.08"}]}]}}]`),
 	}
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
