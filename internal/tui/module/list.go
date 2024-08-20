@@ -205,19 +205,6 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				fmt.Sprintf(applyPrompt, len(specs)),
 				m.helpers.CreateTasksWithSpecs(specs...),
 			)
-		case key.Matches(msg, keys.Common.Cost):
-			// Retrieve all selected or current rows with a current workspace.
-			var workspaceIDs []resource.ID
-			for _, row := range m.table.SelectedOrCurrent() {
-				if row.Value.CurrentWorkspaceID != nil {
-					workspaceIDs = append(workspaceIDs, *row.Value.CurrentWorkspaceID)
-				}
-			}
-			spec, err := m.Workspaces.Cost(workspaceIDs...)
-			if err != nil {
-				return m, tui.ReportError(fmt.Errorf("creating task: %w", err))
-			}
-			return m, m.helpers.CreateTasksWithSpecs(spec)
 		}
 	}
 

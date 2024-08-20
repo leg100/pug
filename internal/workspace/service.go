@@ -1,6 +1,7 @@
 package workspace
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -222,6 +223,9 @@ func (s *Service) Delete(workspaceID resource.ID) (task.Spec, error) {
 // Cost creates a task that retrieves a breakdown of the costs of the
 // infrastructure deployed by the workspace.
 func (s *Service) Cost(workspaceIDs ...resource.ID) (task.Spec, error) {
+	if len(workspaceIDs) == 0 {
+		return task.Spec{}, errors.New("no workspaces specified")
+	}
 	workspaces := make([]*Workspace, len(workspaceIDs))
 	for i, id := range workspaceIDs {
 		ws, err := s.Get(id)
