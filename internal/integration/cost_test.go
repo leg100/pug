@@ -8,8 +8,10 @@ import (
 	"os/exec"
 	"strings"
 	"testing"
+	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/x/exp/teatest"
 	"github.com/leg100/pug/internal/app"
 	"github.com/stretchr/testify/require"
 )
@@ -78,7 +80,7 @@ func setupInfracostWorkspaces(t *testing.T) *testModel {
 			matchPattern(t, `modules/a.*exited`, s) &&
 			matchPattern(t, `modules/b.*exited`, s) &&
 			matchPattern(t, `modules/c.*exited`, s)
-	})
+	}, teatest.WithDuration(time.Second*30))
 
 	// Go to workspace listing
 	tm.Type("w")
