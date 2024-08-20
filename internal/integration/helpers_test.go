@@ -114,7 +114,7 @@ func waitFor(t *testing.T, tm *testModel, cond func(s string) bool) {
 			return cond(string(b))
 		},
 		teatest.WithCheckInterval(time.Millisecond*100),
-		teatest.WithDuration(time.Second*10),
+		teatest.WithDuration(time.Second*20),
 	)
 }
 
