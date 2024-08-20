@@ -28,6 +28,7 @@ func TestCost(t *testing.T) {
 
 	// Wait for infracost task to produce overall total
 	waitFor(t, tm, func(s string) bool {
+		t.Log(s)
 		return matchPattern(t, `Task.*cost.*exited`, s) &&
 			matchPattern(t, `OVERALL TOTAL.*\$2\,621\.90`, s)
 	})
