@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 
 	"github.com/google/uuid"
 	"github.com/leg100/pug/internal"
@@ -97,10 +98,10 @@ func (s *costTaskSpecCreator) Cost(workspaceIDs ...resource.ID) (task.Spec, erro
 	}, nil
 }
 
-type CostSummary string
+type CostSummary float64
 
 func (c CostSummary) String() string {
-	return fmt.Sprintf("$%s", string(c))
+	return fmt.Sprintf("$%.2f", c)
 }
 
 type infracostConfig struct {
@@ -140,7 +141,7 @@ type infracostBreakdown struct {
 
 type infracostBreakdownProject struct {
 	Metadata  infracostBreakdownProjectMetadata
-	Breakdown infracostBreakdownBreakdown
+	Breakdown infracostBreakdownProjectBreakdown
 }
 
 type infracostBreakdownProjectMetadata struct {
@@ -148,19 +149,19 @@ type infracostBreakdownProjectMetadata struct {
 	TerraformWorkspace  string `json:"terraformWorkspace"`
 }
 
-type infracostBreakdownBreakdown struct {
+type infracostBreakdownProjectBreakdown struct {
 	TotalMonthlyCost string `json:"totalMonthlyCost"`
 }
 
 type breakdownResult struct {
 	projects []breakdownResultProject
-	total    string
+	total    float64
 }
 
 type breakdownResultProject struct {
 	path      string
 	workspace string
-	cost      string
+	cost      float64
 }
 
 func parseBreakdown(jsonPayload []byte) (breakdownResult, error) {
@@ -168,14 +169,24 @@ func parseBreakdown(jsonPayload []byte) (breakdownResult, error) {
 	if err := json.Unmarshal(jsonPayload, &breakdown); err != nil {
 		return breakdownResult{}, err
 	}
-	result := breakdownResult{total: breakdown.TotalMonthlyCost}
+	// Parse overall total cost
+	total, err := strconv.ParseFloat(breakdown.TotalMonthlyCost, 64)
+	if err != nil {
+		return breakdownResult{}, err
+	}
+	// Parse per-project costs
+	result := breakdownResult{total: total}
 	result.projects = make([]breakdownResultProject, len(breakdown.Projects))
 	for i, proj := range breakdown.Projects {
 		result.projects[i] = breakdownResultProject{
 			path:      proj.Metadata.TerraformModulePath,
 			workspace: proj.Metadata.TerraformWorkspace,
-			cost:      proj.Breakdown.TotalMonthlyCost,
 		}
+		cost, err := strconv.ParseFloat(proj.Breakdown.TotalMonthlyCost, 64)
+		if err != nil {
+			return breakdownResult{}, err
+		}
+		result.projects[i].cost = cost
 	}
 	return result, nil
 }

@@ -16,7 +16,7 @@ type Workspace struct {
 	resource.Common
 
 	Name string
-	Cost string
+	Cost float64
 }
 
 func New(mod *module.Module, name string) (*Workspace, error) {

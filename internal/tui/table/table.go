@@ -71,6 +71,9 @@ type Column struct {
 	Width          int
 	FlexFactor     int
 	TruncationFunc func(s string, w int, tail string) string
+	// RightAlign aligns content to the right. If false, content is aligned to
+	// the left.
+	RightAlign bool
 }
 
 type ColumnKey string
@@ -622,6 +625,9 @@ func (m Model[V]) headersView() string {
 	var s = make([]string, 0, len(m.cols))
 	for _, col := range m.cols {
 		style := lipgloss.NewStyle().Width(col.Width).MaxWidth(col.Width).Inline(true)
+		if col.RightAlign {
+			style = style.AlignHorizontal(lipgloss.Right)
+		}
 		renderedCell := style.Render(runewidth.Truncate(col.Title, col.Width, "…"))
 		s = append(s, tui.Regular.Padding(0, 1).Render(renderedCell))
 	}
@@ -661,11 +667,14 @@ func (m *Model[V]) renderRow(rowIdx int) string {
 		// Truncate content if it is wider than column
 		truncated := col.TruncationFunc(content, col.Width, "…")
 		// Ensure content is all on one line.
-		inlined := lipgloss.NewStyle().
+		style := lipgloss.NewStyle().
 			Width(col.Width).
 			MaxWidth(col.Width).
-			Inline(true).
-			Render(truncated)
+			Inline(true)
+		if col.RightAlign {
+			style = style.AlignHorizontal(lipgloss.Right)
+		}
+		inlined := style.Render(truncated)
 		// Apply block-styling to content
 		boxed := lipgloss.NewStyle().
 			Padding(0, 1).

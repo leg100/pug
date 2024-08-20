@@ -338,6 +338,7 @@ func (t *Task) updateState(state Status) {
 		summary, err := t.BeforeExited(t)
 		if err != nil {
 			state = Errored
+			t.Err = err
 		}
 		t.Summary = summary
 	}

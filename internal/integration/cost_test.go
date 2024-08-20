@@ -26,7 +26,6 @@ func TestCost(t *testing.T) {
 
 	// Wait for infracost task to produce overall total
 	waitFor(t, tm, func(s string) bool {
-		t.Log(s)
 		return matchPattern(t, `Task.*cost.*exited`, s) &&
 			matchPattern(t, `OVERALL TOTAL.*\$2\,621\.90`, s)
 	})
@@ -36,10 +35,10 @@ func TestCost(t *testing.T) {
 
 	// Each workspace should now have a cost.
 	waitFor(t, tm, func(s string) bool {
-		return matchPattern(t, `modules/a.*default.*\$87.116912`, s) &&
-			matchPattern(t, `modules/a.*dev.*\$2360.547736`, s) &&
-			matchPattern(t, `modules/b.*default.*\$87.116912`, s) &&
-			matchPattern(t, `modules/c.*default.*\$87.116912`, s)
+		return matchPattern(t, `modules/a.*default.*\$87.12`, s) &&
+			matchPattern(t, `modules/a.*dev.*\$2360.55`, s) &&
+			matchPattern(t, `modules/b.*default.*\$87.12`, s) &&
+			matchPattern(t, `modules/c.*default.*\$87.12`, s)
 	})
 }
 

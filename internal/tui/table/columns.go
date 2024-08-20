@@ -26,5 +26,6 @@ var (
 		Key:        "cost",
 		Title:      "COST",
 		FlexFactor: 1,
+		RightAlign: true,
 	}
 )
