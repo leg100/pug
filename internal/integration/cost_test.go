@@ -73,6 +73,7 @@ func setupInfracostWorkspaces(t *testing.T) *testModel {
 	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlA})
 	tm.Type("i")
 	waitFor(t, tm, func(s string) bool {
+		t.Log(s)
 		return matchPattern(t, "TaskGroup.*init", s) &&
 			matchPattern(t, `modules/a.*exited`, s) &&
 			matchPattern(t, `modules/b.*exited`, s) &&
