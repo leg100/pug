@@ -37,11 +37,6 @@ var (
 		Title: "AGE",
 		Width: 7,
 	}
-	runChangesColumn = table.Column{
-		Key:        "run_changes",
-		Title:      "CHANGES",
-		FlexFactor: 1,
-	}
 )
 
 // ListTaskMaker makes task models belonging to a task list model
@@ -79,7 +74,7 @@ func (mm *ListMaker) Make(_ resource.ID, width, height int) (tea.Model, error) {
 		table.WorkspaceColumn,
 		commandColumn,
 		statusColumn,
-		runChangesColumn,
+		table.SummaryColumn,
 		ageColumn,
 	}
 
@@ -91,7 +86,7 @@ func (mm *ListMaker) Make(_ resource.ID, width, height int) (tea.Model, error) {
 			commandColumn.Key:         t.String(),
 			ageColumn.Key:             tui.Ago(time.Now(), t.Updated),
 			statusColumn.Key:          mm.Helpers.TaskStatus(t, false),
-			runChangesColumn.Key:      mm.Helpers.TaskSummary(t, true),
+			table.SummaryColumn.Key:   mm.Helpers.TaskSummary(t, true),
 		}
 	}
 

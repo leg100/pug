@@ -177,116 +177,93 @@ func (h *Helpers) TaskStatus(t *task.Task, background bool) string {
 	}
 }
 
-// TaskSummary renders a summary of the task's outcome. Set table to true if the
-// outcome is to be rendered within a table row.
+// TaskSummary renders a summary of the task's outcome.
 func (h *Helpers) TaskSummary(t *task.Task, table bool) string {
 	if t.Summary == nil {
 		return ""
 	}
+	var style lipgloss.Style
+	if !table {
+		style = lipgloss.NewStyle().Background(TaskSummaryBackgroundColor)
+	}
 	// Render special resource report
+	var content string
 	switch summary := t.Summary.(type) {
 	case plan.Report:
-		return h.ResourceReport(summary, table)
+		content = h.ResourceReport(summary, style)
 	case workspace.ReloadSummary:
-		return h.WorkspaceReloadReport(summary, table)
+		content = h.WorkspaceReloadReport(summary, style)
 	case workspace.CostSummary:
-		return h.CostSummary(summary, table)
+		content = h.CostSummary(summary, style)
 	case state.ReloadSummary:
-		return h.StateReloadReport(summary, table)
+		content = h.StateReloadReport(summary, style)
+	default:
+		content = t.Summary.String()
 	}
-	return t.Summary.String()
+	if table {
+		return content
+	}
+	return Padded.Background(TaskSummaryBackgroundColor).Render(content)
 }
 
 // ResourceReport renders a colored summary of resource changes as a result of a
-// plan or apply. Set table to true if the report is rendered within a table
-// row.
-func (h *Helpers) ResourceReport(report plan.Report, table bool) string {
-	var background lipgloss.TerminalColor = lipgloss.NoColor{}
-	if !table {
-		background = RunReportBackgroundColor
-	}
-	additions := Regular.Background(background).Foreground(Green).Render(fmt.Sprintf("+%d", report.Additions))
-	changes := Regular.Background(background).Foreground(Blue).Render(fmt.Sprintf("~%d", report.Changes))
-	destructions := Regular.Background(background).Foreground(Red).Render(fmt.Sprintf("-%d", report.Destructions))
+// plan or apply.
+func (h *Helpers) ResourceReport(report plan.Report, inherit lipgloss.Style) string {
+	additions := Regular.Foreground(Green).Inherit(inherit).Render(fmt.Sprintf("+%d", report.Additions))
+	changes := Regular.Foreground(Blue).Inherit(inherit).Render(fmt.Sprintf("~%d", report.Changes))
+	destructions := Regular.Foreground(Red).Inherit(inherit).Render(fmt.Sprintf("-%d", report.Destructions))
 
-	s := fmt.Sprintf("%s%s%s", additions, changes, destructions)
-	if !table {
-		s = Padded.Background(background).Render(s)
-	}
-	return s
+	return fmt.Sprintf("%s%s%s", additions, changes, destructions)
 }
 
 // WorkspaceReloadReport renders a colored summary of workspaces added or
-// removed as a result of a workspace reload. Set table to true if the report is
-// rendered within a table row.
-func (h *Helpers) WorkspaceReloadReport(report workspace.ReloadSummary, table bool) string {
-	var background lipgloss.TerminalColor = lipgloss.NoColor{}
-	if !table {
-		background = RunReportBackgroundColor
-	}
-	added := Regular.Background(background).Foreground(Green).Render(fmt.Sprintf("+%d", len(report.Added)))
-	removed := Regular.Background(background).Foreground(Red).Render(fmt.Sprintf("-%d", len(report.Removed)))
+// removed as a result of a workspace reload.
+func (h *Helpers) WorkspaceReloadReport(report workspace.ReloadSummary, inherit lipgloss.Style) string {
+	added := Regular.Foreground(Green).Inherit(inherit).Render(fmt.Sprintf("+%d", len(report.Added)))
+	removed := Regular.Foreground(Red).Inherit(inherit).Render(fmt.Sprintf("-%d", len(report.Removed)))
 
-	s := fmt.Sprintf("%s%s", added, removed)
-	if !table {
-		s = Padded.Background(background).Render(s)
-	}
-	return s
+	return fmt.Sprintf("%s%s", added, removed)
 }
 
 // StateReloadReport renders a colored summary of changes resulting from a
-// workspace reload. Set table to true if the report is rendered within a table
-// row.
-func (h *Helpers) StateReloadReport(report state.ReloadSummary, table bool) string {
-	var background lipgloss.TerminalColor = lipgloss.NoColor{}
-	if !table {
-		background = RunReportBackgroundColor
+// workspace reload.
+func (h *Helpers) StateReloadReport(report state.ReloadSummary, inherit lipgloss.Style) string {
+	var foreground lipgloss.TerminalColor
+	switch report {
+	case state.Empty:
+		foreground = Red
+	case state.Unchanged:
+		foreground = Grey
+	case state.Updated:
+		foreground = Green
 	}
-	oldSerial := Regular.Background(background).Foreground(Red).Render(fmt.Sprintf("#%d", report.OldSerial()))
-	newSerial := Regular.Background(background).Foreground(Green).Render(fmt.Sprintf("#%d", report.NewSerial()))
-
-	s := fmt.Sprintf("%s<-%s", newSerial, oldSerial)
-	if !table {
-		s = Padded.Background(background).Render(s)
-	}
-	return s
+	return Regular.Foreground(foreground).Inherit(inherit).Render(report.String())
 }
 
-// CostSummary renders a summary of the costs for a workspace. Set table to true
-// if the report is rendered within a table row.
-func (h *Helpers) CostSummary(report workspace.CostSummary, table bool) string {
-	var background lipgloss.TerminalColor = lipgloss.NoColor{}
-	if !table {
-		background = RunReportBackgroundColor
-	}
-	s := Regular.Background(background).Foreground(Green).Render(report.String())
-	if !table {
-		s = Padded.Background(background).Render(s)
-	}
-	return s
+// CostSummary renders a summary of the costs for a workspace.
+func (h *Helpers) CostSummary(report workspace.CostSummary, inherit lipgloss.Style) string {
+	return Regular.Foreground(Green).Inherit(inherit).Render(report.String())
 }
 
-// GroupReport renders a colored summary of a task group's task statuses. Set table to true if
-// the report is rendered within a table row.
+// GroupReport renders a colored summary of a task group's task statuses.
 func (h *Helpers) GroupReport(group *task.Group, table bool) string {
-	var background lipgloss.TerminalColor = lipgloss.NoColor{}
+	var inherit lipgloss.Style
 	if !table {
-		background = GroupReportBackgroundColor
+		inherit = Padded.Background(GroupReportBackgroundColor)
 	}
-	slash := Regular.Background(background).Foreground(Grey).Render("/")
-	exited := Regular.Background(background).Foreground(Green).Render(fmt.Sprintf("%d", group.Exited()))
-	total := Regular.Background(background).Foreground(Blue).Render(fmt.Sprintf("%d", len(group.Tasks)))
+	slash := Regular.Inherit(inherit).Foreground(Grey).Render("/")
+	exited := Regular.Inherit(inherit).Foreground(Green).Render(fmt.Sprintf("%d", group.Exited()))
+	total := Regular.Inherit(inherit).Foreground(Blue).Render(fmt.Sprintf("%d", len(group.Tasks)))
 
 	s := fmt.Sprintf("%s%s%s", exited, slash, total)
 	if errored := group.Errored(); errored > 0 {
-		erroredString := Regular.Background(background).Foreground(Red).Render(fmt.Sprintf("%d", errored))
+		erroredString := Regular.Foreground(Red).Render(fmt.Sprintf("%d", errored))
 		s = fmt.Sprintf("%s%s%s", erroredString, slash, s)
 	}
-
-	if !table {
-		s = Padded.Background(background).Render(s)
+	if table {
+		return s
 	}
-	return s
+	return Padded.Background(GroupReportBackgroundColor).Render(s)
 }
 
 // CreateTasks repeatedly invokes fn with each id in ids, creating a task for

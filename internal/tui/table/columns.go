@@ -12,9 +12,9 @@ var (
 		Title:      "WORKSPACE",
 		FlexFactor: 1,
 	}
-	RunChangesColumn = Column{
-		Key:        "run_changes",
-		Title:      "CHANGES",
+	SummaryColumn = Column{
+		Key:        "summary",
+		Title:      "SUMMARY",
 		FlexFactor: 1,
 	}
 	ResourceCountColumn = Column{

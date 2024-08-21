@@ -2,7 +2,6 @@ package state
 
 import (
 	"fmt"
-	"log/slog"
 
 	"github.com/leg100/pug/internal/resource"
 	"github.com/leg100/pug/internal/task"
@@ -10,37 +9,6 @@ import (
 
 type reloader struct {
 	*Service
-}
-
-type ReloadSummary struct {
-	Old, New *State
-}
-
-func (s ReloadSummary) OldSerial() int {
-	oldSerial := -1
-	if s.Old != nil {
-		oldSerial = int(s.Old.Serial)
-	}
-	return oldSerial
-}
-
-func (s ReloadSummary) NewSerial() int {
-	newSerial := -1
-	if s.New != nil {
-		newSerial = int(s.New.Serial)
-	}
-	return newSerial
-}
-
-func (s ReloadSummary) String() string {
-	return fmt.Sprintf("#%d->#%d", s.OldSerial(), s.NewSerial())
-}
-
-func (s ReloadSummary) LogValue() slog.Value {
-	return slog.GroupValue(
-		slog.Any("old.state.serial", s.OldSerial()),
-		slog.Any("new.state.serial", s.NewSerial()),
-	)
 }
 
 // Reload creates a task to repopulate the local cache of the state of the given
@@ -63,11 +31,11 @@ func (r *reloader) Reload(workspaceID resource.ID) (task.Spec, error) {
 			// updates will be made before checking for content.
 			old, err := r.cache.Get(workspaceID)
 			if err == nil && old.Serial == state.Serial {
-				return ReloadSummary{Old: old, New: state}, nil
+				return newReloadSummary(old, state), nil
 			}
 			// Add/replace state in cache.
 			r.cache.Add(workspaceID, state)
-			return ReloadSummary{Old: old, New: state}, nil
+			return newReloadSummary(old, state), nil
 		},
 	})
 }
