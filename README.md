@@ -301,7 +301,7 @@ When a workspace is loaded into Pug for the first time, a task is created to inv
 
 NOTE: Requires `infracost` to be installed on your machine, along with configured API key.
 
-Pug integrates with [infracost](https://www.infracost.io/) to provide cost estimation. Select workspaces on the workspace page and press `$` to run calculate their costs:
+Pug integrates with [infracost](https://www.infracost.io/) to provide cost estimation. Select workspaces on the workspace page and press `$` to calculate their costs:
 
 ![Infracost output screenshot](./demo/infracost_output.png)
 
