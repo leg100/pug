@@ -1,6 +1,7 @@
 package module
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
@@ -149,12 +150,16 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, localKeys.ReloadWorkspaces):
 			cmd := m.helpers.CreateTasks(m.Workspaces.Reload, m.table.SelectedOrCurrentIDs()...)
 			return m, cmd
-		case key.Matches(msg, keys.Common.State):
-			if row, ok := m.table.CurrentRow(); ok {
-				if ws := m.helpers.ModuleCurrentWorkspace(row.Value); ws != nil {
-					return m, tui.NavigateTo(tui.ResourceListKind, tui.WithParent(ws.ID))
-				}
+		case key.Matches(msg, keys.Common.State, localKeys.Enter):
+			row, ok := m.table.CurrentRow()
+			if !ok {
+				return m, nil
 			}
+			ws := m.helpers.ModuleCurrentWorkspace(row.Value)
+			if ws == nil {
+				return m, tui.ReportError(errors.New("module does not have a current workspace"))
+			}
+			return m, tui.NavigateTo(tui.ResourceListKind, tui.WithParent(ws.ID))
 		case key.Matches(msg, keys.Common.PlanDestroy):
 			createPlanOpts.Destroy = true
 			fallthrough
@@ -225,5 +230,6 @@ func (m list) HelpBindings() (bindings []key.Binding) {
 		keys.Common.Edit,
 		localKeys.ReloadModules,
 		localKeys.ReloadWorkspaces,
+		keys.Common.State,
 	}
 }

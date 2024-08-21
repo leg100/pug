@@ -8,7 +8,6 @@ import (
 	"github.com/leg100/pug/internal/logging"
 	"github.com/leg100/pug/internal/resource"
 	"github.com/leg100/pug/internal/tui"
-	"github.com/leg100/pug/internal/tui/keys"
 	"github.com/leg100/pug/internal/tui/table"
 )
 
@@ -87,7 +86,7 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch {
-		case key.Matches(msg, keys.Global.Enter):
+		case key.Matches(msg, localKeys.Enter):
 			if row, ok := m.table.CurrentRow(); ok {
 				return m, tui.NavigateTo(tui.LogKind, tui.WithParent(row.ID))
 			}
@@ -109,6 +108,6 @@ func (m list) View() string {
 	return m.table.View()
 }
 
-func (m list) HelpBindings() (bindings []key.Binding) {
-	return nil
+func (m list) HelpBindings() []key.Binding {
+	return []key.Binding{localKeys.Enter}
 }

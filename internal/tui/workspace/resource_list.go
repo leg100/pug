@@ -126,7 +126,7 @@ func (m resourceList) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, tui.ReportInfo("reloading finished")
 	case tea.KeyMsg:
 		switch {
-		case key.Matches(msg, keys.Global.Enter):
+		case key.Matches(msg, localKeys.Enter):
 			if row, ok := m.Table.CurrentRow(); ok {
 				return m, tui.NavigateTo(tui.ResourceKind, tui.WithParent(row.ID))
 			}

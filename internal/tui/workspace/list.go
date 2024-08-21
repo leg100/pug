@@ -151,7 +151,7 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				fmt.Sprintf(applyPrompt, len(workspaceIDs)),
 				m.helpers.CreateTasks(fn, workspaceIDs...),
 			)
-		case key.Matches(msg, keys.Common.State):
+		case key.Matches(msg, keys.Common.State, localKeys.Enter):
 			if row, ok := m.table.CurrentRow(); ok {
 				return m, tui.NavigateTo(tui.ResourceListKind, tui.WithParent(row.ID))
 			}
@@ -192,6 +192,7 @@ func (m list) HelpBindings() []key.Binding {
 		keys.Common.Delete,
 		keys.Common.Cost,
 		localKeys.SetCurrent,
+		keys.Common.State,
 	}
 }
 

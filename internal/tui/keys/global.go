@@ -11,7 +11,6 @@ type global struct {
 	TaskGroups  key.Binding
 	Logs        key.Binding
 	Back        key.Binding
-	Enter       key.Binding
 	Select      key.Binding
 	SelectAll   key.Binding
 	SelectClear key.Binding
@@ -46,10 +45,6 @@ var Global = global{
 	Back: key.NewBinding(
 		key.WithKeys("esc"),
 		key.WithHelp("esc", "back"),
-	),
-	Enter: key.NewBinding(
-		key.WithKeys("enter"),
-		key.WithHelp("enter", "view"),
 	),
 	Select: key.NewBinding(
 		key.WithKeys(" "),
