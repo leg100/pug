@@ -1,5 +1,34 @@
 # Changelog
 
+## [0.5.0](https://github.com/leg100/pug/compare/v0.4.3...v0.5.0) (2024-08-21)
+
+
+### ⚠ BREAKING CHANGES
+
+* standardize navigation keys and change untaint key ([#110](https://github.com/leg100/pug/issues/110))
+
+### Features
+
+* &lt;enter&gt; goes to state page ([f7cd452](https://github.com/leg100/pug/commit/f7cd4523da056ee68aa3aeb1ad71b34cf9094c33))
+* infracost integration ([#118](https://github.com/leg100/pug/issues/118)) ([b06646b](https://github.com/leg100/pug/commit/b06646b076647e33b32de82b9fc367f44321f071))
+* standardize navigation keys and change untaint key ([#110](https://github.com/leg100/pug/issues/110)) ([178bff4](https://github.com/leg100/pug/commit/178bff448000668c2058a990652a257d4020e711))
+
+
+### Bug Fixes
+
+* don't skip modules with multiple tf files ([2208eff](https://github.com/leg100/pug/commit/2208eff35a5413bec7afab5805959c886d89349d))
+
+
+### Miscellaneous
+
+* add before-exited callback to task ([7b0f8b5](https://github.com/leg100/pug/commit/7b0f8b5449e23cb1fb7a73704b84b104569f50cf))
+* navigation message only needs an ID ([8977e45](https://github.com/leg100/pug/commit/8977e45cd88b15b73f8367bab3132019799a5e11))
+* provide relative method for workdir ([a278994](https://github.com/leg100/pug/commit/a2789944a12f6171d0185736458e70ea9ffaa2eb))
+* rename task changes column to summary ([75affa9](https://github.com/leg100/pug/commit/75affa9be43750d318ba3502c644287d7a1eba8b))
+* speed up module discovery ([#112](https://github.com/leg100/pug/issues/112)) ([0099c23](https://github.com/leg100/pug/commit/0099c238bf20519b78c241efccde7fdf42b7c776))
+* update demo ([fc8572e](https://github.com/leg100/pug/commit/fc8572e044833ce590703d780e2ddb6d527bc461))
+* update readme ([246b6b1](https://github.com/leg100/pug/commit/246b6b1076ddf9a8d3e7244617be3269ec8ac139))
+
 ## [0.4.3](https://github.com/leg100/pug/compare/v0.4.2...v0.4.3) (2024-07-25)
 
 
