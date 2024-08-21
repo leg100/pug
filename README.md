@@ -6,11 +6,11 @@ A terminal user interface for terraform power users.
 
 * Perform tasks in parallel (plan, apply, init, etc)
 * Interactively manage state resources (targeted plans, move, delete, etc)
-* Supports terraform, tofu and terragrunt
-* Supports terragrunt dependencies
+* Supports terraform, [tofu](#tofu-support) and [terragrunt](#terragrunt-support)
+* Supports [terragrunt dependencies](#terragrunt-support)
 * Supports workspaces
-* Calculate costs using infracost
-* Automatically loads workspace variable files
+* Calculate costs using [infracost](#infracost-integration)
+* Automatically loads [workspace variable files](#workspace-variables)
 * Backend agnostic (s3, cloud, etc)
 
 ![Demo](./demo/demo.gif)
@@ -148,6 +148,10 @@ Press `s` to go to the state page, listing a workspace's resources.
 |`Ctrl+t`|Run `terraform taint`|&check;|
 |`U`|Run `terraform untaint`|&check;|
 |`Ctrl+r`|Run `terraform state pull`|-|
+|`S`|Toggle split screen|-|
+|`+`|Increase split screen top pane|-|
+|`-`|Decrease split screen top pane|-|
+|`tab`|Switch split screen pane focus|-|
 
 ### Tasks
 
@@ -297,7 +301,7 @@ When a workspace is loaded into Pug for the first time, a task is created to inv
 
 NOTE: Requires `infracost` to be installed on your machine, along with configured API key.
 
-Pug integrates with infracost to provide cost estimation. Select workspaces on the workspace page and press `$` to run calculate their costs:
+Pug integrates with [infracost](https://www.infracost.io/) to provide cost estimation. Select workspaces on the workspace page and press `$` to run calculate their costs:
 
 ![Infracost output screenshot](./demo/infracost_output.png)
 

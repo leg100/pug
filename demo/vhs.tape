@@ -172,8 +172,8 @@ Sleep 1s
 
 # init all modules
 Ctrl+a Sleep 0.5s Type "i"
-# we're taken to the init task group page, wait for a few seconds for tasks to finish (it takes longer because it is copying hefty aws provider about
-Sleep 5s
+# we're taken to the init task group page, wait for a few seconds for tasks to finish
+Sleep 2s
 
 # go to workspaces
 Type "w" Sleep 2s
@@ -182,7 +182,7 @@ Ctrl+a Sleep 0.5s
 # calculate cost
 Type "$"
 # user is taken to infracost task page, watch output for a few seconds
-Sleep 5s
+Sleep 6s
 # take screen shot of infracost output (sleep to ensure page doesn't switch too soon)
 Screenshot demo/infracost_output.png Sleep 0.5s
 
@@ -190,4 +190,4 @@ Screenshot demo/infracost_output.png Sleep 0.5s
 Type "w" Sleep 0.5s
 # take screen shot of workspaces (sleep to ensure page doesn't switch too soon)
 Screenshot demo/workspaces_with_cost.png Sleep 0.5s
-Sleep 2s
+Sleep 3s
