@@ -1,0 +1,720 @@
+{
+  "version": "0.2",
+  "metadata": {
+    "infracostCommand": "breakdown",
+    "vcsBranch": "",
+    "vcsCommitSha": "",
+    "vcsCommitAuthorName": "",
+    "vcsCommitAuthorEmail": "",
+    "vcsCommitTimestamp": "0001-01-01T00:00:00Z",
+    "vcsCommitMessage": "",
+    "configFilePath": "config.yaml"
+  },
+  "currency": "USD",
+  "projects": [
+    {
+      "name": "/home/louis/co/ec2/modules/a",
+      "displayName": "modules-a",
+      "metadata": {
+        "path": "/home/louis/co/ec2/modules/a",
+        "type": "terraform_dir",
+        "terraformModulePath": "modules/a",
+        "providers": [
+          {
+            "name": "aws",
+            "filename": "modules/a/main.tf",
+            "startLine": 2,
+            "endLine": 4
+          }
+        ]
+      },
+      "pastBreakdown": {
+        "resources": [
+          {
+            "name": "aws_instance.web",
+            "resourceType": "aws_instance",
+            "tags": {
+              "Name": "HelloWorld"
+            },
+            "metadata": {
+              "calls": [
+                {
+                  "blockName": "aws_instance.web",
+                  "endLine": 13,
+                  "filename": "modules/a/main.tf",
+                  "startLine": 6
+                }
+              ],
+              "checksum": "6a6bccf9f0c1060f170f6dbcfeab9022de51a8cac07e79c64c79f9a37eb90908",
+              "endLine": 13,
+              "filename": "modules/a/main.tf",
+              "startLine": 6
+            },
+            "hourlyCost": "0.0114958904109589",
+            "monthlyCost": "8.392",
+            "costComponents": [
+              {
+                "name": "Instance usage (Linux/UNIX, on-demand, t3.micro)",
+                "unit": "hours",
+                "hourlyQuantity": "1",
+                "monthlyQuantity": "730",
+                "price": "0.0104",
+                "hourlyCost": "0.0104",
+                "monthlyCost": "7.592",
+                "priceNotFound": false
+              },
+              {
+                "name": "CPU credits",
+                "unit": "vCPU-hours",
+                "hourlyQuantity": "0",
+                "monthlyQuantity": "0",
+                "price": "0.05",
+                "hourlyCost": "0",
+                "monthlyCost": "0",
+                "priceNotFound": false
+              }
+            ],
+            "subresources": [
+              {
+                "name": "root_block_device",
+                "metadata": {},
+                "hourlyCost": "0.0010958904109589",
+                "monthlyCost": "0.8",
+                "costComponents": [
+                  {
+                    "name": "Storage (general purpose SSD, gp2)",
+                    "unit": "GB",
+                    "hourlyQuantity": "0.010958904109589",
+                    "monthlyQuantity": "8",
+                    "price": "0.1",
+                    "hourlyCost": "0.0010958904109589",
+                    "monthlyCost": "0.8",
+                    "priceNotFound": false
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "totalHourlyCost": "0.0114958904109589",
+        "totalMonthlyCost": "8.392",
+        "totalMonthlyUsageCost": "0"
+      },
+      "breakdown": {
+        "resources": [
+          {
+            "name": "aws_instance.web",
+            "resourceType": "aws_instance",
+            "tags": {
+              "Name": "HelloWorld"
+            },
+            "metadata": {
+              "calls": [
+                {
+                  "blockName": "aws_instance.web",
+                  "endLine": 13,
+                  "filename": "modules/a/main.tf",
+                  "startLine": 6
+                }
+              ],
+              "checksum": "6a6bccf9f0c1060f170f6dbcfeab9022de51a8cac07e79c64c79f9a37eb90908",
+              "endLine": 13,
+              "filename": "modules/a/main.tf",
+              "startLine": 6
+            },
+            "hourlyCost": "0.0114958904109589",
+            "monthlyCost": "8.392",
+            "costComponents": [
+              {
+                "name": "Instance usage (Linux/UNIX, on-demand, t3.micro)",
+                "unit": "hours",
+                "hourlyQuantity": "1",
+                "monthlyQuantity": "730",
+                "price": "0.0104",
+                "hourlyCost": "0.0104",
+                "monthlyCost": "7.592",
+                "priceNotFound": false
+              },
+              {
+                "name": "CPU credits",
+                "unit": "vCPU-hours",
+                "hourlyQuantity": "0",
+                "monthlyQuantity": "0",
+                "price": "0.05",
+                "hourlyCost": "0",
+                "monthlyCost": "0",
+                "priceNotFound": false
+              }
+            ],
+            "subresources": [
+              {
+                "name": "root_block_device",
+                "metadata": {},
+                "hourlyCost": "0.0010958904109589",
+                "monthlyCost": "0.8",
+                "costComponents": [
+                  {
+                    "name": "Storage (general purpose SSD, gp2)",
+                    "unit": "GB",
+                    "hourlyQuantity": "0.010958904109589",
+                    "monthlyQuantity": "8",
+                    "price": "0.1",
+                    "hourlyCost": "0.0010958904109589",
+                    "monthlyCost": "0.8",
+                    "priceNotFound": false
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "totalHourlyCost": "0.0114958904109589",
+        "totalMonthlyCost": "8.392",
+        "totalMonthlyUsageCost": "0"
+      },
+      "diff": {
+        "resources": [],
+        "totalHourlyCost": "0",
+        "totalMonthlyCost": "0",
+        "totalMonthlyUsageCost": "0"
+      },
+      "summary": {
+        "totalDetectedResources": 1,
+        "totalSupportedResources": 1,
+        "totalUnsupportedResources": 0,
+        "totalUsageBasedResources": 1,
+        "totalNoPriceResources": 0,
+        "unsupportedResourceCounts": {},
+        "noPriceResourceCounts": {}
+      }
+    },
+    {
+      "name": "/home/louis/co/ec2/modules/a",
+      "displayName": "modules-a-dev",
+      "metadata": {
+        "path": "/home/louis/co/ec2/modules/a",
+        "type": "terraform_dir",
+        "terraformModulePath": "modules/a",
+        "terraformWorkspace": "dev",
+        "providers": [
+          {
+            "name": "aws",
+            "filename": "modules/a/main.tf",
+            "startLine": 2,
+            "endLine": 4
+          }
+        ]
+      },
+      "pastBreakdown": {
+        "resources": [
+          {
+            "name": "aws_instance.web",
+            "resourceType": "aws_instance",
+            "tags": {
+              "Name": "HelloWorld"
+            },
+            "metadata": {
+              "calls": [
+                {
+                  "blockName": "aws_instance.web",
+                  "endLine": 13,
+                  "filename": "modules/a/main.tf",
+                  "startLine": 6
+                }
+              ],
+              "checksum": "ad8e494d3a038136e0e0d2dc204a8e0bb7e4cc0c7b6fe1d91c0927a8ee7b7db0",
+              "endLine": 13,
+              "filename": "modules/a/main.tf",
+              "startLine": 6
+            },
+            "hourlyCost": "0.3274958904109589",
+            "monthlyCost": "239.072",
+            "costComponents": [
+              {
+                "name": "Instance usage (Linux/UNIX, on-demand, m7g.2xlarge)",
+                "unit": "hours",
+                "hourlyQuantity": "1",
+                "monthlyQuantity": "730",
+                "price": "0.3264",
+                "hourlyCost": "0.3264",
+                "monthlyCost": "238.272",
+                "priceNotFound": false
+              }
+            ],
+            "subresources": [
+              {
+                "name": "root_block_device",
+                "metadata": {},
+                "hourlyCost": "0.0010958904109589",
+                "monthlyCost": "0.8",
+                "costComponents": [
+                  {
+                    "name": "Storage (general purpose SSD, gp2)",
+                    "unit": "GB",
+                    "hourlyQuantity": "0.010958904109589",
+                    "monthlyQuantity": "8",
+                    "price": "0.1",
+                    "hourlyCost": "0.0010958904109589",
+                    "monthlyCost": "0.8",
+                    "priceNotFound": false
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "totalHourlyCost": "0.3274958904109589",
+        "totalMonthlyCost": "239.072",
+        "totalMonthlyUsageCost": "0"
+      },
+      "breakdown": {
+        "resources": [
+          {
+            "name": "aws_instance.web",
+            "resourceType": "aws_instance",
+            "tags": {
+              "Name": "HelloWorld"
+            },
+            "metadata": {
+              "calls": [
+                {
+                  "blockName": "aws_instance.web",
+                  "endLine": 13,
+                  "filename": "modules/a/main.tf",
+                  "startLine": 6
+                }
+              ],
+              "checksum": "ad8e494d3a038136e0e0d2dc204a8e0bb7e4cc0c7b6fe1d91c0927a8ee7b7db0",
+              "endLine": 13,
+              "filename": "modules/a/main.tf",
+              "startLine": 6
+            },
+            "hourlyCost": "0.3274958904109589",
+            "monthlyCost": "239.072",
+            "costComponents": [
+              {
+                "name": "Instance usage (Linux/UNIX, on-demand, m7g.2xlarge)",
+                "unit": "hours",
+                "hourlyQuantity": "1",
+                "monthlyQuantity": "730",
+                "price": "0.3264",
+                "hourlyCost": "0.3264",
+                "monthlyCost": "238.272",
+                "priceNotFound": false
+              }
+            ],
+            "subresources": [
+              {
+                "name": "root_block_device",
+                "metadata": {},
+                "hourlyCost": "0.0010958904109589",
+                "monthlyCost": "0.8",
+                "costComponents": [
+                  {
+                    "name": "Storage (general purpose SSD, gp2)",
+                    "unit": "GB",
+                    "hourlyQuantity": "0.010958904109589",
+                    "monthlyQuantity": "8",
+                    "price": "0.1",
+                    "hourlyCost": "0.0010958904109589",
+                    "monthlyCost": "0.8",
+                    "priceNotFound": false
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "totalHourlyCost": "0.3274958904109589",
+        "totalMonthlyCost": "239.072",
+        "totalMonthlyUsageCost": "0"
+      },
+      "diff": {
+        "resources": [],
+        "totalHourlyCost": "0",
+        "totalMonthlyCost": "0",
+        "totalMonthlyUsageCost": "0"
+      },
+      "summary": {
+        "totalDetectedResources": 1,
+        "totalSupportedResources": 1,
+        "totalUnsupportedResources": 0,
+        "totalUsageBasedResources": 1,
+        "totalNoPriceResources": 0,
+        "unsupportedResourceCounts": {},
+        "noPriceResourceCounts": {}
+      }
+    },
+    {
+      "name": "/home/louis/co/ec2/modules/b",
+      "displayName": "modules-b",
+      "metadata": {
+        "path": "/home/louis/co/ec2/modules/b",
+        "type": "terraform_dir",
+        "terraformModulePath": "modules/b",
+        "providers": [
+          {
+            "name": "aws",
+            "filename": "modules/b/main.tf",
+            "startLine": 2,
+            "endLine": 4
+          }
+        ]
+      },
+      "pastBreakdown": {
+        "resources": [
+          {
+            "name": "aws_instance.web",
+            "resourceType": "aws_instance",
+            "tags": {
+              "Name": "HelloWorld"
+            },
+            "metadata": {
+              "calls": [
+                {
+                  "blockName": "aws_instance.web",
+                  "endLine": 13,
+                  "filename": "modules/b/main.tf",
+                  "startLine": 6
+                }
+              ],
+              "checksum": "6a6bccf9f0c1060f170f6dbcfeab9022de51a8cac07e79c64c79f9a37eb90908",
+              "endLine": 13,
+              "filename": "modules/b/main.tf",
+              "startLine": 6
+            },
+            "hourlyCost": "0.0114958904109589",
+            "monthlyCost": "8.392",
+            "costComponents": [
+              {
+                "name": "Instance usage (Linux/UNIX, on-demand, t3.micro)",
+                "unit": "hours",
+                "hourlyQuantity": "1",
+                "monthlyQuantity": "730",
+                "price": "0.0104",
+                "hourlyCost": "0.0104",
+                "monthlyCost": "7.592",
+                "priceNotFound": false
+              },
+              {
+                "name": "CPU credits",
+                "unit": "vCPU-hours",
+                "hourlyQuantity": "0",
+                "monthlyQuantity": "0",
+                "price": "0.05",
+                "hourlyCost": "0",
+                "monthlyCost": "0",
+                "priceNotFound": false
+              }
+            ],
+            "subresources": [
+              {
+                "name": "root_block_device",
+                "metadata": {},
+                "hourlyCost": "0.0010958904109589",
+                "monthlyCost": "0.8",
+                "costComponents": [
+                  {
+                    "name": "Storage (general purpose SSD, gp2)",
+                    "unit": "GB",
+                    "hourlyQuantity": "0.010958904109589",
+                    "monthlyQuantity": "8",
+                    "price": "0.1",
+                    "hourlyCost": "0.0010958904109589",
+                    "monthlyCost": "0.8",
+                    "priceNotFound": false
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "totalHourlyCost": "0.0114958904109589",
+        "totalMonthlyCost": "8.392",
+        "totalMonthlyUsageCost": "0"
+      },
+      "breakdown": {
+        "resources": [
+          {
+            "name": "aws_instance.web",
+            "resourceType": "aws_instance",
+            "tags": {
+              "Name": "HelloWorld"
+            },
+            "metadata": {
+              "calls": [
+                {
+                  "blockName": "aws_instance.web",
+                  "endLine": 13,
+                  "filename": "modules/b/main.tf",
+                  "startLine": 6
+                }
+              ],
+              "checksum": "6a6bccf9f0c1060f170f6dbcfeab9022de51a8cac07e79c64c79f9a37eb90908",
+              "endLine": 13,
+              "filename": "modules/b/main.tf",
+              "startLine": 6
+            },
+            "hourlyCost": "0.0114958904109589",
+            "monthlyCost": "8.392",
+            "costComponents": [
+              {
+                "name": "Instance usage (Linux/UNIX, on-demand, t3.micro)",
+                "unit": "hours",
+                "hourlyQuantity": "1",
+                "monthlyQuantity": "730",
+                "price": "0.0104",
+                "hourlyCost": "0.0104",
+                "monthlyCost": "7.592",
+                "priceNotFound": false
+              },
+              {
+                "name": "CPU credits",
+                "unit": "vCPU-hours",
+                "hourlyQuantity": "0",
+                "monthlyQuantity": "0",
+                "price": "0.05",
+                "hourlyCost": "0",
+                "monthlyCost": "0",
+                "priceNotFound": false
+              }
+            ],
+            "subresources": [
+              {
+                "name": "root_block_device",
+                "metadata": {},
+                "hourlyCost": "0.0010958904109589",
+                "monthlyCost": "0.8",
+                "costComponents": [
+                  {
+                    "name": "Storage (general purpose SSD, gp2)",
+                    "unit": "GB",
+                    "hourlyQuantity": "0.010958904109589",
+                    "monthlyQuantity": "8",
+                    "price": "0.1",
+                    "hourlyCost": "0.0010958904109589",
+                    "monthlyCost": "0.8",
+                    "priceNotFound": false
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "totalHourlyCost": "0.0114958904109589",
+        "totalMonthlyCost": "8.392",
+        "totalMonthlyUsageCost": "0"
+      },
+      "diff": {
+        "resources": [],
+        "totalHourlyCost": "0",
+        "totalMonthlyCost": "0",
+        "totalMonthlyUsageCost": "0"
+      },
+      "summary": {
+        "totalDetectedResources": 1,
+        "totalSupportedResources": 1,
+        "totalUnsupportedResources": 0,
+        "totalUsageBasedResources": 1,
+        "totalNoPriceResources": 0,
+        "unsupportedResourceCounts": {},
+        "noPriceResourceCounts": {}
+      }
+    },
+    {
+      "name": "/home/louis/co/ec2/modules/c",
+      "displayName": "modules-c",
+      "metadata": {
+        "path": "/home/louis/co/ec2/modules/c",
+        "type": "terraform_dir",
+        "terraformModulePath": "modules/c",
+        "providers": [
+          {
+            "name": "aws",
+            "filename": "modules/c/main.tf",
+            "startLine": 2,
+            "endLine": 4
+          }
+        ]
+      },
+      "pastBreakdown": {
+        "resources": [
+          {
+            "name": "aws_instance.web",
+            "resourceType": "aws_instance",
+            "tags": {
+              "Name": "HelloWorld"
+            },
+            "metadata": {
+              "calls": [
+                {
+                  "blockName": "aws_instance.web",
+                  "endLine": 13,
+                  "filename": "modules/c/main.tf",
+                  "startLine": 6
+                }
+              ],
+              "checksum": "6a6bccf9f0c1060f170f6dbcfeab9022de51a8cac07e79c64c79f9a37eb90908",
+              "endLine": 13,
+              "filename": "modules/c/main.tf",
+              "startLine": 6
+            },
+            "hourlyCost": "0.0114958904109589",
+            "monthlyCost": "8.392",
+            "costComponents": [
+              {
+                "name": "Instance usage (Linux/UNIX, on-demand, t3.micro)",
+                "unit": "hours",
+                "hourlyQuantity": "1",
+                "monthlyQuantity": "730",
+                "price": "0.0104",
+                "hourlyCost": "0.0104",
+                "monthlyCost": "7.592",
+                "priceNotFound": false
+              },
+              {
+                "name": "CPU credits",
+                "unit": "vCPU-hours",
+                "hourlyQuantity": "0",
+                "monthlyQuantity": "0",
+                "price": "0.05",
+                "hourlyCost": "0",
+                "monthlyCost": "0",
+                "priceNotFound": false
+              }
+            ],
+            "subresources": [
+              {
+                "name": "root_block_device",
+                "metadata": {},
+                "hourlyCost": "0.0010958904109589",
+                "monthlyCost": "0.8",
+                "costComponents": [
+                  {
+                    "name": "Storage (general purpose SSD, gp2)",
+                    "unit": "GB",
+                    "hourlyQuantity": "0.010958904109589",
+                    "monthlyQuantity": "8",
+                    "price": "0.1",
+                    "hourlyCost": "0.0010958904109589",
+                    "monthlyCost": "0.8",
+                    "priceNotFound": false
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "totalHourlyCost": "0.0114958904109589",
+        "totalMonthlyCost": "8.392",
+        "totalMonthlyUsageCost": "0"
+      },
+      "breakdown": {
+        "resources": [
+          {
+            "name": "aws_instance.web",
+            "resourceType": "aws_instance",
+            "tags": {
+              "Name": "HelloWorld"
+            },
+            "metadata": {
+              "calls": [
+                {
+                  "blockName": "aws_instance.web",
+                  "endLine": 13,
+                  "filename": "modules/c/main.tf",
+                  "startLine": 6
+                }
+              ],
+              "checksum": "6a6bccf9f0c1060f170f6dbcfeab9022de51a8cac07e79c64c79f9a37eb90908",
+              "endLine": 13,
+              "filename": "modules/c/main.tf",
+              "startLine": 6
+            },
+            "hourlyCost": "0.0114958904109589",
+            "monthlyCost": "8.392",
+            "costComponents": [
+              {
+                "name": "Instance usage (Linux/UNIX, on-demand, t3.micro)",
+                "unit": "hours",
+                "hourlyQuantity": "1",
+                "monthlyQuantity": "730",
+                "price": "0.0104",
+                "hourlyCost": "0.0104",
+                "monthlyCost": "7.592",
+                "priceNotFound": false
+              },
+              {
+                "name": "CPU credits",
+                "unit": "vCPU-hours",
+                "hourlyQuantity": "0",
+                "monthlyQuantity": "0",
+                "price": "0.05",
+                "hourlyCost": "0",
+                "monthlyCost": "0",
+                "priceNotFound": false
+              }
+            ],
+            "subresources": [
+              {
+                "name": "root_block_device",
+                "metadata": {},
+                "hourlyCost": "0.0010958904109589",
+                "monthlyCost": "0.8",
+                "costComponents": [
+                  {
+                    "name": "Storage (general purpose SSD, gp2)",
+                    "unit": "GB",
+                    "hourlyQuantity": "0.010958904109589",
+                    "monthlyQuantity": "8",
+                    "price": "0.1",
+                    "hourlyCost": "0.0010958904109589",
+                    "monthlyCost": "0.8",
+                    "priceNotFound": false
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "totalHourlyCost": "0.0114958904109589",
+        "totalMonthlyCost": "8.392",
+        "totalMonthlyUsageCost": "0"
+      },
+      "diff": {
+        "resources": [],
+        "totalHourlyCost": "0",
+        "totalMonthlyCost": "0",
+        "totalMonthlyUsageCost": "0"
+      },
+      "summary": {
+        "totalDetectedResources": 1,
+        "totalSupportedResources": 1,
+        "totalUnsupportedResources": 0,
+        "totalUsageBasedResources": 1,
+        "totalNoPriceResources": 0,
+        "unsupportedResourceCounts": {},
+        "noPriceResourceCounts": {}
+      }
+    }
+  ],
+  "totalHourlyCost": "0.3619835616438356",
+  "totalMonthlyCost": "264.248",
+  "totalMonthlyUsageCost": "0",
+  "pastTotalHourlyCost": "0.3619835616438356",
+  "pastTotalMonthlyCost": "264.248",
+  "pastTotalMonthlyUsageCost": "0",
+  "diffTotalHourlyCost": "0",
+  "diffTotalMonthlyCost": "0",
+  "diffTotalMonthlyUsageCost": "0",
+  "timeGenerated": "2024-08-18T12:17:02.247735309Z",
+  "summary": {
+    "totalDetectedResources": 4,
+    "totalSupportedResources": 4,
+    "totalUnsupportedResources": 0,
+    "totalUsageBasedResources": 4,
+    "totalNoPriceResources": 0,
+    "unsupportedResourceCounts": {},
+    "noPriceResourceCounts": {}
+  }
+}

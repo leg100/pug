@@ -18,6 +18,7 @@ type common struct {
 	Init        key.Binding
 	Validate    key.Binding
 	Format      key.Binding
+	Cost        key.Binding
 }
 
 // Keys shared by several models.
@@ -81,5 +82,9 @@ var Common = common{
 	Format: key.NewBinding(
 		key.WithKeys("f"),
 		key.WithHelp("f", "format"),
+	),
+	Cost: key.NewBinding(
+		key.WithKeys("$"),
+		key.WithHelp("$", "cost"),
 	),
 }

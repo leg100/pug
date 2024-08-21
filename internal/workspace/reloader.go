@@ -103,7 +103,7 @@ func (r *reloader) resetWorkspaces(mod *module.Module, discovered []string, curr
 		}
 	}
 	// Reset current workspace
-	currentWorkspace, err := r.GetByName(mod.ID, current)
+	currentWorkspace, err := r.GetByName(mod.Path, current)
 	if err != nil {
 		return nil, nil, fmt.Errorf("cannot find current workspace: %s: %w", current, err)
 	}

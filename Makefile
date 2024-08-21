@@ -53,3 +53,10 @@ install-terragrunt:
 	mkdir -p ~/.local/bin
 	curl -L https://github.com/gruntwork-io/terragrunt/releases/download/v0.60.0/terragrunt_linux_amd64 -o ~/.local/bin/terragrunt
 	chmod +x ~/.local/bin/terragrunt
+
+.PHONY: install-infracost
+install-infracost:
+	mkdir -p ~/.local/bin
+	curl -L https://github.com/infracost/infracost/releases/download/v0.10.38/infracost-linux-amd64.tar.gz | tar -zxf -
+	mv infracost-linux-amd64 ~/.local/bin/infracost
+	chmod +x ~/.local/bin/infracost

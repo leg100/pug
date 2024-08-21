@@ -16,10 +16,9 @@ import (
 )
 
 var currentColumn = table.Column{
-	Key:        "current",
-	Title:      "CURRENT",
-	Width:      len("CURRENT"),
-	FlexFactor: 1,
+	Key:   "current",
+	Title: "CURRENT",
+	Width: len("CURRENT"),
 }
 
 type ListMaker struct {
@@ -34,6 +33,7 @@ func (m *ListMaker) Make(_ resource.ID, width, height int) (tea.Model, error) {
 		table.ModuleColumn,
 		table.WorkspaceColumn,
 		currentColumn,
+		table.CostColumn,
 		table.ResourceCountColumn,
 	}
 
@@ -42,6 +42,7 @@ func (m *ListMaker) Make(_ resource.ID, width, height int) (tea.Model, error) {
 			table.ModuleColumn.Key:        ws.ModulePath(),
 			table.WorkspaceColumn.Key:     ws.Name,
 			table.ResourceCountColumn.Key: m.Helpers.WorkspaceResourceCount(ws),
+			table.CostColumn.Key:          m.Helpers.WorkspaceCost(ws),
 			currentColumn.Key:             m.Helpers.WorkspaceCurrentCheckmark(ws),
 		}
 	}
@@ -154,6 +155,13 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if row, ok := m.table.CurrentRow(); ok {
 				return m, tui.NavigateTo(tui.ResourceListKind, tui.WithParent(row.ID))
 			}
+		case key.Matches(msg, keys.Common.Cost):
+			workspaceIDs := m.table.SelectedOrCurrentIDs()
+			spec, err := m.Workspaces.Cost(workspaceIDs...)
+			if err != nil {
+				return m, tui.ReportError(fmt.Errorf("creating task: %w", err))
+			}
+			return m, m.helpers.CreateTasksWithSpecs(spec)
 		}
 	}
 
@@ -182,6 +190,7 @@ func (m list) HelpBindings() []key.Binding {
 		keys.Common.Apply,
 		keys.Common.Destroy,
 		keys.Common.Delete,
+		keys.Common.Cost,
 		localKeys.SetCurrent,
 	}
 }

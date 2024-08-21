@@ -49,7 +49,6 @@ func (h *Helpers) WorkspaceName(res resource.Resource) string {
 
 func (h *Helpers) ModuleCurrentWorkspace(mod *module.Module) *workspace.Workspace {
 	if mod.CurrentWorkspaceID == nil {
-		h.Logger.Error("module does not have a current workspace", "module", mod)
 		return nil
 	}
 	ws, err := h.Workspaces.Get(*mod.CurrentWorkspaceID)
@@ -108,6 +107,22 @@ func (h *Helpers) WorkspaceCurrentCheckmark(ws *workspace.Workspace) string {
 		return "✓"
 	}
 	return ""
+}
+
+// ModuleCost renders the cost of the module's current workspace, if it has one.
+func (h *Helpers) ModuleCost(mod *module.Module) string {
+	if ws := h.ModuleCurrentWorkspace(mod); ws != nil {
+		return h.WorkspaceCost(ws)
+	}
+	return ""
+}
+
+// WorkspaceCost renders the cost of the given workspace.
+func (h *Helpers) WorkspaceCost(ws *workspace.Workspace) string {
+	if ws.Cost == 0 {
+		return "-"
+	}
+	return fmt.Sprintf("$%.2f", ws.Cost)
 }
 
 func (h *Helpers) WorkspaceResourceCount(ws *workspace.Workspace) string {
@@ -174,6 +189,8 @@ func (h *Helpers) TaskSummary(t *task.Task, table bool) string {
 		return h.ResourceReport(summary, table)
 	case workspace.ReloadSummary:
 		return h.WorkspaceReloadReport(summary, table)
+	case workspace.CostSummary:
+		return h.CostSummary(summary, table)
 	case state.ReloadSummary:
 		return h.StateReloadReport(summary, table)
 	}
@@ -235,6 +252,20 @@ func (h *Helpers) StateReloadReport(report state.ReloadSummary, table bool) stri
 	return s
 }
 
+// CostSummary renders a summary of the costs for a workspace. Set table to true
+// if the report is rendered within a table row.
+func (h *Helpers) CostSummary(report workspace.CostSummary, table bool) string {
+	var background lipgloss.TerminalColor = lipgloss.NoColor{}
+	if !table {
+		background = RunReportBackgroundColor
+	}
+	s := Regular.Background(background).Foreground(Green).Render(report.String())
+	if !table {
+		s = Padded.Background(background).Render(s)
+	}
+	return s
+}
+
 // GroupReport renders a colored summary of a task group's task statuses. Set table to true if
 // the report is rendered within a table row.
 func (h *Helpers) GroupReport(group *task.Group, table bool) string {
@@ -270,11 +301,11 @@ func (h *Helpers) CreateTasks(fn task.SpecFunc, ids ...resource.ID) tea.Cmd {
 		case 1:
 			spec, err := fn(ids[0])
 			if err != nil {
-				return ReportError(fmt.Errorf("creating task: %w", err))
+				return ErrorMsg(fmt.Errorf("creating task: %w", err))
 			}
 			task, err := h.Tasks.Create(spec)
 			if err != nil {
-				return ReportError(fmt.Errorf("creating task: %w", err))
+				return ErrorMsg(fmt.Errorf("creating task: %w", err))
 			}
 			return NewNavigationMsg(TaskKind, WithParent(task.ID))
 		default:
@@ -300,7 +331,7 @@ func (h *Helpers) CreateTasksWithSpecs(specs ...task.Spec) tea.Cmd {
 		case 1:
 			task, err := h.Tasks.Create(specs[0])
 			if err != nil {
-				return ReportError(fmt.Errorf("creating task: %w", err))
+				return ErrorMsg(fmt.Errorf("creating task: %w", err))
 			}
 			return NewNavigationMsg(TaskKind, WithParent(task.ID))
 		default:

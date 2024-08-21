@@ -9,6 +9,7 @@ A terminal user interface for terraform power users.
 * Supports terraform, tofu and terragrunt
 * Supports terragrunt dependencies
 * Supports workspaces
+* Calculate costs using infracost
 * Automatically loads workspace variable files
 * Backend agnostic (s3, cloud, etc)
 
@@ -128,6 +129,7 @@ Press `w` to go to the workspaces page.
 |`a`|Run `terraform apply`|&check;|
 |`d`|Run `terraform apply -destroy`|&check;|
 |`C`|Run `terraform workspace select`|&cross;|
+|`$`|Run `infracost breakdown`|&check;|
 
 ### State
 
@@ -290,6 +292,18 @@ A task can be canceled at any stage. If it is `running` then the current terrafo
 ### State
 
 When a workspace is loaded into Pug for the first time, a task is created to invoke `terraform state pull`, which retrieves workspace's state, and then the state is loaded into Pug. The task is also triggered after any task that alters the state, such as an apply or moving a resource in the state.
+
+## Infracost integration
+
+NOTE: Requires `infracost` to be installed on your machine, along with configured API key.
+
+Pug integrates with infracost to provide cost estimation. Select workspaces on the workspace page and press `$` to run calculate their costs:
+
+![Infracost output screenshot](./demo/infracost_output.png)
+
+Once the task has finished, the costs are visible on the workspaces page:
+
+![Worksapces with costs screenshot](./demo/workspaces_with_cost.png)
 
 ## Tofu support
 

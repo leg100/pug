@@ -3,6 +3,7 @@ package workspace
 import (
 	"fmt"
 
+	"github.com/leg100/pug/internal"
 	"github.com/leg100/pug/internal/logging"
 	"github.com/leg100/pug/internal/module"
 	"github.com/leg100/pug/internal/pubsub"
@@ -16,15 +17,20 @@ type Service struct {
 
 	modules modules
 	tasks   *task.Service
+	datadir string
+	workdir internal.Workdir
 
 	*pubsub.Broker[*Workspace]
 	*reloader
+	*costTaskSpecCreator
 }
 
 type ServiceOptions struct {
 	Tasks   *task.Service
 	Modules *module.Service
 	Logger  logging.Interface
+	DataDir string
+	Workdir internal.Workdir
 }
 
 type workspaceTable interface {
@@ -55,8 +61,11 @@ func NewService(opts ServiceOptions) *Service {
 		modules: opts.Modules,
 		tasks:   opts.Tasks,
 		logger:  opts.Logger,
+		datadir: opts.DataDir,
+		workdir: opts.Workdir,
 	}
 	s.reloader = &reloader{s}
+	s.costTaskSpecCreator = &costTaskSpecCreator{s}
 	return s
 }
 
@@ -127,9 +136,9 @@ func (s *Service) Get(workspaceID resource.ID) (*Workspace, error) {
 	return s.table.Get(workspaceID)
 }
 
-func (s *Service) GetByName(moduleID resource.ID, name string) (*Workspace, error) {
+func (s *Service) GetByName(modulePath, name string) (*Workspace, error) {
 	for _, ws := range s.table.List() {
-		if ws.ModuleID() == moduleID && ws.Name == name {
+		if ws.ModulePath() == modulePath && ws.Name == name {
 			return ws, nil
 		}
 	}
