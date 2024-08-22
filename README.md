@@ -143,6 +143,8 @@ Press `s` to go to the state page, listing a workspace's resources.
 |--|--|--|
 |`p`|Run `terraform plan -target`|&check;|
 |`P`|Run `terraform plan -destroy -target`|&check;|
+|`a`|Run `terraform apply -target`|&check;|
+|`d`|Run `terraform apply -destroy -target`|&check;|
 |`D`|Run `terraform state rm`|&check;|
 |`M`|Run `terraform state mv`|&cross;|
 |`Ctrl+t`|Run `terraform taint`|&check;|
