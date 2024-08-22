@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.5.1](https://github.com/leg100/pug/compare/v0.5.0...v0.5.1) (2024-08-22)
+
+
+### Features
+
+* targeted apply and destroy ([#121](https://github.com/leg100/pug/issues/121)) ([b4f1740](https://github.com/leg100/pug/commit/b4f1740dcedcac1b2e64388497a8510a7a862c7d))
+
+
+### Miscellaneous
+
+* fix typo on readme ([d576437](https://github.com/leg100/pug/commit/d5764375fe1e16e5624eaa0bad8c56065f36aa30))
+* update readme with keys for targeted apply and destroy ([7f37f58](https://github.com/leg100/pug/commit/7f37f58c80a5b0fccbd91ecbc9b5caad825b7a53))
+
 ## [0.5.0](https://github.com/leg100/pug/compare/v0.4.3...v0.5.0) (2024-08-21)
 
 
