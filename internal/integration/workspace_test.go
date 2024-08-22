@@ -189,7 +189,7 @@ func TestWorkspace_SingleDestroy(t *testing.T) {
 
 	// Send to apply task page
 	waitFor(t, tm, func(s string) bool {
-		return matchPattern(t, `Task.*apply.*default.*modules/a.*\+0~0-10.*exited`, s)
+		return matchPattern(t, `Task.*apply \(destroy\).*default.*modules/a.*\+0~0-10.*exited`, s)
 	})
 }
 
@@ -239,7 +239,7 @@ func TestWorkspace_MultipleDestroy(t *testing.T) {
 
 	// Send to task group page
 	waitFor(t, tm, func(s string) bool {
-		return matchPattern(t, "TaskGroup.*apply.*3/3", s) &&
+		return matchPattern(t, `TaskGroup.*apply \(destroy\).*3/3`, s) &&
 			matchPattern(t, `modules/a.*default.*\+0~0-10`, s) &&
 			matchPattern(t, `modules/b.*default.*\+0~0-10`, s) &&
 			matchPattern(t, `modules/c.*default.*\+0~0-10`, s)

@@ -226,6 +226,143 @@ func TestState_TargetedPlan_MultipleResource(t *testing.T) {
 	})
 }
 
+func TestState_TargetedPlanDestroy_SingleResource(t *testing.T) {
+	t.Parallel()
+
+	tm := setupState(t)
+
+	// Create targeted destroy plan for first resource
+	tm.Type("P")
+
+	// Expect to be taken to the task page for the destroy plan, with a
+	// completed destroy plan, and a warning that resource targeting is in
+	// effect
+	waitFor(t, tm, func(s string) bool {
+		// Strip ANSI formatting from output
+		s = internal.StripAnsi(s)
+		return matchPattern(t, `Task.*plan \(destroy\).*default.*modules/a.*\+0~0\-1.*exited`, s) &&
+			strings.Contains(s, "Warning: Resource targeting is in effect")
+	})
+}
+
+func TestState_TargetedPlanDestroy_MultipleResource(t *testing.T) {
+	t.Parallel()
+
+	tm := setupState(t)
+
+	// Create targeted destroy plan for all resources
+	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlA})
+	tm.Type("P")
+
+	// Expect to be taken to the task page for the destroy plan, with a
+	// completed destroy plan, and a warning that resource targeting is in
+	// effect
+	waitFor(t, tm, func(s string) bool {
+		// Remove bold formatting
+		s = internal.StripAnsi(s)
+		return matchPattern(t, `Task.*plan \(destroy\).*default.*modules/a.*\+0~0\-10.*exited`, s) &&
+			strings.Contains(s, "Warning: Resource targeting is in effect")
+	})
+}
+
+func TestState_TargetedApply_SingleResource(t *testing.T) {
+	t.Parallel()
+
+	tm := setupState(t)
+
+	// Create targeted apply for first resource
+	tm.Type("a")
+
+	// Give approval
+	waitFor(t, tm, func(s string) bool {
+		return strings.Contains(s, "Auto-apply 1 resources? (y/N):")
+	})
+	tm.Type("y")
+
+	// Expect to be taken to the task page for the apply, with a completed apply, and a warning
+	// that resource targeting is in effect
+	waitFor(t, tm, func(s string) bool {
+		// Strip ANSI formatting from output
+		s = internal.StripAnsi(s)
+		return matchPattern(t, `Task.*apply.*default.*modules/a.*\+1~0\-1.*exited`, s) &&
+			strings.Contains(s, "Warning: Resource targeting is in effect")
+	})
+}
+
+func TestState_TargetedApply_MultipleResource(t *testing.T) {
+	t.Parallel()
+
+	tm := setupState(t)
+
+	// Create targeted apply for all resources
+	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlA})
+	tm.Type("a")
+
+	// Give approval
+	waitFor(t, tm, func(s string) bool {
+		return strings.Contains(s, "Auto-apply 10 resources? (y/N):")
+	})
+	tm.Type("y")
+
+	// Expect to be taken to the task page for the apply, with a completed apply,
+	// and a warning that resource targeting is in effect
+	waitFor(t, tm, func(s string) bool {
+		// Remove bold formatting
+		s = internal.StripAnsi(s)
+		return matchPattern(t, `Task.*apply.*default.*modules/a.*\+10~0\-10.*exited`, s) &&
+			strings.Contains(s, "Warning: Resource targeting is in effect")
+	})
+}
+
+func TestState_TargetedDestroy_SingleResource(t *testing.T) {
+	t.Parallel()
+
+	tm := setupState(t)
+
+	// Create targeted destroy for first resource
+	tm.Type("d")
+
+	// Give approval
+	waitFor(t, tm, func(s string) bool {
+		return strings.Contains(s, "Destroy 1 resources? (y/N):")
+	})
+	tm.Type("y")
+
+	// Expect to be taken to the task page for the destroy, with a completed destroy, and a warning
+	// that resource targeting is in effect
+	waitFor(t, tm, func(s string) bool {
+		// Strip ANSI formatting from output
+		s = internal.StripAnsi(s)
+		return matchPattern(t, `Task.*apply \(destroy\).*default.*modules/a.*\+0~0\-1.*exited`, s) &&
+			strings.Contains(s, "Warning: Resource targeting is in effect")
+	})
+}
+
+func TestState_TargetedDestroy_MultipleResource(t *testing.T) {
+	t.Parallel()
+
+	tm := setupState(t)
+
+	// Create targeted destroy for all resources
+	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlA})
+	tm.Type("d")
+
+	// Give approval
+	waitFor(t, tm, func(s string) bool {
+		return strings.Contains(s, "Destroy 10 resources? (y/N):")
+	})
+	tm.Type("y")
+
+	// Expect to be taken to the task page for the destroy, with a completed destroy,
+	// and a warning that resource targeting is in effect
+	waitFor(t, tm, func(s string) bool {
+		// Remove bold formatting
+		s = internal.StripAnsi(s)
+		return matchPattern(t, `Task.*apply \(destroy\).*default.*modules/a.*\+0~0\-10.*exited`, s) &&
+			strings.Contains(s, "Warning: Resource targeting is in effect")
+	})
+}
+
 func TestState_Filter(t *testing.T) {
 	t.Parallel()
 
