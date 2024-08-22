@@ -115,6 +115,7 @@ func (m resourceList) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmd              tea.Cmd
 		cmds             []tea.Cmd
 		createRunOptions plan.CreateOptions
+		applyPrompt      = "Auto-apply %d resources?"
 	)
 
 	switch msg := msg.(type) {
@@ -186,6 +187,21 @@ func (m resourceList) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m.plans.Plan(workspaceID, createRunOptions)
 			}
 			return m, m.helpers.CreateTasks(fn, m.workspace.GetID())
+		case key.Matches(msg, keys.Common.Destroy):
+			createRunOptions.Destroy = true
+			applyPrompt = "Destroy %d resources?"
+			fallthrough
+		case key.Matches(msg, keys.Common.Apply):
+			// Create a targeted apply.
+			createRunOptions.TargetAddrs = m.selectedOrCurrentAddresses()
+			resourceIDs := m.Table.SelectedOrCurrentIDs()
+			fn := func(workspaceID resource.ID) (task.Spec, error) {
+				return m.plans.Apply(workspaceID, createRunOptions)
+			}
+			return m, tui.YesNoPrompt(
+				fmt.Sprintf(applyPrompt, len(resourceIDs)),
+				m.helpers.CreateTasks(fn, m.workspace.GetID()),
+			)
 		}
 	case initState:
 		if msg.WorkspaceID != m.workspace.GetID() {
@@ -256,6 +272,8 @@ func (m resourceList) Title() string {
 func (m resourceList) HelpBindings() []key.Binding {
 	bindings := []key.Binding{
 		keys.Common.Plan,
+		keys.Common.PlanDestroy,
+		keys.Common.Apply,
 		keys.Common.Destroy,
 		keys.Common.Delete,
 		resourcesKeys.Move,
