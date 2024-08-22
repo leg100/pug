@@ -190,6 +190,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// ctrl-c quits the app, but not before prompting the user for
 			// confirmation.
 			return m, tui.YesNoPrompt("Quit pug?", tea.Quit)
+		case key.Matches(msg, keys.Global.Suspend):
+			// ctrl-z suspends the app
+			return m, tea.Suspend
 		case key.Matches(msg, keys.Global.Back):
 			// <esc> goes back to last page
 			m.goBack()

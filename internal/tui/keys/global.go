@@ -18,6 +18,7 @@ type global struct {
 	Filter      key.Binding
 	Autoscroll  key.Binding
 	Quit        key.Binding
+	Suspend     key.Binding
 	Help        key.Binding
 }
 
@@ -73,6 +74,10 @@ var Global = global{
 	Quit: key.NewBinding(
 		key.WithKeys("ctrl+c"),
 		key.WithHelp("ctrl+c", "exit"),
+	),
+	Suspend: key.NewBinding(
+		key.WithKeys("ctrl+z"),
+		key.WithHelp("ctrl+z", "suspend"),
 	),
 	Help: key.NewBinding(
 		key.WithKeys("?"),
