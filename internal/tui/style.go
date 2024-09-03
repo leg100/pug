@@ -20,6 +20,6 @@ var (
 	TitleWorkspace = Padded.Foreground(White).Background(Green)
 	TitleID        = Padded.Foreground(White).Background(Green)
 	TitleAddress   = Padded.Foreground(White).Background(Blue)
-	TitleSerial    = Padded.Foreground(White).Background(Orange)
+	TitleSerial    = Padded.Foreground(Black).Background(Orange)
 	TitleTainted   = Padded.Foreground(White).Background(Red)
 )
