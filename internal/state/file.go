@@ -22,7 +22,8 @@ type (
 
 	// StateFileOutput is an output in the terraform state file
 	StateFileOutput struct {
-		Value     json.RawMessage
+		Type      any
+		Value     any
 		Sensitive bool
 	}
 

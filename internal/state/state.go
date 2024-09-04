@@ -19,7 +19,10 @@ type State struct {
 	Serial           int64
 	TerraformVersion string
 	Lineage          string
+	Outputs          map[string]StateOutput
 }
+
+type StateOutput StateFileOutput
 
 func newState(ws resource.Resource, r io.Reader) (*State, error) {
 	// Default to a serial of -1 to indicate that there is no state yet.
@@ -84,6 +87,10 @@ func newState(ws resource.Resource, r io.Reader) (*State, error) {
 		}
 	}
 	state.Resources = m
+	state.Outputs = make(map[string]StateOutput, len(file.Outputs))
+	for k, v := range file.Outputs {
+		state.Outputs[k] = StateOutput(v)
+	}
 
 	return state, nil
 }

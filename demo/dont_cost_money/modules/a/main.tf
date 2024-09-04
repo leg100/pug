@@ -19,10 +19,21 @@ resource "random_pet" "pet" {
   }
 }
 
+resource "random_password" "password" {
+  length           = 16
+  special          = true
+  override_special = "!#$%&*()-_=+[]{}<>:?"
+}
+
 output "waited" {
   value = time_sleep.wait_three_seconds.create_duration
 }
 
 output "pets" {
   value = random_pet.pet[*].id
+}
+
+output "secret" {
+  sensitive = true
+  value     = "topsecret"
 }

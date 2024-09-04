@@ -44,7 +44,7 @@ func (m *ResourceListMaker) Make(id resource.ID, width, height int) (tea.Model, 
 	renderer := func(resource *state.Resource) table.RenderedRow {
 		addr := string(resource.Address)
 		if resource.Tainted {
-			addr += " (tainted)"
+			addr = addr + " " + tui.TitleTainted.Render("tainted")
 		}
 		return table.RenderedRow{resourceColumn.Key: addr}
 	}

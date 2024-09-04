@@ -83,4 +83,56 @@ func TestState(t *testing.T) {
 		assert.Equal(t, wantAttrs, got.Resources[`time_sleep.wait_three_seconds["duration"]`].Attributes)
 	})
 
+	t.Run("state resource with outputs", func(t *testing.T) {
+		f, err := os.Open("./testdata/state_with_outputs.json")
+		require.NoError(t, err)
+		t.Cleanup(func() {
+			f.Close()
+		})
+
+		got, err := newState(ws, f)
+		require.NoError(t, err)
+
+		wantOutputs := map[string]StateOutput{
+			"pets": {
+				Type: []any{
+					"tuple",
+					[]any{
+						"string",
+						"string",
+						"string",
+						"string",
+						"string",
+						"string",
+						"string",
+						"string",
+						"string",
+						"string",
+					},
+				},
+				Value: []any{
+					"helping-shrimp",
+					"famous-mule",
+					"smart-jawfish",
+					"enhanced-moose",
+					"happy-goshawk",
+					"funky-grubworm",
+					"helping-hawk",
+					"infinite-falcon",
+					"climbing-walrus",
+					"cosmic-terrapin",
+				},
+			},
+			"secret": {
+				Type:      "string",
+				Value:     "topsecret",
+				Sensitive: true,
+			},
+			"waited": {
+				Type:  "string",
+				Value: "3s",
+			},
+		}
+		assert.Equal(t, wantOutputs, got.Outputs)
+	})
 }
