@@ -137,7 +137,7 @@ func (r *plan) planTaskSpec(logger logging.Interface) task.Spec {
 	return spec
 }
 
-func (r *plan) applyTaskSpec(logger logging.Interface) (task.Spec, error) {
+func (r *plan) applyTaskSpec() (task.Spec, error) {
 	if r.planFile && !r.HasChanges {
 		return task.Spec{}, errors.New("plan does not have any changes to apply")
 	}

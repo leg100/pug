@@ -108,7 +108,7 @@ func (s *Service) Apply(workspaceID resource.ID, opts CreateOptions) (task.Spec,
 	if err != nil {
 		return task.Spec{}, err
 	}
-	return plan.applyTaskSpec(s.logger)
+	return plan.applyTaskSpec()
 }
 
 // ApplyPlan creates a task spec to apply an existing plan, i.e. `terraform
@@ -126,7 +126,7 @@ func (s *Service) ApplyPlan(taskID resource.ID) (task.Spec, error) {
 	if err != nil {
 		return task.Spec{}, err
 	}
-	return plan.applyTaskSpec(s.logger)
+	return plan.applyTaskSpec()
 }
 
 func (s *Service) Get(runID resource.ID) (*plan, error) {
