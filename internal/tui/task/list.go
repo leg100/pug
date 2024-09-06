@@ -82,7 +82,7 @@ func (mm *ListMaker) Make(_ resource.ID, width, height int) (tea.Model, error) {
 		return table.RenderedRow{
 			taskIDColumn.Key:          t.ID.String(),
 			table.ModuleColumn.Key:    mm.Helpers.TaskModulePath(t),
-			table.WorkspaceColumn.Key: mm.Helpers.WorkspaceName(t),
+			table.WorkspaceColumn.Key: mm.Helpers.TaskWorkspaceName(t),
 			commandColumn.Key:         t.String(),
 			ageColumn.Key:             tui.Ago(time.Now(), t.Updated),
 			statusColumn.Key:          mm.Helpers.TaskStatus(t, false),
@@ -147,7 +147,7 @@ func (m List) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			)
 		case key.Matches(msg, keys.Common.State):
 			if row, ok := m.Table.CurrentRow(); ok {
-				if ws, ok := m.TaskWorkspace(row.Value); ok {
+				if ws := m.TaskWorkspaceOrCurrentWorkspace(row.Value); ws != nil {
 					return m, tui.NavigateTo(tui.ResourceListKind, tui.WithParent(ws.GetID()))
 				} else {
 					return m, tui.ReportError(errors.New("task not associated with a workspace"))

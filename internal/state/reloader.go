@@ -18,7 +18,7 @@ func (r *reloader) Reload(workspaceID resource.ID) (task.Spec, error) {
 		Command: []string{"state", "pull"},
 		JSON:    true,
 		BeforeExited: func(t *task.Task) (task.Summary, error) {
-			state, err := newState(t.Workspace(), t.NewReader(false))
+			state, err := newState(workspaceID, t.NewReader(false))
 			if err != nil {
 				return nil, fmt.Errorf("constructing pug state: %w", err)
 			}

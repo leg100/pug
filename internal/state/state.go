@@ -21,11 +21,11 @@ type State struct {
 	Lineage          string
 }
 
-func newState(ws resource.Resource, r io.Reader) (*State, error) {
+func newState(workspaceID resource.ID, r io.Reader) (*State, error) {
 	// Default to a serial of -1 to indicate that there is no state yet.
 	state := &State{
-		Common:      resource.New(resource.State, ws),
-		WorkspaceID: ws.GetID(),
+		Common:      resource.New(resource.State, resource.GlobalResource),
+		WorkspaceID: workspaceID,
 		Serial:      -1,
 	}
 
@@ -74,7 +74,7 @@ func newState(ws resource.Resource, r io.Reader) (*State, error) {
 
 			addr := ResourceAddress(b.String())
 			var err error
-			m[addr], err = newResource(state, addr, instance.Attributes)
+			m[addr], err = newResource(workspaceID, addr, instance.Attributes)
 			if err != nil {
 				return nil, fmt.Errorf("decoding resource %s: %w", addr, err)
 			}

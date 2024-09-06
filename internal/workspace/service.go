@@ -93,7 +93,11 @@ func (s *Service) LoadWorkspacesUponInit(sub <-chan resource.Event[*task.Task]) 
 		if event.Payload.State != task.Exited {
 			continue
 		}
-		mod, err := s.modules.Get(event.Payload.Module().GetID())
+		moduleID := event.Payload.ModuleID
+		if moduleID == nil {
+			continue
+		}
+		mod, err := s.modules.Get(*moduleID)
 		if err != nil {
 			continue
 		}

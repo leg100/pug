@@ -97,8 +97,13 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case resource.Event[*task.Task]:
 		// Re-render workspace whenever a task event is received belonging to the
 		// workspace.
-		if ws := msg.Payload.Workspace(); ws != nil {
-			m.table.AddItems(ws.(*workspace.Workspace))
+		if workspaceID := msg.Payload.WorkspaceID; workspaceID != nil {
+			ws, err := m.Workspaces.Get(*workspaceID)
+			if err != nil {
+				m.Logger.Error("re-rendering workspace upon receiving task event", "error", err, "task", msg.Payload)
+				return m, nil
+			}
+			m.table.AddItems(ws)
 		}
 	case tea.KeyMsg:
 		switch {

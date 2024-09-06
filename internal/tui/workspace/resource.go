@@ -78,21 +78,21 @@ func (m resourceModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			fn := func(workspaceID resource.ID) (task.Spec, error) {
 				return m.states.Taint(workspaceID, m.resource.Address)
 			}
-			return m, m.CreateTasks(fn, m.resource.Workspace().GetID())
+			return m, m.CreateTasks(fn, m.resource.WorkspaceID)
 		case key.Matches(msg, resourcesKeys.Untaint):
 			fn := func(workspaceID resource.ID) (task.Spec, error) {
 				return m.states.Untaint(workspaceID, m.resource.Address)
 			}
-			return m, m.CreateTasks(fn, m.resource.Workspace().GetID())
+			return m, m.CreateTasks(fn, m.resource.WorkspaceID)
 		case key.Matches(msg, resourcesKeys.Move):
-			return m, m.Move(m.resource.Workspace().GetID(), m.resource.Address)
+			return m, m.Move(m.resource.WorkspaceID, m.resource.Address)
 		case key.Matches(msg, keys.Common.Delete):
 			fn := func(workspaceID resource.ID) (task.Spec, error) {
 				return m.states.Delete(workspaceID, m.resource.Address)
 			}
 			return m, tui.YesNoPrompt(
 				"Delete resource?",
-				m.CreateTasks(fn, m.resource.Workspace().GetID()),
+				m.CreateTasks(fn, m.resource.WorkspaceID),
 			)
 		case key.Matches(msg, keys.Common.PlanDestroy):
 			// Create a targeted destroy plan.
@@ -104,7 +104,7 @@ func (m resourceModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			fn := func(workspaceID resource.ID) (task.Spec, error) {
 				return m.plans.Plan(workspaceID, createRunOptions)
 			}
-			return m, m.CreateTasks(fn, m.resource.Workspace().GetID())
+			return m, m.CreateTasks(fn, m.resource.WorkspaceID)
 		}
 	case tea.WindowSizeMsg:
 		m.viewport.SetDimensions(m.viewportWidth(msg.Width), m.viewportHeight(msg.Height))

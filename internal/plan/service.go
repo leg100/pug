@@ -77,12 +77,15 @@ func (s *Service) ReloadAfterApply(sub <-chan resource.Event[*task.Task]) {
 			if !IsApplyTask(event.Payload) {
 				continue
 			}
-			ws := event.Payload.Workspace()
-			if _, err := s.states.CreateReloadTask(ws.GetID()); err != nil {
-				s.logger.Error("reloading state after apply", "error", err, "workspace", ws)
+			workspaceID := event.Payload.WorkspaceID
+			if workspaceID == nil {
 				continue
 			}
-			s.logger.Debug("reloading state after apply", "workspace", ws)
+			if _, err := s.states.CreateReloadTask(*workspaceID); err != nil {
+				s.logger.Error("reloading state after apply", "error", err, "workspace", *workspaceID)
+				continue
+			}
+			s.logger.Debug("reloading state after apply", "workspace", *workspaceID)
 		}
 	}
 }

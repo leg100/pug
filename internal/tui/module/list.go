@@ -127,8 +127,13 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case resource.Event[*task.Task]:
 		// Re-render module whenever a task event is received belonging to the
 		// module.
-		if mod := msg.Payload.Module(); mod != nil {
-			m.table.AddItems(mod.(*module.Module))
+		if moduleID := msg.Payload.ModuleID; moduleID != nil {
+			mod, err := m.Modules.Get(*moduleID)
+			if err != nil {
+				m.Logger.Error("re-rendering module upon receiving task event", "error", err, "task", msg.Payload)
+				return m, nil
+			}
+			m.table.AddItems(mod)
 		}
 	case tea.KeyMsg:
 		switch {

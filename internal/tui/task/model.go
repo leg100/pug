@@ -142,7 +142,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.CreateTasksWithSpecs(spec),
 			)
 		case key.Matches(msg, keys.Common.State):
-			if ws, ok := m.TaskWorkspace(m.task); ok {
+			if ws := m.TaskWorkspaceOrCurrentWorkspace(m.task); ws != nil {
 				return m, tui.NavigateTo(tui.ResourceListKind, tui.WithParent(ws.GetID()))
 			} else {
 				return m, tui.ReportError(errors.New("task not associated with a workspace"))
@@ -306,10 +306,10 @@ func (m model) HelpBindings() []key.Binding {
 		keys.Common.Retry,
 		localKeys.ToggleInfo,
 	}
-	if mod := m.task.Module(); mod != nil {
+	if moduleID := m.task.ModuleID; moduleID != nil {
 		bindings = append(bindings, keys.Common.Module)
 	}
-	if ws := m.task.Workspace(); ws != nil {
+	if workspaceID := m.task.WorkspaceID; workspaceID != nil {
 		bindings = append(bindings, keys.Common.Workspace)
 	}
 	if plan.IsApplyTask(m.task) {
