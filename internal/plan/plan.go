@@ -8,26 +8,29 @@ import (
 	"path/filepath"
 
 	"github.com/leg100/pug/internal"
-	"github.com/leg100/pug/internal/logging"
 	"github.com/leg100/pug/internal/pubsub"
 	"github.com/leg100/pug/internal/resource"
 	"github.com/leg100/pug/internal/state"
 	"github.com/leg100/pug/internal/task"
-	"github.com/leg100/pug/internal/workspace"
 )
 
 type plan struct {
 	resource.Common
 
+	ModuleID      *resource.ID
+	WorkspaceID   *resource.ID
+	ModulePath    string
 	HasChanges    bool
 	ArtefactsPath string
 	Destroy       bool
 	TargetAddrs   []state.ResourceAddress
 
-	targetArgs  []string
-	terragrunt  bool
-	planFile    bool
-	varsFileArg *string
+	targetArgs         []string
+	terragrunt         bool
+	planFile           bool
+	varsFileArg        *string
+	envs               []string
+	moduleDependencies []resource.ID
 
 	// taskID is the ID of the plan task, and is only set once the task is
 	// created.
@@ -47,6 +50,7 @@ type CreateOptions struct {
 type factory struct {
 	dataDir    string
 	workdir    internal.Workdir
+	modules    moduleGetter
 	workspaces workspaceGetter
 	broker     *pubsub.Broker[*plan]
 	terragrunt bool
@@ -57,12 +61,19 @@ func (f *factory) newPlan(workspaceID resource.ID, opts CreateOptions) (*plan, e
 	if err != nil {
 		return nil, fmt.Errorf("retrieving workspace: %w", err)
 	}
+	mod, err := f.modules.Get(ws.ModuleID)
+	if err != nil {
+		return nil, fmt.Errorf("retrieving module: %w", err)
+	}
 	plan := &plan{
-		Common:      resource.New(resource.Plan, ws),
-		Destroy:     opts.Destroy,
-		TargetAddrs: opts.TargetAddrs,
-		planFile:    opts.planFile,
-		terragrunt:  f.terragrunt,
+		Common:             resource.New(resource.Plan, ws),
+		ModulePath:         mod.Path,
+		Destroy:            opts.Destroy,
+		TargetAddrs:        opts.TargetAddrs,
+		planFile:           opts.planFile,
+		terragrunt:         f.terragrunt,
+		envs:               []string{ws.TerraformEnv()},
+		moduleDependencies: mod.Dependencies(),
 	}
 	if opts.planFile {
 		plan.ArtefactsPath = filepath.Join(f.dataDir, fmt.Sprintf("%d", plan.Serial))
@@ -80,18 +91,6 @@ func (f *factory) newPlan(workspaceID resource.ID, opts CreateOptions) (*plan, e
 	return plan, nil
 }
 
-func (r *plan) WorkspaceID() resource.ID {
-	return r.Parent.GetID()
-}
-
-func (r *plan) WorkspaceName() string {
-	return r.Parent.String()
-}
-
-func (r *plan) ModulePath() string {
-	return r.Parent.GetParent().String()
-}
-
 func (r *plan) planPath() string {
 	return filepath.Join(r.ArtefactsPath, "plan")
 }
@@ -100,14 +99,15 @@ func (r *plan) args() []string {
 	return append([]string{"-input"}, r.targetArgs...)
 }
 
-func (r *plan) planTaskSpec(logger logging.Interface) task.Spec {
+func (r *plan) planTaskSpec() task.Spec {
 	// TODO: assert planFile is true first
 	spec := task.Spec{
-		Parent:  r.Workspace(),
-		Path:    r.ModulePath(),
-		Env:     []string{workspace.TerraformEnv(r.WorkspaceName())},
-		Command: []string{"plan"},
-		Args:    append(r.args(), "-out", r.planPath()),
+		ModuleID:    r.ModuleID,
+		WorkspaceID: r.WorkspaceID,
+		Path:        r.ModulePath,
+		Env:         r.envs,
+		Command:     []string{"plan"},
+		Args:        append(r.args(), "-out", r.planPath()),
 		// TODO: explain why plan is blocking (?)
 		Blocking:    true,
 		Description: "plan",
@@ -142,17 +142,14 @@ func (r *plan) applyTaskSpec() (task.Spec, error) {
 		return task.Spec{}, errors.New("plan does not have any changes to apply")
 	}
 	spec := task.Spec{
-		Parent:      r.Workspace(),
-		Path:        r.ModulePath(),
+		ModuleID:    r.ModuleID,
+		WorkspaceID: r.WorkspaceID,
+		Path:        r.ModulePath,
 		Command:     []string{"apply"},
 		Args:        r.args(),
-		Env:         []string{workspace.TerraformEnv(r.WorkspaceName())},
+		Env:         r.envs,
 		Blocking:    true,
 		Description: "apply",
-		// If terragrunt is in use then respect module dependencies.
-		RespectModuleDependencies: r.terragrunt,
-		// Module dependencies are reversed for a destroy.
-		InverseDependencyOrder: r.Destroy,
 		BeforeExited: func(t *task.Task) (task.Summary, error) {
 			out, err := io.ReadAll(t.NewReader(false))
 			if err != nil {
@@ -168,6 +165,14 @@ func (r *plan) applyTaskSpec() (task.Spec, error) {
 			}
 			return report, nil
 		},
+	}
+	// If terragrunt is in use then respect module dependencies.
+	if r.terragrunt {
+		spec.Dependencies = &task.Dependencies{
+			ModuleIDs: r.moduleDependencies,
+			// Module dependencies are reversed for a destroy.
+			InverseDependencyOrder: r.Destroy,
+		}
 	}
 	if r.planFile {
 		spec.Args = append(spec.Args, r.planPath())

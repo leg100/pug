@@ -81,7 +81,7 @@ func (mm *ListMaker) Make(_ resource.ID, width, height int) (tea.Model, error) {
 	renderer := func(t *task.Task) table.RenderedRow {
 		return table.RenderedRow{
 			taskIDColumn.Key:          t.ID.String(),
-			table.ModuleColumn.Key:    mm.Helpers.ModulePath(t),
+			table.ModuleColumn.Key:    mm.Helpers.TaskModulePath(t),
 			table.WorkspaceColumn.Key: mm.Helpers.WorkspaceName(t),
 			commandColumn.Key:         t.String(),
 			ageColumn.Key:             tui.Ago(time.Now(), t.Updated),
@@ -102,17 +102,17 @@ func (mm *ListMaker) Make(_ resource.ID, width, height int) (tea.Model, error) {
 		Model:   splitModel,
 		plans:   mm.Plans,
 		tasks:   mm.Tasks,
-		helpers: mm.Helpers,
+		Helpers: mm.Helpers,
 	}
 	return m, nil
 }
 
 type List struct {
 	split.Model[*task.Task]
+	*tui.Helpers
 
-	plans   *plan.Service
-	tasks   *task.Service
-	helpers *tui.Helpers
+	plans *plan.Service
+	tasks *task.Service
 }
 
 func (m List) Init() tea.Cmd {
@@ -143,11 +143,11 @@ func (m List) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return m, tui.YesNoPrompt(
 				fmt.Sprintf("Apply %d plans?", len(specs)),
-				m.helpers.CreateTasksWithSpecs(specs...),
+				m.CreateTasksWithSpecs(specs...),
 			)
 		case key.Matches(msg, keys.Common.State):
 			if row, ok := m.Table.CurrentRow(); ok {
-				if ws, ok := m.helpers.TaskWorkspace(row.Value); ok {
+				if ws, ok := m.TaskWorkspace(row.Value); ok {
 					return m, tui.NavigateTo(tui.ResourceListKind, tui.WithParent(ws.GetID()))
 				} else {
 					return m, tui.ReportError(errors.New("task not associated with a workspace"))
@@ -161,7 +161,7 @@ func (m List) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return m, tui.YesNoPrompt(
 				fmt.Sprintf("Retry %d tasks?", len(rows)),
-				m.helpers.CreateTasksWithSpecs(specs...),
+				m.CreateTasksWithSpecs(specs...),
 			)
 		}
 	}
@@ -172,7 +172,7 @@ func (m List) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m List) Title() string {
-	return tui.Breadcrumbs("Tasks", resource.GlobalResource)
+	return m.Breadcrumbs("Tasks", resource.GlobalResource)
 }
 
 func (m List) HelpBindings() []key.Binding {

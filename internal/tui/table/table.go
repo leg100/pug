@@ -59,8 +59,6 @@ type Model[V resource.Resource] struct {
 	// dimensions calcs
 	width  int
 	height int
-
-	parent resource.Resource
 }
 
 // Column defines the table structure.
@@ -138,12 +136,6 @@ func WithSortFunc[V resource.Resource](sortFunc func(V, V) int) Option[V] {
 func WithSelectable[V resource.Resource](s bool) Option[V] {
 	return func(m *Model[V]) {
 		m.selectable = s
-	}
-}
-
-func WithParent[V resource.Resource](parent resource.Resource) Option[V] {
-	return func(m *Model[V]) {
-		m.parent = parent
 	}
 }
 
@@ -491,10 +483,6 @@ func (m *Model[V]) SetItems(items ...V) {
 // on the table already.
 func (m *Model[V]) AddItems(items ...V) {
 	for _, item := range items {
-		// Skip item if it's not a descendent of the table parent resource.
-		if m.parent != nil && !item.HasAncestor(m.parent.GetID()) {
-			return
-		}
 		// Add/update item
 		m.items[item.GetID()] = item
 		// (Re-)render item's row.

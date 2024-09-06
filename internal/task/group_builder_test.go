@@ -11,24 +11,23 @@ import (
 type fakeTaskCreator struct{}
 
 func (f *fakeTaskCreator) Create(spec Spec) (*Task, error) {
-	return (&factory{}).newTask(spec), nil
+	return (&factory{}).newTask(spec)
 }
 
 func TestNewGroupWithDependencies(t *testing.T) {
-	// Create module dependency tree
-	vpc := resource.New(resource.Module, resource.GlobalResource)
-	mysql := resource.New(resource.Module, resource.GlobalResource).WithDependencies(vpc.ID)
-	redis := resource.New(resource.Module, resource.GlobalResource).WithDependencies(vpc.ID)
-	backend := resource.New(resource.Module, resource.GlobalResource).WithDependencies(vpc.ID, redis.ID, mysql.ID)
-	frontend := resource.New(resource.Module, resource.GlobalResource).WithDependencies(backend.ID, vpc.ID)
-	mq := resource.New(resource.Module, resource.GlobalResource)
+	vpcID := resource.NewID(resource.Module)
+	mysqlID := resource.NewID(resource.Module)
+	redisID := resource.NewID(resource.Module)
+	backendID := resource.NewID(resource.Module)
+	frontendID := resource.NewID(resource.Module)
+	mqID := resource.NewID(resource.Module)
 
-	vpcSpec := Spec{Parent: vpc, Path: "vpc"}
-	mysqlSpec := Spec{Parent: mysql, Path: "mysql"}
-	redisSpec := Spec{Parent: redis, Path: "redis"}
-	backendSpec := Spec{Parent: backend, Path: "backend"}
-	frontendSpec := Spec{Parent: frontend, Path: "frontend"}
-	mqSpec := Spec{Parent: mq, Path: "mq"}
+	vpcSpec := Spec{ModuleID: &vpcID, Path: "vpc", Dependencies: &Dependencies{}}
+	mysqlSpec := Spec{ModuleID: &mysqlID, Path: "mysql", Dependencies: &Dependencies{ModuleIDs: []resource.ID{vpcID}}}
+	redisSpec := Spec{ModuleID: &redisID, Path: "redis", Dependencies: &Dependencies{ModuleIDs: []resource.ID{vpcID}}}
+	backendSpec := Spec{ModuleID: &backendID, Path: "backend", Dependencies: &Dependencies{ModuleIDs: []resource.ID{vpcID, mysqlID, redisID}}}
+	frontendSpec := Spec{ModuleID: &frontendID, Path: "frontend", Dependencies: &Dependencies{ModuleIDs: []resource.ID{vpcID, backendID}}}
+	mqSpec := Spec{ModuleID: &mqID, Path: "mq", Dependencies: &Dependencies{}}
 
 	t.Run("normal order", func(t *testing.T) {
 		got, err := createDependentTasks(&fakeTaskCreator{}, false,

@@ -6,8 +6,16 @@ import (
 	"github.com/leg100/pug/internal/resource"
 )
 
-// enqueuer determines which tasks should be added to the global queue for
-// processing
+// enqueuer determines which tasks shall be added to the global queue. A task
+// can be enqueued if:
+//
+// (a) it is an "immediate" task, or:
+// (b) if it belongs to a workspace then no other task has "blocked" that workspace
+// (c) if it belongs to a module then no other task has "blocked" that module
+// (d) if it has dependencies on other tasks then those tasks have all finished
+// successfully.
+//
+// Otherwise the enqueuer leaves the task in a pending state.
 type enqueuer struct {
 	tasks enqueuerTaskService
 }
@@ -38,11 +46,23 @@ func (e *enqueuer) enqueuable() []*Task {
 	active := e.tasks.List(ListOptions{
 		Status: []Status{Queued, Running},
 	})
+	// blockedModules are those modules blocked by tasks: the keys are the IDs
+	// of the modules and the values are the IDs of tasks blocking the
+	// respective module.
+	blockedModules := make(map[resource.ID]struct{})
+	// blockedWorkspaces are those workspaces blocked by tasks: the keys are the IDs
+	// of the workspaces and the values are the IDs of tasks blocking the
+	// respective workspace.
+	blockedWorkspaces := make(map[resource.ID]struct{})
 	// Populate set of currently blocked workspaces/modules.
-	blocked := make(map[resource.ID]struct{}, len(active))
 	for _, t := range active {
 		if t.Blocking {
-			addBlockedResource(blocked, t.Parent)
+			if t.ModuleID != nil {
+				blockedModules[*t.ModuleID] = struct{}{}
+			}
+			if t.WorkspaceID != nil {
+				blockedWorkspaces[*t.WorkspaceID] = struct{}{}
+			}
 		}
 	}
 	// Retrieve pending tasks in order of oldest first.
@@ -50,32 +70,48 @@ func (e *enqueuer) enqueuable() []*Task {
 		Status: []Status{Pending},
 		Oldest: true,
 	})
-	// Filter pending tasks, keeping only those that are enqueuable
-	var i int
+	// Build list of tasks to enqueue
+	var enqueue []*Task
 	for _, t := range pending {
-		// Check whether task's workspace/module is currently blocked; if so
-		// then task cannot be enqueued. The exception to this rule is an
-		// immediate task, which is always enqueuable
-		if !t.Immediate && hasBlockedAncestor(blocked, t.GetParent()) {
-			// Not enqueuable
+		if t.Immediate {
+			// Always enqueue immediate tasks.
+			enqueue = append(enqueue, t)
 			continue
-		} else if t.Blocking {
-			// Found blocking task in pending queue; no further tasks shall be
-			// enqueued for resources belonging to any of the blocking task's
-			// ancestor resources
-			addBlockedResource(blocked, t.Parent)
 		}
-		// If task depends upon other tasks then only enqueue task if they have
-		// all successfully completed.
+		if t.WorkspaceID != nil {
+			if _, ok := blockedWorkspaces[*t.WorkspaceID]; ok {
+				// Don't enqueue task belonging to workspace blocked by another task
+				continue
+			}
+		}
+		if t.ModuleID != nil {
+			if _, ok := blockedModules[*t.ModuleID]; ok {
+				// Don't enqueue task belonging to module blocked by another task
+				continue
+			}
+		}
 		if !e.enqueueDependentTask(t) {
+			// Don't enqueue task with dependencies on other tasks that have yet
+			// to complete or have failed.
 			continue
 		}
-		// Enqueueable
-		pending[i] = t
-		i++
+		// Enqueue task.
+		enqueue = append(enqueue, t)
+		// Blocking tasks can block workspaces and modules.
+		if t.Blocking {
+			if t.WorkspaceID != nil {
+				// Task blocks workspace; no further tasks belonging to workspace
+				// shall be enqueued.
+				blockedWorkspaces[*t.WorkspaceID] = struct{}{}
+			}
+			if t.ModuleID != nil {
+				// Task blocks module; no further tasks belonging to module
+				// shall be enqueued.
+				blockedModules[*t.ModuleID] = struct{}{}
+			}
+		}
 	}
-	// Enqueue filtered pending tasks
-	return pending[:i]
+	return enqueue
 }
 
 func (e *enqueuer) enqueueDependentTask(t *Task) bool {
@@ -85,7 +121,6 @@ func (e *enqueuer) enqueueDependentTask(t *Task) bool {
 			// TODO: decide what to do in case of error
 			return false
 		}
-
 		switch dependency.State {
 		case Exited:
 			// Is enqueuable if all dependencies have exited successfully.
@@ -101,27 +136,4 @@ func (e *enqueuer) enqueueDependentTask(t *Task) bool {
 		}
 	}
 	return true
-}
-
-func addBlockedResource(blocked map[resource.ID]struct{}, parent resource.Resource) {
-	if parent != nil {
-		switch parent.GetKind() {
-		case resource.Module, resource.Workspace:
-			blocked[parent.GetID()] = struct{}{}
-			return
-		}
-	}
-	if parent.GetParent() != nil {
-		addBlockedResource(blocked, parent.GetParent())
-	}
-}
-
-func hasBlockedAncestor(blocked map[resource.ID]struct{}, parent resource.Resource) bool {
-	if _, ok := blocked[parent.GetID()]; ok {
-		return true
-	}
-	if parent.GetParent() != nil {
-		return hasBlockedAncestor(blocked, parent.GetParent())
-	}
-	return false
 }

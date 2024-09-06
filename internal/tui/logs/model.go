@@ -31,7 +31,8 @@ const (
 )
 
 type Maker struct {
-	Logger *logging.Logger
+	Logger  *logging.Logger
+	Helpers *tui.Helpers
 }
 
 func (mm *Maker) Make(id resource.ID, width, height int) (tea.Model, error) {
@@ -83,6 +84,8 @@ type model struct {
 	table  table.Model[logging.Attr]
 	width  int
 	height int
+
+	*tui.Helpers
 }
 
 func (m model) Init() tea.Cmd {
@@ -97,7 +100,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m model) Title() string {
 	serial := tui.TitleSerial.Render(fmt.Sprintf("#%d", m.msg.Serial))
-	return tui.Breadcrumbs("LogMessage", resource.GlobalResource, serial)
+	return m.Breadcrumbs("LogMessage", resource.GlobalResource, serial)
 }
 
 func (m model) View() string {

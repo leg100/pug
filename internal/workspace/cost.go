@@ -54,7 +54,6 @@ func (s *costTaskSpecCreator) Cost(workspaceIDs ...resource.ID) (task.Spec, erro
 		}
 	}
 	return task.Spec{
-		Parent:  resource.GlobalResource,
 		Program: "infracost",
 		Command: []string{"breakdown"},
 		Args:    []string{"--config-file", configPath, "--format", "json", "--out-file", breakdownPath},
@@ -122,7 +121,7 @@ func generateCostConfig(workdir internal.Workdir, workspaces ...*Workspace) ([]b
 
 	for i, ws := range workspaces {
 		cfg.Projects[i] = infracostProjectConfig{
-			Path:               ws.ModulePath(),
+			Path:               ws.ModulePath,
 			TerraformWorkspace: ws.Name,
 		}
 		if fname, ok := ws.VarsFile(workdir); ok {

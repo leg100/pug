@@ -53,9 +53,9 @@ func (r *reloader) Reload(moduleID resource.ID) (task.Spec, error) {
 		return task.Spec{}, err
 	}
 	return task.Spec{
-		Parent:  mod,
-		Path:    mod.Path,
-		Command: []string{"workspace", "list"},
+		ModuleID: &mod.ID,
+		Path:     mod.Path,
+		Command:  []string{"workspace", "list"},
 		BeforeExited: func(t *task.Task) (task.Summary, error) {
 			found, current, err := parseList(t.NewReader(false))
 			if err != nil {
@@ -77,7 +77,7 @@ func (r *reloader) resetWorkspaces(mod *module.Module, discovered []string, curr
 	// Gather existing workspaces for the module.
 	var existing []*Workspace
 	for _, ws := range r.table.List() {
-		if ws.ModuleID() == mod.ID {
+		if ws.ModuleID == mod.ID {
 			existing = append(existing, ws)
 		}
 	}

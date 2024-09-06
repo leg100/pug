@@ -98,7 +98,7 @@ func (s *Service) Plan(workspaceID resource.ID, opts CreateOptions) (task.Spec, 
 	}
 	s.table.Add(plan.ID, plan)
 
-	return plan.planTaskSpec(s.logger), nil
+	return plan.planTaskSpec(), nil
 }
 
 // Apply creates a task spec to auto-apply a plan, i.e. `terraform apply`. To

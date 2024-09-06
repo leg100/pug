@@ -123,7 +123,6 @@ func (s *Service) Reload() (added []string, removed []string, err error) {
 
 func (s *Service) loadTerragruntDependencies() error {
 	task, err := s.tasks.Create(task.Spec{
-		Parent:  resource.GlobalResource,
 		Command: []string{"graph-dependencies"},
 		Wait:    true,
 	})
@@ -190,7 +189,7 @@ func (s *Service) loadTerragruntDependenciesFromDigraph(r io.Reader) error {
 			dependencyIDs = append(dependencyIDs, mod.ID)
 		}
 		s.table.Update(mod.ID, func(existing *Module) error {
-			existing.Common = existing.WithDependencies(dependencyIDs...)
+			existing.dependencies = dependencyIDs
 			return nil
 		})
 	}
@@ -257,7 +256,7 @@ func (s *Service) updateSpec(moduleID resource.ID, spec task.Spec) (task.Spec, e
 	if err != nil {
 		return task.Spec{}, err
 	}
-	spec.Parent = mod
+	spec.ModuleID = &mod.ID
 	spec.Path = mod.Path
 	return spec, nil
 }

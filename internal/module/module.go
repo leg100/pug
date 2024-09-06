@@ -25,6 +25,9 @@ type Module struct {
 
 	// The module's backend type
 	Backend string
+
+	// Dependencies on other modules
+	dependencies []resource.ID
 }
 
 // Options for constructing a module.
@@ -52,6 +55,10 @@ func (m *Module) LogValue() slog.Value {
 	return slog.GroupValue(
 		slog.String("path", m.Path),
 	)
+}
+
+func (m *Module) Dependencies() []resource.ID {
+	return m.dependencies
 }
 
 // find finds root modules that are descendents of the workdir and

@@ -1,6 +1,8 @@
 package module
 
 import (
+	"reflect"
+
 	"github.com/leg100/pug/internal/resource"
 )
 
@@ -9,32 +11,30 @@ type logEnricher struct {
 	table *resource.Table[*Module]
 }
 
-// moduleResource is a resource that belongs to a module
-type moduleResource interface {
-	Module() resource.Resource
-}
-
 func (e *logEnricher) EnrichLogRecord(args ...any) []any {
 	args = e.addModulePath(args...)
 	args = e.replaceIDWithModule(args...)
 	return args
 }
 
-// addModulePath checks if one of the log args is a resource that
-// belongs to a module, and if so, adds the module to the args
+// addModulePath checks if one of the log message args is a struct with a ModuleID
+// field, and if so, looks up the corresponding module and adds it to the
+// message.
 func (e *logEnricher) addModulePath(args ...any) []any {
 	for _, arg := range args {
-		res, ok := arg.(moduleResource)
+		v := reflect.Indirect(reflect.ValueOf(arg))
+		if v.Kind() != reflect.Struct {
+			continue
+		}
+		f := v.FieldByName("ModuleID")
+		if f.IsZero() {
+			continue
+		}
+		id, ok := f.Interface().(resource.ID)
 		if !ok {
-			// does not belong to a module
 			continue
 		}
-		modResource := res.Module()
-		if modResource == nil {
-			// can belong to a module but not in this instance
-			continue
-		}
-		mod, err := e.table.Get(modResource.GetID())
+		mod, err := e.table.Get(id)
 		if err != nil {
 			// module with id does not exist
 			continue

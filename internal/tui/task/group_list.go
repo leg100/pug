@@ -52,12 +52,15 @@ func (m *GroupListMaker) Make(_ resource.ID, width, height int) (tea.Model, erro
 	)
 
 	return groupList{
-		table: table,
-		tasks: m.Tasks,
+		table:   table,
+		tasks:   m.Tasks,
+		Helpers: m.Helpers,
 	}, nil
 }
 
 type groupList struct {
+	*tui.Helpers
+
 	table table.Model[*task.Group]
 	tasks *task.Service
 }
@@ -92,7 +95,7 @@ func (m groupList) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m groupList) Title() string {
-	return tui.Breadcrumbs("TaskGroups", resource.GlobalResource)
+	return m.Breadcrumbs("TaskGroups", resource.GlobalResource)
 }
 
 func (m groupList) View() string {

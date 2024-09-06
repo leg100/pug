@@ -16,7 +16,7 @@ func (m resourceList) createStateCommand(fn stateFunc, addrs ...state.ResourceAd
 		workspaceIDs[i] = m.workspace.GetID()
 	}
 	f := newStateTaskFunc(fn, addrs...)
-	return m.helpers.CreateTasks(f.createTask, workspaceIDs...)
+	return m.CreateTasks(f.createTask, workspaceIDs...)
 }
 
 func newStateTaskFunc(fn stateFunc, addrs ...state.ResourceAddress) *stateTaskFunc {

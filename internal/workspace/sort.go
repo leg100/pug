@@ -15,7 +15,7 @@ type moduleGetter interface {
 // 2. then, if module paths are equal, then by their workspace name, lexicographically
 func Sort(getter moduleGetter) func(*Workspace, *Workspace) int {
 	return func(i, j *Workspace) int {
-		if i.ModuleID() == j.ModuleID() {
+		if i.ModuleID == j.ModuleID {
 			// same module, compare workspace name
 			switch {
 			case i.Name < j.Name:
@@ -27,8 +27,8 @@ func Sort(getter moduleGetter) func(*Workspace, *Workspace) int {
 				return 0
 			}
 		}
-		imod, _ := getter.Get(i.ModuleID())
-		jmod, _ := getter.Get(j.ModuleID())
+		imod, _ := getter.Get(i.ModuleID)
+		jmod, _ := getter.Get(j.ModuleID)
 
 		if imod.Path < jmod.Path {
 			return -1

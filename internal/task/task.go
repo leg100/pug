@@ -21,6 +21,8 @@ import (
 type Task struct {
 	resource.Common
 
+	ModuleID            *resource.ID
+	WorkspaceID         *resource.ID
 	Command             []string
 	Args                []string
 	AdditionalExecution *AdditionalExecution
@@ -99,9 +101,15 @@ type Summary interface {
 }
 
 // TODO: check presence of mandatory options
-func (f *factory) newTask(spec Spec) *Task {
+// TODO: use values from spec directly - embed spec in task and use those values
+func (f *factory) newTask(spec Spec) (*Task, error) {
+	if spec.WorkspaceID != nil && spec.ModuleID == nil {
+		return nil, errors.New("workspace ID cannot be provided without module ID")
+	}
 	task := &Task{
-		Common:              resource.New(resource.Task, spec.Parent),
+		Common:              resource.New(resource.Task, resource.GlobalResource),
+		ModuleID:            spec.ModuleID,
+		WorkspaceID:         spec.WorkspaceID,
 		State:               Pending,
 		Created:             time.Now(),
 		Updated:             time.Now(),
@@ -117,7 +125,7 @@ func (f *factory) newTask(spec Spec) *Task {
 		AdditionalEnv:       append(f.userEnvs, spec.Env...),
 		JSON:                spec.JSON,
 		Blocking:            spec.Blocking,
-		DependsOn:           spec.DependsOn,
+		DependsOn:           spec.dependsOn,
 		Immediate:           spec.Immediate,
 		exclusive:           spec.Exclusive,
 		description:         spec.Description,
@@ -159,7 +167,7 @@ func (f *factory) newTask(spec Spec) *Task {
 	if task.program == "terragrunt" && f.terragrunt {
 		task.Args = append(task.Args, "--terragrunt-non-interactive")
 	}
-	return task
+	return task, nil
 }
 
 func (t *Task) String() string {
