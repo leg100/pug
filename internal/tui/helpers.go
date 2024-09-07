@@ -378,7 +378,7 @@ func (h *Helpers) Breadcrumbs(title string, res resource.Resource, crumbs ...str
 			return h.Breadcrumbs(title, mod, cmd)
 		}
 		// Global task
-		return h.Breadcrumbs(title, resource.GlobalResource, cmd)
+		return h.Breadcrumbs(title, nil, cmd)
 	case *state.Resource:
 		addr := TitleAddress.Render(res.String())
 		ws, err := h.Workspaces.Get(res.WorkspaceID)
@@ -390,7 +390,7 @@ func (h *Helpers) Breadcrumbs(title string, res resource.Resource, crumbs ...str
 	case *task.Group:
 		cmd := TitleCommand.Render(res.String())
 		id := TitleID.Render(res.GetID().String())
-		return h.Breadcrumbs(title, resource.GlobalResource, cmd, id)
+		return h.Breadcrumbs(title, nil, cmd, id)
 	case *workspace.Workspace:
 		name := TitleWorkspace.Render(res.String())
 		mod, err := h.Modules.Get(res.ModuleID)

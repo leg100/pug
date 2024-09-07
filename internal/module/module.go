@@ -16,7 +16,7 @@ import (
 
 // Module is a terraform root module.
 type Module struct {
-	resource.Common
+	resource.ID
 
 	// Path relative to pug working directory
 	Path string
@@ -41,7 +41,7 @@ type Options struct {
 // New constructs a module.
 func New(opts Options) *Module {
 	return &Module{
-		Common:  resource.New(resource.Module, resource.GlobalResource),
+		ID:      resource.NewID(resource.Module),
 		Path:    opts.Path,
 		Backend: opts.Backend,
 	}

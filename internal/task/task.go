@@ -19,7 +19,7 @@ import (
 
 // Task is an execution of a CLI program.
 type Task struct {
-	resource.Common
+	resource.ID
 
 	ModuleID            *resource.ID
 	WorkspaceID         *resource.ID
@@ -107,7 +107,7 @@ func (f *factory) newTask(spec Spec) (*Task, error) {
 		return nil, errors.New("workspace ID cannot be provided without module ID")
 	}
 	task := &Task{
-		Common:              resource.New(resource.Task, resource.GlobalResource),
+		ID:                  resource.NewID(resource.Task),
 		ModuleID:            spec.ModuleID,
 		WorkspaceID:         spec.WorkspaceID,
 		State:               Pending,

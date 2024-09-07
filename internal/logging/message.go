@@ -11,7 +11,7 @@ type Message struct {
 	// A message is a pug resource, but only insofar as it makes it easier to
 	// handle consistently alongside all other resources (modules, workspaces,
 	// etc) in the TUI.
-	resource.Common
+	resource.ID
 
 	Time       time.Time
 	Level      string
@@ -26,5 +26,5 @@ type Attr struct {
 	// An attribute is a pug resource, but only insofar as it makes it easier to
 	// handle consistently alongside all other resources (modules, workspaces,
 	// etc) in the TUI.
-	resource.Common
+	resource.ID
 }

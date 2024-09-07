@@ -4,21 +4,18 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/leg100/pug/internal/resource"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestRunner_runnable(t *testing.T) {
 	t.Parallel()
 
-	mod1 := resource.New(resource.Module, resource.GlobalResource)
-
-	t1 := &Task{Common: resource.New(resource.Task, mod1)}
-	t2 := &Task{Common: resource.New(resource.Task, mod1)}
-	t3 := &Task{Common: resource.New(resource.Task, mod1)}
-	ex1 := &Task{Common: resource.New(resource.Task, mod1), exclusive: true}
-	ex2 := &Task{Common: resource.New(resource.Task, mod1), exclusive: true}
-	immediate := &Task{Common: resource.New(resource.Task, mod1), Immediate: true}
+	t1 := &Task{}
+	t2 := &Task{}
+	t3 := &Task{}
+	ex1 := &Task{exclusive: true}
+	ex2 := &Task{exclusive: true}
+	immediate := &Task{Immediate: true}
 
 	tests := []struct {
 		name string

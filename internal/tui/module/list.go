@@ -217,7 +217,7 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m list) Title() string {
-	return m.Breadcrumbs("Modules", resource.GlobalResource)
+	return m.Breadcrumbs("Modules", nil)
 }
 
 func (m list) View() string {

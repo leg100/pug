@@ -15,7 +15,7 @@ var (
 	mu     sync.Mutex
 )
 
-// ID is a unique identifier for a pug entity.
+// ID is a unique identifier for a pug resource.
 type ID struct {
 	Serial uint
 	Kind   Kind

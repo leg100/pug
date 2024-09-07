@@ -101,7 +101,7 @@ func (s *Service) CreateGroup(specs ...Spec) (*Group, error) {
 		return nil, errors.New("no specs provided")
 	}
 	g := &Group{
-		Common:  resource.New(resource.TaskGroup, resource.GlobalResource),
+		ID:      resource.NewID(resource.TaskGroup),
 		Created: time.Now(),
 	}
 	// Validate specifications. There are some settings that are incompatible

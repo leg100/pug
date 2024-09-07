@@ -8,7 +8,7 @@ import (
 )
 
 type Group struct {
-	resource.Common
+	resource.ID
 
 	Created      time.Time
 	Command      string

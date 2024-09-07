@@ -72,10 +72,12 @@ func makeMakers(cfg app.Config, app *app.App, spinner *spinner.Model) map[tui.Ki
 			helpers,
 		),
 		tui.LogListKind: &logs.ListMaker{
-			Logger: app.Logger,
+			Logger:  app.Logger,
+			Helpers: helpers,
 		},
 		tui.LogKind: &logs.Maker{
-			Logger: app.Logger,
+			Logger:  app.Logger,
+			Helpers: helpers,
 		},
 		tui.ResourceListKind: &workspacetui.ResourceListMaker{
 			Workspaces: app.Workspaces,

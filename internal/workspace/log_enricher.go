@@ -27,7 +27,7 @@ func (e *logEnricher) addWorkspaceName(args ...any) []any {
 			continue
 		}
 		f := v.FieldByName("WorkspaceID")
-		if f.IsZero() {
+		if !f.IsValid() {
 			continue
 		}
 		id, ok := f.Interface().(resource.ID)

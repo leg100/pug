@@ -43,7 +43,11 @@ func (r *reloader) Reload(workspaceID resource.ID) (task.Spec, error) {
 func (s *Service) CreateReloadTask(workspaceID resource.ID) (*task.Task, error) {
 	spec, err := s.Reload(workspaceID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("creating reload task spec: %w", err)
 	}
-	return s.tasks.Create(spec)
+	task, err := s.tasks.Create(spec)
+	if err != nil {
+		return nil, fmt.Errorf("creating reload task: %w", err)
+	}
+	return task, nil
 }

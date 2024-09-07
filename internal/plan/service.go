@@ -58,6 +58,7 @@ func NewService(opts ServiceOptions) *Service {
 		factory: &factory{
 			dataDir:    opts.DataDir,
 			workdir:    opts.Workdir,
+			modules:    opts.Modules,
 			workspaces: opts.Workspaces,
 			broker:     broker,
 			terragrunt: opts.Terragrunt,

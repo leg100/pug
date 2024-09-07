@@ -12,7 +12,7 @@ import (
 )
 
 type State struct {
-	resource.Common
+	resource.ID
 
 	WorkspaceID      resource.ID
 	Resources        map[ResourceAddress]*Resource
@@ -24,7 +24,7 @@ type State struct {
 func newState(workspaceID resource.ID, r io.Reader) (*State, error) {
 	// Default to a serial of -1 to indicate that there is no state yet.
 	state := &State{
-		Common:      resource.New(resource.State, resource.GlobalResource),
+		ID:          resource.NewID(resource.State),
 		WorkspaceID: workspaceID,
 		Serial:      -1,
 	}

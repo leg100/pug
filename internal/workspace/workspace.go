@@ -13,12 +13,12 @@ import (
 )
 
 type Workspace struct {
-	resource.Common
+	resource.ID
 
 	Name       string
-	Cost       float64
 	ModuleID   resource.ID
 	ModulePath string
+	Cost       float64
 }
 
 func New(mod *module.Module, name string) (*Workspace, error) {
@@ -26,7 +26,7 @@ func New(mod *module.Module, name string) (*Workspace, error) {
 		return nil, fmt.Errorf("invalid workspace name: %s", name)
 	}
 	return &Workspace{
-		Common:     resource.New(resource.Workspace, mod),
+		ID:         resource.NewID(resource.Workspace),
 		Name:       name,
 		ModuleID:   mod.ID,
 		ModulePath: mod.Path,

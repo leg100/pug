@@ -8,7 +8,7 @@ import (
 
 // Resource is a pug state resource.
 type Resource struct {
-	resource.Common
+	resource.ID
 
 	WorkspaceID resource.ID
 	Address     ResourceAddress
@@ -22,7 +22,7 @@ func (r *Resource) String() string {
 
 func newResource(workspaceID resource.ID, addr ResourceAddress, attrs json.RawMessage) (*Resource, error) {
 	res := &Resource{
-		Common:      resource.New(resource.StateResource, resource.GlobalResource),
+		ID:          resource.NewID(resource.StateResource),
 		WorkspaceID: workspaceID,
 		Address:     addr,
 	}

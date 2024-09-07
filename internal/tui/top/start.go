@@ -179,7 +179,10 @@ func setupSubscriptions(app *app.App, cfg app.Config) (chan tea.Msg, func()) {
 		go func() {
 			for event := range sub {
 				if event.Type == resource.CreatedEvent {
-					_, _ = app.States.CreateReloadTask(event.Payload.ID)
+					_, err := app.States.CreateReloadTask(event.Payload.ID)
+					if err != nil {
+						app.Logger.Error("loading state after loading workspace", "error", err)
+					}
 				}
 			}
 		}()

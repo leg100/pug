@@ -27,7 +27,7 @@ func (e *logEnricher) addModulePath(args ...any) []any {
 			continue
 		}
 		f := v.FieldByName("ModuleID")
-		if f.IsZero() {
+		if !f.IsValid() {
 			continue
 		}
 		id, ok := f.Interface().(resource.ID)

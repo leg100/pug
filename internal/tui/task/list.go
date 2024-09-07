@@ -172,7 +172,7 @@ func (m List) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m List) Title() string {
-	return m.Breadcrumbs("Tasks", resource.GlobalResource)
+	return m.Breadcrumbs("Tasks", nil)
 }
 
 func (m List) HelpBindings() []key.Binding {

@@ -15,10 +15,10 @@ import (
 )
 
 type plan struct {
-	resource.Common
+	resource.ID
 
-	ModuleID      *resource.ID
-	WorkspaceID   *resource.ID
+	ModuleID      resource.ID
+	WorkspaceID   resource.ID
 	ModulePath    string
 	HasChanges    bool
 	ArtefactsPath string
@@ -66,7 +66,9 @@ func (f *factory) newPlan(workspaceID resource.ID, opts CreateOptions) (*plan, e
 		return nil, fmt.Errorf("retrieving module: %w", err)
 	}
 	plan := &plan{
-		Common:             resource.New(resource.Plan, ws),
+		ID:                 resource.NewID(resource.Plan),
+		ModuleID:           mod.ID,
+		WorkspaceID:        ws.ID,
 		ModulePath:         mod.Path,
 		Destroy:            opts.Destroy,
 		TargetAddrs:        opts.TargetAddrs,
@@ -102,8 +104,8 @@ func (r *plan) args() []string {
 func (r *plan) planTaskSpec() task.Spec {
 	// TODO: assert planFile is true first
 	spec := task.Spec{
-		ModuleID:    r.ModuleID,
-		WorkspaceID: r.WorkspaceID,
+		ModuleID:    &r.ModuleID,
+		WorkspaceID: &r.WorkspaceID,
 		Path:        r.ModulePath,
 		Env:         r.envs,
 		Command:     []string{"plan"},
@@ -142,8 +144,8 @@ func (r *plan) applyTaskSpec() (task.Spec, error) {
 		return task.Spec{}, errors.New("plan does not have any changes to apply")
 	}
 	spec := task.Spec{
-		ModuleID:    r.ModuleID,
-		WorkspaceID: r.WorkspaceID,
+		ModuleID:    &r.ModuleID,
+		WorkspaceID: &r.WorkspaceID,
 		Path:        r.ModulePath,
 		Command:     []string{"apply"},
 		Args:        r.args(),

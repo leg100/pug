@@ -53,19 +53,19 @@ func (mm *Maker) Make(id resource.ID, width, height int) (tea.Model, error) {
 	)
 	items := []logging.Attr{
 		{
-			Key:    timeAttrKey,
-			Value:  msg.Time.Format(timeFormat),
-			Common: resource.New(resource.LogAttr, resource.GlobalResource),
+			Key:   timeAttrKey,
+			Value: msg.Time.Format(timeFormat),
+			ID:    resource.NewID(resource.LogAttr),
 		},
 		{
-			Key:    messageAttrKey,
-			Value:  msg.Message,
-			Common: resource.New(resource.LogAttr, resource.GlobalResource),
+			Key:   messageAttrKey,
+			Value: msg.Message,
+			ID:    resource.NewID(resource.LogAttr),
 		},
 		{
-			Key:    levelAttrKey,
-			Value:  coloredLogLevel(msg.Level),
-			Common: resource.New(resource.LogAttr, resource.GlobalResource),
+			Key:   levelAttrKey,
+			Value: coloredLogLevel(msg.Level),
+			ID:    resource.NewID(resource.LogAttr),
 		},
 	}
 	items = append(items, msg.Attributes...)
@@ -100,7 +100,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m model) Title() string {
 	serial := tui.TitleSerial.Render(fmt.Sprintf("#%d", m.msg.Serial))
-	return m.Breadcrumbs("LogMessage", resource.GlobalResource, serial)
+	return m.Breadcrumbs("LogMessage", nil, serial)
 }
 
 func (m model) View() string {
