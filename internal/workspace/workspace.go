@@ -13,10 +13,12 @@ import (
 )
 
 type Workspace struct {
-	resource.Common
+	resource.ID
 
-	Name string
-	Cost float64
+	Name       string
+	ModuleID   resource.ID
+	ModulePath string
+	Cost       float64
 }
 
 func New(mod *module.Module, name string) (*Workspace, error) {
@@ -24,21 +26,15 @@ func New(mod *module.Module, name string) (*Workspace, error) {
 		return nil, fmt.Errorf("invalid workspace name: %s", name)
 	}
 	return &Workspace{
-		Common: resource.New(resource.Workspace, mod),
-		Name:   name,
+		ID:         resource.NewID(resource.Workspace),
+		Name:       name,
+		ModuleID:   mod.ID,
+		ModulePath: mod.Path,
 	}, nil
 }
 
 func (ws *Workspace) String() string {
 	return ws.Name
-}
-
-func (ws *Workspace) ModuleID() resource.ID {
-	return ws.Parent.GetID()
-}
-
-func (ws *Workspace) ModulePath() string {
-	return ws.Parent.String()
 }
 
 func (ws *Workspace) TerraformEnv() string {
@@ -55,8 +51,7 @@ func (ws *Workspace) LogValue() slog.Value {
 // and whether it exists or not.
 func (ws *Workspace) VarsFile(workdir internal.Workdir) (string, bool) {
 	fname := fmt.Sprintf("%s.tfvars", ws.Name)
-	mod := ws.Module().(*module.Module)
-	path := filepath.Join(workdir.String(), mod.Path, fname)
+	path := filepath.Join(workdir.String(), ws.ModulePath, fname)
 	_, err := os.Stat(path)
 	return fname, err == nil
 }

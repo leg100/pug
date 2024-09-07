@@ -62,7 +62,10 @@ func NewService(opts ServiceOptions) *Service {
 // Create a task. The task is placed into a pending state and requires enqueuing
 // before it'll be processed.
 func (s *Service) Create(spec Spec) (*Task, error) {
-	task := s.newTask(spec)
+	task, err := s.newTask(spec)
+	if err != nil {
+		return nil, err
+	}
 
 	s.logger.Info("created task", "task", task)
 
@@ -98,7 +101,7 @@ func (s *Service) CreateGroup(specs ...Spec) (*Group, error) {
 		return nil, errors.New("no specs provided")
 	}
 	g := &Group{
-		Common:  resource.New(resource.TaskGroup, resource.GlobalResource),
+		ID:      resource.NewID(resource.TaskGroup),
 		Created: time.Now(),
 	}
 	// Validate specifications. There are some settings that are incompatible
@@ -108,16 +111,19 @@ func (s *Service) CreateGroup(specs ...Spec) (*Group, error) {
 		inverseDependencyOrder    *bool
 	)
 	for _, spec := range specs {
-		// All RespectModuleDependencies settings must be the same
+		// All specs must specify Dependencies or not specify Dependencies.
+		deps := (spec.Dependencies != nil)
 		if respectModuleDependencies == nil {
-			respectModuleDependencies = &spec.RespectModuleDependencies
-		} else if *respectModuleDependencies != spec.RespectModuleDependencies {
+			respectModuleDependencies = &deps
+		} else if *respectModuleDependencies != deps {
 			return nil, fmt.Errorf("not all specs share same respect-module-dependencies setting")
 		}
-		// All InverseDependencyOrder settings must be the same
+		// All specs specifying dependencies must set InverseDependencyOrder to
+		// the same value
+		inverse := (spec.Dependencies != nil && spec.Dependencies.InverseDependencyOrder)
 		if inverseDependencyOrder == nil {
-			inverseDependencyOrder = &spec.InverseDependencyOrder
-		} else if *inverseDependencyOrder != spec.InverseDependencyOrder {
+			inverseDependencyOrder = &inverse
+		} else if *inverseDependencyOrder != inverse {
 			return nil, fmt.Errorf("not all specs share same inverse-dependency-order setting")
 		}
 	}
@@ -196,10 +202,6 @@ type ListOptions struct {
 	Exclusive bool
 	// Filter tasks by those with one of the following commands
 	Command [][]string
-	// Filter tasks by only those that have an ancestor with the given ID.
-	// Defaults the zero value, which is the ID of the abstract global entity to
-	// which all resources belong.
-	Ancestor resource.ID
 }
 
 type taskLister interface {
@@ -236,9 +238,6 @@ func (s *Service) List(opts ListOptions) []*Task {
 					break
 				}
 			}
-		}
-		if !t.HasAncestor(opts.Ancestor) {
-			continue
 		}
 		tasks[i] = t
 		i++

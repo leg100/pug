@@ -24,7 +24,7 @@ func TestState(t *testing.T) {
 			f.Close()
 		})
 
-		got, err := newState(ws, f)
+		got, err := newState(ws.ID, f)
 		require.NoError(t, err)
 
 		assert.Len(t, got.Resources, 17)
@@ -53,7 +53,7 @@ func TestState(t *testing.T) {
 		// Mimic empty response from terraform state pull
 		f := new(bytes.Buffer)
 
-		got, err := newState(ws, f)
+		got, err := newState(ws.ID, f)
 		require.NoError(t, err)
 
 		assert.Len(t, got.Resources, 0)
@@ -68,7 +68,7 @@ func TestState(t *testing.T) {
 			f.Close()
 		})
 
-		got, err := newState(ws, f)
+		got, err := newState(ws.ID, f)
 		require.NoError(t, err)
 
 		assert.Len(t, got.Resources, 1)

@@ -20,21 +20,13 @@ func createDependentTasks(svc taskCreator, reverse bool, specs ...Spec) ([]*Task
 	// Build dependency graph. Each node in the graph is a module together with
 	// the specs that belong to that module. Once the graph is built and
 	// dependencies are established, only then are tasks created from the specs.
-	//
-	// Specs that don't belong to a module don't have any dependencies so tasks
-	// are built from these specs immediately.
 	for _, spec := range specs {
-		if mod := spec.Parent.Module(); mod != nil {
-			modID := mod.GetID()
-			node, ok := b.nodes[modID]
-			if !ok {
-				node = &dependencyGraphNode{module: mod}
-			}
-			node.specs = append(node.specs, spec)
-			b.nodes[modID] = node
-		} else {
-			b.createTask(spec)
+		node, ok := b.nodes[*spec.ModuleID]
+		if !ok {
+			node = &dependencyGraphNode{dependencies: spec.Dependencies.ModuleIDs}
 		}
+		node.specs = append(node.specs, spec)
+		b.nodes[*spec.ModuleID] = node
 	}
 	for id, v := range b.nodes {
 		if !v.visited {
@@ -72,7 +64,7 @@ type dependencyGraphBuilder struct {
 
 // dependencyGraphNode represents a module in a dependency graph
 type dependencyGraphNode struct {
-	module       resource.Resource
+	dependencies []resource.ID
 	specs        []Spec
 	created      []resource.ID
 	in, out      []*dependencyGraphNode
@@ -84,7 +76,7 @@ type dependencyGraphNode struct {
 func (b *dependencyGraphBuilder) visit(id resource.ID, n *dependencyGraphNode) {
 	n.visited = true
 
-	for _, id := range n.module.Dependencies() {
+	for _, id := range n.dependencies {
 		if dep, ok := b.nodes[id]; ok {
 			if !dep.visited {
 				b.visit(id, dep)
@@ -108,7 +100,7 @@ func (b *dependencyGraphBuilder) visitAndCreateTasks(n *dependencyGraphNode) {
 	// For each spec, add dependencies on other tasks before creating task and
 	// adding its ID to the node
 	for _, spec := range n.specs {
-		spec.DependsOn = dependsOn
+		spec.dependsOn = dependsOn
 		if task := b.createTask(spec); task != nil {
 			n.created = append(n.created, task.ID)
 		}
@@ -128,7 +120,7 @@ func (b *dependencyGraphBuilder) visitAndCreateTasksInReverse(n *dependencyGraph
 	// For each spec, add dependencies on other tasks before creating task and
 	// adding its ID to the node
 	for _, spec := range n.specs {
-		spec.DependsOn = dependsOn
+		spec.dependsOn = dependsOn
 		if task := b.createTask(spec); task != nil {
 			n.created = append(n.created, task.ID)
 		}

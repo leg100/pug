@@ -7,36 +7,31 @@ import (
 	"github.com/leg100/pug/internal"
 	"github.com/leg100/pug/internal/resource"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestEnqueuer(t *testing.T) {
 	t.Parallel()
 
-	f := &factory{counter: internal.Int(0)}
+	mod1ID := resource.NewID(resource.Module)
+	ws1ID := resource.NewID(resource.Workspace)
 
-	mod1 := resource.New(resource.Module, resource.GlobalResource)
-	ws1 := resource.New(resource.Workspace, mod1)
-	run1 := resource.New(resource.Plan, ws1)
-	run2 := resource.New(resource.Plan, ws1)
+	mod1Task1 := newTestTask(t, Spec{ModuleID: &mod1ID})
+	mod1TaskBlocking1 := newTestTask(t, Spec{ModuleID: &mod1ID, Blocking: true})
 
-	mod1Task1 := f.newTask(Spec{Parent: mod1})
-	mod1TaskBlocking1 := f.newTask(Spec{Parent: mod1, Blocking: true})
+	ws1Task1 := newTestTask(t, Spec{ModuleID: &mod1ID, WorkspaceID: &ws1ID})
+	ws1Task2 := newTestTask(t, Spec{ModuleID: &mod1ID, WorkspaceID: &ws1ID})
 
-	ws1Task1 := f.newTask(Spec{Parent: ws1})
-	ws1Task2 := f.newTask(Spec{Parent: ws1})
-	ws1TaskBlocking1 := f.newTask(Spec{Parent: ws1, Blocking: true})
-	ws1TaskBlocking2 := f.newTask(Spec{Parent: ws1, Blocking: true})
-	ws1TaskBlocking3 := f.newTask(Spec{Parent: ws1, Blocking: true})
-	ws1TaskImmediate := f.newTask(Spec{Parent: ws1, Immediate: true})
-	ws1TaskDependOnTask1 := f.newTask(Spec{Parent: ws1, DependsOn: []resource.ID{ws1Task1.ID}})
+	ws1TaskBlocking1 := newTestTask(t, Spec{ModuleID: &mod1ID, WorkspaceID: &ws1ID, Blocking: true})
+	ws1TaskBlocking2 := newTestTask(t, Spec{ModuleID: &mod1ID, WorkspaceID: &ws1ID, Blocking: true})
+	ws1TaskBlocking3 := newTestTask(t, Spec{ModuleID: &mod1ID, WorkspaceID: &ws1ID, Blocking: true})
+	ws1TaskImmediate := newTestTask(t, Spec{ModuleID: &mod1ID, WorkspaceID: &ws1ID, Immediate: true})
+	ws1TaskDependOnTask1 := newTestTask(t, Spec{ModuleID: &mod1ID, WorkspaceID: &ws1ID, dependsOn: []resource.ID{ws1Task1.ID}})
 
-	ws1TaskCompleted := f.newTask(Spec{Parent: ws1})
+	ws1TaskCompleted := newTestTask(t, Spec{ModuleID: &mod1ID, WorkspaceID: &ws1ID})
 	ws1TaskCompleted.updateState(Exited)
 
-	ws1TaskDependOnCompletedTask := f.newTask(Spec{Parent: ws1, DependsOn: []resource.ID{ws1TaskCompleted.ID}})
-
-	run1TaskBlocking1 := f.newTask(Spec{Parent: run1, Blocking: true})
-	run2Task1 := f.newTask(Spec{Parent: run2})
+	ws1TaskDependOnCompletedTask := newTestTask(t, Spec{ModuleID: &mod1ID, WorkspaceID: &ws1ID, dependsOn: []resource.ID{ws1TaskCompleted.ID}})
 
 	tests := []struct {
 		name string
@@ -71,31 +66,19 @@ func TestEnqueuer(t *testing.T) {
 			name:    "don't enqueue workspace task when there is an active blocking workspace task sharing same workspace",
 			active:  []*Task{ws1TaskBlocking1},
 			pending: []*Task{ws1Task1},
-			want:    []*Task{},
+			want:    nil,
 		},
 		{
 			name:    "don't enqueue workspace task when there is an active blocking module task sharing same module",
 			active:  []*Task{mod1TaskBlocking1},
 			pending: []*Task{ws1Task1},
-			want:    []*Task{},
-		},
-		{
-			name:    "don't enqueue run task when there is an active blocking run task sharing same workspace",
-			active:  []*Task{run1TaskBlocking1},
-			pending: []*Task{run2Task1},
-			want:    []*Task{},
+			want:    nil,
 		},
 		{
 			name:    "don't enqueue module task when there is an older blocking pending module task",
 			active:  []*Task{},
 			pending: []*Task{mod1TaskBlocking1, mod1Task1},
 			want:    []*Task{mod1TaskBlocking1},
-		},
-		{
-			name:    "don't enqueue run task when there is an older blocking pending run task sharing same workspace",
-			active:  []*Task{},
-			pending: []*Task{run1TaskBlocking1, run2Task1},
-			want:    []*Task{run1TaskBlocking1},
 		},
 		{
 			name:    "only enqueue one of three blocking workspace tasks sharing same module",
@@ -113,7 +96,7 @@ func TestEnqueuer(t *testing.T) {
 			name:    "don't enqueue task with a dependency on an incomplete task",
 			active:  []*Task{ws1Task1},
 			pending: []*Task{ws1TaskDependOnTask1},
-			want:    []*Task{},
+			want:    nil,
 		},
 		{
 			name:    "enqueue task with a dependency on a completed task",
@@ -134,6 +117,13 @@ func TestEnqueuer(t *testing.T) {
 			assert.Equal(t, tt.want, e.enqueuable())
 		})
 	}
+}
+
+func newTestTask(t *testing.T, spec Spec) *Task {
+	f := &factory{counter: internal.Int(0)}
+	task, err := f.newTask(spec)
+	require.NoError(t, err)
+	return task
 }
 
 type fakeEnqueuerTaskService struct {

@@ -39,7 +39,7 @@ func (m *ListMaker) Make(_ resource.ID, width, height int) (tea.Model, error) {
 
 	renderer := func(ws *workspace.Workspace) table.RenderedRow {
 		return table.RenderedRow{
-			table.ModuleColumn.Key:        ws.ModulePath(),
+			table.ModuleColumn.Key:        ws.ModulePath,
 			table.WorkspaceColumn.Key:     ws.Name,
 			table.ResourceCountColumn.Key: m.Helpers.WorkspaceResourceCount(ws),
 			table.CostColumn.Key:          m.Helpers.WorkspaceCost(ws),
@@ -56,18 +56,18 @@ func (m *ListMaker) Make(_ resource.ID, width, height int) (tea.Model, error) {
 		Modules:    m.Modules,
 		Plans:      m.Plans,
 		table:      table,
-		helpers:    m.Helpers,
+		Helpers:    m.Helpers,
 	}, nil
 }
 
 type list struct {
+	*tui.Helpers
+
 	Modules    *module.Service
 	Workspaces *workspace.Service
 	Plans      *plan.Service
 
 	table table.Model[*workspace.Workspace]
-
-	helpers *tui.Helpers
 }
 
 func (m list) Init() tea.Cmd {
@@ -90,15 +90,20 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Re-render workspaces belonging to updated module (the module's
 		// current workspace may have changed, which changes the value of the
 		// workspace's CURRENT column).
-		workspaces := m.Workspaces.List(workspace.ListOptions{ModuleID: msg.Payload.ID})
+		workspaces := m.Workspaces.List(workspace.ListOptions{ModuleID: &msg.Payload.ID})
 		for _, ws := range workspaces {
 			m.table.AddItems(ws)
 		}
 	case resource.Event[*task.Task]:
 		// Re-render workspace whenever a task event is received belonging to the
 		// workspace.
-		if ws := msg.Payload.Workspace(); ws != nil {
-			m.table.AddItems(ws.(*workspace.Workspace))
+		if workspaceID := msg.Payload.WorkspaceID; workspaceID != nil {
+			ws, err := m.Workspaces.Get(*workspaceID)
+			if err != nil {
+				m.Logger.Error("re-rendering workspace upon receiving task event", "error", err, "task", msg.Payload)
+				return m, nil
+			}
+			m.table.AddItems(ws)
 		}
 	case tea.KeyMsg:
 		switch {
@@ -109,21 +114,21 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return m, tui.YesNoPrompt(
 				fmt.Sprintf("Delete %d workspace(s)?", len(workspaceIDs)),
-				m.helpers.CreateTasks(m.Workspaces.Delete, workspaceIDs...),
+				m.CreateTasks(m.Workspaces.Delete, workspaceIDs...),
 			)
 		case key.Matches(msg, keys.Common.Init):
-			cmd := m.helpers.CreateTasks(m.Modules.Init, m.selectedOrCurrentModuleIDs()...)
+			cmd := m.CreateTasks(m.Modules.Init, m.selectedOrCurrentModuleIDs()...)
 			return m, cmd
 		case key.Matches(msg, keys.Common.Format):
-			cmd := m.helpers.CreateTasks(m.Modules.Format, m.selectedOrCurrentModuleIDs()...)
+			cmd := m.CreateTasks(m.Modules.Format, m.selectedOrCurrentModuleIDs()...)
 			return m, cmd
 		case key.Matches(msg, keys.Common.Validate):
-			cmd := m.helpers.CreateTasks(m.Modules.Validate, m.selectedOrCurrentModuleIDs()...)
+			cmd := m.CreateTasks(m.Modules.Validate, m.selectedOrCurrentModuleIDs()...)
 			return m, cmd
 		case key.Matches(msg, localKeys.SetCurrent):
 			if row, ok := m.table.CurrentRow(); ok {
 				return m, func() tea.Msg {
-					if err := m.Workspaces.SelectWorkspace(row.Value.ModuleID(), row.Value.ID); err != nil {
+					if err := m.Workspaces.SelectWorkspace(row.Value.ModuleID, row.Value.ID); err != nil {
 						return tui.ReportError(fmt.Errorf("setting current workspace: %w", err))()
 					}
 					return nil
@@ -137,7 +142,7 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			fn := func(workspaceID resource.ID) (task.Spec, error) {
 				return m.Plans.Plan(workspaceID, createRunOptions)
 			}
-			return m, m.helpers.CreateTasks(fn, workspaceIDs...)
+			return m, m.CreateTasks(fn, workspaceIDs...)
 		case key.Matches(msg, keys.Common.Destroy):
 			createRunOptions.Destroy = true
 			applyPrompt = "Destroy resources of %d workspaces?"
@@ -149,7 +154,7 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return m, tui.YesNoPrompt(
 				fmt.Sprintf(applyPrompt, len(workspaceIDs)),
-				m.helpers.CreateTasks(fn, workspaceIDs...),
+				m.CreateTasks(fn, workspaceIDs...),
 			)
 		case key.Matches(msg, keys.Common.State, localKeys.Enter):
 			if row, ok := m.table.CurrentRow(); ok {
@@ -161,7 +166,7 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if err != nil {
 				return m, tui.ReportError(fmt.Errorf("creating task: %w", err))
 			}
-			return m, m.helpers.CreateTasksWithSpecs(spec)
+			return m, m.CreateTasksWithSpecs(spec)
 		}
 	}
 
@@ -173,7 +178,7 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m list) Title() string {
-	return tui.Breadcrumbs("Workspaces", resource.GlobalResource)
+	return m.Breadcrumbs("Workspaces", nil)
 }
 
 func (m list) View() string {
@@ -202,7 +207,7 @@ func (m list) selectedOrCurrentModuleIDs() []resource.ID {
 	selected := m.table.SelectedOrCurrent()
 	moduleIDs := make([]resource.ID, len(selected))
 	for i, row := range selected {
-		moduleIDs[i] = row.Value.ModuleID()
+		moduleIDs[i] = row.Value.ModuleID
 	}
 	return moduleIDs
 }

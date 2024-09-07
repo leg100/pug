@@ -58,6 +58,7 @@ func NewService(opts ServiceOptions) *Service {
 		factory: &factory{
 			dataDir:    opts.DataDir,
 			workdir:    opts.Workdir,
+			modules:    opts.Modules,
 			workspaces: opts.Workspaces,
 			broker:     broker,
 			terragrunt: opts.Terragrunt,
@@ -77,12 +78,15 @@ func (s *Service) ReloadAfterApply(sub <-chan resource.Event[*task.Task]) {
 			if !IsApplyTask(event.Payload) {
 				continue
 			}
-			ws := event.Payload.Workspace()
-			if _, err := s.states.CreateReloadTask(ws.GetID()); err != nil {
-				s.logger.Error("reloading state after apply", "error", err, "workspace", ws)
+			workspaceID := event.Payload.WorkspaceID
+			if workspaceID == nil {
 				continue
 			}
-			s.logger.Debug("reloading state after apply", "workspace", ws)
+			if _, err := s.states.CreateReloadTask(*workspaceID); err != nil {
+				s.logger.Error("reloading state after apply", "error", err, "workspace", *workspaceID)
+				continue
+			}
+			s.logger.Debug("reloading state after apply", "workspace", *workspaceID)
 		}
 	}
 }
@@ -98,7 +102,7 @@ func (s *Service) Plan(workspaceID resource.ID, opts CreateOptions) (task.Spec, 
 	}
 	s.table.Add(plan.ID, plan)
 
-	return plan.planTaskSpec(s.logger), nil
+	return plan.planTaskSpec(), nil
 }
 
 // Apply creates a task spec to auto-apply a plan, i.e. `terraform apply`. To

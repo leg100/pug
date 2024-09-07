@@ -54,7 +54,7 @@ func (mm *GroupMaker) Make(id resource.ID, width, height int) (tea.Model, error)
 	m := groupModel{
 		Model:   list,
 		group:   group,
-		helpers: mm.taskListMaker.Helpers,
+		Helpers: mm.taskListMaker.Helpers,
 	}
 	return m, nil
 }
@@ -62,9 +62,9 @@ func (mm *GroupMaker) Make(id resource.ID, width, height int) (tea.Model, error)
 // groupModel is a model for a taskgroup, listing and previewing its tasks.
 type groupModel struct {
 	tea.Model
+	*tui.Helpers
 
-	group   *task.Group
-	helpers *tui.Helpers
+	group *task.Group
 }
 
 func (m groupModel) Init() tea.Cmd {
@@ -117,11 +117,11 @@ func (m *groupModel) skip(tasks ...*task.Task) bool {
 }
 
 func (m groupModel) Title() string {
-	return tui.Breadcrumbs("TaskGroup", m.group)
+	return m.Breadcrumbs("TaskGroup", m.group)
 }
 
 func (m groupModel) Status() string {
-	return m.helpers.GroupReport(m.group, false)
+	return m.GroupReport(m.group, false)
 }
 
 func (m groupModel) HelpBindings() []key.Binding {

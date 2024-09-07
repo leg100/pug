@@ -93,7 +93,11 @@ func (s *Service) LoadWorkspacesUponInit(sub <-chan resource.Event[*task.Task]) 
 		if event.Payload.State != task.Exited {
 			continue
 		}
-		mod, err := s.modules.Get(event.Payload.Module().GetID())
+		moduleID := event.Payload.ModuleID
+		if moduleID == nil {
+			continue
+		}
+		mod, err := s.modules.Get(*moduleID)
 		if err != nil {
 			continue
 		}
@@ -117,10 +121,10 @@ func (s *Service) Create(path, name string) (task.Spec, error) {
 		return task.Spec{}, err
 	}
 	return task.Spec{
-		Parent:  mod,
-		Path:    mod.Path,
-		Command: []string{"workspace", "new"},
-		Args:    []string{name},
+		ModuleID: &mod.ID,
+		Path:     mod.Path,
+		Command:  []string{"workspace", "new"},
+		Args:     []string{name},
 		AfterExited: func(*task.Task) {
 			s.table.Add(ws.ID, ws)
 			// `workspace new` implicitly makes the created workspace the
@@ -138,7 +142,7 @@ func (s *Service) Get(workspaceID resource.ID) (*Workspace, error) {
 
 func (s *Service) GetByName(modulePath, name string) (*Workspace, error) {
 	for _, ws := range s.table.List() {
-		if ws.ModulePath() == modulePath && ws.Name == name {
+		if ws.ModulePath == modulePath && ws.Name == name {
 			return ws, nil
 		}
 	}
@@ -146,16 +150,14 @@ func (s *Service) GetByName(modulePath, name string) (*Workspace, error) {
 }
 
 type ListOptions struct {
-	// Filter by ID of workspace's module. If zero value then no filtering is
-	// performed.
-	ModuleID resource.ID
+	// Filter by ID of workspace's module.
+	ModuleID *resource.ID
 }
 
 func (s *Service) List(opts ListOptions) []*Workspace {
 	var existing []*Workspace
 	for _, ws := range s.table.List() {
-		// If opts.ModuleID is zero value then HasAncestor returns true.
-		if !ws.HasAncestor(opts.ModuleID) {
+		if opts.ModuleID != nil && *opts.ModuleID != ws.ModuleID {
 			continue
 		}
 		existing = append(existing, ws)
@@ -171,13 +173,13 @@ func (s *Service) SelectWorkspace(moduleID, workspaceID resource.ID) error {
 	if err != nil {
 		return err
 	}
-	mod, err := s.modules.Get(ws.ModuleID())
+	mod, err := s.modules.Get(ws.ModuleID)
 	if err != nil {
 		return err
 	}
 	// Create task to immediately set workspace as current workspace for module.
 	_, err = s.tasks.Create(task.Spec{
-		Parent:    mod,
+		ModuleID:  &mod.ID,
 		Path:      mod.Path,
 		Command:   []string{"workspace", "select"},
 		Args:      []string{ws.Name},
@@ -202,12 +204,12 @@ func (s *Service) Delete(workspaceID resource.ID) (task.Spec, error) {
 	if err != nil {
 		return task.Spec{}, fmt.Errorf("deleting workspace: %w", err)
 	}
-	mod, err := s.modules.Get(ws.ModuleID())
+	mod, err := s.modules.Get(ws.ModuleID)
 	if err != nil {
 		return task.Spec{}, err
 	}
 	return task.Spec{
-		Parent:   mod,
+		ModuleID: &mod.ID,
 		Path:     mod.Path,
 		Command:  []string{"workspace", "delete"},
 		Args:     []string{ws.Name},

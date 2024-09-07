@@ -50,7 +50,6 @@ func (m *ResourceListMaker) Make(id resource.ID, width, height int) (tea.Model, 
 	}
 	tableOptions := []table.Option[*state.Resource]{
 		table.WithSortFunc(state.Sort),
-		table.WithParent[*state.Resource](ws),
 	}
 	splitModel := split.New(split.Options[*state.Resource]{
 		Columns:      columns,
@@ -73,12 +72,13 @@ func (m *ResourceListMaker) Make(id resource.ID, width, height int) (tea.Model, 
 		spinner:   m.Spinner,
 		width:     width,
 		height:    height,
-		helpers:   m.Helpers,
+		Helpers:   m.Helpers,
 	}, nil
 }
 
 type resourceList struct {
 	split.Model[*state.Resource]
+	*tui.Helpers
 
 	states    *state.Service
 	plans     *plan.Service
@@ -87,7 +87,6 @@ type resourceList struct {
 	reloading bool
 	height    int
 	width     int
-	helpers   *tui.Helpers
 
 	spinner *spinner.Model
 }
@@ -141,7 +140,7 @@ func (m resourceList) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if spec, err := m.states.Reload(msg.workspaceID); err != nil {
 					msg.err = err
 				} else {
-					task, err := m.helpers.Tasks.Create(spec)
+					task, err := m.Tasks.Create(spec)
 					if err != nil {
 						msg.err = err
 					} else if err := task.Wait(); err != nil {
@@ -161,7 +160,7 @@ func (m resourceList) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return m, tui.YesNoPrompt(
 				fmt.Sprintf("Delete %d resource(s)?", len(addrs)),
-				m.helpers.CreateTasks(fn, m.workspace.GetID()),
+				m.CreateTasks(fn, m.workspace.GetID()),
 			)
 		case key.Matches(msg, resourcesKeys.Taint):
 			addrs := m.selectedOrCurrentAddresses()
@@ -172,7 +171,7 @@ func (m resourceList) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, resourcesKeys.Move):
 			if row, ok := m.Table.CurrentRow(); ok {
 				from := row.Value.Address
-				return m, m.helpers.Move(m.workspace.GetID(), from)
+				return m, m.Move(m.workspace.GetID(), from)
 			}
 		case key.Matches(msg, keys.Common.PlanDestroy):
 			// Create a targeted destroy plan.
@@ -186,7 +185,7 @@ func (m resourceList) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			fn := func(workspaceID resource.ID) (task.Spec, error) {
 				return m.plans.Plan(workspaceID, createRunOptions)
 			}
-			return m, m.helpers.CreateTasks(fn, m.workspace.GetID())
+			return m, m.CreateTasks(fn, m.workspace.GetID())
 		case key.Matches(msg, keys.Common.Destroy):
 			createRunOptions.Destroy = true
 			applyPrompt = "Destroy %d resources?"
@@ -200,7 +199,7 @@ func (m resourceList) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return m, tui.YesNoPrompt(
 				fmt.Sprintf(applyPrompt, len(resourceIDs)),
-				m.helpers.CreateTasks(fn, m.workspace.GetID()),
+				m.CreateTasks(fn, m.workspace.GetID()),
 			)
 		}
 	case initState:
@@ -266,7 +265,7 @@ func (m resourceList) Title() string {
 	if m.state != nil {
 		serial = serialBreadcrumb(m.state.Serial)
 	}
-	return tui.Breadcrumbs("State", m.workspace, serial)
+	return m.Breadcrumbs("State", m.workspace, serial)
 }
 
 func (m resourceList) HelpBindings() []key.Binding {

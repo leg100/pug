@@ -11,16 +11,16 @@ import (
 )
 
 var (
-	resource0 = testResource{n: 0, Common: resource.New(resource.Workspace, resource.GlobalResource)}
-	resource1 = testResource{n: 1, Common: resource.New(resource.Workspace, resource.GlobalResource)}
-	resource2 = testResource{n: 2, Common: resource.New(resource.Workspace, resource.GlobalResource)}
-	resource3 = testResource{n: 3, Common: resource.New(resource.Workspace, resource.GlobalResource)}
-	resource4 = testResource{n: 4, Common: resource.New(resource.Workspace, resource.GlobalResource)}
-	resource5 = testResource{n: 5, Common: resource.New(resource.Workspace, resource.GlobalResource)}
+	resource0 = testResource{n: 0, ID: resource.NewID(resource.Workspace)}
+	resource1 = testResource{n: 1, ID: resource.NewID(resource.Workspace)}
+	resource2 = testResource{n: 2, ID: resource.NewID(resource.Workspace)}
+	resource3 = testResource{n: 3, ID: resource.NewID(resource.Workspace)}
+	resource4 = testResource{n: 4, ID: resource.NewID(resource.Workspace)}
+	resource5 = testResource{n: 5, ID: resource.NewID(resource.Workspace)}
 )
 
 type testResource struct {
-	resource.Common
+	resource.ID
 
 	n int
 }

@@ -49,11 +49,20 @@ func setupTest(t *testing.T) (*factory, *module.Module, *workspace.Workspace) {
 	ws, err := workspace.New(mod, "dev")
 	require.NoError(t, err)
 	factory := factory{
+		modules:    &fakeModuleGetter{mod: mod},
 		workspaces: &fakeWorkspaceGetter{ws: ws},
 		dataDir:    t.TempDir(),
 		workdir:    workdir,
 	}
 	return &factory, mod, ws
+}
+
+type fakeModuleGetter struct {
+	mod *module.Module
+}
+
+func (f *fakeModuleGetter) Get(resource.ID) (*module.Module, error) {
+	return f.mod, nil
 }
 
 type fakeWorkspaceGetter struct {

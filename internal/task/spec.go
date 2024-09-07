@@ -4,8 +4,12 @@ import "github.com/leg100/pug/internal/resource"
 
 // Spec is a specification for creating a task.
 type Spec struct {
-	// Resource that the task belongs to.
-	Parent resource.Resource
+	// ModuleID is the ID of the module the task belongs to. If nil, the task
+	// does not belong to a module
+	ModuleID *resource.ID
+	// WorkspaceID is the ID of the workspace the task belongs to. If nil, the
+	// task does not belong to a workspace.
+	WorkspaceID *resource.ID
 	// Program to execute. Defaults to the `program` pug config option.
 	Program string
 	// Program command and any sub commands, e.g. plan, state rm, etc.
@@ -30,29 +34,9 @@ type Spec struct {
 	Immediate bool
 	// Wait blocks until the task has finished
 	Wait bool
-	// DependsOn are other tasks that all must successfully exit before the
-	// task can be enqueued. If any of the other tasks are canceled or error
-	// then the task will be canceled.
-	DependsOn []resource.ID
 	// Description assigns an optional description to the task to display to the
 	// user, overriding the default of displaying the command.
 	Description string
-	// RespectModuleDependencies when true ensures the task respects its
-	// module's dependencies. i.e. if module A depends on module B,
-	// and a task is specified for both modules then the task for module A is
-	// only started once the task for module B has completed. This option
-	// only makes sense in the context of a task group, which constructs tasks
-	// from multiple specs. All specs must set RespectModuleDependencies to
-	// the same value otherwise an error is raised.
-	RespectModuleDependencies bool
-	// InverseDependencyOrder inverts the order of module dependencies, i.e. if
-	// module A depends on module B, then a task specified for module B will
-	// only be started once any tasks specified on module A have completed. This
-	// is useful when carrying out a `terraform destroy`. This option only takes
-	// effect when RespectModuleDependencies is true, and the spec is specified
-	// as part of a task group. All specs in the task group must set
-	// InverseDependencyOrder to the same value otherwise an error is raised.
-	InverseDependencyOrder bool
 	// Call this function before the task has successfully finished. The
 	// returned string sets the task summary, and the error, if non-nil, deems
 	// the task to have failed and places the task into an errored state.
@@ -71,6 +55,15 @@ type Spec struct {
 	AfterCreate func(*Task)
 	// Call this function after the task terminates for whatever reason.
 	AfterFinish func(*Task)
+	// Dependencies specifies that the task respect its module's dependencies.
+	// Only makes sense when the task is specified as part of a task group. All
+	// specs in the task group must set Dependencies to either nil, or to
+	// non-nil.
+	Dependencies *Dependencies
+	// dependsOn are other tasks that all must successfully exit before the
+	// task can be enqueued. If any of the other tasks are canceled or error
+	// then the task will be canceled.
+	dependsOn []resource.ID
 }
 
 // SpecFunc is a function that creates a spec.
@@ -83,4 +76,19 @@ type AdditionalExecution struct {
 	Command []string
 	// Args to pass to program.
 	Args []string
+}
+
+// Dependencies specifies that the task respect its module's dependencies: any
+// tasks belonging to the its module's dependencies must have finished
+// successfully before this task can be started. This only makes sense in the
+// context of a task group, in which multiple tasks are created.
+type Dependencies struct {
+	ModuleIDs []resource.ID
+	// InverseDependencyOrder inverts the order of module dependencies, i.e. if
+	// module A depends on module B, then a task specified for module B will
+	// only be started once any tasks specified on module A have completed. This
+	// is useful when carrying out a `terraform destroy`. All specs in the task
+	// group must set InverseDependencyOrder to the same value otherwise an
+	// error is raised.
+	InverseDependencyOrder bool
 }

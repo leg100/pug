@@ -52,7 +52,7 @@ func (mm *Maker) make(id resource.ID, width, height int, border bool) (tea.Model
 		spinner: mm.Spinner,
 		// read upto 1kb at a time
 		buf:      make([]byte, 1024),
-		helpers:  mm.Helpers,
+		Helpers:  mm.Helpers,
 		showInfo: mm.showInfo,
 		border:   border,
 		width:    width,
@@ -95,6 +95,8 @@ func (mm *Maker) Update(msg tea.Msg) tea.Cmd {
 }
 
 type model struct {
+	*tui.Helpers
+
 	id uuid.UUID
 
 	tasks *task.Service
@@ -113,8 +115,6 @@ type model struct {
 
 	height int
 	width  int
-
-	helpers *tui.Helpers
 }
 
 func (m model) Init() tea.Cmd {
@@ -139,10 +139,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return m, tui.YesNoPrompt(
 				"Apply plan?",
-				m.helpers.CreateTasksWithSpecs(spec),
+				m.CreateTasksWithSpecs(spec),
 			)
 		case key.Matches(msg, keys.Common.State):
-			if ws, ok := m.helpers.TaskWorkspace(m.task); ok {
+			if ws := m.TaskWorkspaceOrCurrentWorkspace(m.task); ws != nil {
 				return m, tui.NavigateTo(tui.ResourceListKind, tui.WithParent(ws.GetID()))
 			} else {
 				return m, tui.ReportError(errors.New("task not associated with a workspace"))
@@ -150,7 +150,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, keys.Common.Retry):
 			return m, tui.YesNoPrompt(
 				"Retry task?",
-				m.helpers.CreateTasksWithSpecs(m.task.Spec),
+				m.CreateTasksWithSpecs(m.task.Spec),
 			)
 		}
 	case toggleAutoscrollMsg:
@@ -289,13 +289,13 @@ func boolToOnOff(b bool) string {
 }
 
 func (m model) Title() string {
-	return tui.Breadcrumbs("Task", m.task)
+	return m.Breadcrumbs("Task", m.task)
 }
 
 func (m model) Status() string {
 	return lipgloss.JoinHorizontal(lipgloss.Top,
-		m.helpers.TaskSummary(m.task, false),
-		m.helpers.TaskStatus(m.task, true),
+		m.TaskSummary(m.task, false),
+		m.TaskStatus(m.task, true),
 	)
 }
 
@@ -306,10 +306,10 @@ func (m model) HelpBindings() []key.Binding {
 		keys.Common.Retry,
 		localKeys.ToggleInfo,
 	}
-	if mod := m.task.Module(); mod != nil {
+	if moduleID := m.task.ModuleID; moduleID != nil {
 		bindings = append(bindings, keys.Common.Module)
 	}
-	if ws := m.task.Workspace(); ws != nil {
+	if workspaceID := m.task.WorkspaceID; workspaceID != nil {
 		bindings = append(bindings, keys.Common.Workspace)
 	}
 	if plan.IsApplyTask(m.task) {

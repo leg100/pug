@@ -6,16 +6,12 @@ import (
 )
 
 var (
-	// GlobalID is the zero value of ID, representing the ID of the abstract
-	// top-level "global" entity to which all resources belong.
-	GlobalID = ID{}
-
 	// nextID provides the next ID for each kind
 	nextID map[Kind]uint = make(map[Kind]uint)
 	mu     sync.Mutex
 )
 
-// ID is a unique identifier for a pug entity.
+// ID is a unique identifier for a pug resource.
 type ID struct {
 	Serial uint
 	Kind   Kind

@@ -32,7 +32,8 @@ var (
 )
 
 type ListMaker struct {
-	Logger *logging.Logger
+	Logger  *logging.Logger
+	Helpers *tui.Helpers
 }
 
 func (m *ListMaker) Make(_ resource.ID, width, height int) (tea.Model, error) {
@@ -63,12 +64,18 @@ func (m *ListMaker) Make(_ resource.ID, width, height int) (tea.Model, error) {
 		table.WithSelectable[logging.Message](false),
 	)
 
-	return list{logger: m.Logger, table: table}, nil
+	return list{
+		logger:  m.Logger,
+		table:   table,
+		Helpers: m.Helpers,
+	}, nil
 }
 
 type list struct {
 	logger *logging.Logger
 	table  table.Model[logging.Message]
+
+	*tui.Helpers
 }
 
 func (m list) Init() tea.Cmd {
@@ -101,7 +108,7 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m list) Title() string {
-	return tui.Breadcrumbs("Logs", resource.GlobalResource)
+	return m.Breadcrumbs("Logs", nil)
 }
 
 func (m list) View() string {

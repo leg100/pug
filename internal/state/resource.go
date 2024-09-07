@@ -8,21 +8,23 @@ import (
 
 // Resource is a pug state resource.
 type Resource struct {
-	resource.Common
+	resource.ID
 
-	Address    ResourceAddress
-	Attributes map[string]any
-	Tainted    bool
+	WorkspaceID resource.ID
+	Address     ResourceAddress
+	Attributes  map[string]any
+	Tainted     bool
 }
 
 func (r *Resource) String() string {
 	return string(r.Address)
 }
 
-func newResource(state resource.Resource, addr ResourceAddress, attrs json.RawMessage) (*Resource, error) {
+func newResource(workspaceID resource.ID, addr ResourceAddress, attrs json.RawMessage) (*Resource, error) {
 	res := &Resource{
-		Common:  resource.New(resource.StateResource, state),
-		Address: addr,
+		ID:          resource.NewID(resource.StateResource),
+		WorkspaceID: workspaceID,
+		Address:     addr,
 	}
 	if err := json.Unmarshal(attrs, &res.Attributes); err != nil {
 		return nil, err

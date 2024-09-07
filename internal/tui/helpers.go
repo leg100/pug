@@ -33,20 +33,6 @@ type Helpers struct {
 	Logger     logging.Interface
 }
 
-func (h *Helpers) ModulePath(res resource.Resource) string {
-	if mod := res.Module(); mod != nil {
-		return mod.String()
-	}
-	return ""
-}
-
-func (h *Helpers) WorkspaceName(res resource.Resource) string {
-	if ws := res.Workspace(); ws != nil {
-		return ws.String()
-	}
-	return ""
-}
-
 func (h *Helpers) ModuleCurrentWorkspace(mod *module.Module) *workspace.Workspace {
 	if mod.CurrentWorkspaceID == nil {
 		return nil
@@ -57,18 +43,6 @@ func (h *Helpers) ModuleCurrentWorkspace(mod *module.Module) *workspace.Workspac
 		return nil
 	}
 	return ws
-}
-
-func (h *Helpers) Module(res resource.Resource) *module.Module {
-	if res.Module() == nil {
-		return nil
-	}
-	mod, ok := res.Module().(*module.Module)
-	if !ok {
-		h.Logger.Error("unable to unwrap module from resource interface", "resource", res)
-		return nil
-	}
-	return mod
 }
 
 func (h *Helpers) CurrentWorkspaceName(workspaceID *resource.ID) string {
@@ -98,7 +72,7 @@ func (h *Helpers) ModuleCurrentResourceCount(mod *module.Module) string {
 // WorkspaceCurrentCheckmark returns a check mark if the workspace is the
 // current workspace for its module.
 func (h *Helpers) WorkspaceCurrentCheckmark(ws *workspace.Workspace) string {
-	mod, err := h.Modules.Get(ws.ModuleID())
+	mod, err := h.Modules.Get(ws.ModuleID)
 	if err != nil {
 		h.Logger.Error("rendering current workspace checkmark", "error", err)
 		return ""
@@ -137,20 +111,59 @@ func (h *Helpers) WorkspaceResourceCount(ws *workspace.Workspace) string {
 	return strconv.Itoa(len(state.Resources))
 }
 
-// TaskWorkspace retrieves either the task's workspace if it belongs to a
+func (h *Helpers) TaskModule(t *task.Task) *module.Module {
+	moduleID := t.ModuleID
+	if moduleID == nil {
+		return nil
+	}
+	mod, err := h.Modules.Get(*moduleID)
+	if err != nil {
+		return nil
+	}
+	return mod
+}
+
+func (h *Helpers) TaskModulePath(t *task.Task) string {
+	if mod := h.TaskModule(t); mod != nil {
+		return mod.Path
+	}
+	return ""
+}
+
+// TaskWorkspace retrieves the task's workspace if it belongs to one.
+func (h *Helpers) TaskWorkspace(t *task.Task) *workspace.Workspace {
+	workspaceID := t.WorkspaceID
+	if workspaceID == nil {
+		return nil
+	}
+	ws, err := h.Workspaces.Get(*workspaceID)
+	if err != nil {
+		return nil
+	}
+	return ws
+}
+
+func (h *Helpers) TaskWorkspaceName(t *task.Task) string {
+	if ws := h.TaskWorkspace(t); ws != nil {
+		return ws.Name
+	}
+	return ""
+}
+
+// TaskWorkspaceOrCurrentWorkspace retrieves either the task's workspace if it belongs to a
 // workspace, or if it belongs to a module, then it retrieves the module's
 // current workspace
-func (h *Helpers) TaskWorkspace(t *task.Task) (resource.Resource, bool) {
-	if ws := t.Workspace(); ws != nil {
-		return ws, true
+func (h *Helpers) TaskWorkspaceOrCurrentWorkspace(t *task.Task) *workspace.Workspace {
+	if ws := h.TaskWorkspace(t); ws != nil {
+		return ws
 	}
-	if mod := h.Module(t); mod != nil {
+	if mod := h.TaskModule(t); mod != nil {
 		if ws := h.ModuleCurrentWorkspace(mod); ws != nil {
-			return ws, true
+			return ws
 		}
-		return nil, false
+		return nil
 	}
-	return nil, false
+	return nil
 }
 
 // TaskStatus provides a rendered colored task status.
@@ -343,22 +356,49 @@ func (h *Helpers) Move(workspaceID resource.ID, from state.ResourceAddress) tea.
 	})
 }
 
-func Breadcrumbs(title string, res resource.Resource, crumbs ...string) string {
+func (h *Helpers) Breadcrumbs(title string, res resource.Resource, crumbs ...string) string {
 	// format: title{task command}[workspace name](module path)
 	switch res := res.(type) {
 	case *task.Task:
 		cmd := TitleCommand.Render(res.String())
-		return Breadcrumbs(title, res.GetParent(), cmd)
+		if res.WorkspaceID != nil {
+			ws, err := h.Workspaces.Get(*res.WorkspaceID)
+			if err != nil {
+				h.Logger.Error("rendering breadcrumbs", "error", err)
+				return ""
+			}
+			return h.Breadcrumbs(title, ws, cmd)
+		}
+		if res.ModuleID != nil {
+			mod, err := h.Modules.Get(*res.ModuleID)
+			if err != nil {
+				h.Logger.Error("rendering breadcrumbs", "error", err)
+				return ""
+			}
+			return h.Breadcrumbs(title, mod, cmd)
+		}
+		// Global task
+		return h.Breadcrumbs(title, nil, cmd)
 	case *state.Resource:
 		addr := TitleAddress.Render(res.String())
-		return Breadcrumbs(title, res.GetParent().GetParent(), addr)
+		ws, err := h.Workspaces.Get(res.WorkspaceID)
+		if err != nil {
+			h.Logger.Error("rendering breadcrumbs", "error", err)
+			return ""
+		}
+		return h.Breadcrumbs(title, ws, addr)
 	case *task.Group:
 		cmd := TitleCommand.Render(res.String())
 		id := TitleID.Render(res.GetID().String())
-		return Breadcrumbs(title, res.GetParent(), cmd, id)
+		return h.Breadcrumbs(title, nil, cmd, id)
 	case *workspace.Workspace:
 		name := TitleWorkspace.Render(res.String())
-		return Breadcrumbs(title, res.GetParent(), append(crumbs, name)...)
+		mod, err := h.Modules.Get(res.ModuleID)
+		if err != nil {
+			h.Logger.Error("rendering breadcrumbs", "error", err)
+			return ""
+		}
+		return h.Breadcrumbs(title, mod, append(crumbs, name)...)
 	case *module.Module:
 		crumbs = append(crumbs, TitlePath.Render(res.String()))
 	}

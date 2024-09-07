@@ -16,7 +16,7 @@ import (
 
 // Module is a terraform root module.
 type Module struct {
-	resource.Common
+	resource.ID
 
 	// Path relative to pug working directory
 	Path string
@@ -25,6 +25,9 @@ type Module struct {
 
 	// The module's backend type
 	Backend string
+
+	// Dependencies on other modules
+	dependencies []resource.ID
 }
 
 // Options for constructing a module.
@@ -38,7 +41,7 @@ type Options struct {
 // New constructs a module.
 func New(opts Options) *Module {
 	return &Module{
-		Common:  resource.New(resource.Module, resource.GlobalResource),
+		ID:      resource.NewID(resource.Module),
 		Path:    opts.Path,
 		Backend: opts.Backend,
 	}
@@ -52,6 +55,10 @@ func (m *Module) LogValue() slog.Value {
 	return slog.GroupValue(
 		slog.String("path", m.Path),
 	)
+}
+
+func (m *Module) Dependencies() []resource.ID {
+	return m.dependencies
 }
 
 // find finds root modules that are descendents of the workdir and
