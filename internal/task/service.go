@@ -140,8 +140,6 @@ type ListOptions struct {
 	// Only return those tasks that are exclusive. If false, both exclusive and
 	// non-exclusive tasks are returned.
 	Exclusive bool
-	// Filter tasks by those with one of the following commands
-	Command [][]string
 }
 
 type taskLister interface {
@@ -170,13 +168,6 @@ func (s *Service) List(opts ListOptions) []*Task {
 		if opts.Exclusive {
 			if !t.exclusive {
 				continue
-			}
-		}
-		if opts.Command != nil {
-			for _, cmd := range opts.Command {
-				if slices.Equal(cmd, t.Command) {
-					break
-				}
 			}
 		}
 		tasks[i] = t

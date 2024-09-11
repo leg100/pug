@@ -10,15 +10,13 @@ type Spec struct {
 	// WorkspaceID is the ID of the workspace the task belongs to. If nil, the
 	// task does not belong to a workspace.
 	WorkspaceID *resource.ID
-	// Program to execute. Defaults to the `program` pug config option.
-	Program string
-	// Program command and any sub commands, e.g. plan, state rm, etc.
-	Command []string
-	// Args to pass to program.
-	Args []string
+	// Execution specifies the execution of a program.
+	Execution Execution
 	// AdditionalExecution specifies the execution of another program. The
 	// program is only executed if the first program exits successfully.
-	AdditionalExecution *AdditionalExecution
+	AdditionalExecution *Execution
+	// Identifier uniquely identifies the type of task.
+	Identifier Identifier
 	// Path relative to the pug working directory in which to run the command.
 	Path string
 	// Environment variables.
@@ -69,11 +67,13 @@ type Spec struct {
 // SpecFunc is a function that creates a spec.
 type SpecFunc func(resource.ID) (Spec, error)
 
-type AdditionalExecution struct {
+// Execution specifies the program and arguments to execute
+type Execution struct {
 	// Program to execute. Defaults to the `program` pug config option.
 	Program string
-	// Program command and any sub commands, e.g. plan, state rm, etc.
-	Command []string
+	// Terraform command, including sub commands, e.g. plan, state rm, etc.
+	// Ignored if Program is non-empty.
+	TerraformCommand []string
 	// Args to pass to program.
 	Args []string
 }

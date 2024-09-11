@@ -75,7 +75,7 @@ func (s *Service) ReloadAfterApply(sub <-chan resource.Event[*task.Task]) {
 			if event.Payload.State != task.Exited {
 				continue
 			}
-			if !IsApplyTask(event.Payload) {
+			if event.Payload.Identifier != ApplyTask {
 				continue
 			}
 			workspaceID := event.Payload.WorkspaceID

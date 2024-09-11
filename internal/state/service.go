@@ -69,8 +69,10 @@ func (s *Service) Delete(workspaceID resource.ID, addrs ...ResourceAddress) (tas
 	}
 	return s.createTaskSpec(workspaceID, task.Spec{
 		Blocking: true,
-		Command:  []string{"state", "rm"},
-		Args:     addrStrings,
+		Execution: task.Execution{
+			TerraformCommand: []string{"state", "rm"},
+			Args:             addrStrings,
+		},
 		AfterError: func(t *task.Task) {
 			s.logger.Error("deleting resources", "error", t.Err, "resources", addrs)
 		},
@@ -83,8 +85,10 @@ func (s *Service) Delete(workspaceID resource.ID, addrs ...ResourceAddress) (tas
 func (s *Service) Taint(workspaceID resource.ID, addr ResourceAddress) (task.Spec, error) {
 	return s.createTaskSpec(workspaceID, task.Spec{
 		Blocking: true,
-		Command:  []string{"taint"},
-		Args:     []string{string(addr)},
+		Execution: task.Execution{
+			TerraformCommand: []string{"taint"},
+			Args:             []string{string(addr)},
+		},
 		AfterError: func(t *task.Task) {
 			s.logger.Error("tainting resource", "error", t.Err, "resource", addr)
 		},
@@ -97,8 +101,10 @@ func (s *Service) Taint(workspaceID resource.ID, addr ResourceAddress) (task.Spe
 func (s *Service) Untaint(workspaceID resource.ID, addr ResourceAddress) (task.Spec, error) {
 	return s.createTaskSpec(workspaceID, task.Spec{
 		Blocking: true,
-		Command:  []string{"untaint"},
-		Args:     []string{string(addr)},
+		Execution: task.Execution{
+			TerraformCommand: []string{"untaint"},
+			Args:             []string{string(addr)},
+		},
 		AfterError: func(t *task.Task) {
 			s.logger.Error("untainting resource", "error", t.Err, "resource", addr)
 		},
@@ -111,8 +117,10 @@ func (s *Service) Untaint(workspaceID resource.ID, addr ResourceAddress) (task.S
 func (s *Service) Move(workspaceID resource.ID, src, dest ResourceAddress) (task.Spec, error) {
 	return s.createTaskSpec(workspaceID, task.Spec{
 		Blocking: true,
-		Command:  []string{"state", "mv"},
-		Args:     []string{string(src), string(dest)},
+		Execution: task.Execution{
+			TerraformCommand: []string{"state", "mv"},
+			Args:             []string{string(src), string(dest)},
+		},
 		AfterError: func(t *task.Task) {
 			s.logger.Error("moving resource", "error", t.Err, "resources", src)
 		},

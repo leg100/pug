@@ -108,8 +108,10 @@ func (r *plan) planTaskSpec() task.Spec {
 		WorkspaceID: &r.WorkspaceID,
 		Path:        r.ModulePath,
 		Env:         r.envs,
-		Command:     []string{"plan"},
-		Args:        append(r.args(), "-out", r.planPath()),
+		Execution: task.Execution{
+			TerraformCommand: []string{"plan"},
+			Args:             append(r.args(), "-out", r.planPath()),
+		},
 		// TODO: explain why plan is blocking (?)
 		Blocking:    true,
 		Description: "plan",
@@ -130,25 +132,30 @@ func (r *plan) planTaskSpec() task.Spec {
 		},
 	}
 	if r.varsFileArg != nil {
-		spec.Args = append(spec.Args, *r.varsFileArg)
+		spec.Execution.Args = append(spec.Execution.Args, *r.varsFileArg)
 	}
 	if r.Destroy {
-		spec.Args = append(spec.Args, "-destroy")
+		spec.Execution.Args = append(spec.Execution.Args, "-destroy")
 		spec.Description += " (destroy)"
 	}
 	return spec
 }
+
+const ApplyTask task.Identifier = "apply"
 
 func (r *plan) applyTaskSpec() (task.Spec, error) {
 	if r.planFile && !r.HasChanges {
 		return task.Spec{}, errors.New("plan does not have any changes to apply")
 	}
 	spec := task.Spec{
+		Identifier:  ApplyTask,
 		ModuleID:    &r.ModuleID,
 		WorkspaceID: &r.WorkspaceID,
 		Path:        r.ModulePath,
-		Command:     []string{"apply"},
-		Args:        r.args(),
+		Execution: task.Execution{
+			TerraformCommand: []string{"apply"},
+			Args:             r.args(),
+		},
 		Env:         r.envs,
 		Blocking:    true,
 		Description: "apply",
@@ -177,22 +184,18 @@ func (r *plan) applyTaskSpec() (task.Spec, error) {
 		}
 	}
 	if r.planFile {
-		spec.Args = append(spec.Args, r.planPath())
+		spec.Execution.Args = append(spec.Execution.Args, r.planPath())
 	} else {
 		if r.varsFileArg != nil {
-			spec.Args = append(spec.Args, *r.varsFileArg)
+			spec.Execution.Args = append(spec.Execution.Args, *r.varsFileArg)
 		}
-		spec.Args = append(spec.Args, "-auto-approve")
+		spec.Execution.Args = append(spec.Execution.Args, "-auto-approve")
 	}
 	if r.Destroy {
 		if !r.planFile {
-			spec.Args = append(spec.Args, "-destroy")
+			spec.Execution.Args = append(spec.Execution.Args, "-destroy")
 		}
 		spec.Description += " (destroy)"
 	}
 	return spec, nil
-}
-
-func IsApplyTask(t *task.Task) bool {
-	return len(t.Command) > 0 && t.Command[0] == "apply"
 }

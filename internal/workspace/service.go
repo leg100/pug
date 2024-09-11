@@ -87,7 +87,7 @@ func (s *Service) LoadWorkspacesUponModuleLoad(sub <-chan resource.Event[*module
 // workspace.
 func (s *Service) LoadWorkspacesUponInit(sub <-chan resource.Event[*task.Task]) {
 	for event := range sub {
-		if !module.IsInitTask(event.Payload) {
+		if event.Payload.Identifier != module.InitTask {
 			continue
 		}
 		if event.Payload.State != task.Exited {
@@ -123,8 +123,10 @@ func (s *Service) Create(path, name string) (task.Spec, error) {
 	return task.Spec{
 		ModuleID: &mod.ID,
 		Path:     mod.Path,
-		Command:  []string{"workspace", "new"},
-		Args:     []string{name},
+		Execution: task.Execution{
+			TerraformCommand: []string{"workspace", "new"},
+			Args:             []string{name},
+		},
 		AfterExited: func(*task.Task) {
 			s.table.Add(ws.ID, ws)
 			// `workspace new` implicitly makes the created workspace the
@@ -179,10 +181,12 @@ func (s *Service) SelectWorkspace(moduleID, workspaceID resource.ID) error {
 	}
 	// Create task to immediately set workspace as current workspace for module.
 	_, err = s.tasks.Create(task.Spec{
-		ModuleID:  &mod.ID,
-		Path:      mod.Path,
-		Command:   []string{"workspace", "select"},
-		Args:      []string{ws.Name},
+		ModuleID: &mod.ID,
+		Path:     mod.Path,
+		Execution: task.Execution{
+			TerraformCommand: []string{"workspace", "select"},
+			Args:             []string{ws.Name},
+		},
 		Immediate: true,
 		Wait:      true,
 		BeforeExited: func(t *task.Task) (task.Summary, error) {
@@ -211,8 +215,10 @@ func (s *Service) Delete(workspaceID resource.ID) (task.Spec, error) {
 	return task.Spec{
 		ModuleID: &mod.ID,
 		Path:     mod.Path,
-		Command:  []string{"workspace", "delete"},
-		Args:     []string{ws.Name},
+		Execution: task.Execution{
+			TerraformCommand: []string{"workspace", "delete"},
+			Args:             []string{ws.Name},
+		},
 		Blocking: true,
 		AfterExited: func(*task.Task) {
 			s.table.Delete(ws.ID)

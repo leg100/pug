@@ -8,6 +8,7 @@ type keyMap struct {
 	ReloadModules    key.Binding
 	ReloadWorkspaces key.Binding
 	Enter            key.Binding
+	Command          key.Binding
 }
 
 var localKeys = keyMap{
@@ -20,6 +21,10 @@ var localKeys = keyMap{
 		key.WithHelp("ctrl+w", "reload workspaces"),
 	),
 	Enter: key.NewBinding(
+		key.WithKeys("enter"),
+		key.WithHelp("enter", "state"),
+	),
+	Command: key.NewBinding(
 		key.WithKeys("enter"),
 		key.WithHelp("enter", "state"),
 	),

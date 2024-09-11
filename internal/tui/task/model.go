@@ -237,8 +237,8 @@ func (m model) View() string {
 			tui.Bold.Render("Task ID"),
 			m.task.ID.String(),
 			"",
-			tui.Bold.Render("Command"),
-			fmt.Sprintf("%s %s", m.program, strings.Join(m.task.Command, " ")),
+			tui.Bold.Render("Program"),
+			m.task.Program,
 			"",
 			tui.Bold.Render("Arguments"),
 			args,
@@ -312,7 +312,7 @@ func (m model) HelpBindings() []key.Binding {
 	if workspaceID := m.task.WorkspaceID; workspaceID != nil {
 		bindings = append(bindings, keys.Common.Workspace)
 	}
-	if plan.IsApplyTask(m.task) {
+	if m.task.Identifier == plan.ApplyTask {
 		bindings = append(bindings, keys.Common.Apply)
 	}
 	return bindings

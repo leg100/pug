@@ -123,8 +123,10 @@ func (s *Service) Reload() (added []string, removed []string, err error) {
 
 func (s *Service) loadTerragruntDependencies() error {
 	task, err := s.tasks.Create(task.Spec{
-		Command: []string{"graph-dependencies"},
-		Wait:    true,
+		Execution: task.Execution{
+			TerraformCommand: []string{"graph-dependencies"},
+		},
+		Wait: true,
 	})
 	if err != nil {
 		return err
@@ -196,11 +198,16 @@ func (s *Service) loadTerragruntDependenciesFromDigraph(r io.Reader) error {
 	return nil
 }
 
+const InitTask task.Identifier = "init"
+
 // Init invokes terraform init on the module.
 func (s *Service) Init(moduleID resource.ID) (task.Spec, error) {
 	return s.updateSpec(moduleID, task.Spec{
-		Command:  []string{"init"},
-		Args:     []string{"-input=false"},
+		Identifier: InitTask,
+		Execution: task.Execution{
+			TerraformCommand: []string{"init"},
+			Args:             []string{"-input=false"},
+		},
 		Blocking: true,
 		// The terraform plugin cache is not concurrency-safe, so only allow one
 		// init task to run at any given time.
@@ -208,19 +215,19 @@ func (s *Service) Init(moduleID resource.ID) (task.Spec, error) {
 	})
 }
 
-func IsInitTask(t *task.Task) bool {
-	return len(t.Command) > 0 && t.Command[0] == "init"
-}
-
 func (s *Service) Format(moduleID resource.ID) (task.Spec, error) {
 	return s.updateSpec(moduleID, task.Spec{
-		Command: []string{"fmt"},
+		Execution: task.Execution{
+			TerraformCommand: []string{"fmt"},
+		},
 	})
 }
 
 func (s *Service) Validate(moduleID resource.ID) (task.Spec, error) {
 	return s.updateSpec(moduleID, task.Spec{
-		Command: []string{"validate"},
+		Execution: task.Execution{
+			TerraformCommand: []string{"validate"},
+		},
 	})
 }
 

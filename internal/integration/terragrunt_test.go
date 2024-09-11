@@ -25,7 +25,7 @@ func TestTerragrunt_SinglePlan(t *testing.T) {
 	tm.Type("p")
 	waitFor(t, tm, func(s string) bool {
 		return matchPattern(t, "Task.*plan.*default.*modules/a.*exited", s) &&
-			strings.Contains(s, "terragrunt plan")
+			strings.Contains(s, "terragrunt")
 
 	})
 }
@@ -48,7 +48,7 @@ func TestTerragrunt_SingleApply(t *testing.T) {
 	// Send to apply task page
 	waitFor(t, tm, func(s string) bool {
 		return matchPattern(t, `Task.*apply.*default.*modules/a.*\+10~0-0.*exited`, s) &&
-			strings.Contains(s, "terragrunt apply")
+			strings.Contains(s, "terragrunt")
 
 	})
 }
@@ -153,7 +153,7 @@ func setupAndInitTerragruntModule(t *testing.T) *testModel {
 	// executed.
 	tm.Type("I")
 	waitFor(t, tm, func(s string) bool {
-		return strings.Contains(s, "terragrunt init")
+		return strings.Contains(s, "terragrunt")
 
 	})
 

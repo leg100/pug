@@ -55,7 +55,9 @@ func (r *reloader) Reload(moduleID resource.ID) (task.Spec, error) {
 	return task.Spec{
 		ModuleID: &mod.ID,
 		Path:     mod.Path,
-		Command:  []string{"workspace", "list"},
+		Execution: task.Execution{
+			TerraformCommand: []string{"workspace", "list"},
+		},
 		BeforeExited: func(t *task.Task) (task.Summary, error) {
 			found, current, err := parseList(t.NewReader(false))
 			if err != nil {

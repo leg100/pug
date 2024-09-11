@@ -15,8 +15,10 @@ type reloader struct {
 // workspace.
 func (r *reloader) Reload(workspaceID resource.ID) (task.Spec, error) {
 	return r.createTaskSpec(workspaceID, task.Spec{
-		Command: []string{"state", "pull"},
-		JSON:    true,
+		Execution: task.Execution{
+			TerraformCommand: []string{"state", "pull"},
+		},
+		JSON: true,
 		BeforeExited: func(t *task.Task) (task.Summary, error) {
 			state, err := newState(workspaceID, t.NewReader(false))
 			if err != nil {

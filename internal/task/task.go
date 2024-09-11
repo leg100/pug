@@ -17,15 +17,19 @@ import (
 	"github.com/leg100/pug/internal/resource"
 )
 
+// Identifier uniquely identifies the type of task.
+type Identifier string
+
 // Task is an execution of a CLI program.
 type Task struct {
 	resource.ID
 
 	ModuleID            *resource.ID
 	WorkspaceID         *resource.ID
-	Command             []string
+	Identifier          Identifier
+	Program             string
 	Args                []string
-	AdditionalExecution *AdditionalExecution
+	AdditionalExecution *Execution
 	Path                string
 	Blocking            bool
 	State               Status
@@ -35,9 +39,8 @@ type Task struct {
 	DependsOn           []resource.ID
 	// Summary summarises the outcome of a task to the end-user.
 	Summary     Summary
-	description string
+	Description string
 
-	program   string
 	exclusive bool
 	// terragrunt is true if terragrunt is in use.
 	terragrunt bool
@@ -110,17 +113,15 @@ func (f *factory) newTask(spec Spec) (*Task, error) {
 		ID:                  resource.NewID(resource.Task),
 		ModuleID:            spec.ModuleID,
 		WorkspaceID:         spec.WorkspaceID,
+		Identifier:          spec.Identifier,
 		State:               Pending,
 		Created:             time.Now(),
 		Updated:             time.Now(),
 		finished:            make(chan struct{}),
 		stdout:              newBuffer(),
 		combined:            newBuffer(),
-		program:             f.program,
 		terragrunt:          f.terragrunt,
-		Command:             spec.Command,
 		Path:                filepath.Join(f.workdir.String(), spec.Path),
-		Args:                append(f.userArgs, spec.Args...),
 		AdditionalExecution: spec.AdditionalExecution,
 		AdditionalEnv:       append(f.userEnvs, spec.Env...),
 		JSON:                spec.JSON,
@@ -128,7 +129,7 @@ func (f *factory) newTask(spec Spec) (*Task, error) {
 		DependsOn:           spec.dependsOn,
 		Immediate:           spec.Immediate,
 		exclusive:           spec.Exclusive,
-		description:         spec.Description,
+		Description:         spec.Description,
 		Spec:                spec,
 		AfterCreate:         spec.AfterCreate,
 		AfterRunning:        spec.AfterRunning,
@@ -156,25 +157,41 @@ func (f *factory) newTask(spec Spec) (*Task, error) {
 			},
 		},
 	}
-	// Override program if specified
-	if spec.Program != "" {
-		task.program = spec.Program
+	// Determine the program and the args to pass to program.
+	if spec.Execution.Program == "" {
+		// Is terraform task
+		task.Program = f.program
+		task.Args = spec.Execution.TerraformCommand
+	} else {
+		// Non-terraform task
+		task.Program = spec.Execution.Program
 	}
+	task.Args = append(task.Args, f.userArgs...)
+	task.Args = append(task.Args, spec.Execution.Args...)
+
+	// If description is not explicitly set then set it using provided terraform
+	// commands or - if this is not a terraform execution - then using the
+	// provided program.
+	if spec.Description == "" {
+		if len(spec.Execution.TerraformCommand) > 0 {
+			task.Description = strings.Join(spec.Execution.TerraformCommand, " ")
+		} else {
+			task.Description = spec.Execution.Program
+		}
+	}
+
 	// In terragrunt mode add default terragrunt flags
 	//
 	// TODO: introduce a better way to determine whether terrarunt is in use.
 	// Perhaps use constants for terraform, tofu, and terragrunt.
-	if task.program == "terragrunt" && f.terragrunt {
+	if task.Program == "terragrunt" && f.terragrunt {
 		task.Args = append(task.Args, "--terragrunt-non-interactive")
 	}
 	return task, nil
 }
 
 func (t *Task) String() string {
-	if t.description != "" {
-		return t.description
-	}
-	return strings.Join(t.Command, " ")
+	return t.Description
 }
 
 // NewReader provides a reader from which to read the task output from start to
@@ -217,7 +234,7 @@ func (t *Task) Wait() error {
 func (t *Task) LogValue() slog.Value {
 	attrs := []slog.Attr{
 		slog.String("id", t.ID.String()),
-		slog.Any("command", t.Command),
+		slog.Any("program", t.Program),
 		slog.Any("args", t.Args),
 	}
 	if t.terragrunt {
@@ -261,7 +278,7 @@ func (t *Task) cancel() error {
 }
 
 func (t *Task) start(ctx context.Context) (func(), error) {
-	cmd := t.execute(ctx, t.program, append(t.Command, t.Args...))
+	cmd := t.execute(ctx, t.Program, t.Args)
 
 	t.mu.Lock()
 	defer t.mu.Unlock()
@@ -286,8 +303,7 @@ func (t *Task) start(ctx context.Context) (func(), error) {
 			t.Err = fmt.Errorf("task failed: %w", err)
 		} else if t.AdditionalExecution != nil {
 			// Execute additional program.
-			args := append(t.AdditionalExecution.Command, t.AdditionalExecution.Args...)
-			cmd = t.execute(ctx, t.AdditionalExecution.Program, args)
+			cmd = t.execute(ctx, t.AdditionalExecution.Program, t.AdditionalExecution.Args)
 			if err := cmd.Run(); err != nil {
 				state = Errored
 				t.Err = fmt.Errorf("task failed: %w", err)

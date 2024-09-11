@@ -54,14 +54,22 @@ func (s *costTaskSpecCreator) Cost(workspaceIDs ...resource.ID) (task.Spec, erro
 		}
 	}
 	return task.Spec{
-		Program: "infracost",
-		Command: []string{"breakdown"},
-		Args:    []string{"--config-file", configPath, "--format", "json", "--out-file", breakdownPath},
-		// Update task to chain commands
-		AdditionalExecution: &task.AdditionalExecution{
+		Execution: task.Execution{
 			Program: "infracost",
-			Command: []string{"output"},
-			Args:    []string{"--format", "table", "--path", breakdownPath},
+			Args: []string{
+				"breakdown",
+				"--config-file", configPath,
+				"--format", "json",
+				"--out-file", breakdownPath,
+			},
+		},
+		AdditionalExecution: &task.Execution{
+			Program: "infracost",
+			Args: []string{
+				"output",
+				"--format", "table",
+				"--path", breakdownPath,
+			},
 		},
 		Blocking:    true,
 		Description: "cost",
