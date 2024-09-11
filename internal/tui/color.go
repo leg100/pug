@@ -32,7 +32,7 @@ var (
 	ErrorLogLevel = Red
 	WarnLogLevel  = Yellow
 
-	LogRecordAttributeKey = lipgloss.AdaptiveColor{Dark: string(White), Light: string(Black)}
+	LogRecordAttributeKey = lipgloss.AdaptiveColor{Dark: string(LightGrey), Light: string(LightGrey)}
 
 	HelpKey = lipgloss.AdaptiveColor{
 		Dark:  "ff",

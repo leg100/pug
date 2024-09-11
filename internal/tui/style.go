@@ -6,7 +6,6 @@ var (
 	Regular = lipgloss.NewStyle()
 	Bold    = Regular.Bold(true)
 	Padded  = Regular.Padding(0, 1)
-	Faint   = Regular.Faint(true)
 
 	Width  = lipgloss.Width
 	Height = lipgloss.Height

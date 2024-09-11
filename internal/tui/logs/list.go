@@ -49,7 +49,7 @@ func (m *ListMaker) Make(_ resource.ID, width, height int) (tea.Model, error) {
 		b.WriteString(msg.Message)
 		b.WriteRune(' ')
 		for _, attr := range msg.Attributes {
-			b.WriteString(tui.Regular.Faint(true).Render(attr.Key + "="))
+			b.WriteString(tui.Regular.Foreground(tui.LogRecordAttributeKey).Render(attr.Key + "="))
 			b.WriteString(tui.Regular.Render(attr.Value + " "))
 		}
 
