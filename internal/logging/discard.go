@@ -12,4 +12,4 @@ func (noop) Warn(msg string, args ...any) {}
 
 func (noop) Error(msg string, args ...any) {}
 
-func (noop) AddEnricher(enricher Enricher) {}
+func (noop) AddArgsUpdater(updater ArgsUpdater) {}

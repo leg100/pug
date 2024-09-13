@@ -53,7 +53,11 @@ func NewService(opts ServiceOptions) *Service {
 	broker := pubsub.NewBroker[*Workspace](opts.Logger)
 	table := resource.NewTable(broker)
 
-	opts.Logger.AddEnricher(&logEnricher{table: table})
+	opts.Logger.AddArgsUpdater(&logging.ReferenceUpdater[*Workspace]{
+		Getter: table,
+		Name:   "workspace",
+		Field:  "WorkspaceID",
+	})
 
 	s := &Service{
 		Broker:  broker,
