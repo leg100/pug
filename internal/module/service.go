@@ -206,7 +206,13 @@ const InitTask task.Identifier = "init"
 
 // Init invokes terraform init on the module.
 func (s *Service) Init(moduleID resource.ID) (task.Spec, error) {
-	return s.updateSpec(moduleID, task.Spec{
+	mod, err := s.table.Get(moduleID)
+	if err != nil {
+		return task.Spec{}, err
+	}
+	spec := task.Spec{
+		ModuleID:   &mod.ID,
+		Path:       mod.Path,
 		Identifier: InitTask,
 		Execution: task.Execution{
 			TerraformCommand: []string{"init"},
@@ -216,23 +222,38 @@ func (s *Service) Init(moduleID resource.ID) (task.Spec, error) {
 		// The terraform plugin cache is not concurrency-safe, so only allow one
 		// init task to run at any given time.
 		Exclusive: s.pluginCache,
-	})
+	}
+	return spec, nil
 }
 
 func (s *Service) Format(moduleID resource.ID) (task.Spec, error) {
-	return s.updateSpec(moduleID, task.Spec{
+	mod, err := s.table.Get(moduleID)
+	if err != nil {
+		return task.Spec{}, err
+	}
+	spec := task.Spec{
+		ModuleID: &mod.ID,
+		Path:     mod.Path,
 		Execution: task.Execution{
 			TerraformCommand: []string{"fmt"},
 		},
-	})
+	}
+	return spec, nil
 }
 
 func (s *Service) Validate(moduleID resource.ID) (task.Spec, error) {
-	return s.updateSpec(moduleID, task.Spec{
+	mod, err := s.table.Get(moduleID)
+	if err != nil {
+		return task.Spec{}, err
+	}
+	spec := task.Spec{
+		ModuleID: &mod.ID,
+		Path:     mod.Path,
 		Execution: task.Execution{
 			TerraformCommand: []string{"validate"},
 		},
-	})
+	}
+	return spec, nil
 }
 
 func (s *Service) List() []*Module {
@@ -259,15 +280,4 @@ func (s *Service) SetCurrent(moduleID, workspaceID resource.ID) error {
 		return nil
 	})
 	return err
-}
-
-// updateSpec updates the task spec with common module settings.
-func (s *Service) updateSpec(moduleID resource.ID, spec task.Spec) (task.Spec, error) {
-	mod, err := s.table.Get(moduleID)
-	if err != nil {
-		return task.Spec{}, err
-	}
-	spec.ModuleID = &mod.ID
-	spec.Path = mod.Path
-	return spec, nil
 }
