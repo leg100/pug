@@ -3,12 +3,6 @@ module github.com/leg100/pug
 go 1.22
 
 require (
-	github.com/google/uuid v1.6.0
-	github.com/hashicorp/hcl/v2 v2.20.1
-	golang.org/x/sync v0.8.0 // indirect
-)
-
-require (
 	github.com/awalterschulze/gographviz v2.0.3+incompatible
 	github.com/charmbracelet/bubbles v0.18.0
 	github.com/charmbracelet/bubbletea v0.27.0
@@ -16,6 +10,8 @@ require (
 	github.com/charmbracelet/x/exp/teatest v0.0.0-20240329185201-62a6965a9fad
 	github.com/davecgh/go-spew v1.1.1
 	github.com/go-logfmt/logfmt v0.6.0
+	github.com/google/uuid v1.6.0
+	github.com/hashicorp/hcl/v2 v2.20.1
 	github.com/hokaccha/go-prettyjson v0.0.0-20211117102719-0474bc63780f
 	github.com/leg100/go-runewidth v0.0.16-0.20240513191656-9e28d2bebd46
 	github.com/leg100/reflow v0.0.0-20240513191534-e77d7e432a72
@@ -70,6 +66,7 @@ require (
 	golang.org/x/mod v0.17.0 // indirect
 	golang.org/x/net v0.25.0 // indirect
 	golang.org/x/oauth2 v0.20.0 // indirect
+	golang.org/x/sync v0.8.0 // indirect
 	golang.org/x/sys v0.24.0 // indirect
 	golang.org/x/text v0.17.0 // indirect
 	golang.org/x/tools v0.21.1-0.20240508182429-e35e4ccd0d2d // indirect
