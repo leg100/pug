@@ -6,6 +6,7 @@ import (
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 )
 
 // Height of prompt including borders
@@ -27,6 +28,8 @@ type PromptMsg struct {
 	// Key is pressed. If so then the action is skipped and the prompt is
 	// closed. Overrides Cancel key binding.
 	CancelAnyOther bool
+	// Set placeholder text in prompt
+	Placeholder string
 }
 
 type PromptAction func(text string) tea.Cmd
@@ -52,6 +55,8 @@ func NewPrompt(msg PromptMsg) (*Prompt, tea.Cmd) {
 	model := textinput.New()
 	model.Prompt = msg.Prompt
 	model.SetValue(msg.InitialValue)
+	model.Placeholder = msg.Placeholder
+	model.PlaceholderStyle = lipgloss.NewStyle().Faint(true)
 	blink := model.Focus()
 
 	prompt := Prompt{
@@ -103,11 +108,17 @@ func (p *Prompt) HandleBlink(msg tea.Msg) (cmd tea.Cmd) {
 }
 
 func (p *Prompt) View(width int) string {
-	// Render a prompt, surrounded by a red border, spanning the width of the
-	// terminal, subtracting 2 to account for width of border.
-	return ThickBorder.BorderForeground(Red).Width(width - 2).Render(
-		Regular.Margin(0, 1).Render(p.model.View()),
-	)
+	paddedBorder := ThickBorder.BorderForeground(Red).Padding(0, 1)
+	paddedBorderWidth := paddedBorder.GetHorizontalBorderSize() + paddedBorder.GetHorizontalPadding()
+	// Set available width for user entered value before it horizontally
+	// scrolls.
+	p.model.Width = max(0, width-lipgloss.Width(p.model.Prompt)-paddedBorderWidth)
+	p.model.Placeholder = "terraform version"
+	// Render a prompt, surrounded by a padded red border, spanning the width of the
+	// terminal, accounting for width of border. Inline and MaxWidth ensures the
+	// prompt remains on a single line.
+	content := Regular.Inline(true).MaxWidth(width - paddedBorderWidth).Render(p.model.View())
+	return paddedBorder.Width(width - paddedBorder.GetHorizontalBorderSize()).Render(content)
 }
 
 func (p *Prompt) HelpBindings() []key.Binding {

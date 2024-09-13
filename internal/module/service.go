@@ -281,3 +281,24 @@ func (s *Service) SetCurrent(moduleID, workspaceID resource.ID) error {
 	})
 	return err
 }
+
+// Execute a program in a module's directory.
+func (s *Service) Execute(moduleID resource.ID, program string, args ...string) (task.Spec, error) {
+	mod, err := s.table.Get(moduleID)
+	if err != nil {
+		return task.Spec{}, err
+	}
+	spec := task.Spec{
+		ModuleID: &mod.ID,
+		Path:     mod.Path,
+		Execution: task.Execution{
+			Program: program,
+			Args:    args,
+		},
+		// We're executing an arbitrary program which could be performing
+		// mutually exclusive actions that prevent other tasks from running as
+		// expected, so we make it a blocking task to be on the safe side.
+		Blocking: true,
+	}
+	return spec, nil
+}

@@ -106,6 +106,7 @@ Press `m` to go to the modules page.
 | `a`|Run `terraform apply`|&check;|
 | `d`|Run `terraform apply -destroy`|&check;|
 | `e`|Open module in editor|&cross;|
+| `x`|Run any program|&check;|
 | `Ctrl+r`|Reload all modules|-|
 | `Ctrl+w`|Reload module's workspaces|&check;|
 
