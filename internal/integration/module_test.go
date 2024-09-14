@@ -430,6 +430,30 @@ func TestModuleList_Filter(t *testing.T) {
 	})
 }
 
+func TestModule_MultipleExecute(t *testing.T) {
+	t.Parallel()
+
+	tm := setupAndInitModuleList(t)
+
+	// Select all modules and run program in each module directory.
+	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlA})
+	tm.Type("x")
+
+	// Expect prompt for program to run.
+	waitFor(t, tm, func(s string) bool {
+		return strings.Contains(s, "Execute program in 3 module directories: ")
+	})
+	tm.Type("terraform version\n")
+	tm.Send(tea.KeyMsg{Type: tea.KeyEnter})
+
+	waitFor(t, tm, func(s string) bool {
+		return matchPattern(t, "TaskGroup.*terraform.*3/3", s) &&
+			matchPattern(t, `modules/a.*terraform`, s) &&
+			matchPattern(t, `modules/b.*terraform`, s) &&
+			matchPattern(t, `modules/c.*terraform`, s)
+	})
+}
+
 func setupAndInitModuleList(t *testing.T) *testModel {
 	tm := setup(t, "./testdata/module_list")
 

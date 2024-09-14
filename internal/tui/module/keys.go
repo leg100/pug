@@ -8,7 +8,7 @@ type keyMap struct {
 	ReloadModules    key.Binding
 	ReloadWorkspaces key.Binding
 	Enter            key.Binding
-	Command          key.Binding
+	Execute          key.Binding
 }
 
 var localKeys = keyMap{
@@ -24,8 +24,8 @@ var localKeys = keyMap{
 		key.WithKeys("enter"),
 		key.WithHelp("enter", "state"),
 	),
-	Command: key.NewBinding(
-		key.WithKeys("enter"),
-		key.WithHelp("enter", "state"),
+	Execute: key.NewBinding(
+		key.WithKeys("x"),
+		key.WithHelp("x", "execute program"),
 	),
 }
