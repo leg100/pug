@@ -191,3 +191,31 @@ Type "w" Sleep 0.5s
 # take screen shot of workspaces (sleep to ensure page doesn't switch too soon)
 Screenshot demo/workspaces_with_cost.png Sleep 0.5s
 Sleep 3s
+
+# quit app and restart, this time with modules with .tool-versions files, to demonstrate support for executing arbitrary programs, in this case, `asdf`
+Hide
+Ctrl+c Type "y"
+Type `TF_CLI_CONFIG_FILE=$PWD/mirror/mirror.tfrc go run main.go -w demo/multiple_versions` Enter
+Sleep 1s
+Show
+
+# show unintialized modules
+Sleep 1s
+
+# select all modules
+Ctrl+a Sleep 0.5s
+# install terraform for each module
+Type "x" Sleep 1s
+Type "asdf install terraform" Sleep 1s
+# take screen shot (sleep to ensure page doesn't switch too soon)
+Screenshot demo/execute_asdf_install_terraform.png Sleep 0.5s
+# Execute asdf
+Enter
+# Show user the output of asdf downloading terraform. This takes a long time,
+# so sleep a bit, then hide and wait, then show and sleep a bit more.
+Sleep 2s
+Hide
+Sleep 8s
+Show
+Sleep 4s
+Screenshot demo/asdf_install_terraform_task_group.png Sleep 0.5s

@@ -113,7 +113,6 @@ func (p *Prompt) View(width int) string {
 	// Set available width for user entered value before it horizontally
 	// scrolls.
 	p.model.Width = max(0, width-lipgloss.Width(p.model.Prompt)-paddedBorderWidth)
-	p.model.Placeholder = "terraform version"
 	// Render a prompt, surrounded by a padded red border, spanning the width of the
 	// terminal, accounting for width of border. Inline and MaxWidth ensures the
 	// prompt remains on a single line.
