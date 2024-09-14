@@ -325,3 +325,19 @@ When `terragrunt` is specified as the program executable, Pug enables "terragrun
 * Modules are detected via the presence of a `terragrunt.hcl` file. (You may want to rename the top-level `terragrunt.hcl` file to something else otherwise it is mis-detected as a module).
 * Module dependencies are supported. After modules are loaded, a task invokes `terragrunt graph-dependencies`, from which dependencies are parsed and configured in Pug. If you apply multiple modules Pug ensures their dependencies are respected, applying modules in topological order. If you apply a *destroy* plan for multiple modules, modules are applied in reverse topological order.
 * The flag `--terragrunt-non-interactive` is added to commands.
+
+## Multiple terraform versions
+
+You may want to use a specific version of terraform for each module. To do so, it's recommended to use either [asdf](https://asdf-vm.com/) or [mise](https://mise.jdx.dev/), specifying the terraform version in a `.tool-versions` file in each module. Whenever you run `terraform`, directly or via Pug, the specific version for that module is used.
+
+However, you first need to instruct `asdf` or `mise` to install specific versions of terraform. Pug's arbitrary execution feature can be used to perform this task for multiple modules.
+
+For example, select modules and press `x`, and when prompted type `asdf install terraform`:
+
+![Execute asdf install terraform in each module](./demo/execute_asdf_install_terraform.png)
+
+Press enter to run that command in each module's directory:
+
+![Executing asdf install terraform in each module](./demo/asdf_install_terraform_task_group.png)
+
+You've now installed a version of terraform for each version specified in `.tool-versions` files.
