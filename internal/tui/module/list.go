@@ -121,6 +121,7 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds           []tea.Cmd
 		createPlanOpts plan.CreateOptions
 		applyPrompt    = "Auto-apply %d modules?"
+		upgrade        bool
 	)
 
 	switch msg := msg.(type) {
@@ -144,8 +145,14 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				path := m.workdir.Join(row.Value.Path)
 				return m, tui.OpenEditor(path)
 			}
+		case key.Matches(msg, keys.Common.InitUpgrade):
+			upgrade = true
+			fallthrough
 		case key.Matches(msg, keys.Common.Init):
-			cmd := m.CreateTasks(m.Modules.Init, m.table.SelectedOrCurrentIDs()...)
+			fn := func(moduleID resource.ID) (task.Spec, error) {
+				return m.Modules.Init(moduleID, upgrade)
+			}
+			cmd := m.CreateTasks(fn, m.table.SelectedOrCurrentIDs()...)
 			return m, cmd
 		case key.Matches(msg, keys.Common.Validate):
 			cmd := m.CreateTasks(m.Modules.Validate, m.table.SelectedOrCurrentIDs()...)
@@ -249,6 +256,7 @@ func (m list) View() string {
 func (m list) HelpBindings() (bindings []key.Binding) {
 	return []key.Binding{
 		keys.Common.Init,
+		keys.Common.InitUpgrade,
 		keys.Common.Format,
 		keys.Common.Validate,
 		keys.Common.Plan,

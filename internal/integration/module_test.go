@@ -57,6 +57,67 @@ func TestModule_MultipleInit(t *testing.T) {
 	setupAndInitModuleList(t)
 }
 
+func TestModule_SingleInitUpgrade(t *testing.T) {
+	t.Parallel()
+
+	tm := setup(t, "./testdata/module_list")
+
+	// Expect module to be listed
+	waitFor(t, tm, func(s string) bool {
+		return strings.Contains(s, "modules/a")
+	})
+
+	// Initialize module, upgrading any providers
+	tm.Type("u")
+
+	// Expect to see successful init message
+	waitFor(t, tm, func(s string) bool {
+		return strings.Contains(s, "Terraform has been successfully initialized!")
+	})
+
+	// Show task info sidebar
+	tm.Type("I")
+
+	// Expect to see -upgrade argument
+	waitFor(t, tm, func(s string) bool {
+		return strings.Contains(s, "-upgrade")
+	})
+}
+
+func TestModule_MultipleInitUpgrade(t *testing.T) {
+	t.Parallel()
+
+	tm := setup(t, "./testdata/module_list")
+
+	// Go to modules listing
+	tm.Type("m")
+
+	// Expect three modules to be listed
+	waitFor(t, tm, func(s string) bool {
+		return strings.Contains(s, "modules/a") &&
+			strings.Contains(s, "modules/b") &&
+			strings.Contains(s, "modules/c")
+	})
+
+	// Select all modules and run `init -upgrade`
+	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlA})
+	tm.Type("u")
+	waitFor(t, tm, func(s string) bool {
+		return matchPattern(t, "TaskGroup.*init", s) &&
+			matchPattern(t, `modules/a.*exited`, s) &&
+			matchPattern(t, `modules/b.*exited`, s) &&
+			matchPattern(t, `modules/c.*exited`, s)
+	})
+
+	// Show task info sidebar
+	tm.Type("I")
+
+	// Expect to see -upgrade argument
+	waitFor(t, tm, func(s string) bool {
+		return strings.Contains(s, "-upgrade")
+	})
+}
+
 func TestModule_MultipleFormat(t *testing.T) {
 	t.Parallel()
 

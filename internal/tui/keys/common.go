@@ -16,6 +16,7 @@ type common struct {
 	Workspace   key.Binding
 	Edit        key.Binding
 	Init        key.Binding
+	InitUpgrade key.Binding
 	Validate    key.Binding
 	Format      key.Binding
 	Cost        key.Binding
@@ -74,6 +75,10 @@ var Common = common{
 	Init: key.NewBinding(
 		key.WithKeys("i"),
 		key.WithHelp("i", "init"),
+	),
+	InitUpgrade: key.NewBinding(
+		key.WithKeys("u"),
+		key.WithHelp("u", "init -upgrade"),
 	),
 	Validate: key.NewBinding(
 		key.WithKeys("v"),

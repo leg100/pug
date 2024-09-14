@@ -98,17 +98,18 @@ Press `m` to go to the modules page.
 
 | Key | Description | Multi-select |
 |--|--|--|
-| `i`|Run `terraform init`|&check;|
-| `f`|Run `terraform fmt`|&check;|
-| `v`|Run `terraform validate`|&check;|
-| `p`|Run `terraform plan`|&check;|
-| `P`|Run `terraform plan -destroy`|&check;|
-| `a`|Run `terraform apply`|&check;|
-| `d`|Run `terraform apply -destroy`|&check;|
-| `e`|Open module in editor|&cross;|
-| `x`|Run any program|&check;|
-| `Ctrl+r`|Reload all modules|-|
-| `Ctrl+w`|Reload module's workspaces|&check;|
+|`i`|Run `terraform init`|&check;|
+|`u`|Run `terraform init -upgrade`|&check;|
+|`f`|Run `terraform fmt`|&check;|
+|`v`|Run `terraform validate`|&check;|
+|`p`|Run `terraform plan`|&check;|
+|`P`|Run `terraform plan -destroy`|&check;|
+|`a`|Run `terraform apply`|&check;|
+|`d`|Run `terraform apply -destroy`|&check;|
+|`e`|Open module in editor|&cross;|
+|`x`|Run any program|&check;|
+|`Ctrl+r`|Reload all modules|-|
+|`Ctrl+w`|Reload module's workspaces|&check;|
 
 ### Workspaces
 
@@ -123,6 +124,7 @@ Press `w` to go to the workspaces page.
 | Key | Description | Multi-select |
 |--|--|--|
 |`i`|Run `terraform init`|&check;|
+|`u`|Run `terraform init -upgrade`|&check;|
 |`f`|Run `terraform fmt`|&check;|
 |`v`|Run `terraform validate`|&check;|
 |`p`|Run `terraform plan`|&check;|

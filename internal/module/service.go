@@ -205,10 +205,14 @@ func (s *Service) loadTerragruntDependenciesFromDigraph(r io.Reader) error {
 const InitTask task.Identifier = "init"
 
 // Init invokes terraform init on the module.
-func (s *Service) Init(moduleID resource.ID) (task.Spec, error) {
+func (s *Service) Init(moduleID resource.ID, upgrade bool) (task.Spec, error) {
 	mod, err := s.table.Get(moduleID)
 	if err != nil {
 		return task.Spec{}, err
+	}
+	args := []string{"-input=false"}
+	if upgrade {
+		args = append(args, "-upgrade")
 	}
 	spec := task.Spec{
 		ModuleID:   &mod.ID,
@@ -216,7 +220,7 @@ func (s *Service) Init(moduleID resource.ID) (task.Spec, error) {
 		Identifier: InitTask,
 		Execution: task.Execution{
 			TerraformCommand: []string{"init"},
-			Args:             []string{"-input=false"},
+			Args:             args,
 		},
 		Blocking: true,
 		// The terraform plugin cache is not concurrency-safe, so only allow one

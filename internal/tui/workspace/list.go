@@ -83,6 +83,7 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds             []tea.Cmd
 		createRunOptions plan.CreateOptions
 		applyPrompt      = "Auto-apply %d workspaces?"
+		upgrade          bool
 	)
 
 	switch msg := msg.(type) {
@@ -116,8 +117,14 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				fmt.Sprintf("Delete %d workspace(s)?", len(workspaceIDs)),
 				m.CreateTasks(m.Workspaces.Delete, workspaceIDs...),
 			)
+		case key.Matches(msg, keys.Common.InitUpgrade):
+			upgrade = true
+			fallthrough
 		case key.Matches(msg, keys.Common.Init):
-			cmd := m.CreateTasks(m.Modules.Init, m.selectedOrCurrentModuleIDs()...)
+			fn := func(moduleID resource.ID) (task.Spec, error) {
+				return m.Modules.Init(moduleID, upgrade)
+			}
+			cmd := m.CreateTasks(fn, m.table.SelectedOrCurrentIDs()...)
 			return m, cmd
 		case key.Matches(msg, keys.Common.Format):
 			cmd := m.CreateTasks(m.Modules.Format, m.selectedOrCurrentModuleIDs()...)
@@ -188,6 +195,7 @@ func (m list) View() string {
 func (m list) HelpBindings() []key.Binding {
 	return []key.Binding{
 		keys.Common.Init,
+		keys.Common.InitUpgrade,
 		keys.Common.Format,
 		keys.Common.Validate,
 		keys.Common.Plan,
