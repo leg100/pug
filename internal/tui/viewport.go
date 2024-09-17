@@ -1,7 +1,9 @@
 package tui
 
 import (
+	"bytes"
 	"fmt"
+	"io"
 
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/spinner"
@@ -10,7 +12,8 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/hokaccha/go-prettyjson"
 	"github.com/leg100/pug/internal/tui/keys"
-	"github.com/leg100/reflow/wrap"
+	"github.com/leg100/reflow/wordwrap"
+	"github.com/muesli/ansi"
 )
 
 // Viewport is a wrapper of the upstream viewport bubble.
@@ -19,7 +22,7 @@ type Viewport struct {
 
 	Autoscroll bool
 
-	content string
+	content []byte
 	json    bool
 	spinner *spinner.Model
 }
@@ -89,7 +92,7 @@ func (m Viewport) View() string {
 		Render(percent)
 
 	var output string
-	if m.content == "" {
+	if len(m.content) == 0 {
 		msg := "Awaiting output"
 		if m.spinner != nil {
 			msg += " " + m.spinner.View()
@@ -119,24 +122,21 @@ func (m *Viewport) SetDimensions(width, height int) {
 	}
 }
 
-func (m *Viewport) AppendContent(content string, finished bool) (err error) {
-	m.content += content
+func (m *Viewport) AppendContent(content []byte, finished bool) (err error) {
+	m.content = append(m.content, content...)
 	if finished {
-		if m.content == "" {
-			m.content = "No output"
+		if len(m.content) == 0 {
+			m.content = []byte("No output")
 		} else if m.json {
 			// Prettify JSON output from task. This can only be done once
 			// the task has finished and has produced complete and
 			// syntactically valid json object(s).
-			//
-			// TODO: avoid casting to string and back, thereby avoiding
-			// unnecessary allocations.
-			if b, fmterr := prettyjson.Format([]byte(m.content)); fmterr != nil {
+			if b, fmterr := prettyjson.Format(m.content); fmterr != nil {
 				// In the event of an error, still set unprettified content
 				// below.
 				err = fmt.Errorf("pretty printing json content: %w", fmterr)
 			} else {
-				m.content = string(b)
+				m.content = b
 			}
 		}
 	}
@@ -148,6 +148,16 @@ func (m *Viewport) AppendContent(content string, finished bool) (err error) {
 }
 
 func (m *Viewport) setContent() {
-	wrapped := wrap.String(m.content, m.viewport.Width)
-	m.viewport.SetContent(wrapped)
+	// First ensure no incomplete ANSI escape codes are written by using the raw
+	// ANSI writer. And secondly, wrap content to the width of the viewport,
+	// whilst respecting ANSI escape codes (i.e. don't split codes across
+	// lines).
+	wrapper := wordwrap.NewWriter(m.viewport.Width)
+	w := &ansi.Writer{Forward: wrapper}
+	if _, err := io.Copy(w, bytes.NewReader(m.content)); err != nil {
+		m.viewport.SetContent(fmt.Sprintf("unable to parse ANSI escape codes: %s", err.Error()))
+		return
+	}
+	w.ResetAnsi()
+	m.viewport.SetContent(wrapper.String())
 }

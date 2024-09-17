@@ -44,7 +44,7 @@ func (mm *ResourceMaker) Make(id resource.ID, width, height int) (tea.Model, err
 		Height: m.viewportHeight(height),
 		JSON:   true,
 	})
-	m.viewport.AppendContent(string(marshaled), true)
+	m.viewport.AppendContent(marshaled, true)
 
 	return m, nil
 }

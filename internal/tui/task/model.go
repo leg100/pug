@@ -327,12 +327,12 @@ func (m model) getOutput() tea.Msg {
 	} else if err != nil {
 		return tui.ReportError(errors.New("reading task output"))()
 	}
-	msg.output = string(m.buf[:n])
+	msg.output = m.buf[:n]
 	return msg
 }
 
 type outputMsg struct {
 	modelID uuid.UUID
-	output  string
+	output  []byte
 	eof     bool
 }
