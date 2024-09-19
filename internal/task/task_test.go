@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/leg100/pug/internal"
-	"github.com/mitchellh/iochan"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -67,7 +66,7 @@ func TestTask_cancel(t *testing.T) {
 		done <- struct{}{}
 	}()
 
-	assert.Equal(t, "ok, you can kill me now\n", <-iochan.DelimReader(task.NewReader(false), '\n'))
+	assert.Equal(t, []byte("ok, you can kill me now\n"), <-task.NewStreamer())
 	task.cancel()
 	<-done
 	assert.NoError(t, task.Err)

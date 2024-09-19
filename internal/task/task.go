@@ -194,13 +194,20 @@ func (t *Task) String() string {
 	return t.Description
 }
 
-// NewReader provides a reader from which to read the task output from start to
-// end. Set combined to true to receieve stderr as well as stdout.
+// NewReader returns a reader which contains what has been written thus far to
+// the task buffer.
+// Set combined to true to receieve stderr as well as stdout.
 func (t *Task) NewReader(combined bool) io.Reader {
 	if combined {
-		return &reader{buf: t.combined}
+		return t.combined.NewReader()
 	}
-	return &reader{buf: t.stdout}
+	return t.stdout.NewReader()
+}
+
+// NewStreamer returns a stream of output from the task; the channel is closed
+// when the task has finished.
+func (t *Task) NewStreamer() <-chan []byte {
+	return t.combined.Stream()
 }
 
 func (t *Task) IsActive() bool {

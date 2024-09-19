@@ -2,16 +2,15 @@ package task
 
 import (
 	"bytes"
+	"io"
 	"sync"
 )
 
-// buffer lets downward implementations know when there is a write via a
-// channel, and allows them, via a mutex, to copy bytes from the buffer.
 type buffer struct {
-	buf    *bytes.Buffer
-	avail  chan struct{}
-	closed bool
-	mu     sync.Mutex
+	buf *bytes.Buffer
+
+	avail chan struct{}
+	mu    sync.Mutex
 }
 
 func newBuffer() *buffer {
@@ -29,7 +28,7 @@ func (b *buffer) Write(p []byte) (int, error) {
 	if err != nil {
 		return n, err
 	}
-	// populate channel, skipping if already populated
+	// Let streamers know there are now available bytes to be read.
 	select {
 	case b.avail <- struct{}{}:
 	default:
@@ -37,7 +36,52 @@ func (b *buffer) Write(p []byte) (int, error) {
 	return n, nil
 }
 
+// NewReader returns a copy of the buffer to read from.
+func (b *buffer) NewReader() io.Reader {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
+	r := new(bytes.Buffer)
+	r.Write(b.buf.Bytes())
+	return r
+}
+
+// Stream buffer as it is written to. The return channel is closed when the
+// buffer is closed.
+func (b *buffer) Stream() <-chan []byte {
+	var (
+		offset int
+		ch     = make(chan []byte)
+	)
+
+	copyBytes := func() []byte {
+		b.mu.Lock()
+		byts := b.buf.Bytes()
+		size := b.buf.Len() - offset
+		dst := make([]byte, size)
+		offset += copy(dst, byts[offset:])
+		b.mu.Unlock()
+		return dst
+	}
+
+	go func() {
+		if b := copyBytes(); len(b) > 0 {
+			ch <- b
+		}
+		for {
+			_, ok := <-b.avail
+			if b := copyBytes(); len(b) > 0 {
+				ch <- b
+			}
+			if !ok {
+				close(ch)
+				return
+			}
+		}
+	}()
+	return ch
+}
+
 func (b *buffer) Close() {
 	close(b.avail)
-	b.closed = true
 }
