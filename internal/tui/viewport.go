@@ -145,10 +145,8 @@ func (m *Viewport) AppendContent(content []byte, finished bool) (err error) {
 }
 
 func (m *Viewport) setContent() {
-	// First ensure no incomplete ANSI escape codes are written by using the raw
-	// ANSI writer. And secondly, wrap content to the width of the viewport,
-	// whilst respecting ANSI escape codes (i.e. don't split codes across
-	// lines).
+	// Wrap content to the width of the viewport, whilst respecting ANSI escape
+	// codes (i.e. don't split codes across lines).
 	wrapped := wordwrap.Bytes(m.content, m.viewport.Width)
 	m.viewport.SetContent(string(wrapped))
 }
