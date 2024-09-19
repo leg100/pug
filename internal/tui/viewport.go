@@ -1,9 +1,7 @@
 package tui
 
 import (
-	"bytes"
 	"fmt"
-	"io"
 
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/spinner"
@@ -13,7 +11,6 @@ import (
 	"github.com/hokaccha/go-prettyjson"
 	"github.com/leg100/pug/internal/tui/keys"
 	"github.com/leg100/reflow/wordwrap"
-	"github.com/muesli/ansi"
 )
 
 // Viewport is a wrapper of the upstream viewport bubble.
@@ -152,12 +149,6 @@ func (m *Viewport) setContent() {
 	// ANSI writer. And secondly, wrap content to the width of the viewport,
 	// whilst respecting ANSI escape codes (i.e. don't split codes across
 	// lines).
-	wrapper := wordwrap.NewWriter(m.viewport.Width)
-	w := &ansi.Writer{Forward: wrapper}
-	if _, err := io.Copy(w, bytes.NewReader(m.content)); err != nil {
-		m.viewport.SetContent(fmt.Sprintf("unable to parse ANSI escape codes: %s", err.Error()))
-		return
-	}
-	w.ResetAnsi()
-	m.viewport.SetContent(wrapper.String())
+	wrapped := wordwrap.Bytes(m.content, m.viewport.Width)
+	m.viewport.SetContent(string(wrapped))
 }

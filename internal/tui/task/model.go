@@ -3,7 +3,6 @@ package task
 import (
 	"errors"
 	"fmt"
-	"io"
 	"path/filepath"
 	"strings"
 
@@ -48,7 +47,7 @@ func (mm *Maker) make(id resource.ID, width, height int, border bool) (tea.Model
 		tasks:   mm.Tasks,
 		plans:   mm.Plans,
 		task:    task,
-		output:  task.NewReader(true),
+		output:  task.NewStreamer(),
 		spinner: mm.Spinner,
 		// read upto 1kb at a time
 		buf:      make([]byte, 1024),
@@ -103,7 +102,7 @@ type model struct {
 	task  *task.Task
 	plans *plan.Service
 
-	output io.Reader
+	output <-chan []byte
 	buf    []byte
 
 	showInfo bool
@@ -321,13 +320,12 @@ func (m model) HelpBindings() []key.Binding {
 func (m model) getOutput() tea.Msg {
 	msg := outputMsg{modelID: m.id}
 
-	n, err := m.output.Read(m.buf)
-	if err == io.EOF {
+	b, ok := <-m.output
+	if ok {
+		msg.output = b
+	} else {
 		msg.eof = true
-	} else if err != nil {
-		return tui.ReportError(errors.New("reading task output"))()
 	}
-	msg.output = m.buf[:n]
 	return msg
 }
 

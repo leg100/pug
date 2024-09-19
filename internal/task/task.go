@@ -198,9 +198,15 @@ func (t *Task) String() string {
 // end. Set combined to true to receieve stderr as well as stdout.
 func (t *Task) NewReader(combined bool) io.Reader {
 	if combined {
-		return &reader{buf: t.combined}
+		return t.combined.NewReader()
 	}
-	return &reader{buf: t.stdout}
+	return t.stdout.NewReader()
+}
+
+// NewReader provides a reader from which to read the task output from start to
+// end. Set combined to true to receieve stderr as well as stdout.
+func (t *Task) NewStreamer() <-chan []byte {
+	return t.combined.Stream()
 }
 
 func (t *Task) IsActive() bool {
