@@ -1,5 +1,29 @@
 # Changelog
 
+## [0.5.2](https://github.com/leg100/pug/compare/v0.5.1...v0.5.2) (2024-09-19)
+
+
+### Features
+
+* execute arbitrary processes ([#125](https://github.com/leg100/pug/issues/125)) ([d72ba7c](https://github.com/leg100/pug/commit/d72ba7c3b27ad2717d8d616a3d9c61f728daf149))
+* map `u` to `terraform init -upgrade` ([1d41267](https://github.com/leg100/pug/commit/1d4126751e491c301ed6d0f22f90d7e75287e6d0))
+* suspend using ctrl+z ([22ccdee](https://github.com/leg100/pug/commit/22ccdeef140ab4d566bad2f7689916d4fa92a211))
+
+
+### Bug Fixes
+
+* incomplete ansi escape codes break kitty terminal ([#128](https://github.com/leg100/pug/issues/128)) ([90e6d02](https://github.com/leg100/pug/commit/90e6d02ae8b8b3c66ca9a4b647aed2cb4480cefd))
+* task streaming ([#129](https://github.com/leg100/pug/issues/129)) ([33db65c](https://github.com/leg100/pug/commit/33db65c5dc970248ae9530bae69251167e620ca5))
+
+
+### Miscellaneous
+
+* change serial number bg to black for clarity ([b256ba4](https://github.com/leg100/pug/commit/b256ba43d14f92e9d9c4262c024d1245c5d27af6))
+* document using multiple versions of terraform ([#127](https://github.com/leg100/pug/issues/127)) ([dd71c9f](https://github.com/leg100/pug/commit/dd71c9fa0c917591e5afd0fbfe5bb514609187c7))
+* go mod tidy ([e39a7cd](https://github.com/leg100/pug/commit/e39a7cd49f5c590ac5808329d4abaab43a0c6131))
+* regroup direct requirements in go.mod ([317ad4e](https://github.com/leg100/pug/commit/317ad4e9064e377adf9deeb10fc3568014d0bb10))
+* remove unused logger param ([a80bf0b](https://github.com/leg100/pug/commit/a80bf0b3789c95bbac95a4e5c2a84dc5683cb2ce))
+
 ## [0.5.1](https://github.com/leg100/pug/compare/v0.5.0...v0.5.1) (2024-08-22)
 
 
