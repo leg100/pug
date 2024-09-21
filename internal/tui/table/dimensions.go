@@ -6,14 +6,16 @@
 
 package table
 
+import "github.com/leg100/pug/internal/tui"
+
 // Update column widths in-place.
 //
 // TODO: unit test
 func (m *Model[V]) setColumnWidths() {
 	var (
-		// total available flex width initialized to total viewport width minus
-		// the padding on each col (2)
-		totalFlexWidth  = m.tableWidth() - 2*len(m.cols)
+		// total available flex width initialized to total table width minus the
+		// padding on each col (2) and the scrollbar to the right
+		totalFlexWidth  = m.width - tui.ScrollbarWidth - 2*len(m.cols)
 		totalFlexFactor int
 		flexGCD         int
 	)

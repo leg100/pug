@@ -53,11 +53,14 @@ type Model[V resource.Resource] struct {
 
 	filter textinput.Model
 
+	scrollbar *tui.Scrollbar
+
 	// index of first visible row
 	start int
 
-	// dimensions calcs
-	width  int
+	// width of table without borders
+	width int
+	// height of table without borders
 	height int
 }
 
@@ -103,6 +106,7 @@ func New[V resource.Resource](cols []Column, fn RowRenderer[V], width, height in
 		filter:          filter,
 		border:          lipgloss.NormalBorder(),
 		currentRowIndex: -1,
+		scrollbar:       tui.NewScrollbar(),
 	}
 	for _, fn := range opts {
 		fn(&m)
@@ -146,18 +150,19 @@ func (m *Model[V]) filterVisible() bool {
 
 // setDimensions sets the dimensions of the table.
 func (m *Model[V]) setDimensions(width, height int) {
-	m.height = height
-	m.width = width
+	// Adjust height to accomodate borders
+	m.height = height - 2
+	// Adjust width to accomodate borders
+	m.width = width - 2
 	m.setColumnWidths()
+	m.scrollbar.SetHeight(m.rowAreaHeight())
 
 	m.setStart()
 }
 
-// maxVisibleRows returns the maximum number of visible rows, i.e. the height of
-// the terminal allocated to rows.
-func (m *Model[V]) maxVisibleRows() int {
-	// Subtract two from height to accommodate borders
-	height := max(0, m.height-headerHeight-2)
+// rowAreaHeight returns the height of the terminal allocated to rows.
+func (m Model[V]) rowAreaHeight() int {
+	height := max(0, m.height-headerHeight)
 
 	if m.filterVisible() {
 		// Accommodate height of filter widget
@@ -169,19 +174,7 @@ func (m *Model[V]) maxVisibleRows() int {
 // visibleRows returns the number of renderable visible rows.
 func (m Model[V]) visibleRows() int {
 	// The number of visible rows cannot exceed the row area height.
-	return min(m.maxVisibleRows(), len(m.rows)-m.start)
-}
-
-// tableWidth retrieves the width available to the table, excluding its borders.
-func (m *Model[V]) tableWidth() int {
-	// Subtract two from width to accommodate borders
-	return m.width - 2
-}
-
-// tableHeight retrieves the height available to the table, excluding its borders.
-func (m *Model[V]) tableHeight() int {
-	// Subtract two from width to accommodate borders
-	return m.height - 2
+	return min(m.rowAreaHeight(), len(m.rows)-m.start)
 }
 
 // Update is the Bubble Tea update loop.
@@ -198,13 +191,13 @@ func (m Model[V]) Update(msg tea.Msg) (Model[V], tea.Cmd) {
 		case key.Matches(msg, keys.Navigation.LineDown):
 			m.MoveDown(1)
 		case key.Matches(msg, keys.Navigation.PageUp):
-			m.MoveUp(m.maxVisibleRows())
+			m.MoveUp(m.rowAreaHeight())
 		case key.Matches(msg, keys.Navigation.PageDown):
-			m.MoveDown(m.maxVisibleRows())
+			m.MoveDown(m.rowAreaHeight())
 		case key.Matches(msg, keys.Navigation.HalfPageUp):
-			m.MoveUp(m.maxVisibleRows() / 2)
+			m.MoveUp(m.rowAreaHeight() / 2)
 		case key.Matches(msg, keys.Navigation.HalfPageDown):
-			m.MoveDown(m.maxVisibleRows() / 2)
+			m.MoveDown(m.rowAreaHeight() / 2)
 		case key.Matches(msg, keys.Navigation.GotoTop):
 			m.GotoTop()
 		case key.Matches(msg, keys.Navigation.GotoBottom):
@@ -232,6 +225,7 @@ func (m Model[V]) Update(msg tea.Msg) (Model[V], tea.Cmd) {
 	case tui.FilterFocusReqMsg:
 		// Focus the filter widget
 		blink := m.filter.Focus()
+		m.scrollbar.SetHeight(m.rowAreaHeight())
 		// Start blinking the cursor.
 		return m, blink
 	case tui.FilterBlurMsg:
@@ -244,6 +238,7 @@ func (m Model[V]) Update(msg tea.Msg) (Model[V], tea.Cmd) {
 		m.filter.SetValue("")
 		// Unfilter table items
 		m.setRows(maps.Values(m.items)...)
+		m.scrollbar.SetHeight(m.rowAreaHeight())
 		return m, nil
 	case tui.FilterKeyMsg:
 		// unwrap key and send to filter widget
@@ -261,6 +256,10 @@ func (m Model[V]) Update(msg tea.Msg) (Model[V], tea.Cmd) {
 			return m, cmd
 		}
 	}
+
+	// Re-compute scrollbar thumb, taking account of any changes to the viewport
+	// content and viewport dimensions
+	m.scrollbar.ComputeThumb(len(m.items), m.visibleRows(), m.start)
 
 	return m, nil
 }
@@ -286,20 +285,27 @@ func (m Model[V]) View() string {
 	// Table is composed of a vertical stack of components:
 	// (a) optional filter widget
 	// (b) header
-	// (c) rows
+	// (c) rows + scrollbar
 	components := make([]string, 0, 1+1+m.visibleRows())
 	if m.filterVisible() {
 		components = append(components, tui.Regular.Margin(0, 1).Render(m.filter.View()))
 		// Add horizontal rule between filter widget and table
-		components = append(components, strings.Repeat("─", m.tableWidth()))
+		components = append(components, strings.Repeat("─", m.width))
 	}
 	components = append(components, m.headersView())
+	// Get all the visible rows
+	var rows []string
 	for i := range m.visibleRows() {
-		components = append(components, m.renderRow(m.start+i))
+		rows = append(rows, m.renderRow(m.start+i))
 	}
+	rowarea := lipgloss.NewStyle().Width(m.width - tui.ScrollbarWidth).Render(
+		strings.Join(rows, "\n"),
+	)
+	// Put rows alongside the scrollbar to the right
+	components = append(components, lipgloss.JoinHorizontal(lipgloss.Top, rowarea, m.scrollbar.View()))
 	// Render table components, ensuring it is at least a min height
 	content := lipgloss.NewStyle().
-		Height(m.tableHeight()).
+		Height(m.height).
 		Render(lipgloss.JoinVertical(lipgloss.Top, components...))
 	// Render table metadata
 	var metadata string
@@ -318,7 +324,7 @@ func (m Model[V]) View() string {
 	var topBorder string
 	{
 		// total length of top border runes, not including corners
-		length := max(0, m.width-lipgloss.Width(metadata)-2)
+		length := max(0, m.width-lipgloss.Width(metadata))
 		leftLength := length / 2
 		rightLength := max(0, length-leftLength)
 		topBorder = lipgloss.JoinHorizontal(lipgloss.Left,
@@ -590,12 +596,12 @@ func (m *Model[V]) moveCurrentRow(n int) {
 func (m *Model[V]) setStart() {
 	// Start index must be at least the current row index minus the max number
 	// of visible rows.
-	minimum := max(0, m.currentRowIndex-m.maxVisibleRows()+1)
+	minimum := max(0, m.currentRowIndex-m.rowAreaHeight()+1)
 	// Start index must be at most the lesser of:
 	// (a) the current row index, or
 	// (b) the number of rows minus the maximum number of visible rows (as many
 	// rows as possible are rendered)
-	maximum := max(0, min(m.currentRowIndex, len(m.rows)-m.maxVisibleRows()))
+	maximum := max(0, min(m.currentRowIndex, len(m.rows)-m.rowAreaHeight()))
 	m.start = clamp(m.start, minimum, maximum)
 }
 
@@ -673,7 +679,7 @@ func (m *Model[V]) renderRow(rowIdx int) string {
 	// Join cells together to form a row
 	renderedRow := lipgloss.JoinHorizontal(lipgloss.Left, styledCells...)
 
-	// If current row or seleted rows, strip colors and apply background color
+	// If current row or selected rows, strip colors and apply background color
 	if current || selected {
 		renderedRow = internal.StripAnsi(renderedRow)
 		renderedRow = lipgloss.NewStyle().
