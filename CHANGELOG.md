@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.5.3](https://github.com/leg100/pug/compare/v0.5.2...v0.5.3) (2024-09-22)
+
+
+### Features
+
+* scrollbars ([#130](https://github.com/leg100/pug/issues/130)) ([bed7586](https://github.com/leg100/pug/commit/bed75868f3dd5aa2014c8e853e4547d3c4fafb02))
+
+
+### Bug Fixes
+
+* stop ANSI colors bleeding ([1b58356](https://github.com/leg100/pug/commit/1b58356375afa4defe6ee2c574a65049c39699be))
+
 ## [0.5.2](https://github.com/leg100/pug/compare/v0.5.1...v0.5.2) (2024-09-19)
 
 
