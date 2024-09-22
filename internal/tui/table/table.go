@@ -290,10 +290,10 @@ func (m Model[V]) View() string {
 	for i := range m.visibleRows() {
 		rows = append(rows, m.renderRow(m.start+i))
 	}
-	rowarea := lipgloss.NewStyle().Width(m.width - lipgloss.Width(scrollbar)).Render(
+	rowarea := lipgloss.NewStyle().Width(m.width - tui.ScrollbarWidth).Render(
 		strings.Join(rows, "\n"),
 	)
-	// Put rows alongside the scrollbar to the right
+	// Put rows alongside the scrollbar to the right.
 	components = append(components, lipgloss.JoinHorizontal(lipgloss.Top, rowarea, scrollbar))
 	// Render table components, ensuring it is at least a min height
 	content := lipgloss.NewStyle().
