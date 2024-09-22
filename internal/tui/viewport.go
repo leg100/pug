@@ -71,26 +71,11 @@ func (m Viewport) Update(msg tea.Msg) (Viewport, tea.Cmd) {
 	return m, tea.Batch(cmds...)
 }
 
-// percentWidth is the width of the scroll percentage section to the
-// right of the viewport
-const percentWidth = 6 // 6 = 4 for xxx% + 2 for padding
-
 func (m Viewport) View() string {
-	// scroll percent container occupies a fixed width section to the right of
-	// the viewport.
-	percent := Regular.
-		Background(ScrollPercentageBackground).
-		Padding(0, 1).
-		Render(fmt.Sprintf("%3.f%%", m.viewport.ScrollPercent()*100))
-	percentContainer := Regular.
-		Height(m.viewport.Height).
-		Width(percentWidth).
-		AlignVertical(lipgloss.Bottom).
-		Render(percent)
-
 	var output string
 	if len(m.content) == 0 {
 		msg := "Awaiting output"
+		// TODO: make spinner non-optional
 		if m.spinner != nil {
 			msg += " " + m.spinner.View()
 		}
@@ -101,16 +86,18 @@ func (m Viewport) View() string {
 	} else {
 		output = m.viewport.View()
 	}
-
-	return lipgloss.JoinHorizontal(lipgloss.Top,
-		output,
-		percentContainer,
+	scrollbar := Scrollbar(
+		m.viewport.Height,
+		m.viewport.TotalLineCount(),
+		m.viewport.VisibleLineCount(),
+		m.viewport.YOffset,
 	)
+	return lipgloss.JoinHorizontal(lipgloss.Top, output, scrollbar)
 }
 
 func (m *Viewport) SetDimensions(width, height int) {
-	width = max(0, width-percentWidth)
-	// If width has changed, re-rewrap existing content.
+	width = max(0, width-ScrollbarWidth)
+	// If width has changed, re-wrap existing content.
 	rewrap := m.viewport.Width != width
 	m.viewport.Width = width
 	m.viewport.Height = height
