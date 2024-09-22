@@ -257,8 +257,7 @@ func (m Model[V]) Update(msg tea.Msg) (Model[V], tea.Cmd) {
 		}
 	}
 
-	// Re-compute scrollbar thumb, taking account of any changes to the viewport
-	// content and viewport dimensions
+	// Re-compute scrollbar thumb
 	m.scrollbar.ComputeThumb(len(m.items), m.visibleRows(), m.start)
 
 	return m, nil

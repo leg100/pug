@@ -4,7 +4,6 @@ import (
 	"math"
 	"strings"
 
-	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 )
 
@@ -29,11 +28,6 @@ type Scrollbar struct {
 	height      int
 	thumbHeight int
 	thumbOffset int
-}
-
-// Init initializes the scrollbar model.
-func (m Scrollbar) Init() tea.Cmd {
-	return nil
 }
 
 func (m *Scrollbar) SetHeight(height int) {

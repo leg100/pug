@@ -106,6 +106,7 @@ func (m *Viewport) SetDimensions(width, height int) {
 		m.setContent()
 	}
 	m.scrollbar.SetHeight(height)
+	m.scrollbar.ComputeThumb(m.viewport.TotalLineCount(), m.viewport.VisibleLineCount(), m.viewport.YOffset)
 }
 
 func (m *Viewport) AppendContent(content []byte, finished bool) (err error) {
