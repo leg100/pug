@@ -11,6 +11,7 @@ import (
 	"github.com/hokaccha/go-prettyjson"
 	"github.com/leg100/pug/internal/tui/keys"
 	"github.com/leg100/reflow/wordwrap"
+	"github.com/leg100/reflow/wrap"
 )
 
 // Viewport is a wrapper of the upstream viewport bubble.
@@ -133,7 +134,9 @@ func (m *Viewport) AppendContent(content []byte, finished bool) (err error) {
 
 func (m *Viewport) setContent() {
 	// Wrap content to the width of the viewport, whilst respecting ANSI escape
-	// codes (i.e. don't split codes across lines).
-	wrapped := wordwrap.Bytes(m.content, m.viewport.Width)
-	m.viewport.SetContent(string(wrapped))
+	// codes (i.e. don't split codes across lines). The wrapper also ensures
+	// thekkkk
+	wrapped := wrap.Bytes(wordwrap.Bytes(m.content, m.viewport.Width), m.viewport.Width)
+	sanitized := SanitizeColors(wrapped)
+	m.viewport.SetContent(string(sanitized))
 }
