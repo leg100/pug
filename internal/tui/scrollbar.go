@@ -3,51 +3,24 @@ package tui
 import (
 	"math"
 	"strings"
-
-	"github.com/charmbracelet/lipgloss"
 )
 
-// ScrollbarWidth is the width of the scrollbar. Hardcoded for performance
-// reasons.
-const ScrollbarWidth = 2
+const (
+	ScrollbarWidth = 1
 
-// NewScrollbar create a new vertical scrollbar.
-func NewScrollbar() *Scrollbar {
-	return &Scrollbar{
-		Style:      lipgloss.NewStyle().Width(2),
-		ThumbStyle: lipgloss.NewStyle().SetString("█"),
-		TrackStyle: lipgloss.NewStyle().SetString("░"),
-	}
-}
+	scrollbarThumb = "█"
+	scrollbarTrack = "░"
+)
 
-// Scrollbar is a model for a vertical scrollbar
-type Scrollbar struct {
-	Style       lipgloss.Style
-	ThumbStyle  lipgloss.Style
-	TrackStyle  lipgloss.Style
-	height      int
-	thumbHeight int
-	thumbOffset int
-}
+func Scrollbar(height, total, visible, offset int) string {
+	ratio := float64(height) / float64(total)
+	thumbHeight := max(1, int(math.Round(float64(visible)*ratio)))
+	thumbOffset := max(0, min(height-thumbHeight, int(math.Round(float64(offset)*ratio))))
 
-func (m *Scrollbar) SetHeight(height int) {
-	m.height = height
-}
-
-func (m *Scrollbar) ComputeThumb(total, visible, offset int) {
-	ratio := float64(m.height) / float64(total)
-
-	m.thumbHeight = max(1, int(math.Round(float64(visible)*ratio)))
-	m.thumbOffset = max(0, min(m.height-m.thumbHeight, int(math.Round(float64(offset)*ratio))))
-}
-
-// View renders the scrollbar to a string.
-func (m Scrollbar) View() string {
-	bar := strings.TrimRight(
-		strings.Repeat(m.TrackStyle.String()+"\n", m.thumbOffset)+
-			strings.Repeat(m.ThumbStyle.String()+"\n", m.thumbHeight)+
-			strings.Repeat(m.TrackStyle.String()+"\n", max(0, m.height-m.thumbOffset-m.thumbHeight)),
+	return strings.TrimRight(
+		strings.Repeat(scrollbarTrack+"\n", thumbOffset)+
+			strings.Repeat(scrollbarThumb+"\n", thumbHeight)+
+			strings.Repeat(scrollbarTrack+"\n", max(0, height-thumbOffset-thumbHeight)),
 		"\n",
 	)
-	return m.Style.Align(lipgloss.Right).Render(bar)
 }

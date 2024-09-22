@@ -19,10 +19,9 @@ type Viewport struct {
 
 	Autoscroll bool
 
-	content   []byte
-	json      bool
-	spinner   *spinner.Model
-	scrollbar *Scrollbar
+	content []byte
+	json    bool
+	spinner *spinner.Model
 }
 
 type ViewportOptions struct {
@@ -40,7 +39,6 @@ func NewViewport(opts ViewportOptions) Viewport {
 		viewport:   viewport.New(0, 0),
 		json:       opts.JSON,
 		spinner:    opts.Spinner,
-		scrollbar:  NewScrollbar(),
 	}
 	m.SetDimensions(opts.Width, opts.Height)
 	return m
@@ -70,10 +68,6 @@ func (m Viewport) Update(msg tea.Msg) (Viewport, tea.Cmd) {
 	m.viewport, cmd = m.viewport.Update(msg)
 	cmds = append(cmds, cmd)
 
-	// Re-compute scrollbar thumb, taking account of any changes to the viewport
-	// content and viewport dimensions
-	m.scrollbar.ComputeThumb(m.viewport.TotalLineCount(), m.viewport.VisibleLineCount(), m.viewport.YOffset)
-
 	return m, tea.Batch(cmds...)
 }
 
@@ -92,8 +86,13 @@ func (m Viewport) View() string {
 	} else {
 		output = m.viewport.View()
 	}
-
-	return lipgloss.JoinHorizontal(lipgloss.Top, output, m.scrollbar.View())
+	scrollbar := Scrollbar(
+		m.viewport.Height,
+		m.viewport.TotalLineCount(),
+		m.viewport.VisibleLineCount(),
+		m.viewport.YOffset,
+	)
+	return lipgloss.JoinHorizontal(lipgloss.Top, output, scrollbar)
 }
 
 func (m *Viewport) SetDimensions(width, height int) {
@@ -105,8 +104,6 @@ func (m *Viewport) SetDimensions(width, height int) {
 	if rewrap {
 		m.setContent()
 	}
-	m.scrollbar.SetHeight(height)
-	m.scrollbar.ComputeThumb(m.viewport.TotalLineCount(), m.viewport.VisibleLineCount(), m.viewport.YOffset)
 }
 
 func (m *Viewport) AppendContent(content []byte, finished bool) (err error) {

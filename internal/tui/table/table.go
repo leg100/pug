@@ -53,8 +53,6 @@ type Model[V resource.Resource] struct {
 
 	filter textinput.Model
 
-	scrollbar *tui.Scrollbar
-
 	// index of first visible row
 	start int
 
@@ -106,7 +104,6 @@ func New[V resource.Resource](cols []Column, fn RowRenderer[V], width, height in
 		filter:          filter,
 		border:          lipgloss.NormalBorder(),
 		currentRowIndex: -1,
-		scrollbar:       tui.NewScrollbar(),
 	}
 	for _, fn := range opts {
 		fn(&m)
@@ -155,7 +152,6 @@ func (m *Model[V]) setDimensions(width, height int) {
 	// Adjust width to accomodate borders
 	m.width = width - 2
 	m.setColumnWidths()
-	m.scrollbar.SetHeight(m.rowAreaHeight())
 
 	m.setStart()
 }
@@ -225,7 +221,6 @@ func (m Model[V]) Update(msg tea.Msg) (Model[V], tea.Cmd) {
 	case tui.FilterFocusReqMsg:
 		// Focus the filter widget
 		blink := m.filter.Focus()
-		m.scrollbar.SetHeight(m.rowAreaHeight())
 		// Start blinking the cursor.
 		return m, blink
 	case tui.FilterBlurMsg:
@@ -238,7 +233,6 @@ func (m Model[V]) Update(msg tea.Msg) (Model[V], tea.Cmd) {
 		m.filter.SetValue("")
 		// Unfilter table items
 		m.setRows(maps.Values(m.items)...)
-		m.scrollbar.SetHeight(m.rowAreaHeight())
 		return m, nil
 	case tui.FilterKeyMsg:
 		// unwrap key and send to filter widget
@@ -256,9 +250,6 @@ func (m Model[V]) Update(msg tea.Msg) (Model[V], tea.Cmd) {
 			return m, cmd
 		}
 	}
-
-	// Re-compute scrollbar thumb
-	m.scrollbar.ComputeThumb(len(m.items), m.visibleRows(), m.start)
 
 	return m, nil
 }
@@ -292,16 +283,18 @@ func (m Model[V]) View() string {
 		components = append(components, strings.Repeat("─", m.width))
 	}
 	components = append(components, m.headersView())
+	// Generate scrollbar
+	scrollbar := tui.Scrollbar(m.rowAreaHeight(), len(m.rows), m.visibleRows(), m.start)
 	// Get all the visible rows
 	var rows []string
 	for i := range m.visibleRows() {
 		rows = append(rows, m.renderRow(m.start+i))
 	}
-	rowarea := lipgloss.NewStyle().Width(m.width - tui.ScrollbarWidth).Render(
+	rowarea := lipgloss.NewStyle().Width(m.width - lipgloss.Width(scrollbar)).Render(
 		strings.Join(rows, "\n"),
 	)
 	// Put rows alongside the scrollbar to the right
-	components = append(components, lipgloss.JoinHorizontal(lipgloss.Top, rowarea, m.scrollbar.View()))
+	components = append(components, lipgloss.JoinHorizontal(lipgloss.Top, rowarea, scrollbar))
 	// Render table components, ensuring it is at least a min height
 	content := lipgloss.NewStyle().
 		Height(m.height).
