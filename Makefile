@@ -51,7 +51,7 @@ connect:
 .PHONY: install-terragrunt
 install-terragrunt:
 	mkdir -p ~/.local/bin
-	curl -L https://github.com/gruntwork-io/terragrunt/releases/download/v0.60.0/terragrunt_linux_amd64 -o ~/.local/bin/terragrunt
+	curl -L https://github.com/gruntwork-io/terragrunt/releases/download/v0.67.0/terragrunt_linux_amd64 -o ~/.local/bin/terragrunt
 	chmod +x ~/.local/bin/terragrunt
 
 .PHONY: install-infracost

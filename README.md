@@ -322,6 +322,8 @@ To use tofu, set `--program=tofu`. Ensure it is installed first.
 
 To use terragrunt, set `--program=terragrunt`. Ensure it is installed first.
 
+NOTE: only terragrunt versions v0.67 and later are supported.
+
 When `terragrunt` is specified as the program executable, Pug enables "terragrunt mode":
 
 * Modules are detected via the presence of a `terragrunt.hcl` file. (You may want to rename the top-level `terragrunt.hcl` file to something else otherwise it is mis-detected as a module).

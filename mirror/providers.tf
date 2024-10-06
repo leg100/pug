@@ -12,5 +12,8 @@ terraform {
     google = {
       version = "= 5.42.0"
     }
+    null = {
+      version = "= 3.2.3"
+    }
   }
 }
