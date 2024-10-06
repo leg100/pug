@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.5.4](https://github.com/leg100/pug/compare/v0.5.3...v0.5.4) (2024-10-06)
+
+
+### Bug Fixes
+
+* support terragrunt &gt;= v0.67 ([d4caaff](https://github.com/leg100/pug/commit/d4caaff6e7ba3f2b12debb33472eb8498f22e809))
+
+
+### Miscellaneous
+
+* setup funding ([79f2b80](https://github.com/leg100/pug/commit/79f2b800b122da86357a182979fd5eec2d14dd79))
+
 ## [0.5.3](https://github.com/leg100/pug/compare/v0.5.2...v0.5.3) (2024-09-22)
 
 
