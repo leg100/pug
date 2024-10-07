@@ -185,7 +185,7 @@ func (f *factory) newTask(spec Spec) (*Task, error) {
 	// TODO: introduce a better way to determine whether terrarunt is in use.
 	// Perhaps use constants for terraform, tofu, and terragrunt.
 	if task.Program == "terragrunt" && f.terragrunt {
-		task.Args = append(task.Args, "--terragrunt-forward-tf-stdout")
+		task.AdditionalEnv = append(task.AdditionalEnv, "TERRAGRUNT_FORWARD_TF_STDOUT=1")
 		task.Args = append(task.Args, "--terragrunt-non-interactive")
 	}
 	return task, nil
