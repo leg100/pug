@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.5](https://github.com/leg100/pug/compare/v0.5.4...v0.5.5) (2024-10-07)
+
+
+### Bug Fixes
+
+* support both terragrunt &lt; 0.67 and &gt;= 0.67 ([16b0b05](https://github.com/leg100/pug/commit/16b0b05828de90fe49d7f7dcf291e7a85a303703))
+
 ## [0.5.4](https://github.com/leg100/pug/compare/v0.5.3...v0.5.4) (2024-10-06)
 
 
