@@ -10,4 +10,4 @@ type initMsg struct {
 	workspaces []*workspace.Workspace
 }
 
-type renderedTreeMsg string
+type builtTreeMsg *tree

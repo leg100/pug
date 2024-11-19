@@ -1,6 +1,11 @@
 package explorer
 
-import "github.com/leg100/pug/internal/tui/explorer/tree"
+import (
+	"fmt"
+	"path/filepath"
+
+	"github.com/leg100/pug/internal/resource"
+)
 
 const (
 	dirIcon       string = ""
@@ -8,55 +13,28 @@ const (
 	workspaceIcon string = ""
 )
 
-var (
-	_ tree.Node = (*dirNode)(nil)
-	_ tree.Node = (*moduleNode)(nil)
-	_ tree.Node = (*workspaceNode)(nil)
-)
-
 type dirNode struct {
-	name string
-
-	subdirs []dirNode
-	modules []moduleNode
+	path string
 }
 
 func (d dirNode) String() string {
-	return d.name
+	return fmt.Sprintf("%s %s", dirIcon, filepath.Base(d.path))
 }
-
-func (d dirNode) Children() tree.Children {
-	return d.modules
-}
-
-func (d dirNode) Hidden() bool { return false }
 
 type moduleNode struct {
-	name string
-
-	workspaces []workspaceNode
+	id   resource.ID
+	path string
 }
 
-func (d moduleNode) String() string {
-	return d.name
+func (m moduleNode) String() string {
+	return fmt.Sprintf("%s %s", moduleIcon, filepath.Base(m.path))
 }
-
-func (d moduleNode) Children() tree.Children {
-	return d.workspaces
-}
-
-func (d moduleNode) Hidden() bool { return false }
 
 type workspaceNode struct {
+	id   resource.ID
 	name string
 }
 
-func (d workspaceNode) String() string {
-	return d.name
+func (w workspaceNode) String() string {
+	return fmt.Sprintf("%s %s", workspaceIcon, w.name)
 }
-
-func (d workspaceNode) Children() tree.Children {
-	return nil
-}
-
-func (d workspaceNode) Hidden() bool { return false }
