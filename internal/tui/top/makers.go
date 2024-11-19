@@ -5,6 +5,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/leg100/pug/internal/app"
 	"github.com/leg100/pug/internal/tui"
+	"github.com/leg100/pug/internal/tui/explorer"
 	"github.com/leg100/pug/internal/tui/logs"
 	moduletui "github.com/leg100/pug/internal/tui/module"
 	tasktui "github.com/leg100/pug/internal/tui/task"
@@ -49,6 +50,12 @@ func makeMakers(cfg app.Config, app *app.App, spinner *spinner.Model) map[tui.Ki
 	)
 
 	makers := map[tui.Kind]tui.Maker{
+		tui.ExplorerKind: &explorer.Maker{
+			Helpers:    helpers,
+			Modules:    app.Modules,
+			Workspaces: app.Workspaces,
+			Workdir:    cfg.Workdir,
+		},
 		tui.ModuleListKind: &moduletui.ListMaker{
 			Modules:    app.Modules,
 			Workspaces: app.Workspaces,

@@ -22,19 +22,14 @@ type navigator struct {
 	height int
 }
 
-func newNavigator(firstPage string, makers map[tui.Kind]tui.Maker) (*navigator, error) {
+func newNavigator(_ string, makers map[tui.Kind]tui.Maker) (*navigator, error) {
 	n := &navigator{
 		makers: makers,
 		cache:  tui.NewCache(),
 	}
 
-	firstKind, err := tui.FirstPageKind(firstPage)
-	if err != nil {
-		return nil, err
-	}
-
 	// ignore returned init cmd; instead the main model should invoke it
-	if _, err = n.setCurrent(tui.Page{Kind: firstKind}); err != nil {
+	if _, err := n.setCurrent(tui.Page{Kind: tui.ExplorerKind}); err != nil {
 		return nil, err
 	}
 	return n, nil

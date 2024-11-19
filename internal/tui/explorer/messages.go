@@ -1,4 +1,4 @@
-package tree
+package explorer
 
 import (
 	"github.com/leg100/pug/internal/module"
@@ -10,4 +10,4 @@ type initMsg struct {
 	workspaces []*workspace.Workspace
 }
 
-type buildMsg struct{}
+type renderedTreeMsg string

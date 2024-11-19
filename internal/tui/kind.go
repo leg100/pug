@@ -15,4 +15,5 @@ const (
 	ResourceKind
 	LogListKind
 	LogKind
+	ExplorerKind
 )
