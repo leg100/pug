@@ -9,16 +9,21 @@ import (
 
 const (
 	dirIcon       string = ""
-	moduleIcon    string = "󰠲"
+	moduleIcon    string = "󰠱"
 	workspaceIcon string = ""
 )
 
 type dirNode struct {
 	path string
+	root bool
 }
 
 func (d dirNode) String() string {
-	return fmt.Sprintf("%s %s", dirIcon, filepath.Base(d.path))
+	if d.root {
+		return fmt.Sprintf("%s %s", dirIcon, d.path)
+	} else {
+		return fmt.Sprintf("%s %s", dirIcon, filepath.Base(d.path))
+	}
 }
 
 type moduleNode struct {

@@ -31,33 +31,55 @@ func TestTree(t *testing.T) {
 	}
 	ws2 := &workspace.Workspace{
 		ID:       resource.NewID(resource.Workspace),
-		ModuleID: mod1.ID,
+		ModuleID: mod2.ID,
 		Name:     "ws2",
 	}
 	ws3 := &workspace.Workspace{
 		ID:       resource.NewID(resource.Workspace),
-		ModuleID: mod1.ID,
+		ModuleID: mod3.ID,
 		Name:     "ws3",
 	}
+
 	got := newTree(
 		wd,
 		[]*module.Module{mod1, mod2, mod3},
 		[]*workspace.Workspace{ws1, ws2, ws3},
 	)
+
 	want := &tree{
 		value: dirNode{path: wd.String()},
 		children: []*tree{
 			{
-				value: moduleNode{path: "a"},
-			},
-			{
 				value: dirNode{path: "a"},
 				children: []*tree{
 					{
-						value: moduleNode{path: "a/b"},
+						value: dirNode{path: "a/b"},
+						children: []*tree{
+							{
+								value: moduleNode{id: mod3.ID, path: "a/b/c"},
+								children: []*tree{
+									{
+										value: workspaceNode{id: ws3.ID, name: "ws3"},
+									},
+								},
+							},
+						},
 					},
 					{
-						value: dirNode{path: "a/b"},
+						value: moduleNode{id: mod2.ID, path: "a/b"},
+						children: []*tree{
+							{
+								value: workspaceNode{id: ws2.ID, name: "ws2"},
+							},
+						},
+					},
+				},
+			},
+			{
+				value: moduleNode{id: mod1.ID, path: "a"},
+				children: []*tree{
+					{
+						value: workspaceNode{id: ws1.ID, name: "ws1"},
 					},
 				},
 			},
@@ -75,4 +97,14 @@ func TestSplitDirs(t *testing.T) {
 		"a/b/c/d",
 	}
 	assert.Equal(t, want, got)
+}
+
+func TestSplitDirs_OneDirectory(t *testing.T) {
+	got := splitDirs("a")
+	assert.Equal(t, []string(nil), got)
+}
+
+func TestSplitDirs_OneSubdirectory(t *testing.T) {
+	got := splitDirs("a/b")
+	assert.Equal(t, []string{"a"}, got)
 }

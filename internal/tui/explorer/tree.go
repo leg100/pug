@@ -13,6 +13,12 @@ import (
 	"github.com/leg100/pug/internal/workspace"
 )
 
+type tree struct {
+	value    fmt.Stringer
+	children []*tree
+	tracker  *tracker
+}
+
 func newTree(wd internal.Workdir, modules []*module.Module, workspaces []*workspace.Workspace) *tree {
 	// Arrange workspaces by module, for attachment to modules in tree below.
 	workspaceNodes := make(map[resource.ID][]workspaceNode, len(modules))
@@ -22,7 +28,7 @@ func newTree(wd internal.Workdir, modules []*module.Module, workspaces []*worksp
 			name: ws.Name,
 		})
 	}
-	t := &tree{value: dirNode{path: wd.String()}}
+	t := &tree{value: dirNode{root: true, path: wd.PrettyString()}, tracker: &tracker{}}
 	for _, mod := range modules {
 		// Set parent to root of tree
 		parent := t
@@ -39,15 +45,9 @@ func newTree(wd internal.Workdir, modules []*module.Module, workspaces []*worksp
 			modTree.addChild(ws)
 		}
 	}
+	t.tracker.reindex(t)
 	return t
 }
-
-type (
-	tree struct {
-		value    fmt.Stringer
-		children []*tree
-	}
-)
 
 // addChild adds a child to the tree; if child is already in tree then no action
 // is taken and the existing child is returned. If the child is added, the
@@ -70,24 +70,33 @@ func (t *tree) addChild(child fmt.Stringer) *tree {
 	return newTree
 }
 
-func (t *tree) Render() string {
-	to := lipglossTree.Root(t.value).
+func (t *tree) render() string {
+	s := t.value.String()
+	if t.tracker.cursorNode == t.value {
+		s = t.tracker.renderedCursorNode()
+	}
+	to := lipglossTree.Root(s).
 		Enumerator(enumerator).
 		Indenter(indentor)
-	convert(t, to)
+	convert(t.children, to, t.tracker)
 	return to.String()
 }
 
-func convert(from *tree, to *lipglossTree.Tree) {
-	if len(from.children) > 0 {
-		// tree node
-		treeNode := lipglossTree.Root(from.value)
-		to.Child(treeNode)
-		for _, child := range from.children {
-			convert(child, treeNode)
+func convert(from []*tree, to *lipglossTree.Tree, tracker *tracker) {
+	for _, child := range from {
+		s := child.value.String()
+		if tracker.cursorNode == child.value {
+			s = tracker.renderedCursorNode()
 		}
-	} else {
-		to.Child(from.value)
+		if len(child.children) > 0 {
+			// tree node
+			treeNode := lipglossTree.Root(s)
+			to.Child(treeNode)
+			convert(child.children, treeNode, tracker)
+		} else {
+			// leaf node
+			to.Child(s)
+		}
 	}
 }
 
@@ -96,7 +105,7 @@ func splitDirs(path string) []string {
 	if dir == "." {
 		return nil
 	}
-	parts := strings.Split(path, string(filepath.Separator))
+	parts := strings.Split(dir, string(filepath.Separator))
 	dirs := make([]string, len(parts))
 	for i, p := range parts {
 		if i > 0 {
