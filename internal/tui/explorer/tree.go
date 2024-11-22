@@ -6,27 +6,22 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/charmbracelet/lipgloss"
 	lgtree "github.com/charmbracelet/lipgloss/tree"
 	"github.com/leg100/pug/internal"
 	"github.com/leg100/pug/internal/module"
 	"github.com/leg100/pug/internal/resource"
-	"github.com/leg100/pug/internal/tui"
 	"github.com/leg100/pug/internal/workspace"
 )
 
 type tree struct {
-	*tracker
-
-	root *node
-}
-
-type node struct {
 	value    fmt.Stringer
-	children []*node
+	children []*tree
 }
 
 func newTree(wd internal.Workdir, modules []*module.Module, workspaces []*workspace.Workspace) *tree {
+	t := &tree{
+		value: dirNode{root: true, path: wd.PrettyString()},
+	}
 	// Arrange workspaces by module, for attachment to modules in tree below.
 	workspaceNodes := make(map[resource.ID][]workspaceNode, len(modules))
 	for _, ws := range workspaces {
@@ -35,17 +30,9 @@ func newTree(wd internal.Workdir, modules []*module.Module, workspaces []*worksp
 			name: ws.Name,
 		})
 	}
-	t := &tree{
-		root: &node{
-			value: dirNode{root: true, path: wd.PrettyString()},
-		},
-		tracker: &tracker{
-			selectedNodes: make(map[fmt.Stringer]struct{}),
-		},
-	}
 	for _, mod := range modules {
 		// Set parent to root of tree
-		parent := t.root
+		parent := t
 		// Split module's path into a list of directories
 		for _, dir := range splitDirs(mod.Path) {
 			parent = parent.addChild(dirNode{path: dir})
@@ -59,60 +46,37 @@ func newTree(wd internal.Workdir, modules []*module.Module, workspaces []*worksp
 			modTree.addChild(ws)
 		}
 	}
-	t.tracker.reindex(t)
 	return t
 }
 
-func (t *tree) render() string {
-	to := lgtree.New().
-		Enumerator(enumerator).
-		Indenter(indentor)
-	t.renderNode(t.root, to)
-	return to.String()
-}
-
-func (t *tree) renderNode(from *node, to *lgtree.Tree) {
-	s := from.value.String()
-	// Style node if cursor is on node
-	if t.tracker.cursorNode == from.value {
-		s = lipgloss.NewStyle().
-			Background(tui.CurrentBackground).
-			Foreground(tui.CurrentForeground).
-			Render(s)
-	}
-	// Style node if selected
-	if _, ok := t.tracker.selectedNodes[from.value]; ok {
-		s = lipgloss.NewStyle().
-			Background(tui.SelectedBackground).
-			Foreground(tui.SelectedForeground).
-			Render(s)
-	}
+func (t *tree) render(root bool, to *lgtree.Tree) {
+	s := t.value.String()
 	lgnode := lgtree.Root(s)
 	// First node in tracker is the root node.
-	if t.tracker.nodes[0] == from.value {
+	if root {
 		to.Root(lgnode)
 		lgnode = to
 	} else {
 		to.Child(lgnode)
 	}
-	for _, child := range from.children {
-		t.renderNode(child, lgnode)
+	for _, child := range t.children {
+		child.render(false, lgnode)
 	}
 }
 
 // addChild adds a child to the tree; if child is already in tree then no action
 // is taken and the existing child is returned. If the child is added, the
 // children are sorted and the new child is returned.
-func (n *node) addChild(child fmt.Stringer) *node {
-	for _, existing := range n.children {
+func (t *tree) addChild(child fmt.Stringer) *tree {
+	for _, existing := range t.children {
 		if existing.value == child {
 			return existing
 		}
 	}
-	newTree := &node{value: child}
-	n.children = append(n.children, newTree)
+	newTree := &tree{value: child}
+	t.children = append(t.children, newTree)
 	// keep children lexicographically ordered
-	slices.SortFunc(n.children, func(a, b *node) int {
+	slices.SortFunc(t.children, func(a, b *tree) int {
 		if a.value.String() < b.value.String() {
 			return -1
 		}
