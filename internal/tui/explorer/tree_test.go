@@ -44,20 +44,20 @@ func TestTree(t *testing.T) {
 		wd,
 		[]*module.Module{mod1, mod2, mod3},
 		[]*workspace.Workspace{ws1, ws2, ws3},
-	)
+	).root
 
-	want := &tree{
-		value: dirNode{path: wd.String()},
-		children: []*tree{
+	want := &node{
+		value: dirNode{path: wd.String(), root: true},
+		children: []*node{
 			{
 				value: dirNode{path: "a"},
-				children: []*tree{
+				children: []*node{
 					{
 						value: dirNode{path: "a/b"},
-						children: []*tree{
+						children: []*node{
 							{
 								value: moduleNode{id: mod3.ID, path: "a/b/c"},
-								children: []*tree{
+								children: []*node{
 									{
 										value: workspaceNode{id: ws3.ID, name: "ws3"},
 									},
@@ -67,7 +67,7 @@ func TestTree(t *testing.T) {
 					},
 					{
 						value: moduleNode{id: mod2.ID, path: "a/b"},
-						children: []*tree{
+						children: []*node{
 							{
 								value: workspaceNode{id: ws2.ID, name: "ws2"},
 							},
@@ -77,7 +77,7 @@ func TestTree(t *testing.T) {
 			},
 			{
 				value: moduleNode{id: mod1.ID, path: "a"},
-				children: []*tree{
+				children: []*node{
 					{
 						value: workspaceNode{id: ws1.ID, name: "ws1"},
 					},

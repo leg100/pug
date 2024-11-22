@@ -6,17 +6,24 @@ import (
 	"slices"
 	"strings"
 
-	lipglossTree "github.com/charmbracelet/lipgloss/tree"
+	"github.com/charmbracelet/lipgloss"
+	lgtree "github.com/charmbracelet/lipgloss/tree"
 	"github.com/leg100/pug/internal"
 	"github.com/leg100/pug/internal/module"
 	"github.com/leg100/pug/internal/resource"
+	"github.com/leg100/pug/internal/tui"
 	"github.com/leg100/pug/internal/workspace"
 )
 
 type tree struct {
+	*tracker
+
+	root *node
+}
+
+type node struct {
 	value    fmt.Stringer
-	children []*tree
-	tracker  *tracker
+	children []*node
 }
 
 func newTree(wd internal.Workdir, modules []*module.Module, workspaces []*workspace.Workspace) *tree {
@@ -28,10 +35,17 @@ func newTree(wd internal.Workdir, modules []*module.Module, workspaces []*worksp
 			name: ws.Name,
 		})
 	}
-	t := &tree{value: dirNode{root: true, path: wd.PrettyString()}, tracker: &tracker{}}
+	t := &tree{
+		root: &node{
+			value: dirNode{root: true, path: wd.PrettyString()},
+		},
+		tracker: &tracker{
+			selectedNodes: make(map[fmt.Stringer]struct{}),
+		},
+	}
 	for _, mod := range modules {
 		// Set parent to root of tree
-		parent := t
+		parent := t.root
 		// Split module's path into a list of directories
 		for _, dir := range splitDirs(mod.Path) {
 			parent = parent.addChild(dirNode{path: dir})
@@ -49,55 +63,62 @@ func newTree(wd internal.Workdir, modules []*module.Module, workspaces []*worksp
 	return t
 }
 
+func (t *tree) render() string {
+	to := lgtree.New().
+		Enumerator(enumerator).
+		Indenter(indentor)
+	t.renderNode(t.root, to)
+	return to.String()
+}
+
+func (t *tree) renderNode(from *node, to *lgtree.Tree) {
+	s := from.value.String()
+	// Style node if cursor is on node
+	if t.tracker.cursorNode == from.value {
+		s = lipgloss.NewStyle().
+			Background(tui.CurrentBackground).
+			Foreground(tui.CurrentForeground).
+			Render(s)
+	}
+	// Style node if selected
+	if _, ok := t.tracker.selectedNodes[from.value]; ok {
+		s = lipgloss.NewStyle().
+			Background(tui.SelectedBackground).
+			Foreground(tui.SelectedForeground).
+			Render(s)
+	}
+	lgnode := lgtree.Root(s)
+	// First node in tracker is the root node.
+	if t.tracker.nodes[0] == from.value {
+		to.Root(lgnode)
+		lgnode = to
+	} else {
+		to.Child(lgnode)
+	}
+	for _, child := range from.children {
+		t.renderNode(child, lgnode)
+	}
+}
+
 // addChild adds a child to the tree; if child is already in tree then no action
 // is taken and the existing child is returned. If the child is added, the
 // children are sorted and the new child is returned.
-func (t *tree) addChild(child fmt.Stringer) *tree {
-	for _, existing := range t.children {
+func (n *node) addChild(child fmt.Stringer) *node {
+	for _, existing := range n.children {
 		if existing.value == child {
 			return existing
 		}
 	}
-	newTree := &tree{value: child}
-	t.children = append(t.children, newTree)
+	newTree := &node{value: child}
+	n.children = append(n.children, newTree)
 	// keep children lexicographically ordered
-	slices.SortFunc(t.children, func(a, b *tree) int {
+	slices.SortFunc(n.children, func(a, b *node) int {
 		if a.value.String() < b.value.String() {
 			return -1
 		}
 		return 1
 	})
 	return newTree
-}
-
-func (t *tree) render() string {
-	s := t.value.String()
-	if t.tracker.cursorNode == t.value {
-		s = t.tracker.renderedCursorNode()
-	}
-	to := lipglossTree.Root(s).
-		Enumerator(enumerator).
-		Indenter(indentor)
-	convert(t.children, to, t.tracker)
-	return to.String()
-}
-
-func convert(from []*tree, to *lipglossTree.Tree, tracker *tracker) {
-	for _, child := range from {
-		s := child.value.String()
-		if tracker.cursorNode == child.value {
-			s = tracker.renderedCursorNode()
-		}
-		if len(child.children) > 0 {
-			// tree node
-			treeNode := lipglossTree.Root(s)
-			to.Child(treeNode)
-			convert(child.children, treeNode, tracker)
-		} else {
-			// leaf node
-			to.Child(s)
-		}
-	}
 }
 
 func splitDirs(path string) []string {
@@ -117,14 +138,14 @@ func splitDirs(path string) []string {
 	return dirs
 }
 
-func indentor(children lipglossTree.Children, index int) string {
+func indentor(children lgtree.Children, index int) string {
 	if children.Length()-1 == index {
 		return " "
 	}
 	return "│"
 }
 
-func enumerator(children lipglossTree.Children, index int) string {
+func enumerator(children lgtree.Children, index int) string {
 	if children.Length()-1 == index {
 		return "└"
 	}

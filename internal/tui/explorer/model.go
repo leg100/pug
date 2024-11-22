@@ -23,6 +23,7 @@ func (m *Maker) Make(_ resource.ID, width, height int) (tea.Model, error) {
 		ModuleService:    m.Modules,
 		Helpers:          m.Helpers,
 		Workdir:          m.Workdir,
+		tree:             newTree(m.Workdir, nil, nil),
 		w:                width,
 		h:                height,
 	}, nil
@@ -57,10 +58,13 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "ctrl+c":
 			return m, tea.Quit
 		case "up", "k":
-			m.tree.tracker.cursorUp()
+			m.tree.cursorUp()
 			return m, nil
 		case "down", "j":
-			m.tree.tracker.cursorDown()
+			m.tree.cursorDown()
+			return m, nil
+		case " ":
+			m.tree.toggleSelection()
 			return m, nil
 		}
 	case initMsg:

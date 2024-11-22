@@ -2,9 +2,6 @@ package explorer
 
 import (
 	"fmt"
-
-	"github.com/charmbracelet/lipgloss"
-	"github.com/leg100/pug/internal/tui"
 )
 
 // tracker tracks the cursor node and any selected nodes
@@ -13,11 +10,13 @@ type tracker struct {
 
 	cursorNode fmt.Stringer
 	cursorPos  int
+
+	selectedNodes map[fmt.Stringer]struct{}
 }
 
 func (t *tracker) reindex(tree *tree) {
 	t.nodes = nil
-	t.traverse(tree)
+	t.traverse(tree.root)
 
 	if t.cursorNode == nil && len(t.nodes) > 0 {
 		t.cursorNode = t.nodes[0]
@@ -25,21 +24,14 @@ func (t *tracker) reindex(tree *tree) {
 	}
 }
 
-func (t *tracker) traverse(tree *tree) {
-	if tree.value == t.cursorNode {
+func (t *tracker) traverse(n *node) {
+	if n.value == t.cursorNode {
 		t.cursorPos = len(t.nodes) - 1
 	}
-	t.nodes = append(t.nodes, tree.value)
-	for _, child := range tree.children {
+	t.nodes = append(t.nodes, n.value)
+	for _, child := range n.children {
 		t.traverse(child)
 	}
-}
-
-func (t *tracker) renderedCursorNode() string {
-	return lipgloss.NewStyle().
-		Background(tui.CurrentBackground).
-		Foreground(tui.CurrentForeground).
-		Render(t.cursorNode.String())
 }
 
 func (t *tracker) cursorUp() {
@@ -50,4 +42,17 @@ func (t *tracker) cursorUp() {
 func (t *tracker) cursorDown() {
 	t.cursorPos = min(t.cursorPos+1, len(t.nodes)-1)
 	t.cursorNode = t.nodes[t.cursorPos]
+}
+
+func (t *tracker) toggleSelection() {
+	if t.cursorNode == nil {
+		return
+	}
+	if _, ok := t.selectedNodes[t.cursorNode]; ok {
+		// de-select
+		delete(t.selectedNodes, t.cursorNode)
+	} else {
+		// select
+		t.selectedNodes[t.cursorNode] = struct{}{}
+	}
 }
