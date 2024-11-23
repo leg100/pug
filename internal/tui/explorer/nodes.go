@@ -14,8 +14,9 @@ const (
 )
 
 type dirNode struct {
-	path string
-	root bool
+	path   string
+	root   bool
+	closed bool
 }
 
 func (d dirNode) String() string {

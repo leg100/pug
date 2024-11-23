@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	lgtree "github.com/charmbracelet/lipgloss/tree"
@@ -11,6 +12,7 @@ import (
 	"github.com/leg100/pug/internal/module"
 	"github.com/leg100/pug/internal/resource"
 	"github.com/leg100/pug/internal/tui"
+	"github.com/leg100/pug/internal/tui/keys"
 	"github.com/leg100/pug/internal/workspace"
 )
 
@@ -62,17 +64,27 @@ func (m model) Init() tea.Cmd {
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
-		switch msg.String() {
-		case "ctrl+c":
-			return m, tea.Quit
-		case "up", "k":
+		switch {
+		case key.Matches(msg, keys.Navigation.LineUp):
 			m.tracker.cursorUp()
 			return m, nil
-		case "down", "j":
+		case key.Matches(msg, keys.Navigation.LineDown):
 			m.tracker.cursorDown()
 			return m, nil
-		case " ":
-			m.tracker.toggleSelection()
+		case key.Matches(msg, keys.Global.Select):
+			err := m.tracker.toggleSelection()
+			return m, tui.ReportError(err)
+		case key.Matches(msg, keys.Global.SelectAll):
+			err := m.tracker.selectAll()
+			return m, tui.ReportError(err)
+		case key.Matches(msg, keys.Global.SelectClear):
+			m.tracker.deselectAll()
+			return m, nil
+		case key.Matches(msg, keys.Global.SelectRange):
+			err := m.tracker.selectRange()
+			return m, tui.ReportError(err)
+		case key.Matches(msg, localKeys.Enter):
+			m.tracker.toggleClose()
 			return m, nil
 		}
 	case initMsg:
@@ -115,22 +127,31 @@ func (m model) View() string {
 	lines := strings.Split(s, "\n")
 	totalVisibleLines := min(m.h, len(lines))
 	lines = lines[m.tracker.start : m.tracker.start+totalVisibleLines]
+	// Create map of selected node indices for faster lookup
+	selectedLineIndices := make(map[int]struct{})
+	for _, i := range m.tracker.selectedNodes {
+		selectedLineIndices[i] = struct{}{}
+	}
 	for i := range lines {
 		style := lipgloss.NewStyle().
 			Width(m.w - tui.ScrollbarWidth)
-		// Style node if cursor is on node
-		if m.tracker.start+i == m.tracker.cursorIndex {
-			style = style.
-				Background(tui.CurrentBackground).
-				Foreground(tui.CurrentForeground)
-		}
-		// Style node if selected
-		for _, pos := range m.tracker.selectedNodes {
-			if m.tracker.start+i == pos {
+		trackerIndex := m.tracker.start + i
+		// Style node according to whether it is the cursor node, selected, or
+		// both
+		if trackerIndex == m.tracker.cursorIndex {
+			if _, ok := selectedLineIndices[trackerIndex]; ok {
 				style = style.
-					Background(tui.SelectedBackground).
-					Foreground(tui.SelectedForeground)
+					Background(tui.CurrentAndSelectedBackground).
+					Foreground(tui.CurrentAndSelectedForeground)
+			} else {
+				style = style.
+					Background(tui.CurrentBackground).
+					Foreground(tui.CurrentForeground)
 			}
+		} else if _, ok := selectedLineIndices[trackerIndex]; ok {
+			style = style.
+				Background(tui.SelectedBackground).
+				Foreground(tui.SelectedForeground)
 		}
 		lines[i] = style.Render(lines[i])
 	}
