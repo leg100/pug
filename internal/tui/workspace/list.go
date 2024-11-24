@@ -132,15 +132,6 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, keys.Common.Validate):
 			cmd := m.CreateTasks(m.Modules.Validate, m.selectedOrCurrentModuleIDs()...)
 			return m, cmd
-		case key.Matches(msg, localKeys.SetCurrent):
-			if row, ok := m.table.CurrentRow(); ok {
-				return m, func() tea.Msg {
-					if err := m.Workspaces.SelectWorkspace(row.Value.ModuleID, row.Value.ID); err != nil {
-						return tui.ReportError(fmt.Errorf("setting current workspace: %w", err))()
-					}
-					return nil
-				}
-			}
 		case key.Matches(msg, keys.Common.PlanDestroy):
 			createRunOptions.Destroy = true
 			fallthrough

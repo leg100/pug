@@ -114,19 +114,20 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if kind != resource.Module {
 				return m, tui.ReportError(errors.New("can only trigger init on modules"))
 			}
-			cmd := m.CreateTasks(m.Modules.Validate, m.table.SelectedOrCurrentIDs()...)
+			cmd := m.CreateTasks(m.Modules.Validate, ids...)
 			return m, cmd
 		case key.Matches(msg, keys.Common.Format):
 			kind, ids := m.tracker.getSelectedOrCurrentIDs()
 			if kind != resource.Module {
 				return m, tui.ReportError(errors.New("can only trigger format on modules"))
 			}
-			cmd := m.CreateTasks(m.Modules.Format, m.table.SelectedOrCurrentIDs()...)
+			cmd := m.CreateTasks(m.Modules.Format, ids...)
 			return m, cmd
 		case key.Matches(msg, localKeys.SetCurrentWorkspace):
 			return m, func() tea.Msg {
 				currentID := m.tracker.getCursorID()
 				if currentID == nil || currentID.Kind != resource.Workspace {
+					// TODO: report error
 					return nil
 				}
 				if err := m.Workspaces.SelectWorkspace(*currentID); err != nil {
@@ -172,6 +173,27 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, tui.ReportError(fmt.Errorf("creating task: %w", err))
 			}
 			return m, m.CreateTasksWithSpecs(spec)
+		case key.Matches(msg, keys.Common.State, localKeys.Enter):
+			currentID := m.tracker.getCursorID()
+			if currentID == nil {
+				// TODO: report error
+				return m, nil
+			}
+			if currentID.Kind != resource.Workspace {
+				// TODO: report error
+				return m, nil
+			}
+			return m, tui.NavigateTo(tui.ResourceListKind, tui.WithParent(*currentID))
+		case key.Matches(msg, keys.Common.Delete):
+			workspaceNode, ok := m.tracker.cursorNode.(workspaceNode)
+			if !ok {
+				// TODO: report error
+				return m, nil
+			}
+			return m, tui.YesNoPrompt(
+				fmt.Sprintf("Delete workspace %s?", workspaceNode),
+				m.CreateTasks(m.Workspaces.Delete, workspaceNode.id),
+			)
 		}
 	case initMsg:
 		m.modules = msg.modules

@@ -1,8 +1,6 @@
 package explorer
 
 import (
-	"errors"
-
 	"github.com/leg100/pug/internal/resource"
 	"golang.org/x/exp/maps"
 )
@@ -120,18 +118,6 @@ func (t *tracker) getCursorID() *resource.ID {
 		return nil
 	}
 	return &id
-}
-
-func (t *tracker) getCurrentWorkspaceIDs() ([]resource.ID, error) {
-	if len(t.selections) == 0 {
-		id, ok := t.cursorNode.ID().(resource.ID)
-		if !ok {
-			// TODO: consider returning error
-			return nil, errors.New("incompatible action")
-		}
-		return []resource.ID{id}
-	}
-	return *t.selector.kind, maps.Keys(t.selections)
 }
 
 func (t *tracker) toggleClose() {
