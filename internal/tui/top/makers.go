@@ -54,6 +54,7 @@ func makeMakers(cfg app.Config, app *app.App, spinner *spinner.Model) map[tui.Ki
 			Helpers:    helpers,
 			Modules:    app.Modules,
 			Workspaces: app.Workspaces,
+			Plans:      app.Plans,
 			Workdir:    cfg.Workdir,
 		},
 		tui.ModuleListKind: &moduletui.ListMaker{

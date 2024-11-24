@@ -2,25 +2,33 @@ package explorer
 
 import (
 	"errors"
-	"fmt"
-	"reflect"
 
+	"github.com/leg100/pug/internal/resource"
 	"golang.org/x/exp/maps"
 )
 
 // tracker tracks the cursor node and any selected nodes, as well as which nodes
 // are currently visible.
 type tracker struct {
-	nodes       []fmt.Stringer
-	cursorNode  fmt.Stringer
+	nodes       []node
+	cursorNode  node
 	cursorIndex int
-	// selectedNodes maps nodes that are currently selected to their positional
-	// index.
-	selectedNodes map[fmt.Stringer]int
 	// index of first visible row
 	start int
 	// height of tree widget
 	height int
+
+	*selector
+}
+
+func newTracker(tree *tree) *tracker {
+	t := &tracker{
+		selector: &selector{
+			selections: make(map[resource.ID]struct{}),
+		},
+	}
+	t.reindex(tree)
+	return t
 }
 
 func (t *tracker) reindex(tree *tree) {
@@ -37,9 +45,10 @@ func (t *tracker) reindex(tree *tree) {
 func (t *tracker) doReindex(tree *tree) {
 	t.nodes = append(t.nodes, tree.value)
 	// Track index of cursor node
-	if tree.value == t.cursorNode {
+	if t.cursorNode != nil && t.cursorNode.ID() == tree.value.ID() {
 		t.cursorIndex = len(t.nodes) - 1
 	}
+	// Track indices of selected nodes
 	if dir, ok := tree.value.(dirNode); ok {
 		if dir.closed {
 			return
@@ -70,51 +79,14 @@ func (t *tracker) toggleSelection() error {
 	if t.cursorNode == nil {
 		return nil
 	}
-	if _, ok := t.selectedNodes[t.cursorNode]; ok {
-		// de-select
-		delete(t.selectedNodes, t.cursorNode)
-	} else {
-		// select - user can only select nodes of the same type, i.e. all
-		// modules, or all workspaces, so if there is at least one existing
-		// selection then check its type is equal to the cursor node.
-		if len(t.selectedNodes) > 0 {
-			existingSelection := maps.Keys(t.selectedNodes)[0]
-			if reflect.TypeOf(existingSelection) != reflect.TypeOf(t.cursorNode) {
-				return errors.New("selections must be of the same type")
-			}
-		}
-		t.selectedNodes[t.cursorNode] = t.cursorIndex
-	}
-	return nil
+	return t.selector.toggle(t.cursorNode)
 }
 
 func (t *tracker) selectAll() error {
 	if t.cursorNode == nil {
 		return nil
 	}
-	// User can only select nodes of the same type, i.e. all
-	// modules, or all workspaces.
-	// Retrieve type of cursor node and error if any existing selections are of
-	// a different type.
-	cursorType := reflect.TypeOf(t.cursorNode)
-	if len(t.selectedNodes) > 0 {
-		existingSelection := maps.Keys(t.selectedNodes)[0]
-		if reflect.TypeOf(existingSelection) != cursorType {
-			return errors.New("selections must be of the same type")
-		}
-	}
-	for i, node := range t.nodes {
-		if reflect.TypeOf(node) != cursorType {
-			// Skip nodes of a different type
-			continue
-		}
-		t.selectedNodes[node] = i
-	}
-	return nil
-}
-
-func (t *tracker) deselectAll() {
-	t.selectedNodes = make(map[fmt.Stringer]int)
+	return t.selector.addAll(t.cursorNode, t.nodes...)
 }
 
 // selectRange selects a range of nodes. If th cursor node is after a selected
@@ -126,48 +98,40 @@ func (t *tracker) selectRange() error {
 	if t.cursorNode == nil {
 		return nil
 	}
-	if len(t.selectedNodes) == 0 {
+	return t.selector.addRange(t.cursorNode, t.cursorIndex, t.nodes...)
+}
+
+func (t *tracker) getSelectedOrCurrentIDs() (resource.Kind, []resource.ID) {
+	if len(t.selections) == 0 {
+		id, ok := t.cursorNode.ID().(resource.ID)
+		if !ok {
+			// TODO: consider returning error
+			return -1, nil
+		}
+		return id.Kind, []resource.ID{id}
+	}
+	return *t.selector.kind, maps.Keys(t.selections)
+}
+
+func (t *tracker) getCursorID() *resource.ID {
+	id, ok := t.cursorNode.ID().(resource.ID)
+	if !ok {
+		// TODO: consider returning error
 		return nil
 	}
-	// Error if cursor node type is different to existing selected node type.
-	cursorType := reflect.TypeOf(t.cursorNode)
-	existingSelection := maps.Keys(t.selectedNodes)[0]
-	if reflect.TypeOf(existingSelection) != cursorType {
-		return errors.New("selections must be of the same type")
+	return &id
+}
+
+func (t *tracker) getCurrentWorkspaceIDs() ([]resource.ID, error) {
+	if len(t.selections) == 0 {
+		id, ok := t.cursorNode.ID().(resource.ID)
+		if !ok {
+			// TODO: consider returning error
+			return nil, errors.New("incompatible action")
+		}
+		return []resource.ID{id}
 	}
-	// Determine first node to select, and the number of nodes to select.
-	var (
-		first = -1
-		n     = 0
-	)
-	for i, node := range t.nodes {
-		if i == t.cursorIndex && first > -1 && first < t.cursorIndex {
-			// Select nodes before and including cursor node
-			n = t.cursorIndex - first + 1
-			break
-		}
-		if _, ok := t.selectedNodes[node]; !ok {
-			// Ignore unselected nodes
-			continue
-		}
-		if i > t.cursorIndex {
-			// Select nodes including cursor node and all nodes up to but not
-			// including next selected node
-			first = t.cursorIndex
-			n = i - t.cursorIndex
-			break
-		}
-		// Start selecting nodes after this currently selected node.
-		first = i + 1
-	}
-	for i, node := range t.nodes[first : first+n] {
-		if reflect.TypeOf(node) != cursorType {
-			// Skip nodes of a different type
-			continue
-		}
-		t.selectedNodes[node] = first + i
-	}
-	return nil
+	return *t.selector.kind, maps.Keys(t.selections)
 }
 
 func (t *tracker) toggleClose() {

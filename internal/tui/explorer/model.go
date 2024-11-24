@@ -1,6 +1,7 @@
 package explorer
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
@@ -10,31 +11,35 @@ import (
 	lgtree "github.com/charmbracelet/lipgloss/tree"
 	"github.com/leg100/pug/internal"
 	"github.com/leg100/pug/internal/module"
+	"github.com/leg100/pug/internal/plan"
 	"github.com/leg100/pug/internal/resource"
+	"github.com/leg100/pug/internal/task"
 	"github.com/leg100/pug/internal/tui"
 	"github.com/leg100/pug/internal/tui/keys"
 	"github.com/leg100/pug/internal/workspace"
+	"golang.org/x/exp/maps"
 )
 
 type Maker struct {
 	Modules    *module.Service
 	Workspaces *workspace.Service
+	Plans      *plan.Service
 	Helpers    *tui.Helpers
 	Workdir    internal.Workdir
 }
 
 func (m *Maker) Make(_ resource.ID, width, height int) (tea.Model, error) {
+	tree := newTree(m.Workdir, nil, nil)
 	return model{
 		WorkspaceService: m.Workspaces,
 		ModuleService:    m.Modules,
+		PlanService:      m.Plans,
 		Helpers:          m.Helpers,
 		Workdir:          m.Workdir,
-		tree:             newTree(m.Workdir, nil, nil),
-		tracker: &tracker{
-			selectedNodes: make(map[fmt.Stringer]int),
-		},
-		w: width,
-		h: height,
+		tree:             tree,
+		tracker:          newTracker(tree),
+		w:                width,
+		h:                height,
 	}, nil
 }
 
@@ -43,6 +48,7 @@ type model struct {
 
 	ModuleService    *module.Service
 	WorkspaceService *workspace.Service
+	PlanService      *plan.Service
 	Workdir          internal.Workdir
 
 	modules    []*module.Module
@@ -62,6 +68,11 @@ func (m model) Init() tea.Cmd {
 }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	var (
+		createPlanOptions plan.CreateOptions
+		applyPrompt       = "Auto-apply %d workspaces?"
+		upgrade           bool
+	)
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch {
@@ -78,7 +89,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			err := m.tracker.selectAll()
 			return m, tui.ReportError(err)
 		case key.Matches(msg, keys.Global.SelectClear):
-			m.tracker.deselectAll()
+			m.tracker.selector.removeAll()
 			return m, nil
 		case key.Matches(msg, keys.Global.SelectRange):
 			err := m.tracker.selectRange()
@@ -86,6 +97,81 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, localKeys.Enter):
 			m.tracker.toggleClose()
 			return m, nil
+		case key.Matches(msg, keys.Common.InitUpgrade):
+			upgrade = true
+			fallthrough
+		case key.Matches(msg, keys.Common.Init):
+			kind, ids := m.tracker.getSelectedOrCurrentIDs()
+			if kind != resource.Module {
+				return m, tui.ReportError(errors.New("can only trigger init on modules"))
+			}
+			fn := func(moduleID resource.ID) (task.Spec, error) {
+				return m.Modules.Init(moduleID, upgrade)
+			}
+			return m, m.CreateTasks(fn, ids...)
+		case key.Matches(msg, keys.Common.Validate):
+			kind, ids := m.tracker.getSelectedOrCurrentIDs()
+			if kind != resource.Module {
+				return m, tui.ReportError(errors.New("can only trigger init on modules"))
+			}
+			cmd := m.CreateTasks(m.Modules.Validate, m.table.SelectedOrCurrentIDs()...)
+			return m, cmd
+		case key.Matches(msg, keys.Common.Format):
+			kind, ids := m.tracker.getSelectedOrCurrentIDs()
+			if kind != resource.Module {
+				return m, tui.ReportError(errors.New("can only trigger format on modules"))
+			}
+			cmd := m.CreateTasks(m.Modules.Format, m.table.SelectedOrCurrentIDs()...)
+			return m, cmd
+		case key.Matches(msg, localKeys.SetCurrentWorkspace):
+			return m, func() tea.Msg {
+				currentID := m.tracker.getCursorID()
+				if currentID == nil || currentID.Kind != resource.Workspace {
+					return nil
+				}
+				if err := m.Workspaces.SelectWorkspace(*currentID); err != nil {
+					return tui.ReportError(fmt.Errorf("setting current workspace: %w", err))()
+				}
+				return nil
+			}
+		case key.Matches(msg, keys.Common.PlanDestroy):
+			createPlanOptions.Destroy = true
+			fallthrough
+		case key.Matches(msg, keys.Common.Plan):
+			kind, ids := m.tracker.getSelectedOrCurrentIDs()
+			if kind != resource.Workspace {
+				return m, tui.ReportError(errors.New("can only trigger plans on workspaces"))
+			}
+			fn := func(workspaceID resource.ID) (task.Spec, error) {
+				return m.Plans.Plan(workspaceID, createPlanOptions)
+			}
+			return m, m.CreateTasks(fn, ids...)
+		case key.Matches(msg, keys.Common.Destroy):
+			createPlanOptions.Destroy = true
+			applyPrompt = "Destroy resources of %d workspaces?"
+			fallthrough
+		case key.Matches(msg, keys.Common.Apply):
+			kind, ids := m.tracker.getSelectedOrCurrentIDs()
+			if kind != resource.Workspace {
+				return m, tui.ReportError(errors.New("can only trigger applies on workspaces"))
+			}
+			fn := func(workspaceID resource.ID) (task.Spec, error) {
+				return m.Plans.Apply(workspaceID, createPlanOptions)
+			}
+			return m, tui.YesNoPrompt(
+				fmt.Sprintf(applyPrompt, len(ids)),
+				m.CreateTasks(fn, ids...),
+			)
+		case key.Matches(msg, keys.Common.Cost):
+			kind, ids := m.tracker.getSelectedOrCurrentIDs()
+			if kind != resource.Workspace {
+				return m, tui.ReportError(errors.New("can only trigger infracost on workspaces"))
+			}
+			spec, err := m.Workspaces.Cost(ids...)
+			if err != nil {
+				return m, tui.ReportError(fmt.Errorf("creating task: %w", err))
+			}
+			return m, m.CreateTasksWithSpecs(spec)
 		}
 	case initMsg:
 		m.modules = msg.modules
@@ -127,19 +213,13 @@ func (m model) View() string {
 	lines := strings.Split(s, "\n")
 	totalVisibleLines := min(m.h, len(lines))
 	lines = lines[m.tracker.start : m.tracker.start+totalVisibleLines]
-	// Create map of selected node indices for faster lookup
-	selectedLineIndices := make(map[int]struct{})
-	for _, i := range m.tracker.selectedNodes {
-		selectedLineIndices[i] = struct{}{}
-	}
 	for i := range lines {
-		style := lipgloss.NewStyle().
-			Width(m.w - tui.ScrollbarWidth)
-		trackerIndex := m.tracker.start + i
+		style := lipgloss.NewStyle().Width(m.w - tui.ScrollbarWidth)
+		node := m.tracker.nodes[m.tracker.start+i]
 		// Style node according to whether it is the cursor node, selected, or
 		// both
-		if trackerIndex == m.tracker.cursorIndex {
-			if _, ok := selectedLineIndices[trackerIndex]; ok {
+		if node == m.tracker.cursorNode {
+			if m.tracker.isSelected(node) {
 				style = style.
 					Background(tui.CurrentAndSelectedBackground).
 					Foreground(tui.CurrentAndSelectedForeground)
@@ -148,7 +228,7 @@ func (m model) View() string {
 					Background(tui.CurrentBackground).
 					Foreground(tui.CurrentForeground)
 			}
-		} else if _, ok := selectedLineIndices[trackerIndex]; ok {
+		} else if m.tracker.isSelected(node) {
 			style = style.
 				Background(tui.SelectedBackground).
 				Foreground(tui.SelectedForeground)
@@ -166,7 +246,7 @@ func (m model) View() string {
 }
 
 func (m model) Title() string {
-	return fmt.Sprintf("start: %d", m.tracker.start)
+	return fmt.Sprintf("start: %d; selected: %v", m.tracker.start, maps.Keys(m.tracker.selections))
 }
 
 func (m model) buildTree() tea.Msg {

@@ -1,7 +1,6 @@
 package explorer
 
 import (
-	"fmt"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -14,7 +13,7 @@ import (
 )
 
 type tree struct {
-	value    fmt.Stringer
+	value    node
 	children []*tree
 }
 
@@ -22,12 +21,20 @@ func newTree(wd internal.Workdir, modules []*module.Module, workspaces []*worksp
 	t := &tree{
 		value: dirNode{root: true, path: wd.PrettyString()},
 	}
+	// Create set of current workspaces for assignment below.
+	currentWorkspaces := make(map[resource.ID]bool)
+	for _, mod := range modules {
+		if mod.CurrentWorkspaceID != nil {
+			currentWorkspaces[*mod.CurrentWorkspaceID] = true
+		}
+	}
 	// Arrange workspaces by module, for attachment to modules in tree below.
 	workspaceNodes := make(map[resource.ID][]workspaceNode, len(modules))
 	for _, ws := range workspaces {
 		workspaceNodes[ws.ModuleID] = append(workspaceNodes[ws.ModuleID], workspaceNode{
-			id:   ws.ID,
-			name: ws.Name,
+			id:      ws.ID,
+			name:    ws.Name,
+			current: currentWorkspaces[ws.ID],
 		})
 	}
 	for _, mod := range modules {
@@ -67,7 +74,7 @@ func (t *tree) render(root bool, to *lgtree.Tree) {
 // addChild adds a child to the tree; if child is already in tree then no action
 // is taken and the existing child is returned. If the child is added, the
 // children are sorted and the new child is returned.
-func (t *tree) addChild(child fmt.Stringer) *tree {
+func (t *tree) addChild(child node) *tree {
 	for _, existing := range t.children {
 		if existing.value == child {
 			return existing
