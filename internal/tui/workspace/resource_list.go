@@ -246,11 +246,12 @@ func (m resourceList) View() string {
 	if m.state == nil || m.state.Serial < 0 {
 		return border.Render("No state found")
 	}
-	//metadata := fmt.Sprintf("Serial: %d | Terraform Version: %s | Lineage: %s", m.state.Serial, m.state.TerraformVersion, m.state.Lineage)
+	// Make header
+	// metadata := fmt.Sprintf("Serial: %d | Terraform Version: %s | Lineage: %s", m.state.Serial, m.state.TerraformVersion, m.state.Lineage)
 	return lipgloss.JoinVertical(lipgloss.Left,
 		m.Model.View(),
-		//strings.Repeat("─", m.width),
-		//tui.Regular.
+		// strings.Repeat("─", m.width),
+		// tui.Regular.
 		//	Margin(0, 1).
 		//	Render(
 		//		tui.Regular.

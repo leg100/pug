@@ -18,11 +18,6 @@ func NewCache() *Cache {
 	}
 }
 
-func (c *Cache) Exists(page Page) bool {
-	_, ok := c.cache[page]
-	return ok
-}
-
 func (c *Cache) Get(page Page) tea.Model {
 	return c.cache[page]
 }

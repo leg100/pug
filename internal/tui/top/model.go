@@ -1,7 +1,6 @@
 package top
 
 import (
-	"fmt"
 	"os"
 	"strings"
 
@@ -15,6 +14,7 @@ import (
 	"github.com/leg100/pug/internal/resource"
 	"github.com/leg100/pug/internal/task"
 	"github.com/leg100/pug/internal/tui"
+	"github.com/leg100/pug/internal/tui/explorer"
 	"github.com/leg100/pug/internal/tui/keys"
 	tuimodule "github.com/leg100/pug/internal/tui/module"
 	"github.com/leg100/pug/internal/version"
@@ -33,8 +33,10 @@ const (
 )
 
 type model struct {
-	*navigator
+	*tui.PaneManager
 
+	// makers for making models for panels
+	makers   map[tui.Kind]tui.Maker
 	modules  *module.Service
 	width    int
 	height   int
@@ -65,29 +67,39 @@ func newModel(cfg app.Config, app *app.App) (model, error) {
 	// https://github.com/charmbracelet/bubbletea/issues/1036#issuecomment-2158563056
 	_ = lipgloss.HasDarkBackground()
 
-	spinner := spinner.New(spinner.WithSpinner(spinner.Line))
-	makers := makeMakers(cfg, app, &spinner)
-
-	m := model{
-		modules:  app.Modules,
-		spinner:  &spinner,
-		tasks:    app.Tasks,
-		maxTasks: cfg.MaxTasks,
-		dump:     dump,
-		workdir:  cfg.Workdir.PrettyString(),
+	helpers := &tui.Helpers{
+		Modules:    app.Modules,
+		Workspaces: app.Workspaces,
+		Plans:      app.Plans,
+		States:     app.States,
+		Tasks:      app.Tasks,
+		Logger:     app.Logger,
 	}
+	spinner := spinner.New(spinner.WithSpinner(spinner.Line))
+	makers := makeMakers(cfg, app, &spinner, helpers)
 
-	var err error
-	m.navigator, err = newNavigator(cfg.FirstPage, makers)
-	if err != nil {
-		return model{}, err
+	explorer := explorer.New(
+		app.Modules,
+		app.Workspaces,
+		app.Plans,
+		helpers,
+		cfg.Workdir,
+	)
+	m := model{
+		PaneManager: tui.NewPaneManager(explorer, makers),
+		modules:     app.Modules,
+		spinner:     &spinner,
+		tasks:       app.Tasks,
+		maxTasks:    cfg.MaxTasks,
+		dump:        dump,
+		workdir:     cfg.Workdir.PrettyString(),
 	}
 	return m, nil
 }
 
 func (m model) Init() tea.Cmd {
 	return tea.Batch(
-		m.currentModel().Init(),
+		m.PaneManager.Init(),
 		tuimodule.ReloadModules(true, m.modules),
 	)
 }
@@ -119,7 +131,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case spinner.TickMsg:
 		var cmd tea.Cmd
 		*m.spinner, cmd = m.spinner.Update(msg)
-		_ = m.updateCurrent(msg)
+		//_ = m.updateCurrent(msg)
 		if m.spinning {
 			// Continue spinning spinner.
 			return m, cmd
@@ -132,9 +144,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.mode = promptMode
 		var blink tea.Cmd
 		m.prompt, blink = tui.NewPrompt(msg)
-		// Send out message to current model to resize itself to make room for
-		// the prompt above it.
-		cmd := m.updateCurrent(tea.WindowSizeMsg{
+		// Send out message to panes to resize themselves to make room for the prompt above it.
+		_ = m.PaneManager.Update(tea.WindowSizeMsg{
 			Height: m.viewHeight(),
 			Width:  m.viewWidth(),
 		})
@@ -151,7 +162,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				// Send message to current model to resize itself to expand back
 				// into space occupied by prompt.
 				m.mode = normalMode
-				_ = m.updateCurrent(tea.WindowSizeMsg{
+				_ = m.PaneManager.Update(tea.WindowSizeMsg{
 					Height: m.viewHeight(),
 					Width:  m.viewWidth(),
 				})
@@ -164,23 +175,23 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				// switch back to normal mode, blur the filter widget, and let
 				// the key handler below handle the quit action.
 				m.mode = normalMode
-				_ = m.updateCurrent(tui.FilterBlurMsg{})
+				_ = m.PaneManager.Update(tui.FilterBlurMsg{})
 			case key.Matches(msg, keys.Filter.Blur):
 				// Switch back to normal mode, and send message to current model
 				// to blur the filter widget
 				m.mode = normalMode
-				_ = m.updateCurrent(tui.FilterBlurMsg{})
+				_ = m.PaneManager.Update(tui.FilterBlurMsg{})
 				return m, nil
 			case key.Matches(msg, keys.Filter.Close):
 				// Switch back to normal mode, and send message to current model
 				// to close the filter widget
 				m.mode = normalMode
-				_ = m.updateCurrent(tui.FilterCloseMsg{})
+				_ = m.PaneManager.Update(tui.FilterCloseMsg{})
 				return m, nil
 			default:
 				// Wrap key message in a filter key message and send to current
 				// model.
-				cmd = m.updateCurrent(tui.FilterKeyMsg(msg))
+				cmd = m.PaneManager.Update(tui.FilterKeyMsg(msg))
 				return m, cmd
 			}
 		}
@@ -193,31 +204,27 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, keys.Global.Suspend):
 			// ctrl-z suspends the app
 			return m, tea.Suspend
-		case key.Matches(msg, keys.Global.Back):
-			// <esc> goes back to last page
-			m.goBack()
 		case key.Matches(msg, keys.Global.Help):
 			// '?' toggles help widget
 			m.showHelp = !m.showHelp
-			// Help widget takes up space so reset dimensions for all new and
-			// existing child models
-			m.resetDimensions()
+			// Help widget takes up space so update panes' dimensions
+			m.PaneManager.Update(tea.WindowSizeMsg{
+				Height: m.viewHeight(),
+				Width:  m.viewWidth(),
+			})
 		case key.Matches(msg, keys.Global.Filter):
 			// '/' enables filter mode if the current model indicates it
 			// supports it, which it does so by sending back a non-nil command.
-			if cmd = m.updateCurrent(tui.FilterFocusReqMsg{}); cmd != nil {
+			if cmd = m.PaneManager.Update(tui.FilterFocusReqMsg{}); cmd != nil {
 				m.mode = filterMode
 			}
 			return m, cmd
 		case key.Matches(msg, keys.Global.Logs):
 			// show logs
 			return m, tui.NavigateTo(tui.LogListKind)
-		case key.Matches(msg, keys.Global.Modules):
-			// list all modules
-			return m, tui.NavigateTo(tui.ModuleListKind)
-		case key.Matches(msg, keys.Global.Workspaces):
-			// list all workspaces
-			return m, tui.NavigateTo(tui.WorkspaceListKind)
+		case key.Matches(msg, keys.Global.Explorer):
+			// show logs
+			return m, tui.NavigateTo(tui.ExplorerKind, tui.WithPosition(tui.LeftPane))
 		case key.Matches(msg, keys.Global.Tasks):
 			// list all tasks
 			return m, tui.NavigateTo(tui.TaskListKind)
@@ -226,7 +233,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tui.NavigateTo(tui.TaskGroupListKind)
 		default:
 			// Send other keys to current model.
-			if cmd := m.updateCurrent(msg); cmd != nil {
+			if cmd := m.PaneManager.Update(msg); cmd != nil {
 				return m, cmd
 			}
 			// If current model doesn't respond with a command, then send key to
@@ -242,13 +249,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 	case tui.NavigationMsg:
-		created, err := m.setCurrent(msg.Page)
+		cmd, err := m.SetPane(msg.Page, msg.Position)
 		if err != nil {
-			return m, tui.ReportError(fmt.Errorf("setting current page: %w", err))
+			return m, tui.ReportError(err)
 		}
-		if created {
-			cmds = append(cmds, m.currentModel().Init())
-		}
+		cmds = append(cmds, cmd)
 	case tui.ErrorMsg:
 		m.err = error(msg)
 	case tui.InfoMsg:
@@ -256,10 +261,13 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
-		m.resetDimensions()
+		m.PaneManager.Update(tea.WindowSizeMsg{
+			Height: m.viewHeight(),
+			Width:  m.viewWidth(),
+		})
 	default:
-		// Send remaining msg types to all cached models
-		cmds = append(cmds, m.cache.UpdateAll(msg)...)
+		// Send remaining msg types to pane manager to route accordingly.
+		cmds = append(cmds, m.PaneManager.Update(msg))
 
 		// Send message to the prompt too if in prompt mode (most likely a
 		// blink message)
@@ -270,51 +278,35 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, tea.Batch(cmds...)
 }
 
-func (m *model) resetDimensions() {
-	// Inform navigator of new dimensions for when it builds new models
-	m.navigator.width = m.viewWidth()
-	m.navigator.height = m.viewHeight()
-
-	// Inform all existing models of new dimensions
-	_ = m.cache.UpdateAll(tea.WindowSizeMsg{
-		Height: m.viewHeight(),
-		Width:  m.viewWidth(),
-	})
-}
-
-var (
-	breadcrumbsHeight   = 1
-	messageFooterHeight = 1
-)
+var messageFooterHeight = 1
 
 func (m model) View() string {
 	// Compose header
 	var (
 		header   string
-		status   string
 		leftover int
 	)
 	// Optionally render title on the left of header
-	if model, ok := m.currentModel().(tui.ModelTitle); ok {
-		header = model.Title()
-		leftover = m.width - tui.Width(header)
-	}
-	// Optionally render status on the right of header
-	if statusable, ok := m.currentModel().(tui.ModelStatus); ok {
-		status = statusable.Status()
-		leftover -= tui.Width(status)
-	}
-	// Fill in left over space in between title and status with background color
-	header += tui.Regular.Width(leftover).Background(tui.Purple).Render()
-	header += status
-	// Style the header
-	header = lipgloss.NewStyle().
-		MaxHeight(1).
-		Inline(true).
-		MaxWidth(m.width).
-		// TODO: is this needed?
-		Inherit(tui.Title).
-		Render(header)
+	//	if model, ok := m.currentModel().(tui.ModelTitle); ok {
+	//		header = model.Title()
+	//		leftover = m.width - tui.Width(header)
+	//	}
+	//	// Optionally render status on the right of header
+	//	if statusable, ok := m.currentModel().(tui.ModelStatus); ok {
+	//		status = statusable.Status()
+	//		leftover -= tui.Width(status)
+	//	}
+	//	// Fill in left over space in between title and status with background color
+	//	header += tui.Regular.Width(leftover).Background(tui.Purple).Render()
+	//	header += status
+	//	// Style the header
+	//	header = lipgloss.NewStyle().
+	//		MaxHeight(1).
+	//		Inline(true).
+	//		MaxWidth(m.width).
+	//		// TODO: is this needed?
+	//		Inherit(tui.Title).
+	//		Render(header)
 
 	// Start composing vertical stack of components that fill entire terminal.
 	components := []string{header}
@@ -323,11 +315,11 @@ func (m model) View() string {
 	if m.mode == promptMode {
 		components = append(components, m.prompt.View(m.width))
 	}
-	// Add main content
+	// Add panes
 	components = append(components, lipgloss.NewStyle().
 		Height(m.viewHeight()).
 		Width(m.viewWidth()).
-		Render(m.currentModel().View()),
+		Render(m.PaneManager.View()),
 	)
 
 	// Add help if enabled
@@ -377,7 +369,7 @@ func (m model) View() string {
 //
 // TODO: rename contentHeight
 func (m model) viewHeight() int {
-	vh := m.height - breadcrumbsHeight - messageFooterHeight
+	vh := m.height - messageFooterHeight
 	if m.mode == promptMode {
 		vh -= tui.PromptHeight
 	}
@@ -411,7 +403,7 @@ func (m model) help() string {
 	case filterMode:
 		bindings = append(bindings, keys.KeyMapToSlice(keys.Filter)...)
 	default:
-		if model, ok := m.currentModel().(tui.ModelHelpBindings); ok {
+		if model, ok := m.ActiveModel().(tui.ModelHelpBindings); ok {
 			bindings = append(bindings, model.HelpBindings()...)
 		}
 	}

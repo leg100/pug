@@ -8,21 +8,20 @@ func _() {
 	// An "invalid array index" compiler error signifies that the constant values have changed.
 	// Re-run the stringer command to generate them again.
 	var x [1]struct{}
-	_ = x[ModuleListKind-0]
-	_ = x[WorkspaceListKind-1]
-	_ = x[TaskListKind-2]
-	_ = x[TaskKind-3]
-	_ = x[TaskGroupListKind-4]
-	_ = x[TaskGroupKind-5]
-	_ = x[ResourceListKind-6]
-	_ = x[ResourceKind-7]
-	_ = x[LogListKind-8]
-	_ = x[LogKind-9]
+	_ = x[TaskListKind-0]
+	_ = x[TaskKind-1]
+	_ = x[TaskGroupListKind-2]
+	_ = x[TaskGroupKind-3]
+	_ = x[ResourceListKind-4]
+	_ = x[ResourceKind-5]
+	_ = x[LogListKind-6]
+	_ = x[LogKind-7]
+	_ = x[ExplorerKind-8]
 }
 
-const _Kind_name = "ModuleListKindWorkspaceListKindTaskListKindTaskKindTaskGroupListKindTaskGroupKindResourceListKindResourceKindLogListKindLogKind"
+const _Kind_name = "TaskListKindTaskKindTaskGroupListKindTaskGroupKindResourceListKindResourceKindLogListKindLogKindExplorerKind"
 
-var _Kind_index = [...]uint8{0, 14, 31, 43, 51, 68, 81, 97, 109, 120, 127}
+var _Kind_index = [...]uint8{0, 12, 20, 37, 50, 66, 78, 89, 96, 108}
 
 func (i Kind) String() string {
 	if i < 0 || i >= Kind(len(_Kind_index)-1) {

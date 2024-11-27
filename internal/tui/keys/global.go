@@ -7,6 +7,7 @@ import (
 type global struct {
 	Modules     key.Binding
 	Workspaces  key.Binding
+	Explorer    key.Binding
 	Tasks       key.Binding
 	TaskGroups  key.Binding
 	Logs        key.Binding
@@ -30,6 +31,10 @@ var Global = global{
 	Workspaces: key.NewBinding(
 		key.WithKeys("w"),
 		key.WithHelp("w", "workspaces"),
+	),
+	Explorer: key.NewBinding(
+		key.WithKeys("E"),
+		key.WithHelp("E", "explorer"),
 	),
 	Tasks: key.NewBinding(
 		key.WithKeys("t"),

@@ -5,9 +5,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/leg100/pug/internal/app"
 	"github.com/leg100/pug/internal/tui"
-	"github.com/leg100/pug/internal/tui/explorer"
 	"github.com/leg100/pug/internal/tui/logs"
-	moduletui "github.com/leg100/pug/internal/tui/module"
 	tasktui "github.com/leg100/pug/internal/tui/task"
 	workspacetui "github.com/leg100/pug/internal/tui/workspace"
 )
@@ -18,22 +16,7 @@ type updateableMaker interface {
 }
 
 // makeMakers makes model makers for making models
-func makeMakers(cfg app.Config, app *app.App, spinner *spinner.Model) map[tui.Kind]tui.Maker {
-	helpers := &tui.Helpers{
-		Modules:    app.Modules,
-		Workspaces: app.Workspaces,
-		Plans:      app.Plans,
-		States:     app.States,
-		Tasks:      app.Tasks,
-		Logger:     app.Logger,
-	}
-
-	workspaceListMaker := &workspacetui.ListMaker{
-		Workspaces: app.Workspaces,
-		Modules:    app.Modules,
-		Plans:      app.Plans,
-		Helpers:    helpers,
-	}
+func makeMakers(cfg app.Config, app *app.App, spinner *spinner.Model, helpers *tui.Helpers) map[tui.Kind]tui.Maker {
 	taskMaker := &tasktui.Maker{
 		Plans:   app.Plans,
 		Tasks:   app.Tasks,
@@ -42,33 +25,14 @@ func makeMakers(cfg app.Config, app *app.App, spinner *spinner.Model) map[tui.Ki
 		Logger:  app.Logger,
 		Program: cfg.Program,
 	}
-	taskListMaker := tasktui.NewListMaker(
-		app.Tasks,
-		app.Plans,
-		taskMaker,
-		helpers,
-	)
-
 	makers := map[tui.Kind]tui.Maker{
-		tui.ExplorerKind: &explorer.Maker{
-			Helpers:    helpers,
-			Modules:    app.Modules,
-			Workspaces: app.Workspaces,
-			Plans:      app.Plans,
-			Workdir:    cfg.Workdir,
-		},
-		tui.ModuleListKind: &moduletui.ListMaker{
-			Modules:    app.Modules,
-			Workspaces: app.Workspaces,
-			Plans:      app.Plans,
-			Spinner:    spinner,
-			Workdir:    cfg.Workdir,
-			Helpers:    helpers,
-			Terragrunt: cfg.Terragrunt,
-		},
-		tui.WorkspaceListKind: workspaceListMaker,
-		tui.TaskListKind:      taskListMaker,
-		tui.TaskKind:          taskMaker,
+		tui.TaskListKind: tasktui.NewListMaker(
+			app.Tasks,
+			app.Plans,
+			taskMaker,
+			helpers,
+		),
+		tui.TaskKind: taskMaker,
 		tui.TaskGroupListKind: &tasktui.GroupListMaker{
 			Tasks:   app.Tasks,
 			Helpers: helpers,

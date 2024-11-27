@@ -20,7 +20,6 @@ type Config struct {
 	Program                 string
 	MaxTasks                int
 	PluginCache             bool
-	FirstPage               string
 	Debug                   bool
 	DisableReloadAfterApply bool
 	Workdir                 internal.Workdir
@@ -52,7 +51,6 @@ func Parse(stderr io.Writer, args []string) (Config, error) {
 	fs.StringVar(&cfg.DataDir, 0, "data-dir", defaultDataDir, "Directory in which to store plan files.")
 	fs.StringListVar(&cfg.Envs, 'e', "env", "Environment variable to pass to terraform process. Can set more than once.")
 	fs.StringListVar(&cfg.Args, 'a', "arg", "CLI arg to pass to terraform process. Can set more than once.")
-	fs.StringEnumVar(&cfg.FirstPage, 'f', "first-page", "The first page to open on startup.", "modules", "workspaces", "runs", "tasks", "logs", "tree")
 	fs.BoolVar(&cfg.Debug, 'd', "debug", "Log bubbletea messages to messages.log")
 	fs.BoolVar(&cfg.Version, 'v', "version", "Print version.")
 	_ = fs.String('c', "config", defaultConfigFile, "Path to config file.")

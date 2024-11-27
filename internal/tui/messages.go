@@ -7,8 +7,8 @@ import (
 
 // NavigationMsg is an instruction to navigate to a page.
 type NavigationMsg struct {
-	Page Page
-	Tag  int
+	Page     Page
+	Position Position
 }
 
 func NewNavigationMsg(kind Kind, opts ...NavigateOption) NavigationMsg {
@@ -24,6 +24,12 @@ type NavigateOption func(msg *NavigationMsg)
 func WithParent(parent resource.ID) NavigateOption {
 	return func(msg *NavigationMsg) {
 		msg.Page.ID = parent
+	}
+}
+
+func WithPosition(position Position) NavigateOption {
+	return func(msg *NavigationMsg) {
+		msg.Position = position
 	}
 }
 

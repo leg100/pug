@@ -29,24 +29,24 @@ var Common = common{
 		key.WithHelp("p", "plan"),
 	),
 	PlanDestroy: key.NewBinding(
-		key.WithKeys("P"),
-		key.WithHelp("P", "plan destroy"),
+		key.WithKeys("d"),
+		key.WithHelp("d", "plan destroy"),
 	),
 	Apply: key.NewBinding(
 		key.WithKeys("a"),
 		key.WithHelp("a", "apply"),
 	),
 	Destroy: key.NewBinding(
-		key.WithKeys("d"),
-		key.WithHelp("d", "destroy"),
+		key.WithKeys("D"),
+		key.WithHelp("D", "destroy"),
 	),
 	Cancel: key.NewBinding(
 		key.WithKeys("c"),
 		key.WithHelp("c", "cancel"),
 	),
 	Delete: key.NewBinding(
-		key.WithKeys("D"),
-		key.WithHelp("D", "delete"),
+		key.WithKeys("delete"),
+		key.WithHelp("delete", "delete"),
 	),
 	State: key.NewBinding(
 		key.WithKeys("s"),

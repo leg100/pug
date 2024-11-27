@@ -20,27 +20,23 @@ import (
 	"golang.org/x/exp/maps"
 )
 
-type Maker struct {
-	Modules    *module.Service
-	Workspaces *workspace.Service
-	Plans      *plan.Service
-	Helpers    *tui.Helpers
-	Workdir    internal.Workdir
-}
-
-func (m *Maker) Make(_ resource.ID, width, height int) (tea.Model, error) {
-	tree := newTree(m.Workdir, nil, nil)
+func New(
+	modules *module.Service,
+	workspaces *workspace.Service,
+	plans *plan.Service,
+	helpers *tui.Helpers,
+	workdir internal.Workdir,
+) tea.Model {
+	tree := newTree(workdir, nil, nil)
 	return model{
-		WorkspaceService: m.Workspaces,
-		ModuleService:    m.Modules,
-		PlanService:      m.Plans,
-		Helpers:          m.Helpers,
-		Workdir:          m.Workdir,
+		WorkspaceService: workspaces,
+		ModuleService:    modules,
+		PlanService:      plans,
+		Helpers:          helpers,
+		Workdir:          workdir,
 		tree:             tree,
 		tracker:          newTracker(tree),
-		w:                width,
-		h:                height,
-	}, nil
+	}
 }
 
 type model struct {
@@ -56,6 +52,7 @@ type model struct {
 	tree       *tree
 	tracker    *tracker
 	w, h       int
+	focused    bool
 }
 
 func (m model) Init() tea.Cmd {
@@ -207,6 +204,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch msg.Type {
 		case resource.CreatedEvent:
 			m.modules = append(m.modules, msg.Payload)
+		case resource.UpdatedEvent:
+			m.modules = append(m.modules, msg.Payload)
 		}
 		return m, m.buildTree
 	case resource.Event[*workspace.Workspace]:
@@ -269,6 +268,11 @@ func (m model) View() string {
 
 func (m model) Title() string {
 	return fmt.Sprintf("start: %d; selected: %v", m.tracker.start, maps.Keys(m.tracker.selections))
+}
+
+func (m model) ToggleFocus() bool {
+	m.focused = !m.focused
+	return m.focused
 }
 
 func (m model) buildTree() tea.Msg {

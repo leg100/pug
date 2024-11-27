@@ -147,10 +147,8 @@ func (m *Model[V]) filterVisible() bool {
 
 // setDimensions sets the dimensions of the table.
 func (m *Model[V]) setDimensions(width, height int) {
-	// Adjust height to accomodate borders
-	m.height = height - 2
-	// Adjust width to accomodate borders
-	m.width = width - 2
+	m.height = height
+	m.width = width
 	m.setColumnWidths()
 
 	m.setStart()
@@ -299,40 +297,22 @@ func (m Model[V]) View() string {
 	content := lipgloss.NewStyle().
 		Height(m.height).
 		Render(lipgloss.JoinVertical(lipgloss.Top, components...))
-	// Render table metadata
+	return content
+}
+
+// Metadata renders a short string summarizing table row metadata.
+func (m *Model[V]) Metadata() string {
 	var metadata string
-	{
-		// Calculate the top and bottom visible row ordinal numbers
-		top := m.start + 1
-		bottom := m.start + m.visibleRows()
-		prefix := fmt.Sprintf("%d-%d of ", top, bottom)
-		if m.filterVisible() {
-			metadata = prefix + fmt.Sprintf("%d/%d", len(m.rows), len(m.items))
-		} else {
-			metadata = prefix + strconv.Itoa(len(m.rows))
-		}
+	// Calculate the top and bottom visible row ordinal numbers
+	top := m.start + 1
+	bottom := m.start + m.visibleRows()
+	prefix := fmt.Sprintf("%d-%d of ", top, bottom)
+	if m.filterVisible() {
+		metadata = prefix + fmt.Sprintf("%d/%d", len(m.rows), len(m.items))
+	} else {
+		metadata = prefix + strconv.Itoa(len(m.rows))
 	}
-	// Render top border with metadata in the center
-	var topBorder string
-	{
-		// total length of top border runes, not including corners
-		length := max(0, m.width-lipgloss.Width(metadata))
-		leftLength := length / 2
-		rightLength := max(0, length-leftLength)
-		topBorder = lipgloss.JoinHorizontal(lipgloss.Left,
-			m.border.TopLeft,
-			strings.Repeat(m.border.Top, leftLength),
-			metadata,
-			strings.Repeat(m.border.Top, rightLength),
-			m.border.TopRight,
-		)
-	}
-	// Join top border with table components wrapped with borders on remaining
-	// sides.
-	return lipgloss.JoinVertical(lipgloss.Top,
-		lipgloss.NewStyle().Foreground(m.borderColor).Render(topBorder),
-		lipgloss.NewStyle().Border(m.border, false, true, true, true).BorderForeground(m.borderColor).Render(content),
-	)
+	return metadata
 }
 
 func (m *Model[V]) SetBorderStyle(border lipgloss.Border, color lipgloss.TerminalColor) {
@@ -608,7 +588,7 @@ func (m *Model[V]) GotoBottom() {
 }
 
 func (m Model[V]) headersView() string {
-	var s = make([]string, 0, len(m.cols))
+	s := make([]string, 0, len(m.cols))
 	for _, col := range m.cols {
 		style := lipgloss.NewStyle().Width(col.Width).MaxWidth(col.Width).Inline(true)
 		if col.RightAlign {
