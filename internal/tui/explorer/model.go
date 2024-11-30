@@ -198,6 +198,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, m.buildTree
 	case builtTreeMsg:
 		m.tree = (*tree)(msg)
+		// TODO: perform this in a cmd
 		m.tracker.reindex(m.tree)
 		return m, nil
 	case resource.Event[*module.Module]:
@@ -218,6 +219,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.w = msg.Width
 		m.h = msg.Height
 		m.tracker.height = msg.Height
+		// TODO: perform this in a cmd
+		m.tracker.reindex(m.tree)
 	}
 	return m, nil
 }
@@ -264,6 +267,10 @@ func (m model) View() string {
 			strings.Join(lines, "\n"),
 			scrollbar,
 		))
+}
+
+func (m model) Metadata() string {
+	return "e explorer"
 }
 
 func (m model) Title() string {

@@ -274,6 +274,8 @@ func (m Model[V]) View() string {
 	// (a) optional filter widget
 	// (b) header
 	// (c) rows + scrollbar
+	//
+	// TODO: this allocation logic is wrong
 	components := make([]string, 0, 1+1+m.visibleRows())
 	if m.filterVisible() {
 		components = append(components, tui.Regular.Margin(0, 1).Render(m.filter.View()))
@@ -284,6 +286,8 @@ func (m Model[V]) View() string {
 	// Generate scrollbar
 	scrollbar := tui.Scrollbar(m.rowAreaHeight(), len(m.rows), m.visibleRows(), m.start)
 	// Get all the visible rows
+	//
+	// TODO: pre-allocate rows
 	var rows []string
 	for i := range m.visibleRows() {
 		rows = append(rows, m.renderRow(m.start+i))
@@ -296,6 +300,7 @@ func (m Model[V]) View() string {
 	// Render table components, ensuring it is at least a min height
 	content := lipgloss.NewStyle().
 		Height(m.height).
+		MaxHeight(m.height).
 		Render(lipgloss.JoinVertical(lipgloss.Top, components...))
 	return content
 }
@@ -589,6 +594,7 @@ func (m *Model[V]) GotoBottom() {
 
 func (m Model[V]) headersView() string {
 	s := make([]string, 0, len(m.cols))
+	// TODO: use index and don't use append below
 	for _, col := range m.cols {
 		style := lipgloss.NewStyle().Width(col.Width).MaxWidth(col.Width).Inline(true)
 		if col.RightAlign {
@@ -597,7 +603,9 @@ func (m Model[V]) headersView() string {
 		renderedCell := style.Render(runewidth.Truncate(col.Title, col.Width, "…"))
 		s = append(s, tui.Regular.Padding(0, 1).Render(renderedCell))
 	}
-	return lipgloss.JoinHorizontal(lipgloss.Left, s...)
+	return lipgloss.NewStyle().
+		MaxWidth(m.width).
+		Render(lipgloss.JoinHorizontal(lipgloss.Left, s...))
 }
 
 func (m *Model[V]) renderRow(rowIdx int) string {
@@ -648,8 +656,14 @@ func (m *Model[V]) renderRow(rowIdx int) string {
 		styledCells[i] = boxed
 	}
 
-	// Join cells together to form a row
+	// Join cells together to form a row, ensuring it doesn't exceed maximum
+	// table width
 	renderedRow := lipgloss.JoinHorizontal(lipgloss.Left, styledCells...)
+	// Join cells together to form a row, ensuring it doesn't exceed maximum
+	// table width
+	renderedRow = lipgloss.NewStyle().
+		MaxWidth(m.width).
+		Render(renderedRow)
 
 	// If current row or selected rows, strip colors and apply background color
 	if current || selected {

@@ -215,14 +215,14 @@ func (m Model[R]) View() string {
 	components := []string{m.Table.View()}
 	// When preview pane is visible and there is a model cached for the
 	// current row, then render the model's view in the pane.
-	if m.previewVisible {
-		if model, ok := m.getPreviewModel(); ok {
-			style := lipgloss.NewStyle().
-				Border(m.previewBorder).
-				BorderForeground(m.previewBorderColor)
-			components = append(components, style.Render(model.View()))
-		}
-	}
+	//if m.previewVisible {
+	//	if model, ok := m.getPreviewModel(); ok {
+	//		style := lipgloss.NewStyle().
+	//			Border(m.previewBorder).
+	//			BorderForeground(m.previewBorderColor)
+	//		components = append(components, style.Render(model.View()))
+	//	}
+	//}
 	return lipgloss.JoinVertical(lipgloss.Top, components...)
 }
 

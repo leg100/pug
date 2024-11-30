@@ -345,13 +345,13 @@ func (m model) View() string {
 			Background(tui.EvenLighterGrey).
 			Render(m.info)
 	}
-	workdir := tui.Padded.Background(tui.LightGrey).Foreground(tui.White).Render(m.workdir)
+	pug := tui.Padded.Background(tui.LightGrey).Foreground(tui.White).Render("PUG")
 	version := tui.Padded.Background(tui.DarkGrey).Foreground(tui.White).Render(version.Version)
 	// Fill in left over space with background color
-	leftover = m.width - tui.Width(footer) - tui.Width(workdir) - tui.Width(version)
+	leftover = m.width - tui.Width(footer) - tui.Width(pug) - tui.Width(version)
 	footer += tui.Regular.Width(leftover).Background(tui.EvenLighterGrey).Render()
-	footer += workdir
 	footer += version
+	footer += pug
 
 	// Add footer
 	components = append(components, tui.Regular.

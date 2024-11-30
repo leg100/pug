@@ -66,15 +66,15 @@ func (m *ListMaker) Make(_ resource.ID, width, height int) (tea.Model, error) {
 
 	return list{
 		logger:  m.Logger,
-		table:   table,
+		Model:   table,
 		Helpers: m.Helpers,
 	}, nil
 }
 
 type list struct {
 	logger *logging.Logger
-	table  table.Model[logging.Message]
 
+	table.Model[logging.Message]
 	*tui.Helpers
 }
 
@@ -94,14 +94,14 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, localKeys.Enter):
-			if row, ok := m.table.CurrentRow(); ok {
-				return m, tui.NavigateTo(tui.LogKind, tui.WithParent(row.ID))
+			if row, ok := m.CurrentRow(); ok {
+				return m, tui.NavigateTo(tui.LogKind, tui.WithParent(row.ID), tui.WithPosition(tui.BottomRightPane))
 			}
 		}
 	}
 
 	// Handle keyboard and mouse events in the table widget
-	m.table, cmd = m.table.Update(msg)
+	m.Model, cmd = m.Model.Update(msg)
 	cmds = append(cmds, cmd)
 
 	return m, tea.Batch(cmds...)
@@ -112,7 +112,11 @@ func (m list) Title() string {
 }
 
 func (m list) View() string {
-	return m.table.View()
+	return m.Model.View()
+}
+
+func (m list) Metadata() string {
+	return m.Model.Metadata()
 }
 
 func (m list) HelpBindings() []key.Binding {

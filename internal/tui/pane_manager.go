@@ -59,10 +59,10 @@ func NewPaneManager(explorer tea.Model, makers map[Kind]Maker) *PaneManager {
 				page: Page{Kind: ExplorerKind},
 			},
 		},
-		minWidth:          20,
-		minHeight:         20,
-		maxLeftPaneWidth:  20,
-		maxTopRightHeight: 20,
+		minWidth:          40,
+		minHeight:         10,
+		maxLeftPaneWidth:  40,
+		maxTopRightHeight: 10,
 	}
 }
 
@@ -87,7 +87,7 @@ func (p *PaneManager) Update(msg tea.Msg) tea.Cmd {
 		case key.Matches(msg, Keys.GrowPaneHeight):
 			p.changeActivePaneHeight(1)
 		case key.Matches(msg, Keys.SwitchPane):
-			p.switchActivePane()
+			p.cycleActivePane()
 		case key.Matches(msg, Keys.ClosePane):
 			if err := p.closeActivePane(); err != nil {
 				cmd = ReportError(err)
@@ -111,8 +111,7 @@ func (p *PaneManager) Update(msg tea.Msg) tea.Cmd {
 }
 
 func (p *PaneManager) SetPane(page Page, position Position) (cmd tea.Cmd, err error) {
-	model := p.cache.Get(page)
-	if model == nil {
+	if model := p.cache.Get(page); model == nil {
 		maker, ok := p.makers[page.Kind]
 		if !ok {
 			return nil, fmt.Errorf("no maker could be found for %s", page.Kind)
@@ -137,7 +136,7 @@ func (p *PaneManager) ActiveModel() tea.Model {
 	return p.getModel(p.active)
 }
 
-func (p *PaneManager) switchActivePane() {
+func (p *PaneManager) cycleActivePane() {
 	positions := maps.Keys(p.panes)
 	slices.Sort(positions)
 	var activeIndex int
@@ -155,10 +154,9 @@ func (p *PaneManager) closeActivePane() error {
 		return errors.New("cannot close last pane")
 	}
 	delete(p.panes, p.active)
-	p.switchActivePane()
-
-	p.setPaneHeights()
+	p.cycleActivePane()
 	p.setPaneWidths()
+	p.setPaneHeights()
 	p.updateChildSizes()
 	return nil
 }
@@ -171,18 +169,13 @@ func (p *PaneManager) setPaneWidths() {
 			p.panes[LeftPane].width = p.width
 		}
 	}
-	if p.panes[TopRightPane] != nil {
-		if p.panes[LeftPane] != nil {
-			p.panes[TopRightPane].width = max(p.minWidth, p.width-p.panes[LeftPane].width)
-		} else {
-			p.panes[TopRightPane].width = p.width
-		}
-	}
-	if p.panes[BottomRightPane] != nil {
-		if p.panes[LeftPane] != nil {
-			p.panes[BottomRightPane].width = max(p.minWidth, p.width-p.panes[LeftPane].width)
-		} else {
-			p.panes[BottomRightPane].width = p.width
+	for _, pane := range []*pane{p.panes[TopRightPane], p.panes[BottomRightPane]} {
+		if pane != nil {
+			if p.panes[LeftPane] != nil {
+				pane.width = max(p.minWidth, p.width-p.panes[LeftPane].width)
+			} else {
+				pane.width = p.width
+			}
 		}
 	}
 }
@@ -290,15 +283,23 @@ func (m *PaneManager) renderPane(position Position) string {
 	renderedPane := model.View()
 	isActive := position == m.active
 	border := border[isActive]
-	var topBorder string
+	topBorder := buildTopBorder(model, border, m.panes[position].width)
+	// TODO: border color
+	return lipgloss.JoinVertical(lipgloss.Top,
+		lipgloss.NewStyle().Render(topBorder),
+		lipgloss.NewStyle().Border(border, false, true, true, true).Render(renderedPane),
+	)
+}
+
+func buildTopBorder(model tea.Model, border lipgloss.Border, width int) string {
 	if metadataModel, ok := model.(interface{ Metadata() string }); ok {
 		// Render top border with metadata in the center
 		//
 		// total length of top border runes, not including corners
-		length := max(0, m.panes[position].width-2-lipgloss.Width(metadataModel.Metadata()))
+		length := max(0, width-2-lipgloss.Width(metadataModel.Metadata()))
 		leftLength := length / 2
 		rightLength := max(0, length-leftLength)
-		topBorder = lipgloss.JoinHorizontal(lipgloss.Left,
+		return lipgloss.JoinHorizontal(lipgloss.Left,
 			border.TopLeft,
 			strings.Repeat(border.Top, leftLength),
 			metadataModel.Metadata(),
@@ -306,13 +307,8 @@ func (m *PaneManager) renderPane(position Position) string {
 			border.TopRight,
 		)
 	} else {
-		topBorder = border.TopLeft + strings.Repeat(border.Top, max(0, m.panes[position].width-2)) + border.TopRight
+		return border.TopLeft + strings.Repeat(border.Top, max(0, width-2)) + border.TopRight
 	}
-	// TODO: border color
-	return lipgloss.JoinVertical(lipgloss.Top,
-		lipgloss.NewStyle().Render(topBorder),
-		lipgloss.NewStyle().Border(border, false, true, true, true).Render(renderedPane),
-	)
 }
 
 func removeEmptyStrings(strs ...string) []string {
