@@ -251,5 +251,8 @@ func (m Model[R]) getPreviewModel() (tui.ChildModel, bool) {
 }
 
 func clamp(v, low, high int) int {
-	return min(max(v, low), high)
+	if high < low {
+		low, high = high, low
+	}
+	return min(high, max(low, v))
 }

@@ -5,7 +5,6 @@ import (
 
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 	"github.com/leg100/pug/internal/logging"
 	"github.com/leg100/pug/internal/resource"
 	"github.com/leg100/pug/internal/tui"
@@ -81,8 +80,7 @@ func (m *ListMaker) Make(_ resource.ID, width, height int) (tui.ChildModel, erro
 }
 
 type list struct {
-	logger  *logging.Logger
-	focused bool
+	logger *logging.Logger
 
 	split.Model[logging.Message]
 	*tui.Helpers
@@ -122,9 +120,7 @@ func (m list) Title() string {
 }
 
 func (m list) View() string {
-	return lipgloss.NewStyle().
-		Border(tui.BorderStyle(m.focused)).
-		Render(m.Model.View())
+	return m.Model.View()
 }
 
 func (m list) HelpBindings() []key.Binding {
