@@ -33,9 +33,8 @@ const (
 )
 
 type model struct {
-	*tui.PaneManager
+	*split
 
-	// makers for making models for panels
 	makers   map[tui.Kind]tui.Maker
 	modules  *module.Service
 	width    int
@@ -78,28 +77,31 @@ func newModel(cfg app.Config, app *app.App) (model, error) {
 	spinner := spinner.New(spinner.WithSpinner(spinner.Line))
 	makers := makeMakers(cfg, app, &spinner, helpers)
 
-	explorer := explorer.New(
-		app.Modules,
-		app.Workspaces,
-		app.Plans,
-		helpers,
-		cfg.Workdir,
-	)
 	m := model{
-		PaneManager: tui.NewPaneManager(explorer, makers),
-		modules:     app.Modules,
-		spinner:     &spinner,
-		tasks:       app.Tasks,
-		maxTasks:    cfg.MaxTasks,
-		dump:        dump,
-		workdir:     cfg.Workdir.PrettyString(),
+		split: newSplit(
+			explorer.New(
+				app.Modules,
+				app.Workspaces,
+				app.Plans,
+				helpers,
+				cfg.Workdir,
+			),
+			makers,
+		),
+		makers:   makers,
+		modules:  app.Modules,
+		spinner:  &spinner,
+		tasks:    app.Tasks,
+		maxTasks: cfg.MaxTasks,
+		dump:     dump,
+		workdir:  cfg.Workdir.PrettyString(),
 	}
 	return m, nil
 }
 
 func (m model) Init() tea.Cmd {
 	return tea.Batch(
-		m.PaneManager.Init(),
+		m.split.Init(),
 		tuimodule.ReloadModules(true, m.modules),
 	)
 }
@@ -145,7 +147,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		var blink tea.Cmd
 		m.prompt, blink = tui.NewPrompt(msg)
 		// Send out message to panes to resize themselves to make room for the prompt above it.
-		_ = m.PaneManager.Update(tea.WindowSizeMsg{
+		_ = m.split.Update(tea.WindowSizeMsg{
 			Height: m.viewHeight(),
 			Width:  m.viewWidth(),
 		})
@@ -162,7 +164,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				// Send message to current model to resize itself to expand back
 				// into space occupied by prompt.
 				m.mode = normalMode
-				_ = m.PaneManager.Update(tea.WindowSizeMsg{
+				_ = m.split.Update(tea.WindowSizeMsg{
 					Height: m.viewHeight(),
 					Width:  m.viewWidth(),
 				})
@@ -175,23 +177,23 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				// switch back to normal mode, blur the filter widget, and let
 				// the key handler below handle the quit action.
 				m.mode = normalMode
-				_ = m.PaneManager.Update(tui.FilterBlurMsg{})
+				_ = m.split.Update(tui.FilterBlurMsg{})
 			case key.Matches(msg, keys.Filter.Blur):
 				// Switch back to normal mode, and send message to current model
 				// to blur the filter widget
 				m.mode = normalMode
-				_ = m.PaneManager.Update(tui.FilterBlurMsg{})
+				_ = m.split.Update(tui.FilterBlurMsg{})
 				return m, nil
 			case key.Matches(msg, keys.Filter.Close):
 				// Switch back to normal mode, and send message to current model
 				// to close the filter widget
 				m.mode = normalMode
-				_ = m.PaneManager.Update(tui.FilterCloseMsg{})
+				_ = m.split.Update(tui.FilterCloseMsg{})
 				return m, nil
 			default:
 				// Wrap key message in a filter key message and send to current
 				// model.
-				cmd = m.PaneManager.Update(tui.FilterKeyMsg(msg))
+				cmd = m.split.Update(tui.FilterKeyMsg(msg))
 				return m, cmd
 			}
 		}
@@ -208,35 +210,29 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// '?' toggles help widget
 			m.showHelp = !m.showHelp
 			// Help widget takes up space so update panes' dimensions
-			m.PaneManager.Update(tea.WindowSizeMsg{
+			m.split.Update(tea.WindowSizeMsg{
 				Height: m.viewHeight(),
 				Width:  m.viewWidth(),
 			})
 		case key.Matches(msg, keys.Global.Filter):
 			// '/' enables filter mode if the current model indicates it
 			// supports it, which it does so by sending back a non-nil command.
-			if cmd = m.PaneManager.Update(tui.FilterFocusReqMsg{}); cmd != nil {
+			if cmd = m.split.Update(tui.FilterFocusReqMsg{}); cmd != nil {
 				m.mode = filterMode
 			}
 			return m, cmd
-		case key.Matches(msg, keys.Global.Logs):
-			// show logs
-			return m, tui.NavigateTo(tui.LogListKind)
 		case key.Matches(msg, keys.Global.Explorer):
 			// show logs
 			return m, tui.NavigateTo(tui.ExplorerKind, tui.WithPosition(tui.LeftPane))
-		case key.Matches(msg, keys.Global.Tasks):
-			// list all tasks
-			return m, tui.NavigateTo(tui.TaskListKind)
 		case key.Matches(msg, keys.Global.TaskGroups):
 			// list all taskgroups
 			return m, tui.NavigateTo(tui.TaskGroupListKind)
 		default:
-			// Send other keys to current model.
-			if cmd := m.PaneManager.Update(msg); cmd != nil {
+			// Send all other keys to split model.
+			if cmd := m.split.Update(msg); cmd != nil {
 				return m, cmd
 			}
-			// If current model doesn't respond with a command, then send key to
+			// If split model doesn't respond with a command, then send key to
 			// any updateable model makers; first one to respond with a command
 			// wins.
 			for _, maker := range m.makers {
@@ -249,7 +245,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 	case tui.NavigationMsg:
-		cmd, err := m.SetPane(msg.Page, msg.Position)
+		cmd, err := m.setRightPane(msg.Page)
 		if err != nil {
 			return m, tui.ReportError(err)
 		}
@@ -257,17 +253,16 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tui.ErrorMsg:
 		m.err = error(msg)
 	case tui.InfoMsg:
-		m.info = string(msg)
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
-		m.PaneManager.Update(tea.WindowSizeMsg{
+		m.split.Update(tea.WindowSizeMsg{
 			Height: m.viewHeight(),
 			Width:  m.viewWidth(),
 		})
 	default:
 		// Send remaining msg types to pane manager to route accordingly.
-		cmds = append(cmds, m.PaneManager.Update(msg))
+		cmds = append(cmds, m.split.Update(msg))
 
 		// Send message to the prompt too if in prompt mode (most likely a
 		// blink message)
@@ -281,11 +276,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 var messageFooterHeight = 1
 
 func (m model) View() string {
-	// Compose header
-	var (
-		header   string
-		leftover int
-	)
 	// Optionally render title on the left of header
 	//	if model, ok := m.currentModel().(tui.ModelTitle); ok {
 	//		header = model.Title()
@@ -309,7 +299,7 @@ func (m model) View() string {
 	//		Render(header)
 
 	// Start composing vertical stack of components that fill entire terminal.
-	components := []string{header}
+	components := []string{}
 
 	// Add prompt if in prompt mode.
 	if m.mode == promptMode {
@@ -319,7 +309,7 @@ func (m model) View() string {
 	components = append(components, lipgloss.NewStyle().
 		Height(m.viewHeight()).
 		Width(m.viewWidth()).
-		Render(m.PaneManager.View()),
+		Render(m.split.View()),
 	)
 
 	// Add help if enabled
@@ -348,7 +338,7 @@ func (m model) View() string {
 	pug := tui.Padded.Background(tui.LightGrey).Foreground(tui.White).Render("PUG")
 	version := tui.Padded.Background(tui.DarkGrey).Foreground(tui.White).Render(version.Version)
 	// Fill in left over space with background color
-	leftover = m.width - tui.Width(footer) - tui.Width(pug) - tui.Width(version)
+	leftover := m.width - tui.Width(footer) - tui.Width(pug) - tui.Width(version)
 	footer += tui.Regular.Width(leftover).Background(tui.EvenLighterGrey).Render()
 	footer += version
 	footer += pug
@@ -403,7 +393,7 @@ func (m model) help() string {
 	case filterMode:
 		bindings = append(bindings, keys.KeyMapToSlice(keys.Filter)...)
 	default:
-		if model, ok := m.ActiveModel().(tui.ModelHelpBindings); ok {
+		if model, ok := m.focusedPane.(tui.ModelHelpBindings); ok {
 			bindings = append(bindings, model.HelpBindings()...)
 		}
 	}

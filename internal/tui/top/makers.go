@@ -25,6 +25,10 @@ func makeMakers(cfg app.Config, app *app.App, spinner *spinner.Model, helpers *t
 		Logger:  app.Logger,
 		Program: cfg.Program,
 	}
+	logMaker := &logs.Maker{
+		Logger:  app.Logger,
+		Helpers: helpers,
+	}
 	makers := map[tui.Kind]tui.Maker{
 		tui.TaskListKind: tasktui.NewListMaker(
 			app.Tasks,
@@ -44,13 +48,11 @@ func makeMakers(cfg app.Config, app *app.App, spinner *spinner.Model, helpers *t
 			helpers,
 		),
 		tui.LogListKind: &logs.ListMaker{
-			Logger:  app.Logger,
-			Helpers: helpers,
+			Logger:        app.Logger,
+			Helpers:       helpers,
+			LogModelMaker: logMaker,
 		},
-		tui.LogKind: &logs.Maker{
-			Logger:  app.Logger,
-			Helpers: helpers,
-		},
+		tui.LogKind: logMaker,
 		tui.ResourceListKind: &workspacetui.ResourceListMaker{
 			Workspaces: app.Workspaces,
 			States:     app.States,

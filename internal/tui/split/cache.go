@@ -4,10 +4,11 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/leg100/pug/internal/resource"
+	"github.com/leg100/pug/internal/tui"
 )
 
 type Preview interface {
-	tea.Model
+	tui.ChildModel
 
 	SetBorderStyle(lipgloss.Style)
 }
@@ -17,20 +18,20 @@ type Preview interface {
 // page and later return to the page, and they would expect the same row still
 // to be selected.
 type cache struct {
-	cache map[resource.ID]tea.Model
+	cache map[resource.ID]tui.ChildModel
 }
 
 func newCache() *cache {
 	return &cache{
-		cache: make(map[resource.ID]tea.Model),
+		cache: make(map[resource.ID]tui.ChildModel),
 	}
 }
 
-func (c *cache) Get(id resource.ID) tea.Model {
+func (c *cache) Get(id resource.ID) tui.ChildModel {
 	return c.cache[id]
 }
 
-func (c *cache) Put(id resource.ID, model tea.Model) {
+func (c *cache) Put(id resource.ID, model tui.ChildModel) {
 	c.cache[id] = model
 }
 
@@ -49,7 +50,5 @@ func (c *cache) Update(id resource.ID, msg tea.Msg) tea.Cmd {
 	if !ok {
 		return nil
 	}
-	updated, cmd := model.Update(msg)
-	c.cache[id] = updated
-	return cmd
+	return model.Update(msg)
 }

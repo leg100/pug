@@ -21,7 +21,7 @@ type ResourceMaker struct {
 	disableBorders bool
 }
 
-func (mm *ResourceMaker) Make(id resource.ID, width, height int) (tea.Model, error) {
+func (mm *ResourceMaker) Make(id resource.ID, width, height int) (tui.ChildModel, error) {
 	stateResource, err := mm.States.GetResource(id)
 	if err != nil {
 		return nil, err
@@ -46,7 +46,7 @@ func (mm *ResourceMaker) Make(id resource.ID, width, height int) (tea.Model, err
 	})
 	m.viewport.AppendContent(marshaled, true)
 
-	return m, nil
+	return &m, nil
 }
 
 type resourceModel struct {
@@ -58,13 +58,14 @@ type resourceModel struct {
 	viewport tui.Viewport
 	resource *state.Resource
 	border   bool
+	focused  bool
 }
 
-func (m resourceModel) Init() tea.Cmd {
+func (m *resourceModel) Init() tea.Cmd {
 	return nil
 }
 
-func (m resourceModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m *resourceModel) Update(msg tea.Msg) tea.Cmd {
 	var (
 		cmd              tea.Cmd
 		cmds             []tea.Cmd
@@ -78,19 +79,19 @@ func (m resourceModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			fn := func(workspaceID resource.ID) (task.Spec, error) {
 				return m.states.Taint(workspaceID, m.resource.Address)
 			}
-			return m, m.CreateTasks(fn, m.resource.WorkspaceID)
+			return m.CreateTasks(fn, m.resource.WorkspaceID)
 		case key.Matches(msg, resourcesKeys.Untaint):
 			fn := func(workspaceID resource.ID) (task.Spec, error) {
 				return m.states.Untaint(workspaceID, m.resource.Address)
 			}
-			return m, m.CreateTasks(fn, m.resource.WorkspaceID)
+			return m.CreateTasks(fn, m.resource.WorkspaceID)
 		case key.Matches(msg, resourcesKeys.Move):
-			return m, m.Move(m.resource.WorkspaceID, m.resource.Address)
+			return m.Move(m.resource.WorkspaceID, m.resource.Address)
 		case key.Matches(msg, keys.Common.Delete):
 			fn := func(workspaceID resource.ID) (task.Spec, error) {
 				return m.states.Delete(workspaceID, m.resource.Address)
 			}
-			return m, tui.YesNoPrompt(
+			return tui.YesNoPrompt(
 				"Delete resource?",
 				m.CreateTasks(fn, m.resource.WorkspaceID),
 			)
@@ -104,21 +105,21 @@ func (m resourceModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			fn := func(workspaceID resource.ID) (task.Spec, error) {
 				return m.plans.Plan(workspaceID, createRunOptions)
 			}
-			return m, m.CreateTasks(fn, m.resource.WorkspaceID)
+			return m.CreateTasks(fn, m.resource.WorkspaceID)
 		}
 	case tea.WindowSizeMsg:
 		m.viewport.SetDimensions(m.viewportWidth(msg.Width), m.viewportHeight(msg.Height))
-		return m, nil
+		return nil
 	}
 
 	// Handle keyboard and mouse events in the viewport
 	m.viewport, cmd = m.viewport.Update(msg)
 	cmds = append(cmds, cmd)
 
-	return m, tea.Batch(cmds...)
+	return tea.Batch(cmds...)
 }
 
-func (m resourceModel) View() string {
+func (m *resourceModel) View() string {
 	if m.border {
 		return tui.Border.Render(m.viewport.View())
 	}
@@ -145,6 +146,10 @@ func (m resourceModel) Title() string {
 		tainted = tui.TitleTainted.Render("tainted")
 	}
 	return m.Breadcrumbs("Resource", m.resource) + tainted
+}
+
+func (m *resourceModel) Focus(focused bool) {
+	m.focused = !focused
 }
 
 func (m resourceModel) HelpBindings() []key.Binding {

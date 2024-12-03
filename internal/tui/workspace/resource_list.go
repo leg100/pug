@@ -34,7 +34,7 @@ type ResourceListMaker struct {
 	Helpers    *tui.Helpers
 }
 
-func (m *ResourceListMaker) Make(id resource.ID, width, height int) (tea.Model, error) {
+func (m *ResourceListMaker) Make(id resource.ID, width, height int) (tui.ChildModel, error) {
 	ws, err := m.Workspaces.Get(id)
 	if err != nil {
 		return nil, err
@@ -64,7 +64,7 @@ func (m *ResourceListMaker) Make(id resource.ID, width, height int) (tea.Model, 
 			disableBorders: true,
 		},
 	})
-	return resourceList{
+	return &resourceList{
 		Model:     splitModel,
 		states:    m.States,
 		plans:     m.Plans,
@@ -87,13 +87,14 @@ type resourceList struct {
 	reloading bool
 	height    int
 	width     int
+	focused   bool
 
 	spinner *spinner.Model
 }
 
 type initState *state.State
 
-func (m resourceList) Init() tea.Cmd {
+func (m *resourceList) Init() tea.Cmd {
 	return func() tea.Msg {
 		state, err := m.states.Get(m.workspace.GetID())
 		if err != nil {
@@ -109,7 +110,7 @@ type reloadedMsg struct {
 	err         error
 }
 
-func (m resourceList) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m *resourceList) Update(msg tea.Msg) tea.Cmd {
 	var (
 		cmd              tea.Cmd
 		cmds             []tea.Cmd
@@ -121,21 +122,21 @@ func (m resourceList) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case reloadedMsg:
 		m.reloading = false
 		if msg.err != nil {
-			return m, tui.ReportError(fmt.Errorf("reloading state failed: %w", msg.err))
+			return tui.ReportError(fmt.Errorf("reloading state failed: %w", msg.err))
 		}
-		return m, tui.ReportInfo("reloading finished")
+		return tui.ReportInfo("reloading finished")
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, localKeys.Enter):
 			if row, ok := m.Table.CurrentRow(); ok {
-				return m, tui.NavigateTo(tui.ResourceKind, tui.WithParent(row.ID))
+				return tui.NavigateTo(tui.ResourceKind, tui.WithParent(row.ID))
 			}
 		case key.Matches(msg, resourcesKeys.Reload):
 			if m.reloading {
-				return m, tui.ReportError(errors.New("reloading in progress"))
+				return tui.ReportError(errors.New("reloading in progress"))
 			}
 			m.reloading = true
-			return m, func() tea.Msg {
+			return func() tea.Msg {
 				msg := reloadedMsg{workspaceID: m.workspace.GetID()}
 				if spec, err := m.states.Reload(msg.workspaceID); err != nil {
 					msg.err = err
@@ -153,25 +154,25 @@ func (m resourceList) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			addrs := m.selectedOrCurrentAddresses()
 			if len(addrs) == 0 {
 				// no rows; do nothing
-				return m, nil
+				return nil
 			}
 			fn := func(workspaceID resource.ID) (task.Spec, error) {
 				return m.states.Delete(workspaceID, addrs...)
 			}
-			return m, tui.YesNoPrompt(
+			return tui.YesNoPrompt(
 				fmt.Sprintf("Delete %d resource(s)?", len(addrs)),
 				m.CreateTasks(fn, m.workspace.GetID()),
 			)
 		case key.Matches(msg, resourcesKeys.Taint):
 			addrs := m.selectedOrCurrentAddresses()
-			return m, m.createStateCommand(m.states.Taint, addrs...)
+			return m.createStateCommand(m.states.Taint, addrs...)
 		case key.Matches(msg, resourcesKeys.Untaint):
 			addrs := m.selectedOrCurrentAddresses()
-			return m, m.createStateCommand(m.states.Untaint, addrs...)
+			return m.createStateCommand(m.states.Untaint, addrs...)
 		case key.Matches(msg, resourcesKeys.Move):
 			if row, ok := m.Table.CurrentRow(); ok {
 				from := row.Value.Address
-				return m, m.Move(m.workspace.GetID(), from)
+				return m.Move(m.workspace.GetID(), from)
 			}
 		case key.Matches(msg, keys.Common.PlanDestroy):
 			// Create a targeted destroy plan.
@@ -185,7 +186,7 @@ func (m resourceList) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			fn := func(workspaceID resource.ID) (task.Spec, error) {
 				return m.plans.Plan(workspaceID, createRunOptions)
 			}
-			return m, m.CreateTasks(fn, m.workspace.GetID())
+			return m.CreateTasks(fn, m.workspace.GetID())
 		case key.Matches(msg, keys.Common.Destroy):
 			createRunOptions.Destroy = true
 			applyPrompt = "Destroy %d resources?"
@@ -197,20 +198,20 @@ func (m resourceList) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			fn := func(workspaceID resource.ID) (task.Spec, error) {
 				return m.plans.Apply(workspaceID, createRunOptions)
 			}
-			return m, tui.YesNoPrompt(
+			return tui.YesNoPrompt(
 				fmt.Sprintf(applyPrompt, len(resourceIDs)),
 				m.CreateTasks(fn, m.workspace.GetID()),
 			)
 		}
 	case initState:
 		if msg.WorkspaceID != m.workspace.GetID() {
-			return m, nil
+			return nil
 		}
 		m.state = (*state.State)(msg)
 		m.Table.SetItems(maps.Values(m.state.Resources)...)
 	case resource.Event[*state.State]:
 		if msg.Payload.WorkspaceID != m.workspace.GetID() {
-			return m, nil
+			return nil
 		}
 		switch msg.Type {
 		case resource.CreatedEvent, resource.UpdatedEvent:
@@ -228,7 +229,7 @@ func (m resourceList) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	m.Model, cmd = m.Model.Update(msg)
 	cmds = append(cmds, cmd)
 
-	return m, tea.Batch(cmds...)
+	return tea.Batch(cmds...)
 }
 
 func (m resourceList) View() string {
@@ -293,6 +294,10 @@ func (m resourceList) selectedOrCurrentAddresses() []state.ResourceAddress {
 		i++
 	}
 	return addrs
+}
+
+func (m *resourceList) Focus(focused bool) {
+	m.focused = !focused
 }
 
 func serialBreadcrumb(serial int64) string {

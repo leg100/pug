@@ -3,12 +3,21 @@ package tui
 import (
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/leg100/pug/internal/resource"
 )
 
+type ChildModel interface {
+	Init() tea.Cmd
+	Update(tea.Msg) tea.Cmd
+	View() string
+	// Focus toggles whether this model is focused
+	Focus(bool)
+}
+
 // Maker makes new models
 type Maker interface {
-	Make(id resource.ID, width, height int) (tea.Model, error)
+	Make(id resource.ID, width, height int) (ChildModel, error)
 }
 
 // Page identifies an instance of a model
@@ -35,4 +44,20 @@ type ModelTitle interface {
 // specific to the model.
 type ModelHelpBindings interface {
 	HelpBindings() []key.Binding
+}
+
+func BorderStyle(focused bool) lipgloss.Border {
+	if focused {
+		return lipgloss.Border(lipgloss.ThickBorder())
+	} else {
+		return lipgloss.Border(lipgloss.NormalBorder())
+	}
+}
+
+func BorderColor(focused bool) lipgloss.TerminalColor {
+	if focused {
+		return Blue
+	} else {
+		return InactivePreviewBorder
+	}
 }

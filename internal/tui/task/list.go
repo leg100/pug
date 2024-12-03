@@ -44,7 +44,7 @@ type ListTaskMaker struct {
 	*Maker
 }
 
-func (m *ListTaskMaker) Make(id resource.ID, width, height int) (tea.Model, error) {
+func (m *ListTaskMaker) Make(id resource.ID, width, height int) (tui.ChildModel, error) {
 	return m.make(id, width, height, false)
 }
 
@@ -67,7 +67,7 @@ type ListMaker struct {
 	Helpers   *tui.Helpers
 }
 
-func (mm *ListMaker) Make(_ resource.ID, width, height int) (tea.Model, error) {
+func (mm *ListMaker) Make(_ resource.ID, width, height int) (tui.ChildModel, error) {
 	columns := []table.Column{
 		taskIDColumn,
 		table.ModuleColumn,
@@ -88,71 +88,77 @@ func (mm *ListMaker) Make(_ resource.ID, width, height int) (tea.Model, error) {
 			table.SummaryColumn.Key:   mm.Helpers.TaskSummary(t, true),
 		}
 	}
-	table := table.New(columns, renderer, width, height,
-		table.WithSortFunc(task.ByState),
-	)
+
+	splitModel := split.New(split.Options[*task.Task]{
+		Columns:      columns,
+		Renderer:     renderer,
+		TableOptions: []table.Option[*task.Task]{table.WithSortFunc(task.ByState)},
+		Width:        width,
+		Height:       height,
+		Maker:        mm.TaskMaker,
+	})
 	m := List{
-		Model:   table,
+		Model:   splitModel,
 		plans:   mm.Plans,
 		tasks:   mm.Tasks,
 		Helpers: mm.Helpers,
 	}
-	return m, nil
+	return &m, nil
 }
 
 type List struct {
-	table.Model[*task.Task]
+	split.Model[*task.Task]
 	*tui.Helpers
 
 	plans *plan.Service
 	tasks *task.Service
 }
 
-func (m List) Init() tea.Cmd {
+func (m *List) Init() tea.Cmd {
 	return func() tea.Msg {
 		tasks := m.tasks.List(task.ListOptions{})
 		return table.BulkInsertMsg[*task.Task](tasks)
 	}
 }
 
-func (m List) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m *List) Update(msg tea.Msg) tea.Cmd {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, keys.Common.Cancel):
-			taskIDs := m.SelectedOrCurrentIDs()
-			return m, cancel(m.tasks, taskIDs...)
+			taskIDs := m.Table.SelectedOrCurrentIDs()
+			return cancel(m.tasks, taskIDs...)
 		case key.Matches(msg, localKeys.Enter):
-			if row, ok := m.CurrentRow(); ok {
-				return m, tui.NavigateTo(tui.TaskKind, tui.WithParent(row.ID))
+			if row, ok := m.Table.CurrentRow(); ok {
+				return tui.NavigateTo(tui.TaskKind, tui.WithParent(row.ID))
 			}
 		case key.Matches(msg, keys.Common.Apply):
-			specs, err := m.Prune(func(t *task.Task) (task.Spec, error) {
+			specs, err := m.Table.Prune(func(t *task.Task) (task.Spec, error) {
 				// Task must be a plan in order to be applied
 				return m.plans.ApplyPlan(t.ID)
 			})
 			if err != nil {
-				return m, tui.ReportError(fmt.Errorf("applying tasks: %w", err))
+				return tui.ReportError(fmt.Errorf("applying tasks: %w", err))
 			}
-			return m, tui.YesNoPrompt(
+			return tui.YesNoPrompt(
 				fmt.Sprintf("Apply %d plans?", len(specs)),
 				m.CreateTasksWithSpecs(specs...),
 			)
 		case key.Matches(msg, keys.Common.State):
-			if row, ok := m.CurrentRow(); ok {
+			if row, ok := m.Table.CurrentRow(); ok {
 				if ws := m.TaskWorkspaceOrCurrentWorkspace(row.Value); ws != nil {
-					return m, tui.NavigateTo(tui.ResourceListKind, tui.WithParent(ws.GetID()))
+					return tui.NavigateTo(tui.ResourceListKind, tui.WithParent(ws.GetID()))
 				} else {
-					return m, tui.ReportError(errors.New("task not associated with a workspace"))
+					return tui.ReportError(errors.New("task not associated with a workspace"))
 				}
 			}
 		case key.Matches(msg, keys.Common.Retry):
-			rows := m.SelectedOrCurrent()
+			rows := m.Table.SelectedOrCurrent()
 			specs := make([]task.Spec, len(rows))
 			for i, row := range rows {
 				specs[i] = row.Value.Spec
 			}
-			return m, tui.YesNoPrompt(
+			return tui.YesNoPrompt(
 				fmt.Sprintf("Retry %d tasks?", len(rows)),
 				m.CreateTasksWithSpecs(specs...),
 			)
@@ -161,7 +167,7 @@ func (m List) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	var cmd tea.Cmd
 	m.Model, cmd = m.Model.Update(msg)
-	return m, cmd
+	return cmd
 }
 
 func (m List) Title() string {

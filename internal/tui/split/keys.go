@@ -4,8 +4,8 @@ import "github.com/charmbracelet/bubbles/key"
 
 type keyMap struct {
 	ToggleSplit   key.Binding
-	IncreaseSplit key.Binding
 	DecreaseSplit key.Binding
+	IncreaseSplit key.Binding
 	SwitchPane    key.Binding
 }
 

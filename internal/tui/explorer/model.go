@@ -26,9 +26,9 @@ func New(
 	plans *plan.Service,
 	helpers *tui.Helpers,
 	workdir internal.Workdir,
-) tea.Model {
+) tui.ChildModel {
 	tree := newTree(workdir, nil, nil)
-	return model{
+	return &model{
 		WorkspaceService: workspaces,
 		ModuleService:    modules,
 		PlanService:      plans,
@@ -47,12 +47,12 @@ type model struct {
 	PlanService      *plan.Service
 	Workdir          internal.Workdir
 
-	modules    []*module.Module
-	workspaces []*workspace.Workspace
-	tree       *tree
-	tracker    *tracker
-	w, h       int
-	focused    bool
+	modules       []*module.Module
+	workspaces    []*workspace.Workspace
+	tree          *tree
+	tracker       *tracker
+	width, height int
+	focused       bool
 }
 
 func (m model) Init() tea.Cmd {
@@ -64,7 +64,7 @@ func (m model) Init() tea.Cmd {
 	}
 }
 
-func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m *model) Update(msg tea.Msg) tea.Cmd {
 	var (
 		createPlanOptions plan.CreateOptions
 		applyPrompt       = "Auto-apply %d workspaces?"
@@ -75,53 +75,53 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch {
 		case key.Matches(msg, keys.Navigation.LineUp):
 			m.tracker.cursorUp()
-			return m, nil
+			return nil
 		case key.Matches(msg, keys.Navigation.LineDown):
 			m.tracker.cursorDown()
-			return m, nil
+			return nil
 		case key.Matches(msg, keys.Global.Select):
 			err := m.tracker.toggleSelection()
-			return m, tui.ReportError(err)
+			return tui.ReportError(err)
 		case key.Matches(msg, keys.Global.SelectAll):
 			err := m.tracker.selectAll()
-			return m, tui.ReportError(err)
+			return tui.ReportError(err)
 		case key.Matches(msg, keys.Global.SelectClear):
 			m.tracker.selector.removeAll()
-			return m, nil
+			return nil
 		case key.Matches(msg, keys.Global.SelectRange):
 			err := m.tracker.selectRange()
-			return m, tui.ReportError(err)
+			return tui.ReportError(err)
 		case key.Matches(msg, localKeys.Enter):
 			m.tracker.toggleClose()
-			return m, nil
+			return nil
 		case key.Matches(msg, keys.Common.InitUpgrade):
 			upgrade = true
 			fallthrough
 		case key.Matches(msg, keys.Common.Init):
 			kind, ids := m.tracker.getSelectedOrCurrentIDs()
 			if kind != resource.Module {
-				return m, tui.ReportError(errors.New("can only trigger init on modules"))
+				return tui.ReportError(errors.New("can only trigger init on modules"))
 			}
 			fn := func(moduleID resource.ID) (task.Spec, error) {
 				return m.Modules.Init(moduleID, upgrade)
 			}
-			return m, m.CreateTasks(fn, ids...)
+			return m.CreateTasks(fn, ids...)
 		case key.Matches(msg, keys.Common.Validate):
 			kind, ids := m.tracker.getSelectedOrCurrentIDs()
 			if kind != resource.Module {
-				return m, tui.ReportError(errors.New("can only trigger init on modules"))
+				return tui.ReportError(errors.New("can only trigger init on modules"))
 			}
 			cmd := m.CreateTasks(m.Modules.Validate, ids...)
-			return m, cmd
+			return cmd
 		case key.Matches(msg, keys.Common.Format):
 			kind, ids := m.tracker.getSelectedOrCurrentIDs()
 			if kind != resource.Module {
-				return m, tui.ReportError(errors.New("can only trigger format on modules"))
+				return tui.ReportError(errors.New("can only trigger format on modules"))
 			}
 			cmd := m.CreateTasks(m.Modules.Format, ids...)
-			return m, cmd
+			return cmd
 		case key.Matches(msg, localKeys.SetCurrentWorkspace):
-			return m, func() tea.Msg {
+			return func() tea.Msg {
 				currentID := m.tracker.getCursorID()
 				if currentID == nil || currentID.Kind != resource.Workspace {
 					// TODO: report error
@@ -138,12 +138,12 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, keys.Common.Plan):
 			kind, ids := m.tracker.getSelectedOrCurrentIDs()
 			if kind != resource.Workspace {
-				return m, tui.ReportError(errors.New("can only trigger plans on workspaces"))
+				return tui.ReportError(errors.New("can only trigger plans on workspaces"))
 			}
 			fn := func(workspaceID resource.ID) (task.Spec, error) {
 				return m.Plans.Plan(workspaceID, createPlanOptions)
 			}
-			return m, m.CreateTasks(fn, ids...)
+			return m.CreateTasks(fn, ids...)
 		case key.Matches(msg, keys.Common.Destroy):
 			createPlanOptions.Destroy = true
 			applyPrompt = "Destroy resources of %d workspaces?"
@@ -151,43 +151,43 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, keys.Common.Apply):
 			kind, ids := m.tracker.getSelectedOrCurrentIDs()
 			if kind != resource.Workspace {
-				return m, tui.ReportError(errors.New("can only trigger applies on workspaces"))
+				return tui.ReportError(errors.New("can only trigger applies on workspaces"))
 			}
 			fn := func(workspaceID resource.ID) (task.Spec, error) {
 				return m.Plans.Apply(workspaceID, createPlanOptions)
 			}
-			return m, tui.YesNoPrompt(
+			return tui.YesNoPrompt(
 				fmt.Sprintf(applyPrompt, len(ids)),
 				m.CreateTasks(fn, ids...),
 			)
 		case key.Matches(msg, keys.Common.Cost):
 			kind, ids := m.tracker.getSelectedOrCurrentIDs()
 			if kind != resource.Workspace {
-				return m, tui.ReportError(errors.New("can only trigger infracost on workspaces"))
+				return tui.ReportError(errors.New("can only trigger infracost on workspaces"))
 			}
 			spec, err := m.Workspaces.Cost(ids...)
 			if err != nil {
-				return m, tui.ReportError(fmt.Errorf("creating task: %w", err))
+				return tui.ReportError(fmt.Errorf("creating task: %w", err))
 			}
-			return m, m.CreateTasksWithSpecs(spec)
+			return m.CreateTasksWithSpecs(spec)
 		case key.Matches(msg, keys.Common.State, localKeys.Enter):
 			currentID := m.tracker.getCursorID()
 			if currentID == nil {
 				// TODO: report error
-				return m, nil
+				return nil
 			}
 			if currentID.Kind != resource.Workspace {
 				// TODO: report error
-				return m, nil
+				return nil
 			}
-			return m, tui.NavigateTo(tui.ResourceListKind, tui.WithParent(*currentID))
+			return tui.NavigateTo(tui.ResourceListKind, tui.WithParent(*currentID))
 		case key.Matches(msg, keys.Common.Delete):
 			workspaceNode, ok := m.tracker.cursorNode.(workspaceNode)
 			if !ok {
 				// TODO: report error
-				return m, nil
+				return nil
 			}
-			return m, tui.YesNoPrompt(
+			return tui.YesNoPrompt(
 				fmt.Sprintf("Delete workspace %s?", workspaceNode),
 				m.CreateTasks(m.Workspaces.Delete, workspaceNode.id),
 			)
@@ -195,12 +195,12 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case initMsg:
 		m.modules = msg.modules
 		m.workspaces = msg.workspaces
-		return m, m.buildTree
+		return m.buildTree
 	case builtTreeMsg:
 		m.tree = (*tree)(msg)
 		// TODO: perform this in a cmd
 		m.tracker.reindex(m.tree)
-		return m, nil
+		return nil
 	case resource.Event[*module.Module]:
 		switch msg.Type {
 		case resource.CreatedEvent:
@@ -208,21 +208,22 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case resource.UpdatedEvent:
 			m.modules = append(m.modules, msg.Payload)
 		}
-		return m, m.buildTree
+		return m.buildTree
 	case resource.Event[*workspace.Workspace]:
 		switch msg.Type {
 		case resource.CreatedEvent:
 			m.workspaces = append(m.workspaces, msg.Payload)
 		}
-		return m, m.buildTree
+		return m.buildTree
 	case tea.WindowSizeMsg:
-		m.w = msg.Width
-		m.h = msg.Height
-		m.tracker.height = msg.Height
+		// Subtract 2 to accomodate borders
+		m.width = msg.Width - 2
+		m.height = msg.Height - 2
+		m.tracker.height = m.height
 		// TODO: perform this in a cmd
 		m.tracker.reindex(m.tree)
 	}
-	return m, nil
+	return nil
 }
 
 func (m model) View() string {
@@ -235,10 +236,10 @@ func (m model) View() string {
 	m.tree.render(true, to)
 	s := to.String()
 	lines := strings.Split(s, "\n")
-	totalVisibleLines := min(m.h, len(lines))
+	totalVisibleLines := min(m.height, len(lines))
 	lines = lines[m.tracker.start : m.tracker.start+totalVisibleLines]
 	for i := range lines {
-		style := lipgloss.NewStyle().Width(m.w - tui.ScrollbarWidth)
+		style := lipgloss.NewStyle().Width(m.width - tui.ScrollbarWidth)
 		node := m.tracker.nodes[m.tracker.start+i]
 		// Style node according to whether it is the cursor node, selected, or
 		// both
@@ -259,27 +260,25 @@ func (m model) View() string {
 		}
 		lines[i] = style.Render(lines[i])
 	}
-	scrollbar := tui.Scrollbar(m.h, len(lines), totalVisibleLines, m.tracker.start)
-	return lipgloss.NewStyle().
-		Height(m.h).
-		MaxHeight(m.h).
+	scrollbar := tui.Scrollbar(m.height, len(lines), totalVisibleLines, m.tracker.start)
+	content := lipgloss.NewStyle().
+		Height(max(tui.MinContentHeight, m.height)).
+		MaxHeight(m.height).
 		Render(lipgloss.JoinHorizontal(lipgloss.Left,
 			strings.Join(lines, "\n"),
 			scrollbar,
 		))
-}
-
-func (m model) Metadata() string {
-	return "e explorer"
+	return lipgloss.NewStyle().
+		Border(tui.BorderStyle(m.focused)).
+		Render(content)
 }
 
 func (m model) Title() string {
 	return fmt.Sprintf("start: %d; selected: %v", m.tracker.start, maps.Keys(m.tracker.selections))
 }
 
-func (m model) ToggleFocus() bool {
-	m.focused = !m.focused
-	return m.focused
+func (m *model) Focus(focused bool) {
+	m.focused = focused
 }
 
 func (m model) buildTree() tea.Msg {

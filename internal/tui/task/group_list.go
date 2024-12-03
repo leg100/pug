@@ -29,7 +29,7 @@ type GroupListMaker struct {
 	Helpers *tui.Helpers
 }
 
-func (m *GroupListMaker) Make(_ resource.ID, width, height int) (tea.Model, error) {
+func (m *GroupListMaker) Make(_ resource.ID, width, height int) (tui.ChildModel, error) {
 	columns := []table.Column{
 		taskGroupID,
 		commandColumn,
@@ -51,7 +51,7 @@ func (m *GroupListMaker) Make(_ resource.ID, width, height int) (tea.Model, erro
 		table.WithSortFunc(task.SortGroupsByCreated),
 	)
 
-	return groupList{
+	return &groupList{
 		table:   table,
 		tasks:   m.Tasks,
 		Helpers: m.Helpers,
@@ -61,18 +61,19 @@ func (m *GroupListMaker) Make(_ resource.ID, width, height int) (tea.Model, erro
 type groupList struct {
 	*tui.Helpers
 
-	table table.Model[*task.Group]
-	tasks *task.Service
+	table   table.Model[*task.Group]
+	tasks   *task.Service
+	focused bool
 }
 
-func (m groupList) Init() tea.Cmd {
+func (m *groupList) Init() tea.Cmd {
 	return func() tea.Msg {
 		groups := m.tasks.ListGroups()
 		return table.BulkInsertMsg[*task.Group](groups)
 	}
 }
 
-func (m groupList) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m *groupList) Update(msg tea.Msg) tea.Cmd {
 	var (
 		cmd  tea.Cmd
 		cmds []tea.Cmd
@@ -83,7 +84,7 @@ func (m groupList) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch {
 		case key.Matches(msg, groupListKeys.Enter):
 			if row, ok := m.table.CurrentRow(); ok {
-				return m, tui.NavigateTo(tui.TaskGroupKind, tui.WithParent(row.ID))
+				return tui.NavigateTo(tui.TaskGroupKind, tui.WithParent(row.ID))
 			}
 		}
 	}
@@ -91,7 +92,7 @@ func (m groupList) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	m.table, cmd = m.table.Update(msg)
 	cmds = append(cmds, cmd)
 
-	return m, tea.Batch(cmds...)
+	return tea.Batch(cmds...)
 }
 
 func (m groupList) Title() string {
@@ -100,6 +101,10 @@ func (m groupList) Title() string {
 
 func (m groupList) View() string {
 	return m.table.View()
+}
+
+func (m *groupList) Focus(focused bool) {
+	m.focused = !focused
 }
 
 func (m groupList) HelpBindings() (bindings []key.Binding) {

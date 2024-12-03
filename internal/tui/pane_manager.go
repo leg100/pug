@@ -2,7 +2,6 @@ package tui
 
 import (
 	"errors"
-	"fmt"
 	"slices"
 	"strings"
 
@@ -24,8 +23,6 @@ const (
 type PaneManager struct {
 	// makers for making models for panes
 	makers map[Kind]Maker
-	// cached models
-	cache *Cache
 	// the position of the currently active pane
 	active Position
 	// panes tracks currently visible panes
@@ -47,12 +44,8 @@ type pane struct {
 // NewPaneManager constructs the pane manager with at least the explorer, which
 // occupies the left pane.
 func NewPaneManager(explorer tea.Model, makers map[Kind]Maker) *PaneManager {
-	cache := NewCache()
-	cache.Put(Page{Kind: ExplorerKind}, explorer)
-
 	return &PaneManager{
 		makers: makers,
-		cache:  cache,
 		active: LeftPane,
 		panes: map[Position]*pane{
 			LeftPane: {
@@ -102,33 +95,9 @@ func (p *PaneManager) Update(msg tea.Msg) tea.Cmd {
 		p.setPaneWidths()
 		p.setPaneHeights()
 		p.updateChildSizes()
-	default:
-		// Send remaining msg types to all cached models
-		cmds = append(cmds, p.cache.UpdateAll(msg)...)
 	}
 	cmds = append(cmds, cmd)
 	return tea.Batch(cmds...)
-}
-
-func (p *PaneManager) SetPane(page Page, position Position) (cmd tea.Cmd, err error) {
-	if model := p.cache.Get(page); model == nil {
-		maker, ok := p.makers[page.Kind]
-		if !ok {
-			return nil, fmt.Errorf("no maker could be found for %s", page.Kind)
-		}
-		model, err = maker.Make(page.ID, 0, 0)
-		if err != nil {
-			return nil, fmt.Errorf("making page: %w", err)
-		}
-		p.cache.Put(page, model)
-		cmd = model.Init()
-	}
-	p.panes[position] = &pane{page: page}
-	p.active = position
-	p.setPaneWidths()
-	p.setPaneHeights()
-	p.updateChildSizes()
-	return cmd, nil
 }
 
 // ActiveModel retrieves the model of the active pane.
@@ -247,13 +216,11 @@ func (p *PaneManager) updateChildSizes() {
 }
 
 func (p *PaneManager) getModel(position Position) tea.Model {
-	pane := p.panes[position]
-	return p.cache.Get(pane.page)
+	return nil
 }
 
 func (p *PaneManager) updateModel(position Position, msg tea.Msg) tea.Cmd {
-	pane := p.panes[position]
-	return p.cache.Update(pane.page, msg)
+	return nil
 }
 
 var border = map[bool]lipgloss.Border{

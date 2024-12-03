@@ -32,14 +32,14 @@ type Maker struct {
 	showInfo          bool
 }
 
-func (mm *Maker) Make(id resource.ID, width, height int) (tea.Model, error) {
+func (mm *Maker) Make(id resource.ID, width, height int) (tui.ChildModel, error) {
 	return mm.make(id, width, height, true)
 }
 
-func (mm *Maker) make(id resource.ID, width, height int, border bool) (tea.Model, error) {
+func (mm *Maker) make(id resource.ID, width, height int, border bool) (tui.ChildModel, error) {
 	task, err := mm.Tasks.Get(id)
 	if err != nil {
-		return model{}, err
+		return nil, err
 	}
 
 	m := model{
@@ -67,7 +67,7 @@ func (mm *Maker) make(id resource.ID, width, height int, border bool) (tea.Model
 		Spinner:    m.spinner,
 	})
 
-	return m, nil
+	return &m, nil
 }
 
 func (mm *Maker) Update(msg tea.Msg) tea.Cmd {
@@ -108,6 +108,7 @@ type model struct {
 	showInfo bool
 	border   bool
 	program  string
+	focused  bool
 
 	viewport tui.Viewport
 	spinner  *spinner.Model
@@ -116,11 +117,11 @@ type model struct {
 	width  int
 }
 
-func (m model) Init() tea.Cmd {
+func (m *model) Init() tea.Cmd {
 	return m.getOutput
 }
 
-func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m *model) Update(msg tea.Msg) tea.Cmd {
 	var (
 		cmd  tea.Cmd
 		cmds []tea.Cmd
@@ -130,24 +131,24 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, keys.Common.Cancel):
-			return m, cancel(m.tasks, m.task.ID)
+			return cancel(m.tasks, m.task.ID)
 		case key.Matches(msg, keys.Common.Apply):
 			spec, err := m.plans.ApplyPlan(m.task.ID)
 			if err != nil {
-				return m, tui.ReportError(err)
+				return tui.ReportError(err)
 			}
-			return m, tui.YesNoPrompt(
+			return tui.YesNoPrompt(
 				"Apply plan?",
 				m.CreateTasksWithSpecs(spec),
 			)
 		case key.Matches(msg, keys.Common.State):
 			if ws := m.TaskWorkspaceOrCurrentWorkspace(m.task); ws != nil {
-				return m, tui.NavigateTo(tui.ResourceListKind, tui.WithParent(ws.GetID()))
+				return tui.NavigateTo(tui.ResourceListKind, tui.WithParent(ws.GetID()))
 			} else {
-				return m, tui.ReportError(errors.New("task not associated with a workspace"))
+				return tui.ReportError(errors.New("task not associated with a workspace"))
 			}
 		case key.Matches(msg, keys.Common.Retry):
-			return m, tui.YesNoPrompt(
+			return tui.YesNoPrompt(
 				"Retry task?",
 				m.CreateTasksWithSpecs(m.task.Spec),
 			)
@@ -161,10 +162,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case outputMsg:
 		// Ensure output is for this model
 		if msg.modelID != m.id {
-			return m, nil
+			return nil
 		}
 		if err := m.viewport.AppendContent(msg.output, msg.eof); err != nil {
-			return m, tui.ReportError(err)
+			return tui.ReportError(err)
 		}
 		if !msg.eof {
 			cmds = append(cmds, m.getOutput)
@@ -172,21 +173,21 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case resource.Event[*task.Task]:
 		if msg.Payload.ID != m.task.ID {
 			// Ignore event for different task.
-			return m, nil
+			return nil
 		}
 		m.task = msg.Payload
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.setHeight(msg.Height)
 		m.viewport.SetDimensions(m.viewportWidth(), m.height)
-		return m, nil
+		return nil
 	}
 
 	// Handle keyboard and mouse events in the viewport
 	m.viewport, cmd = m.viewport.Update(msg)
 	cmds = append(cmds, cmd)
 
-	return m, tea.Batch(cmds...)
+	return tea.Batch(cmds...)
 }
 
 func (m model) viewportWidth() int {
@@ -216,7 +217,7 @@ const (
 )
 
 // View renders the viewport
-func (m model) View() string {
+func (m *model) View() string {
 	var components []string
 
 	if m.showInfo {
@@ -327,6 +328,10 @@ func (m model) getOutput() tea.Msg {
 		msg.eof = true
 	}
 	return msg
+}
+
+func (m *model) Focus(focused bool) {
+	m.focused = !focused
 }
 
 type outputMsg struct {

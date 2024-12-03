@@ -5,9 +5,11 @@ import (
 
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/leg100/pug/internal/logging"
 	"github.com/leg100/pug/internal/resource"
 	"github.com/leg100/pug/internal/tui"
+	"github.com/leg100/pug/internal/tui/split"
 	"github.com/leg100/pug/internal/tui/table"
 )
 
@@ -32,11 +34,12 @@ var (
 )
 
 type ListMaker struct {
-	Logger  *logging.Logger
-	Helpers *tui.Helpers
+	Logger        *logging.Logger
+	LogModelMaker tui.Maker
+	Helpers       *tui.Helpers
 }
 
-func (m *ListMaker) Make(_ resource.ID, width, height int) (tea.Model, error) {
+func (m *ListMaker) Make(_ resource.ID, width, height int) (tui.ChildModel, error) {
 	columns := []table.Column{
 		timeColumn,
 		levelColumn,
@@ -59,32 +62,39 @@ func (m *ListMaker) Make(_ resource.ID, width, height int) (tea.Model, error) {
 			msgColumn.Key:   tui.Regular.Render(b.String()),
 		}
 	}
-	table := table.New(columns, renderer, width, height,
-		table.WithSortFunc(logging.BySerialDesc),
-		table.WithSelectable[logging.Message](false),
-	)
-
-	return list{
+	splitModel := split.New(split.Options[logging.Message]{
+		Columns:  columns,
+		Renderer: renderer,
+		Width:    width,
+		Height:   height,
+		Maker:    m.LogModelMaker,
+		TableOptions: []table.Option[logging.Message]{
+			table.WithSortFunc(logging.BySerialDesc),
+			table.WithSelectable[logging.Message](false),
+		},
+	})
+	return &list{
 		logger:  m.Logger,
-		Model:   table,
+		Model:   splitModel,
 		Helpers: m.Helpers,
 	}, nil
 }
 
 type list struct {
-	logger *logging.Logger
+	logger  *logging.Logger
+	focused bool
 
-	table.Model[logging.Message]
+	split.Model[logging.Message]
 	*tui.Helpers
 }
 
-func (m list) Init() tea.Cmd {
+func (m *list) Init() tea.Cmd {
 	return func() tea.Msg {
 		return table.BulkInsertMsg[logging.Message](m.logger.List())
 	}
 }
 
-func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m *list) Update(msg tea.Msg) tea.Cmd {
 	var (
 		cmd  tea.Cmd
 		cmds []tea.Cmd
@@ -94,8 +104,8 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, localKeys.Enter):
-			if row, ok := m.CurrentRow(); ok {
-				return m, tui.NavigateTo(tui.LogKind, tui.WithParent(row.ID), tui.WithPosition(tui.BottomRightPane))
+			if row, ok := m.Table.CurrentRow(); ok {
+				return tui.NavigateTo(tui.LogKind, tui.WithParent(row.ID), tui.WithPosition(tui.BottomRightPane))
 			}
 		}
 	}
@@ -104,7 +114,7 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	m.Model, cmd = m.Model.Update(msg)
 	cmds = append(cmds, cmd)
 
-	return m, tea.Batch(cmds...)
+	return tea.Batch(cmds...)
 }
 
 func (m list) Title() string {
@@ -112,11 +122,9 @@ func (m list) Title() string {
 }
 
 func (m list) View() string {
-	return m.Model.View()
-}
-
-func (m list) Metadata() string {
-	return m.Model.Metadata()
+	return lipgloss.NewStyle().
+		Border(tui.BorderStyle(m.focused)).
+		Render(m.Model.View())
 }
 
 func (m list) HelpBindings() []key.Binding {

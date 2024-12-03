@@ -35,10 +35,10 @@ type Maker struct {
 	Helpers *tui.Helpers
 }
 
-func (mm *Maker) Make(id resource.ID, width, height int) (tea.Model, error) {
+func (mm *Maker) Make(id resource.ID, width, height int) (tui.ChildModel, error) {
 	msg, err := mm.Logger.Get(id)
 	if err != nil {
-		return model{}, err
+		return nil, err
 	}
 	columns := []table.Column{keyColumn, valueColumn}
 	renderer := func(attr logging.Attr) table.RenderedRow {
@@ -71,7 +71,7 @@ func (mm *Maker) Make(id resource.ID, width, height int) (tea.Model, error) {
 	items = append(items, msg.Attributes...)
 	table.SetItems(items...)
 
-	return model{
+	return &model{
 		msg:    msg,
 		table:  table,
 		width:  width,
@@ -80,22 +80,23 @@ func (mm *Maker) Make(id resource.ID, width, height int) (tea.Model, error) {
 }
 
 type model struct {
-	msg    logging.Message
-	table  table.Model[logging.Attr]
-	width  int
-	height int
+	msg     logging.Message
+	table   table.Model[logging.Attr]
+	width   int
+	height  int
+	focused bool
 
 	*tui.Helpers
 }
 
-func (m model) Init() tea.Cmd {
+func (m *model) Init() tea.Cmd {
 	return nil
 }
 
-func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m *model) Update(msg tea.Msg) tea.Cmd {
 	var cmd tea.Cmd
 	m.table, cmd = m.table.Update(msg)
-	return m, cmd
+	return cmd
 }
 
 func (m model) Title() string {
@@ -109,6 +110,10 @@ func (m model) View() string {
 
 func (m model) HelpBindings() (bindings []key.Binding) {
 	return nil
+}
+
+func (m *model) Focus(focused bool) {
+	m.focused = !focused
 }
 
 // byAttribute sorts the attributes of an individual message for display in the

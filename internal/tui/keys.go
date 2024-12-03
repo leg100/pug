@@ -9,9 +9,14 @@ type keyMap struct {
 	GrowPaneWidth    key.Binding
 	SwitchPane       key.Binding
 	ClosePane        key.Binding
+	Explorer         key.Binding
 }
 
 var Keys = keyMap{
+	Explorer: key.NewBinding(
+		key.WithKeys("e"),
+		key.WithHelp("e", "focus explorer"),
+	),
 	ShrinkPaneHeight: key.NewBinding(
 		key.WithKeys("-"),
 		key.WithHelp("-", "shrink pane height"),
