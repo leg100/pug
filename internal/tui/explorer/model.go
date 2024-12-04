@@ -52,7 +52,6 @@ type model struct {
 	tree          *tree
 	tracker       *tracker
 	width, height int
-	focused       bool
 }
 
 func (m model) Init() tea.Cmd {
@@ -216,9 +215,8 @@ func (m *model) Update(msg tea.Msg) tea.Cmd {
 		}
 		return m.buildTree
 	case tea.WindowSizeMsg:
-		// Subtract 2 to accomodate borders
-		m.width = msg.Width - 2
-		m.height = msg.Height - 2
+		m.width = msg.Width
+		m.height = msg.Height
 		m.tracker.height = m.height
 		// TODO: perform this in a cmd
 		m.tracker.reindex(m.tree)
@@ -268,9 +266,7 @@ func (m model) View() string {
 			strings.Join(lines, "\n"),
 			scrollbar,
 		))
-	return lipgloss.NewStyle().
-		Border(tui.BorderStyle(m.focused)).
-		Render(content)
+	return content
 }
 
 func (m model) Title() string {
@@ -278,7 +274,6 @@ func (m model) Title() string {
 }
 
 func (m *model) Focus(focused bool) {
-	m.focused = focused
 }
 
 func (m model) buildTree() tea.Msg {

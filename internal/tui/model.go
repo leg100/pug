@@ -11,8 +11,6 @@ type ChildModel interface {
 	Init() tea.Cmd
 	Update(tea.Msg) tea.Cmd
 	View() string
-	// Focus toggles whether this model is focused
-	Focus(bool)
 }
 
 // Maker makes new models

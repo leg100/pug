@@ -53,7 +53,6 @@ func (mm *Maker) make(id resource.ID, width, height int, border bool) (tui.Child
 		buf:      make([]byte, 1024),
 		Helpers:  mm.Helpers,
 		showInfo: mm.showInfo,
-		border:   border,
 		width:    width,
 		program:  mm.Program,
 	}
@@ -106,7 +105,6 @@ type model struct {
 	buf    []byte
 
 	showInfo bool
-	border   bool
 	program  string
 	focused  bool
 
@@ -193,9 +191,6 @@ func (m *model) Update(msg tea.Msg) tea.Cmd {
 }
 
 func (m model) viewportWidth() int {
-	if m.border {
-		m.width -= 2
-	}
 	if m.showInfo {
 		m.width -= infoWidth
 	}
@@ -203,9 +198,6 @@ func (m model) viewportWidth() int {
 }
 
 func (m *model) setHeight(height int) {
-	if m.border {
-		height -= 2
-	}
 	m.height = height
 }
 
@@ -276,14 +268,7 @@ func (m *model) View() string {
 		components = append(components, container)
 	}
 	components = append(components, m.viewport.View())
-	content := lipgloss.JoinHorizontal(lipgloss.Left, components...)
-	if m.border {
-		return lipgloss.NewStyle().
-			Border(tui.BorderStyle(m.focused)).
-			BorderForeground(tui.BorderColor(m.focused)).
-			Render(content)
-	}
-	return content
+	return lipgloss.JoinHorizontal(lipgloss.Left, components...)
 }
 
 func boolToOnOff(b bool) string {

@@ -7,7 +7,6 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/leg100/pug/internal/tui"
-	"github.com/leg100/pug/internal/tui/keys"
 )
 
 type (
@@ -45,9 +44,6 @@ func newSplit(explorer tui.ChildModel, makers map[tui.Kind]tui.Maker) *split {
 }
 
 func (s *split) switchFocusedPane(model tui.ChildModel) {
-	s.focusedPane.Focus(false)
-	s.focusedPane = model
-	s.focusedPane.Focus(true)
 }
 
 func (s *split) Init() tea.Cmd {
@@ -64,10 +60,6 @@ func (s *split) Update(msg tea.Msg) tea.Cmd {
 			s.updateLeftSplitWidth(-1)
 		case key.Matches(msg, tui.Keys.GrowPaneWidth):
 			s.updateLeftSplitWidth(1)
-		case key.Matches(msg, keys.Global.Logs):
-			return tui.NavigateTo(tui.LogListKind)
-		case key.Matches(msg, keys.Global.Tasks):
-			return tui.NavigateTo(tui.TaskListKind)
 		case key.Matches(msg, tui.Keys.SwitchPane):
 			if s.focusedPane != s.rightPane {
 				s.switchFocusedPane(s.rightPane)

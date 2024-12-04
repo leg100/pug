@@ -89,16 +89,15 @@ func (mm *ListMaker) Make(_ resource.ID, width, height int) (tui.ChildModel, err
 		}
 	}
 
-	splitModel := split.New(split.Options[*task.Task]{
-		Columns:      columns,
-		Renderer:     renderer,
-		TableOptions: []table.Option[*task.Task]{table.WithSortFunc(task.ByState)},
-		Width:        width,
-		Height:       height,
-		Maker:        mm.TaskMaker,
-	})
+	tbl := table.New(
+		columns,
+		renderer,
+		width,
+		height,
+		table.WithSortFunc(task.ByState),
+	)
 	m := List{
-		Model:   splitModel,
+		Model:   tbl,
 		plans:   mm.Plans,
 		tasks:   mm.Tasks,
 		Helpers: mm.Helpers,
@@ -107,7 +106,7 @@ func (mm *ListMaker) Make(_ resource.ID, width, height int) (tui.ChildModel, err
 }
 
 type List struct {
-	split.Model[*task.Task]
+	table.Model[*task.Task]
 	*tui.Helpers
 
 	plans *plan.Service
@@ -126,14 +125,14 @@ func (m *List) Update(msg tea.Msg) tea.Cmd {
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, keys.Common.Cancel):
-			taskIDs := m.Table.SelectedOrCurrentIDs()
+			taskIDs := m.SelectedOrCurrentIDs()
 			return cancel(m.tasks, taskIDs...)
 		case key.Matches(msg, localKeys.Enter):
-			if row, ok := m.Table.CurrentRow(); ok {
-				return tui.NavigateTo(tui.TaskKind, tui.WithParent(row.ID))
+			if row, ok := m.CurrentRow(); ok {
+				return tui.NavigateTo(tui.TaskKind, tui.WithParent(row.ID), tui.WithPosition(tui.BottomRightPane))
 			}
 		case key.Matches(msg, keys.Common.Apply):
-			specs, err := m.Table.Prune(func(t *task.Task) (task.Spec, error) {
+			specs, err := m.Prune(func(t *task.Task) (task.Spec, error) {
 				// Task must be a plan in order to be applied
 				return m.plans.ApplyPlan(t.ID)
 			})
@@ -145,7 +144,7 @@ func (m *List) Update(msg tea.Msg) tea.Cmd {
 				m.CreateTasksWithSpecs(specs...),
 			)
 		case key.Matches(msg, keys.Common.State):
-			if row, ok := m.Table.CurrentRow(); ok {
+			if row, ok := m.CurrentRow(); ok {
 				if ws := m.TaskWorkspaceOrCurrentWorkspace(row.Value); ws != nil {
 					return tui.NavigateTo(tui.ResourceListKind, tui.WithParent(ws.GetID()))
 				} else {
@@ -153,7 +152,7 @@ func (m *List) Update(msg tea.Msg) tea.Cmd {
 				}
 			}
 		case key.Matches(msg, keys.Common.Retry):
-			rows := m.Table.SelectedOrCurrent()
+			rows := m.SelectedOrCurrent()
 			specs := make([]task.Spec, len(rows))
 			for i, row := range rows {
 				specs[i] = row.Value.Spec

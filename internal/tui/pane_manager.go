@@ -2,6 +2,7 @@ package tui
 
 import (
 	"errors"
+	"fmt"
 	"slices"
 	"strings"
 
@@ -11,11 +12,25 @@ import (
 	"golang.org/x/exp/maps"
 )
 
+const (
+	// default height of the top right pane when split, including borders.
+	defaultTopRightHeight = 15
+	// minimum height of the top right pane, including borders.
+	minTopRightHeight = 10
+	// minimum height of the bottom right pane, including borders.
+	minBottomRightHeight = MinContentHeight - minTopRightHeight
+)
+
 type Position int
 
 const (
+	// TopRightPane occupies the top right area of the terminal. Mutually
+	// exclusive with RightPane.
 	TopRightPane Position = iota
+	// BottomRightPane occupies the bottom right area of the terminal. Mutually
+	// exclusive with RightPane.
 	BottomRightPane
+	// LeftPane occupies the left side of the terminal.
 	LeftPane
 )
 
@@ -23,44 +38,52 @@ const (
 type PaneManager struct {
 	// makers for making models for panes
 	makers map[Kind]Maker
+	// cache of previously made models
+	cache *Cache
 	// the position of the currently active pane
 	active Position
 	// panes tracks currently visible panes
-	panes map[Position]*pane
+	panes map[Position]ChildModel
 	// total width and height of the terminal space available to panes.
 	width, height int
 	// minimum width and heights for panes
 	minWidth, minHeight int
-	// maximum width of left pane and maximum height of top right pane
-	maxLeftPaneWidth, maxTopRightHeight int
+	// leftPaneWidth is the width of the left pane when sharing the terminal
+	// with other panes.
+	leftPaneWidth int
+	// topRightPaneHeight is the height of the top right pane.
+	topRightHeight int
 }
 
 type pane struct {
-	page   Page
+	model  ChildModel
 	width  int
 	height int
 }
 
 // NewPaneManager constructs the pane manager with at least the explorer, which
 // occupies the left pane.
-func NewPaneManager(explorer tea.Model, makers map[Kind]Maker) *PaneManager {
-	return &PaneManager{
+func NewPaneManager(explorer ChildModel, makers map[Kind]Maker) *PaneManager {
+	cache := NewCache()
+	cache.Put(Page{Kind: ExplorerKind}, explorer)
+
+	p := &PaneManager{
 		makers: makers,
+		cache:  cache,
 		active: LeftPane,
-		panes: map[Position]*pane{
-			LeftPane: {
-				page: Page{Kind: ExplorerKind},
-			},
+		panes: map[Position]ChildModel{
+			LeftPane: explorer,
 		},
-		minWidth:          40,
-		minHeight:         10,
-		maxLeftPaneWidth:  40,
-		maxTopRightHeight: 10,
+		minWidth:       40,
+		minHeight:      10,
+		leftPaneWidth:  30,
+		topRightHeight: defaultTopRightHeight,
 	}
+	return p
 }
 
 func (p *PaneManager) Init() tea.Cmd {
-	return p.getModel(p.active).Init()
+	return p.panes[p.active].Init()
 }
 
 func (p *PaneManager) Update(msg tea.Msg) tea.Cmd {
@@ -72,13 +95,17 @@ func (p *PaneManager) Update(msg tea.Msg) tea.Cmd {
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, Keys.ShrinkPaneWidth):
-			p.changeActivePaneWidth(-1)
+			p.updateLeftWidth(-1)
+			p.updateChildSizes()
 		case key.Matches(msg, Keys.GrowPaneWidth):
-			p.changeActivePaneWidth(1)
+			p.updateLeftWidth(1)
+			p.updateChildSizes()
 		case key.Matches(msg, Keys.ShrinkPaneHeight):
-			p.changeActivePaneHeight(-1)
+			p.updateTopRightHeight(-1)
+			p.updateChildSizes()
 		case key.Matches(msg, Keys.GrowPaneHeight):
-			p.changeActivePaneHeight(1)
+			p.updateTopRightHeight(1)
+			p.updateChildSizes()
 		case key.Matches(msg, Keys.SwitchPane):
 			p.cycleActivePane()
 		case key.Matches(msg, Keys.ClosePane):
@@ -92,17 +119,20 @@ func (p *PaneManager) Update(msg tea.Msg) tea.Cmd {
 	case tea.WindowSizeMsg:
 		p.width = msg.Width
 		p.height = msg.Height
-		p.setPaneWidths()
-		p.setPaneHeights()
+		p.updateLeftWidth(0)
+		p.updateTopRightHeight(0)
 		p.updateChildSizes()
+	default:
+		// Send remaining message types to active pane
+		cmd = p.updateModel(p.active, msg)
 	}
 	cmds = append(cmds, cmd)
 	return tea.Batch(cmds...)
 }
 
 // ActiveModel retrieves the model of the active pane.
-func (p *PaneManager) ActiveModel() tea.Model {
-	return p.getModel(p.active)
+func (p *PaneManager) ActiveModel() ChildModel {
+	return p.panes[p.active]
 }
 
 func (p *PaneManager) cycleActivePane() {
@@ -124,108 +154,41 @@ func (p *PaneManager) closeActivePane() error {
 	}
 	delete(p.panes, p.active)
 	p.cycleActivePane()
-	p.setPaneWidths()
-	p.setPaneHeights()
 	p.updateChildSizes()
 	return nil
 }
 
-func (p *PaneManager) setPaneWidths() {
-	if p.panes[LeftPane] != nil {
-		if p.panes[TopRightPane] != nil || p.panes[BottomRightPane] != nil {
-			p.panes[LeftPane].width = clamp(p.panes[LeftPane].width, p.minWidth, p.width-p.minWidth)
-		} else {
-			p.panes[LeftPane].width = p.width
-		}
-	}
-	for _, pane := range []*pane{p.panes[TopRightPane], p.panes[BottomRightPane]} {
-		if pane != nil {
-			if p.panes[LeftPane] != nil {
-				pane.width = max(p.minWidth, p.width-p.panes[LeftPane].width)
-			} else {
-				pane.width = p.width
-			}
-		}
-	}
-}
-
-func (p *PaneManager) setPaneHeights() {
-	if p.panes[LeftPane] != nil {
-		p.panes[LeftPane].height = p.height
-	}
-	if p.panes[TopRightPane] != nil {
-		if p.panes[BottomRightPane] != nil {
-			p.panes[TopRightPane].height = clamp(p.panes[TopRightPane].height, p.minHeight, p.height-p.minHeight)
-		} else {
-			p.panes[TopRightPane].height = p.height
-		}
-	}
-	if p.panes[BottomRightPane] != nil {
-		if p.panes[TopRightPane] != nil {
-			p.panes[BottomRightPane].height = max(p.minHeight, p.height-p.panes[TopRightPane].height)
-		} else {
-			p.panes[BottomRightPane].height = p.height
-		}
-	}
-}
-
-func (p *PaneManager) changeActivePaneWidth(delta int) {
-	switch p.active {
-	case TopRightPane, BottomRightPane:
-		// on the right panes, shrink width is actually grow width, and vice
-		// versa
-		delta = -delta
-	}
-	for position := range p.panes {
-		if position == p.active {
-			p.panes[position].width = clamp(p.panes[position].width+delta, p.minWidth, p.width-p.minWidth)
-		} else {
-			p.panes[position].width = clamp(p.panes[position].width-delta, p.minWidth, p.width-p.minWidth)
-		}
-	}
-	p.maxLeftPaneWidth = p.panes[LeftPane].width
-	p.setPaneWidths()
-	p.updateChildSizes()
-}
-
-func (p *PaneManager) changeActivePaneHeight(delta int) {
-	if p.active == LeftPane {
-		// Cannot change height of left pane because it occupies the full height
-		// already.
+func (p *PaneManager) updateLeftWidth(delta int) {
+	if p.panes[LeftPane] == nil {
+		// There is no split to adjust
 		return
 	}
-	for position := range p.panes {
-		if position == p.active {
-			p.panes[position].height = clamp(p.panes[position].height+delta, p.minHeight, p.height-p.minHeight)
-		} else {
-			p.panes[position].height = clamp(p.panes[position].height-delta, p.minHeight, p.height-p.minHeight)
-		}
+	p.leftPaneWidth = clamp(p.leftPaneWidth+delta, p.minWidth, p.width-p.minWidth)
+}
+
+func (p *PaneManager) updateTopRightHeight(delta int) {
+	if p.panes[TopRightPane] == nil || p.panes[BottomRightPane] == nil {
+		// There is no split to adjust
+		return
 	}
-	p.maxTopRightHeight = p.panes[TopRightPane].height
-	p.setPaneHeights()
-	p.updateChildSizes()
+	switch p.active {
+	case BottomRightPane:
+		delta = -delta
+	}
+	p.topRightHeight = clamp(p.topRightHeight+delta, minTopRightHeight, p.height-minBottomRightHeight)
 }
 
 func (p *PaneManager) updateChildSizes() {
-	for position, pane := range p.panes {
+	for position := range p.panes {
 		p.updateModel(position, tea.WindowSizeMsg{
-			Width:  pane.width - 2,
-			Height: pane.height - 2,
+			Width:  p.paneWidth(position) - 2,
+			Height: p.paneHeight(position) - 2,
 		})
 	}
 }
 
-func (p *PaneManager) getModel(position Position) tea.Model {
-	return nil
-}
-
 func (p *PaneManager) updateModel(position Position, msg tea.Msg) tea.Cmd {
-	return nil
-}
-
-var border = map[bool]lipgloss.Border{
-	true:  lipgloss.Border(lipgloss.ThickBorder()),
-	false: lipgloss.Border(lipgloss.NormalBorder()),
+	return p.panes[position].Update(msg)
 }
 
 func (m *PaneManager) View() string {
@@ -242,23 +205,89 @@ func (m *PaneManager) View() string {
 	)
 }
 
+var border = map[bool]lipgloss.Border{
+	true:  lipgloss.Border(lipgloss.ThickBorder()),
+	false: lipgloss.Border(lipgloss.NormalBorder()),
+}
+
+func (m *PaneManager) SetPane(page Page, position Position) (cmd tea.Cmd, err error) {
+	model := m.cache.Get(page)
+	if model == nil {
+		maker, ok := m.makers[page.Kind]
+		if !ok {
+			return nil, fmt.Errorf("no maker could be found for %s", page.Kind)
+		}
+		model, err = maker.Make(page.ID, 0, 0)
+		if err != nil {
+			return nil, fmt.Errorf("making page: %w", err)
+		}
+		m.cache.Put(page, model)
+		cmd = model.Init()
+	}
+	switch position {
+	case TopRightPane:
+		// TopRightPane replaces BottomRightPane too
+		delete(m.panes, BottomRightPane)
+	}
+	m.active = position
+	m.panes[position] = model
+	m.updateChildSizes()
+	return cmd, nil
+}
+
+func (m *PaneManager) paneWidth(position Position) int {
+	switch position {
+	case LeftPane:
+		if len(m.panes) > 1 {
+			return m.leftPaneWidth
+		}
+	default:
+		if m.panes[LeftPane] != nil {
+			return max(m.minWidth, m.width-m.leftPaneWidth)
+		}
+	}
+	return m.width
+}
+
+func (m *PaneManager) paneHeight(position Position) int {
+	switch position {
+	case TopRightPane:
+		if m.panes[BottomRightPane] != nil {
+			return max(minTopRightHeight, m.topRightHeight)
+		}
+	case BottomRightPane:
+		if m.panes[TopRightPane] != nil {
+			return max(minBottomRightHeight, m.height-m.topRightHeight)
+		}
+	}
+	return m.height
+}
+
 func (m *PaneManager) renderPane(position Position) string {
 	if m.panes[position] == nil {
 		return ""
 	}
-	model := m.getModel(position)
+	model := m.panes[position]
 	renderedPane := model.View()
 	isActive := position == m.active
 	border := border[isActive]
-	topBorder := buildTopBorder(model, border, m.panes[position].width)
-	// TODO: border color
+	topBorder := m.buildTopBorder(position)
 	return lipgloss.JoinVertical(lipgloss.Top,
 		lipgloss.NewStyle().Render(topBorder),
-		lipgloss.NewStyle().Border(border, false, true, true, true).Render(renderedPane),
+		lipgloss.NewStyle().
+			BorderForeground(BorderColor(isActive)).
+			Border(border, false, true, true, true).Render(renderedPane),
 	)
 }
 
-func buildTopBorder(model tea.Model, border lipgloss.Border, width int) string {
+func (m *PaneManager) buildTopBorder(position Position) string {
+	var (
+		model    = m.panes[position]
+		width    = m.paneWidth(position)
+		isActive = position == m.active
+		border   = border[isActive]
+	)
+	var middle string
 	if metadataModel, ok := model.(interface{ Metadata() string }); ok {
 		// Render top border with metadata in the center
 		//
@@ -266,16 +295,23 @@ func buildTopBorder(model tea.Model, border lipgloss.Border, width int) string {
 		length := max(0, width-2-lipgloss.Width(metadataModel.Metadata()))
 		leftLength := length / 2
 		rightLength := max(0, length-leftLength)
-		return lipgloss.JoinHorizontal(lipgloss.Left,
-			border.TopLeft,
+		middle = lipgloss.JoinHorizontal(lipgloss.Left,
 			strings.Repeat(border.Top, leftLength),
 			metadataModel.Metadata(),
 			strings.Repeat(border.Top, rightLength),
-			border.TopRight,
 		)
 	} else {
-		return border.TopLeft + strings.Repeat(border.Top, max(0, width-2)) + border.TopRight
+		middle = strings.Repeat(border.Top, max(0, width-2))
 	}
+	return lipgloss.NewStyle().
+		Foreground(BorderColor(isActive)).
+		Render(
+			lipgloss.JoinHorizontal(lipgloss.Left,
+				border.TopLeft,
+				middle,
+				border.TopRight,
+			),
+		)
 }
 
 func removeEmptyStrings(strs ...string) []string {
