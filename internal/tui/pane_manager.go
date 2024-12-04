@@ -107,7 +107,9 @@ func (p *PaneManager) Update(msg tea.Msg) tea.Cmd {
 			p.updateTopRightHeight(1)
 			p.updateChildSizes()
 		case key.Matches(msg, Keys.SwitchPane):
-			p.cycleActivePane()
+			p.cycleActivePane(false)
+		case key.Matches(msg, Keys.SwitchPaneBack):
+			p.cycleActivePane(true)
 		case key.Matches(msg, Keys.ClosePane):
 			if err := p.closeActivePane(); err != nil {
 				cmd = ReportError(err)
@@ -135,7 +137,9 @@ func (p *PaneManager) ActiveModel() ChildModel {
 	return p.panes[p.active]
 }
 
-func (p *PaneManager) cycleActivePane() {
+// cycleActivePane makes the next pane the active pane. If last is true then the
+// previous pane is made the active pane.
+func (p *PaneManager) cycleActivePane(last bool) {
 	positions := maps.Keys(p.panes)
 	slices.Sort(positions)
 	var activeIndex int
@@ -144,7 +148,15 @@ func (p *PaneManager) cycleActivePane() {
 			activeIndex = i
 		}
 	}
-	newActiveIndex := (activeIndex + 1) % len(positions)
+	var newActiveIndex int
+	if last {
+		newActiveIndex = activeIndex - 1
+		if newActiveIndex < 0 {
+			newActiveIndex = len(positions) + newActiveIndex
+		}
+	} else {
+		newActiveIndex = (activeIndex + 1) % len(positions)
+	}
 	p.active = positions[newActiveIndex]
 }
 
@@ -153,7 +165,7 @@ func (p *PaneManager) closeActivePane() error {
 		return errors.New("cannot close last pane")
 	}
 	delete(p.panes, p.active)
-	p.cycleActivePane()
+	p.cycleActivePane(false)
 	p.updateChildSizes()
 	return nil
 }

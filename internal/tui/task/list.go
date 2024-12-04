@@ -173,6 +173,10 @@ func (m List) Title() string {
 	return m.Breadcrumbs("Tasks", nil)
 }
 
+func (m List) Metadata() string {
+	return "[tasks] " + m.Model.Metadata()
+}
+
 func (m List) HelpBindings() []key.Binding {
 	bindings := []key.Binding{
 		keys.Common.Cancel,

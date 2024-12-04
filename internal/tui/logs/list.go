@@ -8,7 +8,6 @@ import (
 	"github.com/leg100/pug/internal/logging"
 	"github.com/leg100/pug/internal/resource"
 	"github.com/leg100/pug/internal/tui"
-	"github.com/leg100/pug/internal/tui/split"
 	"github.com/leg100/pug/internal/tui/table"
 )
 
@@ -61,20 +60,17 @@ func (m *ListMaker) Make(_ resource.ID, width, height int) (tui.ChildModel, erro
 			msgColumn.Key:   tui.Regular.Render(b.String()),
 		}
 	}
-	splitModel := split.New(split.Options[logging.Message]{
-		Columns:  columns,
-		Renderer: renderer,
-		Width:    width,
-		Height:   height,
-		Maker:    m.LogModelMaker,
-		TableOptions: []table.Option[logging.Message]{
-			table.WithSortFunc(logging.BySerialDesc),
-			table.WithSelectable[logging.Message](false),
-		},
-	})
+	tbl := table.New(
+		columns,
+		renderer,
+		width,
+		height,
+		table.WithSortFunc(logging.BySerialDesc),
+		table.WithSelectable[logging.Message](false),
+	)
 	return &list{
 		logger:  m.Logger,
-		Model:   splitModel,
+		Model:   tbl,
 		Helpers: m.Helpers,
 	}, nil
 }
@@ -82,7 +78,7 @@ func (m *ListMaker) Make(_ resource.ID, width, height int) (tui.ChildModel, erro
 type list struct {
 	logger *logging.Logger
 
-	split.Model[logging.Message]
+	table.Model[logging.Message]
 	*tui.Helpers
 }
 
@@ -102,7 +98,7 @@ func (m *list) Update(msg tea.Msg) tea.Cmd {
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, localKeys.Enter):
-			if row, ok := m.Table.CurrentRow(); ok {
+			if row, ok := m.CurrentRow(); ok {
 				return tui.NavigateTo(tui.LogKind, tui.WithParent(row.ID), tui.WithPosition(tui.BottomRightPane))
 			}
 		}

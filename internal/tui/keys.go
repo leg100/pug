@@ -8,6 +8,7 @@ type keyMap struct {
 	ShrinkPaneWidth  key.Binding
 	GrowPaneWidth    key.Binding
 	SwitchPane       key.Binding
+	SwitchPaneBack   key.Binding
 	ClosePane        key.Binding
 	Explorer         key.Binding
 }
@@ -36,6 +37,10 @@ var Keys = keyMap{
 	SwitchPane: key.NewBinding(
 		key.WithKeys("tab"),
 		key.WithHelp("tab", "switch pane"),
+	),
+	SwitchPaneBack: key.NewBinding(
+		key.WithKeys("shift+tab"),
+		key.WithHelp("shift+tabab", "switch last pane"),
 	),
 	ClosePane: key.NewBinding(
 		key.WithKeys("x"),
