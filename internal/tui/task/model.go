@@ -152,6 +152,8 @@ func (m *model) Update(msg tea.Msg) tea.Cmd {
 				"Retry task?",
 				m.CreateTasksWithSpecs(m.task.Spec),
 			)
+		case key.Matches(msg, tui.Keys.SwitchPane):
+			return tui.CmdHandler(tui.FocusExplorerMsg{})
 		}
 	case toggleAutoscrollMsg:
 		m.viewport.Autoscroll = !m.viewport.Autoscroll
@@ -276,7 +278,10 @@ func (m *model) View() string {
 	components = append(components, m.viewport.View())
 	content := lipgloss.JoinHorizontal(lipgloss.Left, components...)
 	if m.border {
-		return tui.Border.Render(content)
+		return lipgloss.NewStyle().
+			Border(tui.BorderStyle(m.focused)).
+			BorderForeground(tui.BorderColor(m.focused)).
+			Render(content)
 	}
 	return content
 }
@@ -331,7 +336,7 @@ func (m model) getOutput() tea.Msg {
 }
 
 func (m *model) Focus(focused bool) {
-	m.focused = !focused
+	m.focused = focused
 }
 
 type outputMsg struct {

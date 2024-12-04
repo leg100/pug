@@ -99,7 +99,6 @@ func (m Model[R]) Update(msg tea.Msg) (Model[R], tea.Cmd) {
 			case previewHidden:
 				return m, tui.CmdHandler(tui.FocusExplorerMsg{})
 			}
-			// m.setBorderStyles()
 		case key.Matches(msg, Keys.ToggleSplit):
 			switch m.previewState {
 			case previewUnfocused, previewFocused:
