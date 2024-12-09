@@ -10,35 +10,37 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestTree(t *testing.T) {
-	mod1 := &module.Module{
+var (
+	mod1 = &module.Module{
 		ID:   resource.NewID(resource.Module),
 		Path: "a",
 	}
-	mod2 := &module.Module{
+	mod2 = &module.Module{
 		ID:   resource.NewID(resource.Module),
 		Path: "a/b",
 	}
-	mod3 := &module.Module{
+	mod3 = &module.Module{
 		ID:   resource.NewID(resource.Module),
 		Path: "a/b/c",
 	}
-	ws1 := &workspace.Workspace{
+	ws1 = &workspace.Workspace{
 		ID:       resource.NewID(resource.Workspace),
 		ModuleID: mod1.ID,
 		Name:     "ws1",
 	}
-	ws2 := &workspace.Workspace{
+	ws2 = &workspace.Workspace{
 		ID:       resource.NewID(resource.Workspace),
 		ModuleID: mod2.ID,
 		Name:     "ws2",
 	}
-	ws3 := &workspace.Workspace{
+	ws3 = &workspace.Workspace{
 		ID:       resource.NewID(resource.Workspace),
 		ModuleID: mod3.ID,
 		Name:     "ws3",
 	}
+)
 
+func TestTree(t *testing.T) {
 	builder := &treeBuilder{
 		wd: internal.NewTestWorkdir(t),
 		moduleService: &fakeTreeBuilderModuleLister{
@@ -91,6 +93,81 @@ func TestTree(t *testing.T) {
 			},
 		},
 	}
+	assert.Equal(t, want, got)
+}
+
+func TestFilter(t *testing.T) {
+	unfiltered := &tree{
+		value: dirNode{path: "/root", root: true},
+		children: []*tree{
+			{
+				value: dirNode{path: "a"},
+				children: []*tree{
+					{
+						value: dirNode{path: "a/b"},
+						children: []*tree{
+							{
+								value: moduleNode{id: mod3.ID, path: "a/b/c"},
+								children: []*tree{
+									{
+										value: workspaceNode{id: ws3.ID, name: "ws3"},
+									},
+								},
+							},
+						},
+					},
+					{
+						value: moduleNode{id: mod2.ID, path: "a/b"},
+						children: []*tree{
+							{
+								value: workspaceNode{id: ws2.ID, name: "ws2"},
+							},
+						},
+					},
+				},
+			},
+			{
+				value: moduleNode{id: mod1.ID, path: "a"},
+				children: []*tree{
+					{
+						value: workspaceNode{id: ws1.ID, name: "ws1"},
+					},
+				},
+			},
+		},
+	}
+	want := &tree{
+		value: dirNode{path: "/root", root: true},
+		children: []*tree{
+			{
+				value: dirNode{path: "a"},
+				children: []*tree{
+					{
+						value: dirNode{path: "a/b"},
+						children: []*tree{
+							{
+								value: moduleNode{id: mod3.ID, path: "a/b/c"},
+								children: []*tree{
+									{
+										value: workspaceNode{id: ws3.ID, name: "ws3"},
+									},
+								},
+							},
+						},
+					},
+					{
+						value: moduleNode{id: mod2.ID, path: "a/b"},
+						children: []*tree{
+							{
+								value: workspaceNode{id: ws2.ID, name: "ws2"},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	got := unfiltered.filter("b")
 	assert.Equal(t, want, got)
 }
 

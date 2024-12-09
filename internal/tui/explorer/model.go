@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/bubbles/key"
+	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	lgtree "github.com/charmbracelet/lipgloss/tree"
@@ -19,6 +20,9 @@ import (
 	"github.com/leg100/pug/internal/tui/keys"
 	"github.com/leg100/pug/internal/workspace"
 )
+
+// Height of filter widget
+const filterHeight = 2
 
 type Maker struct {
 	ModuleService    *module.Service
@@ -36,6 +40,8 @@ func (m *Maker) Make(id resource.ID, width, height int) (tui.ChildModel, error) 
 		workspaceService: m.WorkspaceService,
 	}
 	tree := builder.newTree()
+	filter := textinput.New()
+	filter.Prompt = "Filter: "
 	return &model{
 		WorkspaceService: m.WorkspaceService,
 		ModuleService:    m.ModuleService,
@@ -45,6 +51,7 @@ func (m *Maker) Make(id resource.ID, width, height int) (tui.ChildModel, error) 
 		treeBuilder:      builder,
 		tree:             tree,
 		tracker:          newTracker(tree),
+		filter:           filter,
 	}, nil
 }
 
@@ -60,6 +67,7 @@ type model struct {
 	tree          *tree
 	tracker       *tracker
 	width, height int
+	filter        textinput.Model
 }
 
 func (m model) Init() tea.Cmd {
@@ -219,6 +227,10 @@ func (m model) View() string {
 	if m.tree == nil {
 		return "building tree"
 	}
+	treeHeight := m.height
+	if m.filterVisible() {
+		treeHeight = max(0, m.height-filterHeight)
+	}
 	style := lipgloss.NewStyle().
 		Width(m.width - tui.ScrollbarWidth).
 		MaxWidth(m.width - tui.ScrollbarWidth).
@@ -282,4 +294,9 @@ func (m model) Metadata() string {
 func (m model) buildTree() tea.Msg {
 	tree := m.treeBuilder.newTree()
 	return builtTreeMsg(tree)
+}
+
+func (m model) filterVisible() bool {
+	// Filter is visible if it's either in focus, or it has a non-empty value.
+	return m.filter.Focused() || m.filter.Value() != ""
 }

@@ -79,11 +79,21 @@ func (b *treeBuilder) newTree() *tree {
 	return t
 }
 
-func filter(text string, from, to *tree) {
-	if strings.Contains(from.value.String(), text) {
-		to.children = append(to.children, from)
-		return
+func (t *tree) filter(text string) *tree {
+	if strings.Contains(t.value.String(), text) {
+		return t
 	}
+	to := &tree{value: t.value}
+	for _, child := range t.children {
+		result := child.filter(text)
+		if result != nil {
+			to.children = append(to.children, result)
+		}
+	}
+	if len(to.children) == 0 {
+		return nil
+	}
+	return to
 }
 
 func (t *tree) render(root bool, to *lgtree.Tree) {
