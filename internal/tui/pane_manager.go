@@ -14,15 +14,6 @@ import (
 	"golang.org/x/exp/maps"
 )
 
-const (
-	// default height of the top right pane when split, including borders.
-	defaultTopRightHeight = 15
-	// minimum height of the top right pane, including borders.
-	minTopRightHeight = 10
-	// minimum height of the bottom right pane, including borders.
-	minBottomRightHeight = MinContentHeight - minTopRightHeight
-)
-
 type Position int
 
 const (
@@ -50,8 +41,6 @@ type PaneManager struct {
 	pages map[Position]Page
 	// total width and height of the terminal space available to panes.
 	width, height int
-	// minimum width and heights for panes
-	minWidth, minHeight int
 	// leftPaneWidth is the width of the left pane when sharing the terminal
 	// with other panes.
 	leftPaneWidth int
@@ -71,10 +60,8 @@ func NewPaneManager(makers map[Kind]Maker) *PaneManager {
 		cache:          NewCache(),
 		panes:          make(map[Position]ChildModel),
 		pages:          make(map[Position]Page),
-		minWidth:       40,
-		minHeight:      10,
-		leftPaneWidth:  30,
-		topRightHeight: defaultTopRightHeight,
+		leftPaneWidth:  defaultLeftPaneWidth,
+		topRightHeight: defaultTopRightPaneHeight,
 	}
 	return p
 }
@@ -87,10 +74,7 @@ func (p *PaneManager) Init() tea.Cmd {
 }
 
 func (p *PaneManager) Update(msg tea.Msg) tea.Cmd {
-	var (
-		cmd  tea.Cmd
-		cmds []tea.Cmd
-	)
+	var cmds []tea.Cmd
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch {
@@ -111,10 +95,10 @@ func (p *PaneManager) Update(msg tea.Msg) tea.Cmd {
 		case key.Matches(msg, Keys.SwitchPaneBack):
 			p.cycleActivePane(true)
 		case key.Matches(msg, Keys.ClosePane):
-			cmd = p.closeActivePane()
+			cmds = append(cmds, p.closeActivePane())
 		default:
 			// Send remaining keys to active pane
-			cmd = p.updateModel(p.active, msg)
+			cmds = append(cmds, p.updateModel(p.active, msg))
 		}
 	case tea.WindowSizeMsg:
 		p.width = msg.Width
@@ -135,14 +119,14 @@ func (p *PaneManager) Update(msg tea.Msg) tea.Cmd {
 	// output for the current task row.
 	if table, ok := p.panes[TopRightPane].(tablePane); ok {
 		if kind, id, ok := table.PreviewCurrentRow(); ok {
-			cmd = p.setPane(NavigationMsg{
+			cmd := p.setPane(NavigationMsg{
 				Page:         Page{Kind: kind, ID: id},
 				Position:     BottomRightPane,
 				DisableFocus: true,
 			})
+			cmds = append(cmds, cmd)
 		}
 	}
-	cmds = append(cmds, cmd)
 	return tea.Batch(cmds...)
 }
 
@@ -189,7 +173,7 @@ func (p *PaneManager) updateLeftWidth(delta int) {
 		// There is no split to adjust
 		return
 	}
-	p.leftPaneWidth = clamp(p.leftPaneWidth+delta, p.minWidth, p.width-p.minWidth)
+	p.leftPaneWidth = clamp(p.leftPaneWidth+delta, minPaneWidth, p.width-minPaneWidth)
 }
 
 func (p *PaneManager) updateTopRightHeight(delta int) {
@@ -201,7 +185,7 @@ func (p *PaneManager) updateTopRightHeight(delta int) {
 	case BottomRightPane:
 		delta = -delta
 	}
-	p.topRightHeight = clamp(p.topRightHeight+delta, minTopRightHeight, p.height-minBottomRightHeight)
+	p.topRightHeight = clamp(p.topRightHeight+delta, minPaneHeight, p.height-minPaneHeight)
 }
 
 func (p *PaneManager) updateChildSizes() {
@@ -271,7 +255,7 @@ func (m *PaneManager) paneWidth(position Position) int {
 		}
 	default:
 		if m.panes[LeftPane] != nil {
-			return max(m.minWidth, m.width-m.leftPaneWidth)
+			return max(minPaneWidth, m.width-m.leftPaneWidth)
 		}
 	}
 	return m.width
@@ -281,11 +265,11 @@ func (m *PaneManager) paneHeight(position Position) int {
 	switch position {
 	case TopRightPane:
 		if m.panes[BottomRightPane] != nil {
-			return max(minTopRightHeight, m.topRightHeight)
+			return m.topRightHeight
 		}
 	case BottomRightPane:
 		if m.panes[TopRightPane] != nil {
-			return max(minBottomRightHeight, m.height-m.topRightHeight)
+			return m.height - m.topRightHeight
 		}
 	}
 	return m.height
@@ -319,8 +303,9 @@ func (m *PaneManager) renderPane(position Position) string {
 	border := border[isActive]
 	topBorder := m.buildTopBorder(position)
 	renderedPane := lipgloss.NewStyle().
-		Width(m.paneWidth(position) - 2).   // -2 for border
-		Height(m.paneHeight(position) - 2). // -2 for border
+		Width(m.paneWidth(position) - 2).    // -2 for border
+		Height(m.paneHeight(position) - 2).  // -2 for border
+		MaxWidth(m.paneWidth(position) - 2). // -2 for border
 		Render(model.View())
 	return lipgloss.JoinVertical(lipgloss.Top,
 		lipgloss.NewStyle().Render(topBorder),

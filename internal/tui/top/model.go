@@ -26,9 +26,6 @@ const (
 	normalMode mode = iota // default
 	promptMode             // confirm prompt is visible and taking input
 	filterMode             // filter is visible and taking input
-
-	// minimum height of view area.
-	minViewHeight = 10
 )
 
 type model struct {
@@ -262,30 +259,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m model) View() string {
-	// Optionally render title on the left of header
-	//	if model, ok := m.currentModel().(tui.ModelTitle); ok {
-	//		header = model.Title()
-	//		leftover = m.width - tui.Width(header)
-	//	}
-	//	// Optionally render status on the right of header
-	//	if statusable, ok := m.currentModel().(tui.ModelStatus); ok {
-	//		status = statusable.Status()
-	//		leftover -= tui.Width(status)
-	//	}
-	//	// Fill in left over space in between title and status with background color
-	//	header += tui.Regular.Width(leftover).Background(tui.Purple).Render()
-	//	header += status
-	//	// Style the header
-	//	header = lipgloss.NewStyle().
-	//		MaxHeight(1).
-	//		Inline(true).
-	//		MaxWidth(m.width).
-	//		// TODO: is this needed?
-	//		Inherit(tui.Title).
-	//		Render(header)
-
 	// Start composing vertical stack of components that fill entire terminal.
-	components := []string{}
+	var components []string
 
 	// Add prompt if in prompt mode.
 	if m.mode == promptMode {
@@ -297,12 +272,10 @@ func (m model) View() string {
 		Width(m.viewWidth()).
 		Render(m.PaneManager.View()),
 	)
-
 	// Add help if enabled
 	if m.showHelp {
 		components = append(components, m.help())
 	}
-
 	// Compose footer
 	footer := tui.Padded.Background(tui.Grey).Foreground(tui.White).Render("? help")
 	if m.err != nil {
@@ -328,7 +301,6 @@ func (m model) View() string {
 	footer += tui.Regular.Width(leftover).Background(tui.EvenLighterGrey).Render()
 	footer += version
 	footer += pug
-
 	// Add footer
 	components = append(components, tui.Regular.
 		Inline(true).
@@ -336,7 +308,6 @@ func (m model) View() string {
 		Width(m.width).
 		Render(footer),
 	)
-
 	return lipgloss.JoinVertical(lipgloss.Top, components...)
 }
 
@@ -354,14 +325,14 @@ func (m model) viewHeight() int {
 	if m.showHelp {
 		vh -= helpWidgetHeight
 	}
-	return max(minViewHeight, vh)
+	return max(tui.MinContentHeight, vh)
 }
 
 // viewWidth retrieves the width available within the main view
 //
 // TODO: rename contentWidth
 func (m model) viewWidth() int {
-	return m.width
+	return max(tui.MinContentWidth, m.width)
 }
 
 var (

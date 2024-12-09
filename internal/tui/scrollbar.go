@@ -13,6 +13,9 @@ const (
 )
 
 func Scrollbar(height, total, visible, offset int) string {
+	if total == visible {
+		return strings.TrimRight(strings.Repeat(" \n", height), "\n")
+	}
 	ratio := float64(height) / float64(total)
 	thumbHeight := max(1, int(math.Round(float64(visible)*ratio)))
 	thumbOffset := max(0, min(height-thumbHeight, int(math.Round(float64(offset)*ratio))))

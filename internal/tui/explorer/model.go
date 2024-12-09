@@ -219,16 +219,19 @@ func (m model) View() string {
 	if m.tree == nil {
 		return "building tree"
 	}
+	style := lipgloss.NewStyle().
+		Width(m.width - tui.ScrollbarWidth).
+		MaxWidth(m.width - tui.ScrollbarWidth).
+		Inline(true)
 	to := lgtree.New().
 		Enumerator(enumerator).
 		Indenter(indentor)
 	m.tree.render(true, to)
 	s := to.String()
 	lines := strings.Split(s, "\n")
-	totalVisibleLines := clamp(m.height, 0, len(lines))
-	lines = lines[m.tracker.start : m.tracker.start+totalVisibleLines]
-	for i := range lines {
-		style := lipgloss.NewStyle().Width(m.width - tui.ScrollbarWidth)
+	numVisibleLines := clamp(m.height, 0, len(lines))
+	visibleLines := lines[m.tracker.start : m.tracker.start+numVisibleLines]
+	for i := range visibleLines {
 		node := m.tracker.nodes[m.tracker.start+i]
 		// Style node according to whether it is the cursor node, selected, or
 		// both
@@ -248,7 +251,7 @@ func (m model) View() string {
 			background = tui.SelectedBackground
 			foreground = tui.SelectedForeground
 		}
-		renderedRow := style.Render(lines[i])
+		renderedRow := style.Render(visibleLines[i])
 		// If current row or selected rows, strip colors and apply background color
 		if current || selected {
 			renderedRow = internal.StripAnsi(renderedRow)
@@ -257,14 +260,13 @@ func (m model) View() string {
 				Background(background).
 				Render(renderedRow)
 		}
-		lines[i] = renderedRow
+		visibleLines[i] = renderedRow
 	}
-	scrollbar := tui.Scrollbar(m.height, len(lines), totalVisibleLines, m.tracker.start)
+	scrollbar := tui.Scrollbar(m.height, len(lines), numVisibleLines, m.tracker.start)
 	content := lipgloss.NewStyle().
-		Height(max(tui.MinContentHeight, m.height)).
 		MaxHeight(m.height).
 		Render(lipgloss.JoinHorizontal(lipgloss.Left,
-			strings.Join(lines, "\n"),
+			strings.Join(visibleLines, "\n"),
 			scrollbar,
 		))
 	return content
