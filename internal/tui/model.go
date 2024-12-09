@@ -27,8 +27,6 @@ type Page struct {
 	ID resource.ID
 }
 
-// ModelID is implemented by models that are able to provide a unique
-// identification string.
 type ModelStatus interface {
 	Status() string
 }

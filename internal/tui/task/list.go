@@ -88,13 +88,13 @@ func (mm *ListMaker) Make(_ resource.ID, width, height int) (tui.ChildModel, err
 			table.SummaryColumn.Key:   mm.Helpers.TaskSummary(t, true),
 		}
 	}
-
 	tbl := table.New(
 		columns,
 		renderer,
 		width,
 		height,
 		table.WithSortFunc(task.ByState),
+		table.WithPreview[*task.Task](tui.TaskKind),
 	)
 	m := List{
 		Model:   tbl,
@@ -163,7 +163,6 @@ func (m *List) Update(msg tea.Msg) tea.Cmd {
 			)
 		}
 	}
-
 	var cmd tea.Cmd
 	m.Model, cmd = m.Model.Update(msg)
 	return cmd

@@ -5,6 +5,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/leg100/pug/internal/app"
 	"github.com/leg100/pug/internal/tui"
+	"github.com/leg100/pug/internal/tui/explorer"
 	"github.com/leg100/pug/internal/tui/logs"
 	tasktui "github.com/leg100/pug/internal/tui/task"
 	workspacetui "github.com/leg100/pug/internal/tui/workspace"
@@ -16,7 +17,12 @@ type updateableMaker interface {
 }
 
 // makeMakers makes model makers for making models
-func makeMakers(cfg app.Config, app *app.App, spinner *spinner.Model, helpers *tui.Helpers) map[tui.Kind]tui.Maker {
+func makeMakers(
+	cfg app.Config,
+	app *app.App,
+	spinner *spinner.Model,
+	helpers *tui.Helpers,
+) map[tui.Kind]tui.Maker {
 	taskMaker := &tasktui.Maker{
 		Plans:   app.Plans,
 		Tasks:   app.Tasks,
@@ -30,6 +36,13 @@ func makeMakers(cfg app.Config, app *app.App, spinner *spinner.Model, helpers *t
 		Helpers: helpers,
 	}
 	makers := map[tui.Kind]tui.Maker{
+		tui.ExplorerKind: &explorer.Maker{
+			ModuleService:    app.Modules,
+			WorkspaceService: app.Workspaces,
+			PlanService:      app.Plans,
+			Workdir:          cfg.Workdir,
+			Helpers:          helpers,
+		},
 		tui.TaskListKind: tasktui.NewListMaker(
 			app.Tasks,
 			app.Plans,

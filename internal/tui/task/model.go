@@ -42,7 +42,7 @@ func (mm *Maker) make(id resource.ID, width, height int, border bool) (tui.Child
 		return nil, err
 	}
 
-	m := model{
+	m := Model{
 		id:      uuid.New(),
 		tasks:   mm.Tasks,
 		plans:   mm.Plans,
@@ -60,7 +60,7 @@ func (mm *Maker) make(id resource.ID, width, height int, border bool) (tui.Child
 
 	m.viewport = tui.NewViewport(tui.ViewportOptions{
 		JSON:       m.task.JSON,
-		Autoscroll: !mm.disableAutoscroll,
+		Autoscroll: false,
 		Width:      m.viewportWidth(),
 		Height:     m.height,
 		Spinner:    m.spinner,
@@ -92,7 +92,7 @@ func (mm *Maker) Update(msg tea.Msg) tea.Cmd {
 	return nil
 }
 
-type model struct {
+type Model struct {
 	*tui.Helpers
 
 	id uuid.UUID
@@ -104,9 +104,10 @@ type model struct {
 	output <-chan []byte
 	buf    []byte
 
-	showInfo bool
-	program  string
-	focused  bool
+	program           string
+	focused           bool
+	disableAutoscroll bool
+	showInfo          bool
 
 	viewport tui.Viewport
 	spinner  *spinner.Model
@@ -115,11 +116,15 @@ type model struct {
 	width  int
 }
 
-func (m *model) Init() tea.Cmd {
+func (m *Model) ID() uuid.UUID {
+	return m.id
+}
+
+func (m *Model) Init() tea.Cmd {
 	return m.getOutput
 }
 
-func (m *model) Update(msg tea.Msg) tea.Cmd {
+func (m *Model) Update(msg tea.Msg) tea.Cmd {
 	var (
 		cmd  tea.Cmd
 		cmds []tea.Cmd
@@ -154,20 +159,21 @@ func (m *model) Update(msg tea.Msg) tea.Cmd {
 			return tui.CmdHandler(tui.FocusExplorerMsg{})
 		}
 	case toggleAutoscrollMsg:
-		m.viewport.Autoscroll = !m.viewport.Autoscroll
+		m.disableAutoscroll = !m.disableAutoscroll
 	case toggleTaskInfoMsg:
 		m.showInfo = !m.showInfo
 		// adjust width of viewport to accomodate info
 		m.viewport.SetDimensions(m.viewportWidth(), m.height)
-	case outputMsg:
+	case tui.OutputMsg:
 		// Ensure output is for this model
-		if msg.modelID != m.id {
+		if msg.ModelID != m.id {
 			return nil
 		}
-		if err := m.viewport.AppendContent(msg.output, msg.eof); err != nil {
+		err := m.viewport.AppendContent(msg.Output, msg.EOF, !m.disableAutoscroll)
+		if err != nil {
 			return tui.ReportError(err)
 		}
-		if !msg.eof {
+		if !msg.EOF {
 			cmds = append(cmds, m.getOutput)
 		}
 	case resource.Event[*task.Task]:
@@ -190,14 +196,14 @@ func (m *model) Update(msg tea.Msg) tea.Cmd {
 	return tea.Batch(cmds...)
 }
 
-func (m model) viewportWidth() int {
+func (m Model) viewportWidth() int {
 	if m.showInfo {
 		m.width -= infoWidth
 	}
 	return max(0, m.width)
 }
 
-func (m *model) setHeight(height int) {
+func (m *Model) setHeight(height int) {
 	m.height = height
 }
 
@@ -211,7 +217,7 @@ const (
 )
 
 // View renders the viewport
-func (m *model) View() string {
+func (m *Model) View() string {
 	var components []string
 
 	if m.showInfo {
@@ -243,7 +249,7 @@ func (m *model) View() string {
 			tui.Bold.Render("Environment variables"),
 			envs,
 			"",
-			fmt.Sprintf("Autoscroll: %s", boolToOnOff(m.viewport.Autoscroll)),
+			fmt.Sprintf("Autoscroll: %s", boolToOnOff(!m.disableAutoscroll)),
 			"",
 			fmt.Sprintf("Dependencies: %v", m.task.DependsOn),
 		)
@@ -278,18 +284,23 @@ func boolToOnOff(b bool) string {
 	return "off"
 }
 
-func (m model) Title() string {
-	return m.Breadcrumbs("Task", m.task)
+func (m Model) Metadata() string {
+	return fmt.Sprintf(
+		"%s:%s[%s]",
+		m.TaskModulePath(m.task),
+		m.TaskWorkspaceName(m.task),
+		m.task.String(),
+	)
 }
 
-func (m model) Status() string {
+func (m Model) Status() string {
 	return lipgloss.JoinHorizontal(lipgloss.Top,
 		m.TaskSummary(m.task, false),
 		m.TaskStatus(m.task, true),
 	)
 }
 
-func (m model) HelpBindings() []key.Binding {
+func (m Model) HelpBindings() []key.Binding {
 	bindings := []key.Binding{
 		keys.Common.Cancel,
 		keys.Common.State,
@@ -308,24 +319,18 @@ func (m model) HelpBindings() []key.Binding {
 	return bindings
 }
 
-func (m model) getOutput() tea.Msg {
-	msg := outputMsg{modelID: m.id}
+func (m Model) getOutput() tea.Msg {
+	msg := tui.OutputMsg{ModelID: m.id}
 
 	b, ok := <-m.output
 	if ok {
-		msg.output = b
+		msg.Output = b
 	} else {
-		msg.eof = true
+		msg.EOF = true
 	}
 	return msg
 }
 
-func (m *model) Focus(focused bool) {
+func (m *Model) Focus(focused bool) {
 	m.focused = focused
-}
-
-type outputMsg struct {
-	modelID uuid.UUID
-	output  []byte
-	eof     bool
 }

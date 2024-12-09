@@ -40,11 +40,11 @@ func (mm *ResourceMaker) Make(id resource.ID, width, height int) (tui.ChildModel
 		return nil, err
 	}
 	m.viewport = tui.NewViewport(tui.ViewportOptions{
-		Width:  m.viewportWidth(width),
-		Height: m.viewportHeight(height),
+		Width:  width,
+		Height: height,
 		JSON:   true,
 	})
-	m.viewport.AppendContent(marshaled, true)
+	m.viewport.AppendContent(marshaled, true, false)
 
 	return &m, nil
 }
@@ -108,7 +108,7 @@ func (m *resourceModel) Update(msg tea.Msg) tea.Cmd {
 			return m.CreateTasks(fn, m.resource.WorkspaceID)
 		}
 	case tea.WindowSizeMsg:
-		m.viewport.SetDimensions(m.viewportWidth(msg.Width), m.viewportHeight(msg.Height))
+		m.viewport.SetDimensions(msg.Width, msg.Height)
 		return nil
 	}
 
@@ -120,24 +120,7 @@ func (m *resourceModel) Update(msg tea.Msg) tea.Cmd {
 }
 
 func (m *resourceModel) View() string {
-	if m.border {
-		return tui.Border.Render(m.viewport.View())
-	}
 	return m.viewport.View()
-}
-
-func (m resourceModel) viewportWidth(width int) int {
-	if m.border {
-		width -= 2
-	}
-	return max(0, width)
-}
-
-func (m resourceModel) viewportHeight(height int) int {
-	if m.border {
-		height -= 2
-	}
-	return max(0, height)
 }
 
 func (m resourceModel) Title() string {

@@ -69,8 +69,8 @@ var Common = common{
 		key.WithHelp("w", "workspace"),
 	),
 	Edit: key.NewBinding(
-		key.WithKeys("e"),
-		key.WithHelp("e", "edit"),
+		key.WithKeys("E"),
+		key.WithHelp("E", "edit"),
 	),
 	Init: key.NewBinding(
 		key.WithKeys("i"),

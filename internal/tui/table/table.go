@@ -60,6 +60,8 @@ type Model[V resource.Resource] struct {
 	width int
 	// height of table without borders
 	height int
+
+	previewKind *tui.Kind
 }
 
 // Column defines the table structure.
@@ -100,7 +102,6 @@ func New[V resource.Resource](cols []Column, fn RowRenderer[V], width, height in
 		rendered:        make(map[resource.ID]RenderedRow),
 		selected:        make(map[resource.ID]V),
 		selectable:      true,
-		focus:           true,
 		filter:          filter,
 		border:          lipgloss.NormalBorder(),
 		currentRowIndex: -1,
@@ -140,6 +141,14 @@ func WithSelectable[V resource.Resource](s bool) Option[V] {
 	}
 }
 
+// WithPreview configures the table to automatically populate the bottom right
+// pane with a model corresponding to the current row.
+func WithPreview[V resource.Resource](maker tui.Kind) Option[V] {
+	return func(m *Model[V]) {
+		m.previewKind = &maker
+	}
+}
+
 func (m *Model[V]) filterVisible() bool {
 	// Filter is visible if it's either in focus, or it has a non-empty value.
 	return m.filter.Focused() || m.filter.Value() != ""
@@ -173,10 +182,6 @@ func (m Model[V]) visibleRows() int {
 
 // Update is the Bubble Tea update loop.
 func (m Model[V]) Update(msg tea.Msg) (Model[V], tea.Cmd) {
-	if !m.focus {
-		return m, nil
-	}
-
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch {
@@ -240,6 +245,10 @@ func (m Model[V]) Update(msg tea.Msg) (Model[V], tea.Cmd) {
 		// Filter table items
 		m.setRows(maps.Values(m.items)...)
 		return m, cmd
+	case tui.FocusPaneMsg:
+		m.focus = true
+	case tui.UnfocusPaneMsg:
+		m.focus = false
 	default:
 		// Send any other messages to the filter if it is focused.
 		if m.filter.Focused() {
@@ -248,24 +257,17 @@ func (m Model[V]) Update(msg tea.Msg) (Model[V], tea.Cmd) {
 			return m, cmd
 		}
 	}
-
 	return m, nil
 }
 
-// Focused returns the focus state of the table.
-func (m Model[V]) Focused() bool {
-	return m.focus
-}
-
-// Focus focuses the table, allowing the user to move around the rows and
-// interact.
-func (m *Model[V]) Focus() {
-	m.focus = true
-}
-
-// Blur blurs the table, preventing selection or movement.
-func (m *Model[V]) Blur() {
-	m.focus = false
+func (m *Model[V]) PreviewCurrentRow() (tui.Kind, resource.ID, bool) {
+	if _, ok := m.CurrentRow(); !ok {
+		return 0, resource.ID{}, false
+	}
+	if m.previewKind == nil {
+		return 0, resource.ID{}, false
+	}
+	return *m.previewKind, m.currentRowID, true
 }
 
 // View renders the table.
@@ -325,8 +327,8 @@ func (m *Model[V]) SetBorderStyle(border lipgloss.Border, color lipgloss.Termina
 	m.borderColor = color
 }
 
-// CurrentRow returns the current row the user has highlighted. If its index is
-// out of bounds then false is returned along with an empty row.
+// CurrentRow returns the current row the user has highlighted.  If the table is
+// empty then false is returned.
 func (m Model[V]) CurrentRow() (Row[V], bool) {
 	if m.currentRowIndex < 0 || m.currentRowIndex >= len(m.rows) {
 		return *new(Row[V]), false
@@ -620,9 +622,7 @@ func (m *Model[V]) renderRow(rowIdx int) string {
 	if _, ok := m.selected[row.ID]; ok {
 		selected = true
 	}
-	if rowIdx == m.currentRowIndex {
-		current = true
-	}
+	current = rowIdx == m.currentRowIndex
 	if current && selected {
 		background = tui.CurrentAndSelectedBackground
 		foreground = tui.CurrentAndSelectedForeground

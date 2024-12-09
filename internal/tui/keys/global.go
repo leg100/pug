@@ -33,8 +33,8 @@ var Global = global{
 		key.WithHelp("w", "workspaces"),
 	),
 	Explorer: key.NewBinding(
-		key.WithKeys("E"),
-		key.WithHelp("E", "explorer"),
+		key.WithKeys("e"),
+		key.WithHelp("e", "explorer"),
 	),
 	Tasks: key.NewBinding(
 		key.WithKeys("t"),

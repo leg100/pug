@@ -9,6 +9,8 @@ import (
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/leg100/pug/internal"
+	"github.com/leg100/pug/internal/resource"
 	"golang.org/x/exp/maps"
 )
 
@@ -44,6 +46,8 @@ type PaneManager struct {
 	active Position
 	// panes tracks currently visible panes
 	panes map[Position]ChildModel
+	// pages tracks which page each pane is currently showing.
+	pages map[Position]Page
 	// total width and height of the terminal space available to panes.
 	width, height int
 	// minimum width and heights for panes
@@ -55,25 +59,18 @@ type PaneManager struct {
 	topRightHeight int
 }
 
-type pane struct {
-	model  ChildModel
-	width  int
-	height int
+type tablePane interface {
+	PreviewCurrentRow() (Kind, resource.ID, bool)
 }
 
 // NewPaneManager constructs the pane manager with at least the explorer, which
 // occupies the left pane.
-func NewPaneManager(explorer ChildModel, makers map[Kind]Maker) *PaneManager {
-	cache := NewCache()
-	cache.Put(Page{Kind: ExplorerKind}, explorer)
-
+func NewPaneManager(makers map[Kind]Maker) *PaneManager {
 	p := &PaneManager{
-		makers: makers,
-		cache:  cache,
-		active: LeftPane,
-		panes: map[Position]ChildModel{
-			LeftPane: explorer,
-		},
+		makers:         makers,
+		cache:          NewCache(),
+		panes:          make(map[Position]ChildModel),
+		pages:          make(map[Position]Page),
 		minWidth:       40,
 		minHeight:      10,
 		leftPaneWidth:  30,
@@ -83,7 +80,10 @@ func NewPaneManager(explorer ChildModel, makers map[Kind]Maker) *PaneManager {
 }
 
 func (p *PaneManager) Init() tea.Cmd {
-	return p.panes[p.active].Init()
+	return p.setPane(NavigationMsg{
+		Position: LeftPane,
+		Page:     Page{Kind: ExplorerKind},
+	})
 }
 
 func (p *PaneManager) Update(msg tea.Msg) tea.Cmd {
@@ -111,9 +111,7 @@ func (p *PaneManager) Update(msg tea.Msg) tea.Cmd {
 		case key.Matches(msg, Keys.SwitchPaneBack):
 			p.cycleActivePane(true)
 		case key.Matches(msg, Keys.ClosePane):
-			if err := p.closeActivePane(); err != nil {
-				cmd = ReportError(err)
-			}
+			cmd = p.closeActivePane()
 		default:
 			// Send remaining keys to active pane
 			cmd = p.updateModel(p.active, msg)
@@ -124,9 +122,25 @@ func (p *PaneManager) Update(msg tea.Msg) tea.Cmd {
 		p.updateLeftWidth(0)
 		p.updateTopRightHeight(0)
 		p.updateChildSizes()
+	case NavigationMsg:
+		cmds = append(cmds, p.setPane(msg))
 	default:
-		// Send remaining message types to active pane
-		cmd = p.updateModel(p.active, msg)
+		// Send remaining message types to cached panes.
+		cmds = p.cache.UpdateAll(msg)
+	}
+
+	// Check that if the top right pane is a table with a current row, then
+	// ensure the bottom left pane corresponds to that current row, e.g. if the
+	// top right pane is a tasks table, then the bottom right pane shows the
+	// output for the current task row.
+	if table, ok := p.panes[TopRightPane].(tablePane); ok {
+		if kind, id, ok := table.PreviewCurrentRow(); ok {
+			cmd = p.setPane(NavigationMsg{
+				Page:         Page{Kind: kind, ID: id},
+				Position:     BottomRightPane,
+				DisableFocus: true,
+			})
+		}
 	}
 	cmds = append(cmds, cmd)
 	return tea.Batch(cmds...)
@@ -139,7 +153,7 @@ func (p *PaneManager) ActiveModel() ChildModel {
 
 // cycleActivePane makes the next pane the active pane. If last is true then the
 // previous pane is made the active pane.
-func (p *PaneManager) cycleActivePane(last bool) {
+func (p *PaneManager) cycleActivePane(last bool) tea.Cmd {
 	positions := maps.Keys(p.panes)
 	slices.Sort(positions)
 	var activeIndex int
@@ -157,17 +171,17 @@ func (p *PaneManager) cycleActivePane(last bool) {
 	} else {
 		newActiveIndex = (activeIndex + 1) % len(positions)
 	}
-	p.active = positions[newActiveIndex]
+	return p.focusPane(positions[newActiveIndex])
 }
 
-func (p *PaneManager) closeActivePane() error {
+func (p *PaneManager) closeActivePane() tea.Cmd {
 	if len(p.panes) == 1 {
-		return errors.New("cannot close last pane")
+		return ReportError(errors.New("cannot close last pane"))
 	}
 	delete(p.panes, p.active)
-	p.cycleActivePane(false)
+	delete(p.pages, p.active)
 	p.updateChildSizes()
-	return nil
+	return p.cycleActivePane(false)
 }
 
 func (p *PaneManager) updateLeftWidth(delta int) {
@@ -193,8 +207,8 @@ func (p *PaneManager) updateTopRightHeight(delta int) {
 func (p *PaneManager) updateChildSizes() {
 	for position := range p.panes {
 		p.updateModel(position, tea.WindowSizeMsg{
-			Width:  p.paneWidth(position) - 2,
-			Height: p.paneHeight(position) - 2,
+			Width:  p.paneWidth(position) - 2,  // -2 for borders
+			Height: p.paneHeight(position) - 2, // -2 for borders
 		})
 	}
 }
@@ -203,48 +217,50 @@ func (p *PaneManager) updateModel(position Position, msg tea.Msg) tea.Cmd {
 	return p.panes[position].Update(msg)
 }
 
-func (m *PaneManager) View() string {
-	return lipgloss.JoinHorizontal(lipgloss.Top,
-		removeEmptyStrings(
-			m.renderPane(LeftPane),
-			lipgloss.JoinVertical(lipgloss.Top,
-				removeEmptyStrings(
-					m.renderPane(TopRightPane),
-					m.renderPane(BottomRightPane),
-				)...,
-			),
-		)...,
-	)
-}
-
-var border = map[bool]lipgloss.Border{
-	true:  lipgloss.Border(lipgloss.ThickBorder()),
-	false: lipgloss.Border(lipgloss.NormalBorder()),
-}
-
-func (m *PaneManager) SetPane(page Page, position Position) (cmd tea.Cmd, err error) {
-	model := m.cache.Get(page)
+func (m *PaneManager) setPane(msg NavigationMsg) (cmd tea.Cmd) {
+	if page, ok := m.pages[msg.Position]; ok && page == msg.Page {
+		// Pane is already showing requested page, so just bring it into focus.
+		if !msg.DisableFocus {
+			return m.focusPane(msg.Position)
+		}
+		return nil
+	}
+	model := m.cache.Get(msg.Page)
 	if model == nil {
-		maker, ok := m.makers[page.Kind]
+		maker, ok := m.makers[msg.Page.Kind]
 		if !ok {
-			return nil, fmt.Errorf("no maker could be found for %s", page.Kind)
+			return ReportError(fmt.Errorf("no maker could be found for %s", msg.Page.Kind))
 		}
-		model, err = maker.Make(page.ID, 0, 0)
+		var err error
+		model, err = maker.Make(msg.Page.ID, 0, 0)
 		if err != nil {
-			return nil, fmt.Errorf("making page: %w", err)
+			return ReportError(fmt.Errorf("making page of kind %s with id %s: %w", msg.Page.Kind, msg.Page.ID, err))
 		}
-		m.cache.Put(page, model)
+		m.cache.Put(msg.Page, model)
 		cmd = model.Init()
 	}
-	switch position {
-	case TopRightPane:
-		// TopRightPane replaces BottomRightPane too
+	if msg.Position == TopRightPane {
+		// A new top right pane replaces any bottom right pane as well.
 		delete(m.panes, BottomRightPane)
 	}
-	m.active = position
-	m.panes[position] = model
+	m.panes[msg.Position] = model
+	m.pages[msg.Position] = msg.Page
 	m.updateChildSizes()
-	return cmd, nil
+	if !msg.DisableFocus {
+		focus := m.focusPane(msg.Position)
+		cmd = tea.Batch(focus, cmd)
+	}
+	return cmd
+}
+
+func (m *PaneManager) focusPane(position Position) tea.Cmd {
+	var cmds []tea.Cmd
+	if previous, ok := m.panes[m.active]; ok {
+		cmds = append(cmds, previous.Update(UnfocusPaneMsg{}))
+	}
+	m.active = position
+	cmds = append(cmds, m.panes[m.active].Update(FocusPaneMsg{}))
+	return tea.Batch(cmds...)
 }
 
 func (m *PaneManager) paneWidth(position Position) int {
@@ -275,15 +291,37 @@ func (m *PaneManager) paneHeight(position Position) int {
 	return m.height
 }
 
+func (m *PaneManager) View() string {
+	return lipgloss.JoinHorizontal(lipgloss.Top,
+		removeEmptyStrings(
+			m.renderPane(LeftPane),
+			lipgloss.JoinVertical(lipgloss.Top,
+				removeEmptyStrings(
+					m.renderPane(TopRightPane),
+					m.renderPane(BottomRightPane),
+				)...,
+			),
+		)...,
+	)
+}
+
+var border = map[bool]lipgloss.Border{
+	true:  lipgloss.Border(lipgloss.ThickBorder()),
+	false: lipgloss.Border(lipgloss.NormalBorder()),
+}
+
 func (m *PaneManager) renderPane(position Position) string {
 	if m.panes[position] == nil {
 		return ""
 	}
 	model := m.panes[position]
-	renderedPane := model.View()
 	isActive := position == m.active
 	border := border[isActive]
 	topBorder := m.buildTopBorder(position)
+	renderedPane := lipgloss.NewStyle().
+		Width(m.paneWidth(position) - 2).   // -2 for border
+		Height(m.paneHeight(position) - 2). // -2 for border
+		Render(model.View())
 	return lipgloss.JoinVertical(lipgloss.Top,
 		lipgloss.NewStyle().Render(topBorder),
 		lipgloss.NewStyle().
@@ -294,10 +332,11 @@ func (m *PaneManager) renderPane(position Position) string {
 
 func (m *PaneManager) buildTopBorder(position Position) string {
 	var (
-		model    = m.panes[position]
-		width    = m.paneWidth(position)
-		isActive = position == m.active
-		border   = border[isActive]
+		model       = m.panes[position]
+		width       = m.paneWidth(position)
+		isActive    = position == m.active
+		border      = border[isActive]
+		borderStyle = lipgloss.NewStyle().Foreground(BorderColor(isActive))
 	)
 	var middle string
 	if metadataModel, ok := model.(interface{ Metadata() string }); ok {
@@ -307,23 +346,26 @@ func (m *PaneManager) buildTopBorder(position Position) string {
 		length := max(0, width-2-lipgloss.Width(metadataModel.Metadata()))
 		leftLength := length / 2
 		rightLength := max(0, length-leftLength)
+		renderedMetadata := metadataModel.Metadata()
+		if isActive {
+			// If active border, then strip any styling from metadata and apply
+			// border style.
+			renderedMetadata = internal.StripAnsi(renderedMetadata)
+			renderedMetadata = borderStyle.Render(renderedMetadata)
+		}
 		middle = lipgloss.JoinHorizontal(lipgloss.Left,
-			strings.Repeat(border.Top, leftLength),
-			metadataModel.Metadata(),
-			strings.Repeat(border.Top, rightLength),
+			borderStyle.Render(strings.Repeat(border.Top, leftLength)),
+			renderedMetadata,
+			borderStyle.Render(strings.Repeat(border.Top, rightLength)),
 		)
 	} else {
-		middle = strings.Repeat(border.Top, max(0, width-2))
+		middle = borderStyle.Render(strings.Repeat(border.Top, max(0, width-2)))
 	}
-	return lipgloss.NewStyle().
-		Foreground(BorderColor(isActive)).
-		Render(
-			lipgloss.JoinHorizontal(lipgloss.Left,
-				border.TopLeft,
-				middle,
-				border.TopRight,
-			),
-		)
+	return lipgloss.JoinHorizontal(lipgloss.Left,
+		borderStyle.Render(border.TopLeft),
+		middle,
+		borderStyle.Render(border.TopRight),
+	)
 }
 
 func removeEmptyStrings(strs ...string) []string {

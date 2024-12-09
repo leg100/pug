@@ -18,8 +18,6 @@ import (
 type Viewport struct {
 	viewport viewport.Model
 
-	Autoscroll bool
-
 	content []byte
 	json    bool
 	spinner *spinner.Model
@@ -36,10 +34,9 @@ type ViewportOptions struct {
 
 func NewViewport(opts ViewportOptions) Viewport {
 	m := Viewport{
-		Autoscroll: opts.Autoscroll,
-		viewport:   viewport.New(0, 0),
-		json:       opts.JSON,
-		spinner:    opts.Spinner,
+		viewport: viewport.New(0, 0),
+		json:     opts.JSON,
+		spinner:  opts.Spinner,
 	}
 	m.SetDimensions(opts.Width, opts.Height)
 	return m
@@ -107,7 +104,7 @@ func (m *Viewport) SetDimensions(width, height int) {
 	}
 }
 
-func (m *Viewport) AppendContent(content []byte, finished bool) (err error) {
+func (m *Viewport) AppendContent(content []byte, finished, autoScroll bool) (err error) {
 	m.content = append(m.content, content...)
 	if finished {
 		if len(m.content) == 0 {
@@ -126,7 +123,7 @@ func (m *Viewport) AppendContent(content []byte, finished bool) (err error) {
 		}
 	}
 	m.setContent()
-	if m.Autoscroll {
+	if autoScroll {
 		m.viewport.GotoBottom()
 	}
 	return err

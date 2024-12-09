@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"path/filepath"
 
+	"github.com/charmbracelet/lipgloss"
 	"github.com/leg100/pug/internal/resource"
 	"github.com/leg100/pug/internal/tui"
 )
@@ -56,9 +57,10 @@ func (m moduleNode) String() string {
 }
 
 type workspaceNode struct {
-	id      resource.ID
-	name    string
-	current bool
+	id            resource.ID
+	name          string
+	current       bool
+	resourceCount string
 }
 
 func (w workspaceNode) ID() any {
@@ -66,9 +68,15 @@ func (w workspaceNode) ID() any {
 }
 
 func (w workspaceNode) String() string {
-	s := fmt.Sprintf("%s %s", workspaceIcon, w.name)
-	if w.current {
-		return tui.Bold.Render(s)
+	name := lipgloss.NewStyle().
+		Bold(w.current).
+		Render(w.name)
+	s := fmt.Sprintf("%s %s", workspaceIcon, name)
+	if w.resourceCount != "" {
+		s += lipgloss.NewStyle().
+			Foreground(tui.LighterGrey).
+			Italic(true).
+			Render(fmt.Sprintf(" %s", w.resourceCount))
 	}
 	return s
 }

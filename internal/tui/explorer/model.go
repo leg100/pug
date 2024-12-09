@@ -13,30 +13,39 @@ import (
 	"github.com/leg100/pug/internal/module"
 	"github.com/leg100/pug/internal/plan"
 	"github.com/leg100/pug/internal/resource"
+	"github.com/leg100/pug/internal/state"
 	"github.com/leg100/pug/internal/task"
 	"github.com/leg100/pug/internal/tui"
 	"github.com/leg100/pug/internal/tui/keys"
 	"github.com/leg100/pug/internal/workspace"
-	"golang.org/x/exp/maps"
 )
 
-func New(
-	modules *module.Service,
-	workspaces *workspace.Service,
-	plans *plan.Service,
-	helpers *tui.Helpers,
-	workdir internal.Workdir,
-) tui.ChildModel {
-	tree := newTree(workdir, nil, nil)
+type Maker struct {
+	ModuleService    *module.Service
+	WorkspaceService *workspace.Service
+	PlanService      *plan.Service
+	Workdir          internal.Workdir
+	Helpers          *tui.Helpers
+}
+
+func (m *Maker) Make(id resource.ID, width, height int) (tui.ChildModel, error) {
+	builder := &treeBuilder{
+		wd:               m.Workdir,
+		helpers:          m.Helpers,
+		moduleService:    m.ModuleService,
+		workspaceService: m.WorkspaceService,
+	}
+	tree := builder.newTree()
 	return &model{
-		WorkspaceService: workspaces,
-		ModuleService:    modules,
-		PlanService:      plans,
-		Helpers:          helpers,
-		Workdir:          workdir,
+		WorkspaceService: m.WorkspaceService,
+		ModuleService:    m.ModuleService,
+		PlanService:      m.PlanService,
+		Helpers:          m.Helpers,
+		Workdir:          m.Workdir,
+		treeBuilder:      builder,
 		tree:             tree,
 		tracker:          newTracker(tree),
-	}
+	}, nil
 }
 
 type model struct {
@@ -47,20 +56,14 @@ type model struct {
 	PlanService      *plan.Service
 	Workdir          internal.Workdir
 
-	modules       []*module.Module
-	workspaces    []*workspace.Workspace
+	treeBuilder   *treeBuilder
 	tree          *tree
 	tracker       *tracker
 	width, height int
 }
 
 func (m model) Init() tea.Cmd {
-	return func() tea.Msg {
-		return initMsg{
-			modules:    m.ModuleService.List(),
-			workspaces: m.WorkspaceService.List(workspace.ListOptions{}),
-		}
-	}
+	return m.buildTree
 }
 
 func (m *model) Update(msg tea.Msg) tea.Cmd {
@@ -191,28 +194,16 @@ func (m *model) Update(msg tea.Msg) tea.Cmd {
 				m.CreateTasks(m.Workspaces.Delete, workspaceNode.id),
 			)
 		}
-	case initMsg:
-		m.modules = msg.modules
-		m.workspaces = msg.workspaces
-		return m.buildTree
 	case builtTreeMsg:
 		m.tree = (*tree)(msg)
 		// TODO: perform this in a cmd
 		m.tracker.reindex(m.tree)
 		return nil
 	case resource.Event[*module.Module]:
-		switch msg.Type {
-		case resource.CreatedEvent:
-			m.modules = append(m.modules, msg.Payload)
-		case resource.UpdatedEvent:
-			m.modules = append(m.modules, msg.Payload)
-		}
 		return m.buildTree
 	case resource.Event[*workspace.Workspace]:
-		switch msg.Type {
-		case resource.CreatedEvent:
-			m.workspaces = append(m.workspaces, msg.Payload)
-		}
+		return m.buildTree
+	case resource.Event[*state.State]:
 		return m.buildTree
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
@@ -234,29 +225,39 @@ func (m model) View() string {
 	m.tree.render(true, to)
 	s := to.String()
 	lines := strings.Split(s, "\n")
-	totalVisibleLines := min(m.height, len(lines))
+	totalVisibleLines := clamp(m.height, 0, len(lines))
 	lines = lines[m.tracker.start : m.tracker.start+totalVisibleLines]
 	for i := range lines {
 		style := lipgloss.NewStyle().Width(m.width - tui.ScrollbarWidth)
 		node := m.tracker.nodes[m.tracker.start+i]
 		// Style node according to whether it is the cursor node, selected, or
 		// both
-		if node == m.tracker.cursorNode {
-			if m.tracker.isSelected(node) {
-				style = style.
-					Background(tui.CurrentAndSelectedBackground).
-					Foreground(tui.CurrentAndSelectedForeground)
-			} else {
-				style = style.
-					Background(tui.CurrentBackground).
-					Foreground(tui.CurrentForeground)
-			}
-		} else if m.tracker.isSelected(node) {
-			style = style.
-				Background(tui.SelectedBackground).
-				Foreground(tui.SelectedForeground)
+		var (
+			background lipgloss.Color
+			foreground lipgloss.Color
+			current    = node == m.tracker.cursorNode
+			selected   = m.tracker.isSelected(node)
+		)
+		if current && selected {
+			background = tui.CurrentAndSelectedBackground
+			foreground = tui.CurrentAndSelectedForeground
+		} else if current {
+			background = tui.CurrentBackground
+			foreground = tui.CurrentForeground
+		} else if selected {
+			background = tui.SelectedBackground
+			foreground = tui.SelectedForeground
 		}
-		lines[i] = style.Render(lines[i])
+		renderedRow := style.Render(lines[i])
+		// If current row or selected rows, strip colors and apply background color
+		if current || selected {
+			renderedRow = internal.StripAnsi(renderedRow)
+			renderedRow = lipgloss.NewStyle().
+				Foreground(foreground).
+				Background(background).
+				Render(renderedRow)
+		}
+		lines[i] = renderedRow
 	}
 	scrollbar := tui.Scrollbar(m.height, len(lines), totalVisibleLines, m.tracker.start)
 	content := lipgloss.NewStyle().
@@ -269,14 +270,14 @@ func (m model) View() string {
 	return content
 }
 
-func (m model) Title() string {
-	return fmt.Sprintf("start: %d; selected: %v", m.tracker.start, maps.Keys(m.tracker.selections))
-}
-
-func (m *model) Focus(focused bool) {
+func (m model) Metadata() string {
+	e := lipgloss.NewStyle().
+		Foreground(tui.DarkRed).
+		Render("e")
+	return fmt.Sprintf("%sxplorer", e)
 }
 
 func (m model) buildTree() tea.Msg {
-	tree := newTree(m.Workdir, m.modules, m.workspaces)
+	tree := m.treeBuilder.newTree()
 	return builtTreeMsg(tree)
 }

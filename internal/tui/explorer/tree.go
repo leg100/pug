@@ -9,6 +9,7 @@ import (
 	"github.com/leg100/pug/internal"
 	"github.com/leg100/pug/internal/module"
 	"github.com/leg100/pug/internal/resource"
+	"github.com/leg100/pug/internal/tui"
 	"github.com/leg100/pug/internal/workspace"
 )
 
@@ -17,10 +18,19 @@ type tree struct {
 	children []*tree
 }
 
-func newTree(wd internal.Workdir, modules []*module.Module, workspaces []*workspace.Workspace) *tree {
+type treeBuilder struct {
+	wd               internal.Workdir
+	helpers          *tui.Helpers
+	moduleService    *module.Service
+	workspaceService *workspace.Service
+}
+
+func (b *treeBuilder) newTree() *tree {
 	t := &tree{
-		value: dirNode{root: true, path: wd.PrettyString()},
+		value: dirNode{root: true, path: b.wd.PrettyString()},
 	}
+	modules := b.moduleService.List()
+	workspaces := b.workspaceService.List(workspace.ListOptions{})
 	// Create set of current workspaces for assignment below.
 	currentWorkspaces := make(map[resource.ID]bool)
 	for _, mod := range modules {
@@ -31,11 +41,13 @@ func newTree(wd internal.Workdir, modules []*module.Module, workspaces []*worksp
 	// Arrange workspaces by module, for attachment to modules in tree below.
 	workspaceNodes := make(map[resource.ID][]workspaceNode, len(modules))
 	for _, ws := range workspaces {
-		workspaceNodes[ws.ModuleID] = append(workspaceNodes[ws.ModuleID], workspaceNode{
-			id:      ws.ID,
-			name:    ws.Name,
-			current: currentWorkspaces[ws.ID],
-		})
+		wsNode := workspaceNode{
+			id:            ws.ID,
+			name:          ws.Name,
+			current:       currentWorkspaces[ws.ID],
+			resourceCount: b.helpers.WorkspaceResourceCount(ws),
+		}
+		workspaceNodes[ws.ModuleID] = append(workspaceNodes[ws.ModuleID], wsNode)
 	}
 	for _, mod := range modules {
 		// Set parent to root of tree

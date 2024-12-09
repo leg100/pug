@@ -48,24 +48,16 @@ func (m *ResourceListMaker) Make(id resource.ID, width, height int) (tui.ChildMo
 		}
 		return table.RenderedRow{resourceColumn.Key: addr}
 	}
-	tableOptions := []table.Option[*state.Resource]{
+	tbl := table.New(
+		columns,
+		renderer,
+		width,
+		height,
 		table.WithSortFunc(state.Sort),
-	}
-	splitModel := split.New(split.Options[*state.Resource]{
-		Columns:      columns,
-		Renderer:     renderer,
-		TableOptions: tableOptions,
-		Width:        width,
-		Height:       height,
-		Maker: &ResourceMaker{
-			States:         m.States,
-			Plans:          m.Plans,
-			Helpers:        m.Helpers,
-			disableBorders: true,
-		},
-	})
+		table.WithPreview[*state.Resource](tui.ResourceKind),
+	)
 	return &resourceList{
-		Model:     splitModel,
+		Model:     tbl,
 		states:    m.States,
 		plans:     m.Plans,
 		workspace: ws,
@@ -77,7 +69,7 @@ func (m *ResourceListMaker) Make(id resource.ID, width, height int) (tui.ChildMo
 }
 
 type resourceList struct {
-	split.Model[*state.Resource]
+	table.Model[*state.Resource]
 	*tui.Helpers
 
 	states    *state.Service
@@ -87,7 +79,6 @@ type resourceList struct {
 	reloading bool
 	height    int
 	width     int
-	focused   bool
 
 	spinner *spinner.Model
 }
@@ -128,7 +119,7 @@ func (m *resourceList) Update(msg tea.Msg) tea.Cmd {
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, localKeys.Enter):
-			if row, ok := m.Table.CurrentRow(); ok {
+			if row, ok := m.CurrentRow(); ok {
 				return tui.NavigateTo(tui.ResourceKind, tui.WithParent(row.ID))
 			}
 		case key.Matches(msg, resourcesKeys.Reload):
@@ -170,7 +161,7 @@ func (m *resourceList) Update(msg tea.Msg) tea.Cmd {
 			addrs := m.selectedOrCurrentAddresses()
 			return m.createStateCommand(m.states.Untaint, addrs...)
 		case key.Matches(msg, resourcesKeys.Move):
-			if row, ok := m.Table.CurrentRow(); ok {
+			if row, ok := m.CurrentRow(); ok {
 				from := row.Value.Address
 				return m.Move(m.workspace.GetID(), from)
 			}
@@ -194,7 +185,7 @@ func (m *resourceList) Update(msg tea.Msg) tea.Cmd {
 		case key.Matches(msg, keys.Common.Apply):
 			// Create a targeted apply.
 			createRunOptions.TargetAddrs = m.selectedOrCurrentAddresses()
-			resourceIDs := m.Table.SelectedOrCurrentIDs()
+			resourceIDs := m.SelectedOrCurrentIDs()
 			fn := func(workspaceID resource.ID) (task.Spec, error) {
 				return m.plans.Apply(workspaceID, createRunOptions)
 			}
@@ -208,7 +199,7 @@ func (m *resourceList) Update(msg tea.Msg) tea.Cmd {
 			return nil
 		}
 		m.state = (*state.State)(msg)
-		m.Table.SetItems(maps.Values(m.state.Resources)...)
+		m.SetItems(maps.Values(m.state.Resources)...)
 	case resource.Event[*state.State]:
 		if msg.Payload.WorkspaceID != m.workspace.GetID() {
 			return nil
@@ -217,7 +208,7 @@ func (m *resourceList) Update(msg tea.Msg) tea.Cmd {
 		case resource.CreatedEvent, resource.UpdatedEvent:
 			// Whenever state is created or updated, re-populate table with
 			// resources.
-			m.Table.SetItems(maps.Values(msg.Payload.Resources)...)
+			m.SetItems(maps.Values(msg.Payload.Resources)...)
 			m.state = msg.Payload
 		}
 	case tea.WindowSizeMsg:
@@ -233,21 +224,13 @@ func (m *resourceList) Update(msg tea.Msg) tea.Cmd {
 }
 
 func (m resourceList) View() string {
-	border := tui.Regular.
-		Padding(0, 1).
-		Border(lipgloss.NormalBorder()).
-		// Subtract 2 to accomodate borders
-		Width(m.width - 2).
-		// Subtract 2 to accomodate borders
-		Height(m.height - 2)
-
 	if m.reloading {
-		return border.Render(fmt.Sprintf("Pulling state %s", m.spinner.View()))
+		return fmt.Sprintf("Pulling state %s", m.spinner.View())
 	}
 	if m.state == nil || m.state.Serial < 0 {
-		return border.Render("No state found")
+		return "No state found"
 	}
-	// Make header
+	// Make footer
 	// metadata := fmt.Sprintf("Serial: %d | Terraform Version: %s | Lineage: %s", m.state.Serial, m.state.TerraformVersion, m.state.Lineage)
 	return lipgloss.JoinVertical(lipgloss.Left,
 		m.Model.View(),
@@ -286,7 +269,7 @@ func (m resourceList) HelpBindings() []key.Binding {
 }
 
 func (m resourceList) selectedOrCurrentAddresses() []state.ResourceAddress {
-	rows := m.Table.SelectedOrCurrent()
+	rows := m.SelectedOrCurrent()
 	addrs := make([]state.ResourceAddress, len(rows))
 	var i int
 	for _, v := range rows {
@@ -296,8 +279,8 @@ func (m resourceList) selectedOrCurrentAddresses() []state.ResourceAddress {
 	return addrs
 }
 
-func (m *resourceList) Focus(focused bool) {
-	m.focused = !focused
+func (m *resourceList) Metadata() string {
+	return m.Model.Metadata() + " resources"
 }
 
 func serialBreadcrumb(serial int64) string {

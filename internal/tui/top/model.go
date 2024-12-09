@@ -14,7 +14,6 @@ import (
 	"github.com/leg100/pug/internal/resource"
 	"github.com/leg100/pug/internal/task"
 	"github.com/leg100/pug/internal/tui"
-	"github.com/leg100/pug/internal/tui/explorer"
 	"github.com/leg100/pug/internal/tui/keys"
 	tuimodule "github.com/leg100/pug/internal/tui/module"
 	"github.com/leg100/pug/internal/version"
@@ -78,23 +77,14 @@ func newModel(cfg app.Config, app *app.App) (model, error) {
 	makers := makeMakers(cfg, app, &spinner, helpers)
 
 	m := model{
-		PaneManager: tui.NewPaneManager(
-			explorer.New(
-				app.Modules,
-				app.Workspaces,
-				app.Plans,
-				helpers,
-				cfg.Workdir,
-			),
-			makers,
-		),
-		makers:   makers,
-		modules:  app.Modules,
-		spinner:  &spinner,
-		tasks:    app.Tasks,
-		maxTasks: cfg.MaxTasks,
-		dump:     dump,
-		workdir:  cfg.Workdir.PrettyString(),
+		PaneManager: tui.NewPaneManager(makers),
+		makers:      makers,
+		modules:     app.Modules,
+		spinner:     &spinner,
+		tasks:       app.Tasks,
+		maxTasks:    cfg.MaxTasks,
+		dump:        dump,
+		workdir:     cfg.Workdir.PrettyString(),
 	}
 	return m, nil
 }
@@ -247,15 +237,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return m, nil
 		}
-	case tui.NavigationMsg:
-		cmd, err := m.SetPane(msg.Page, msg.Position)
-		if err != nil {
-			return m, tui.ReportError(err)
-		}
-		cmds = append(cmds, cmd)
 	case tui.ErrorMsg:
 		m.err = error(msg)
 	case tui.InfoMsg:
+		m.info = string(msg)
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
@@ -275,8 +260,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 	return m, tea.Batch(cmds...)
 }
-
-var messageFooterHeight = 1
 
 func (m model) View() string {
 	// Optionally render title on the left of header
@@ -362,6 +345,8 @@ func (m model) View() string {
 //
 // TODO: rename contentHeight
 func (m model) viewHeight() int {
+	const messageFooterHeight = 1
+
 	vh := m.height - messageFooterHeight
 	if m.mode == promptMode {
 		vh -= tui.PromptHeight

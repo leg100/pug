@@ -2,13 +2,15 @@ package tui
 
 import (
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/google/uuid"
 	"github.com/leg100/pug/internal/resource"
 )
 
 // NavigationMsg is an instruction to navigate to a page.
 type NavigationMsg struct {
-	Page     Page
-	Position Position
+	Page         Page
+	Position     Position
+	DisableFocus bool
 }
 
 func NewNavigationMsg(kind Kind, opts ...NavigateOption) NavigationMsg {
@@ -33,6 +35,12 @@ func WithPosition(position Position) NavigateOption {
 	}
 }
 
+func DisableFocus() NavigateOption {
+	return func(msg *NavigationMsg) {
+		msg.DisableFocus = true
+	}
+}
+
 type InfoMsg string
 
 // FilterFocusReqMsg is a request to focus the filter widget.
@@ -51,3 +59,17 @@ type FilterKeyMsg tea.KeyMsg
 
 // FocusExplorerMsg switches the focus to the explorer pane.
 type FocusExplorerMsg struct{}
+
+// FocusPaneMsg is sent to a model when it focused
+type FocusPaneMsg struct{}
+
+// UnfocusPaneMsg is sent to a model when it unfocused
+type UnfocusPaneMsg struct{}
+
+type OutputMsg struct {
+	Autoscroll bool
+
+	ModelID uuid.UUID
+	Output  []byte
+	EOF     bool
+}

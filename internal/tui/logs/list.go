@@ -67,6 +67,7 @@ func (m *ListMaker) Make(_ resource.ID, width, height int) (tui.ChildModel, erro
 		height,
 		table.WithSortFunc(logging.BySerialDesc),
 		table.WithSelectable[logging.Message](false),
+		table.WithPreview[logging.Message](tui.LogKind),
 	)
 	return &list{
 		logger:  m.Logger,
@@ -113,6 +114,10 @@ func (m *list) Update(msg tea.Msg) tea.Cmd {
 
 func (m list) Title() string {
 	return m.Breadcrumbs("Logs", nil)
+}
+
+func (m list) Metadata() string {
+	return "[logs] " + m.Model.Metadata()
 }
 
 func (m list) View() string {
