@@ -148,7 +148,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case promptMode:
 			closePrompt, cmd := m.prompt.HandleKey(msg)
 			if closePrompt {
-				// Send message to current model to resize itself to expand back
+				// Send message to panes to resize themselves to expand back
 				// into space occupied by prompt.
 				m.mode = normalMode
 				_ = m.PaneManager.Update(tea.WindowSizeMsg{
@@ -164,23 +164,23 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				// switch back to normal mode, blur the filter widget, and let
 				// the key handler below handle the quit action.
 				m.mode = normalMode
-				_ = m.PaneManager.Update(tui.FilterBlurMsg{})
+				_ = m.ActiveModel().Update(tui.FilterBlurMsg{})
 			case key.Matches(msg, keys.Filter.Blur):
 				// Switch back to normal mode, and send message to current model
 				// to blur the filter widget
 				m.mode = normalMode
-				_ = m.PaneManager.Update(tui.FilterBlurMsg{})
+				_ = m.ActiveModel().Update(tui.FilterBlurMsg{})
 				return m, nil
 			case key.Matches(msg, keys.Filter.Close):
 				// Switch back to normal mode, and send message to current model
 				// to close the filter widget
 				m.mode = normalMode
-				_ = m.PaneManager.Update(tui.FilterCloseMsg{})
+				_ = m.ActiveModel().Update(tui.FilterCloseMsg{})
 				return m, nil
 			default:
 				// Wrap key message in a filter key message and send to current
 				// model.
-				cmd = m.PaneManager.Update(tui.FilterKeyMsg(msg))
+				cmd = m.ActiveModel().Update(tui.FilterKeyMsg(msg))
 				return m, cmd
 			}
 		}
@@ -204,7 +204,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, keys.Global.Filter):
 			// '/' enables filter mode if the current model indicates it
 			// supports it, which it does so by sending back a non-nil command.
-			if cmd = m.PaneManager.Update(tui.FilterFocusReqMsg{}); cmd != nil {
+			if cmd = m.ActiveModel().Update(tui.FilterFocusReqMsg{}); cmd != nil {
 				m.mode = filterMode
 			}
 			return m, cmd

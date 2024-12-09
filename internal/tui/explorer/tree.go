@@ -9,7 +9,6 @@ import (
 	"github.com/leg100/pug/internal"
 	"github.com/leg100/pug/internal/module"
 	"github.com/leg100/pug/internal/resource"
-	"github.com/leg100/pug/internal/tui"
 	"github.com/leg100/pug/internal/workspace"
 )
 
@@ -20,9 +19,21 @@ type tree struct {
 
 type treeBuilder struct {
 	wd               internal.Workdir
-	helpers          *tui.Helpers
-	moduleService    *module.Service
-	workspaceService *workspace.Service
+	helpers          treeBuilderHelpers
+	moduleService    treeBuilderModuleLister
+	workspaceService treeBuilderWorkspaceLister
+}
+
+type treeBuilderModuleLister interface {
+	List() []*module.Module
+}
+
+type treeBuilderWorkspaceLister interface {
+	List(workspace.ListOptions) []*workspace.Workspace
+}
+
+type treeBuilderHelpers interface {
+	WorkspaceResourceCount(*workspace.Workspace) string
 }
 
 func (b *treeBuilder) newTree() *tree {
@@ -66,6 +77,13 @@ func (b *treeBuilder) newTree() *tree {
 		}
 	}
 	return t
+}
+
+func filter(text string, from, to *tree) {
+	if strings.Contains(from.value.String(), text) {
+		to.children = append(to.children, from)
+		return
+	}
 }
 
 func (t *tree) render(root bool, to *lgtree.Tree) {

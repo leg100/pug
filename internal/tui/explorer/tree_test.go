@@ -11,7 +11,6 @@ import (
 )
 
 func TestTree(t *testing.T) {
-	wd := internal.NewTestWorkdir(t)
 	mod1 := &module.Module{
 		ID:   resource.NewID(resource.Module),
 		Path: "a",
@@ -40,24 +39,31 @@ func TestTree(t *testing.T) {
 		Name:     "ws3",
 	}
 
-	got := newTree(
-		wd,
-		[]*module.Module{mod1, mod2, mod3},
-		[]*workspace.Workspace{ws1, ws2, ws3},
-	).root
+	builder := &treeBuilder{
+		wd: internal.NewTestWorkdir(t),
+		moduleService: &fakeTreeBuilderModuleLister{
+			modules: []*module.Module{mod1, mod2, mod3},
+		},
+		workspaceService: &fakeTreeBuilderWorkspaceLister{
+			workspaces: []*workspace.Workspace{ws1, ws2, ws3},
+		},
+		helpers: &fakeTreeBuilderHelpers{},
+	}
 
-	want := &node{
-		value: dirNode{path: wd.String(), root: true},
-		children: []*node{
+	got := builder.newTree()
+
+	want := &tree{
+		value: dirNode{path: builder.wd.String(), root: true},
+		children: []*tree{
 			{
 				value: dirNode{path: "a"},
-				children: []*node{
+				children: []*tree{
 					{
 						value: dirNode{path: "a/b"},
-						children: []*node{
+						children: []*tree{
 							{
 								value: moduleNode{id: mod3.ID, path: "a/b/c"},
-								children: []*node{
+								children: []*tree{
 									{
 										value: workspaceNode{id: ws3.ID, name: "ws3"},
 									},
@@ -67,7 +73,7 @@ func TestTree(t *testing.T) {
 					},
 					{
 						value: moduleNode{id: mod2.ID, path: "a/b"},
-						children: []*node{
+						children: []*tree{
 							{
 								value: workspaceNode{id: ws2.ID, name: "ws2"},
 							},
@@ -77,7 +83,7 @@ func TestTree(t *testing.T) {
 			},
 			{
 				value: moduleNode{id: mod1.ID, path: "a"},
-				children: []*node{
+				children: []*tree{
 					{
 						value: workspaceNode{id: ws1.ID, name: "ws1"},
 					},
@@ -107,4 +113,26 @@ func TestSplitDirs_OneDirectory(t *testing.T) {
 func TestSplitDirs_OneSubdirectory(t *testing.T) {
 	got := splitDirs("a/b")
 	assert.Equal(t, []string{"a"}, got)
+}
+
+type fakeTreeBuilderModuleLister struct {
+	modules []*module.Module
+}
+
+func (f *fakeTreeBuilderModuleLister) List() []*module.Module {
+	return f.modules
+}
+
+type fakeTreeBuilderWorkspaceLister struct {
+	workspaces []*workspace.Workspace
+}
+
+func (f *fakeTreeBuilderWorkspaceLister) List(workspace.ListOptions) []*workspace.Workspace {
+	return f.workspaces
+}
+
+type fakeTreeBuilderHelpers struct{}
+
+func (f *fakeTreeBuilderHelpers) WorkspaceResourceCount(*workspace.Workspace) string {
+	return ""
 }
