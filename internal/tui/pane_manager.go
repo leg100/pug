@@ -277,10 +277,10 @@ func (m *PaneManager) paneHeight(position Position) int {
 
 func (m *PaneManager) View() string {
 	return lipgloss.JoinHorizontal(lipgloss.Top,
-		removeEmptyStrings(
+		RemoveEmptyStrings(
 			m.renderPane(LeftPane),
 			lipgloss.JoinVertical(lipgloss.Top,
-				removeEmptyStrings(
+				RemoveEmptyStrings(
 					m.renderPane(TopRightPane),
 					m.renderPane(BottomRightPane),
 				)...,
@@ -353,7 +353,7 @@ func (m *PaneManager) buildTopBorder(position Position) string {
 	)
 }
 
-func removeEmptyStrings(strs ...string) []string {
+func RemoveEmptyStrings(strs ...string) []string {
 	n := 0
 	for _, s := range strs {
 		if s != "" {

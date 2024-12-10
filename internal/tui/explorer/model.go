@@ -39,7 +39,7 @@ func (m *Maker) Make(id resource.ID, width, height int) (tui.ChildModel, error) 
 		moduleService:    m.ModuleService,
 		workspaceService: m.WorkspaceService,
 	}
-	tree := builder.newTree()
+	tree := builder.newTree("")
 	filter := textinput.New()
 	filter.Prompt = "Filter: "
 	return &model{
@@ -50,7 +50,7 @@ func (m *Maker) Make(id resource.ID, width, height int) (tui.ChildModel, error) 
 		Workdir:          m.Workdir,
 		treeBuilder:      builder,
 		tree:             tree,
-		tracker:          newTracker(tree),
+		tracker:          newTracker(tree, height),
 		filter:           filter,
 	}, nil
 }
@@ -84,10 +84,10 @@ func (m *model) Update(msg tea.Msg) tea.Cmd {
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, keys.Navigation.LineUp):
-			m.tracker.cursorUp()
+			m.tracker.cursorUp(m.treeHeight())
 			return nil
 		case key.Matches(msg, keys.Navigation.LineDown):
-			m.tracker.cursorDown()
+			m.tracker.cursorDown(m.treeHeight())
 			return nil
 		case key.Matches(msg, keys.Global.Select):
 			err := m.tracker.toggleSelection()
@@ -205,7 +205,7 @@ func (m *model) Update(msg tea.Msg) tea.Cmd {
 	case builtTreeMsg:
 		m.tree = (*tree)(msg)
 		// TODO: perform this in a cmd
-		m.tracker.reindex(m.tree)
+		m.tracker.reindex(m.tree, m.treeHeight())
 		return nil
 	case resource.Event[*module.Module]:
 		return m.buildTree
@@ -216,22 +216,56 @@ func (m *model) Update(msg tea.Msg) tea.Cmd {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
-		m.tracker.height = m.height
 		// TODO: perform this in a cmd
-		m.tracker.reindex(m.tree)
+		m.tracker.reindex(m.tree, m.treeHeight())
+	case tui.FilterFocusReqMsg:
+		// Focus the filter widget
+		blink := m.filter.Focus()
+		// Start blinking the cursor.
+		return blink
+	case tui.FilterBlurMsg:
+		// Blur the filter widget
+		m.filter.Blur()
+		return nil
+	case tui.FilterCloseMsg:
+		// Close the filter widget
+		m.filter.Blur()
+		m.filter.SetValue("")
+		// Unfilter table items
+		return m.buildTree
+	case tui.FilterKeyMsg:
+		// unwrap key and send to filter widget
+		kmsg := tea.KeyMsg(msg)
+		var blink tea.Cmd
+		m.filter, blink = m.filter.Update(kmsg)
+		// Filter table items
+		return tea.Batch(
+			blink,
+			m.buildTree,
+		)
 	}
 	return nil
+}
+
+func (m model) treeHeight() int {
+	if m.filterVisible() {
+		return max(0, m.height-filterHeight)
+	}
+	return m.height
 }
 
 func (m model) View() string {
 	if m.tree == nil {
 		return "building tree"
 	}
-	treeHeight := m.height
+	var content string
 	if m.filterVisible() {
-		treeHeight = max(0, m.height-filterHeight)
+		content = tui.Regular.Margin(0, 1).Render(m.filter.View())
+		content += "\n"
+		content += strings.Repeat("─", m.width)
+		content += "\n"
 	}
-	style := lipgloss.NewStyle().
+	treeStyle := lipgloss.NewStyle().
 		Width(m.width - tui.ScrollbarWidth).
 		MaxWidth(m.width - tui.ScrollbarWidth).
 		Inline(true)
@@ -241,7 +275,7 @@ func (m model) View() string {
 	m.tree.render(true, to)
 	s := to.String()
 	lines := strings.Split(s, "\n")
-	numVisibleLines := clamp(m.height, 0, len(lines))
+	numVisibleLines := clamp(m.treeHeight(), 0, len(lines))
 	visibleLines := lines[m.tracker.start : m.tracker.start+numVisibleLines]
 	for i := range visibleLines {
 		node := m.tracker.nodes[m.tracker.start+i]
@@ -263,7 +297,7 @@ func (m model) View() string {
 			background = tui.SelectedBackground
 			foreground = tui.SelectedForeground
 		}
-		renderedRow := style.Render(visibleLines[i])
+		renderedRow := treeStyle.Render(visibleLines[i])
 		// If current row or selected rows, strip colors and apply background color
 		if current || selected {
 			renderedRow = internal.StripAnsi(renderedRow)
@@ -274,13 +308,12 @@ func (m model) View() string {
 		}
 		visibleLines[i] = renderedRow
 	}
-	scrollbar := tui.Scrollbar(m.height, len(lines), numVisibleLines, m.tracker.start)
-	content := lipgloss.NewStyle().
-		MaxHeight(m.height).
-		Render(lipgloss.JoinHorizontal(lipgloss.Left,
-			strings.Join(visibleLines, "\n"),
-			scrollbar,
-		))
+	scrollbar := tui.Scrollbar(m.treeHeight(), len(lines), numVisibleLines, m.tracker.start)
+	content += lipgloss.JoinHorizontal(lipgloss.Left,
+		strings.Join(visibleLines, "\n"),
+		scrollbar,
+	)
+	// MaxHeight(m.height).
 	return content
 }
 
@@ -292,7 +325,7 @@ func (m model) Metadata() string {
 }
 
 func (m model) buildTree() tea.Msg {
-	tree := m.treeBuilder.newTree()
+	tree := m.treeBuilder.newTree(m.filter.Value())
 	return builtTreeMsg(tree)
 }
 

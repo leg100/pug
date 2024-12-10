@@ -36,7 +36,7 @@ type treeBuilderHelpers interface {
 	WorkspaceResourceCount(*workspace.Workspace) string
 }
 
-func (b *treeBuilder) newTree() *tree {
+func (b *treeBuilder) newTree(filter string) *tree {
 	t := &tree{
 		value: dirNode{root: true, path: b.wd.PrettyString()},
 	}
@@ -76,10 +76,13 @@ func (b *treeBuilder) newTree() *tree {
 			modTree.addChild(ws)
 		}
 	}
-	return t
+	return t.filter(filter)
 }
 
 func (t *tree) filter(text string) *tree {
+	if text == "" {
+		return t
+	}
 	if strings.Contains(t.value.String(), text) {
 		return t
 	}

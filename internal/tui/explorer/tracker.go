@@ -13,23 +13,21 @@ type tracker struct {
 	cursorIndex int
 	// index of first visible row
 	start int
-	// height of tree widget
-	height int
 
 	*selector
 }
 
-func newTracker(tree *tree) *tracker {
+func newTracker(tree *tree, height int) *tracker {
 	t := &tracker{
 		selector: &selector{
 			selections: make(map[resource.ID]struct{}),
 		},
 	}
-	t.reindex(tree)
+	t.reindex(tree, height)
 	return t
 }
 
-func (t *tracker) reindex(tree *tree) {
+func (t *tracker) reindex(tree *tree, height int) {
 	t.nodes = nil
 	t.doReindex(tree)
 
@@ -37,7 +35,7 @@ func (t *tracker) reindex(tree *tree) {
 		t.cursorNode = t.nodes[0]
 		t.cursorIndex = 0
 	}
-	t.setStart()
+	t.setStart(height)
 }
 
 func (t *tracker) doReindex(tree *tree) {
@@ -57,20 +55,20 @@ func (t *tracker) doReindex(tree *tree) {
 	}
 }
 
-func (t *tracker) cursorUp() {
+func (t *tracker) cursorUp(height int) {
 	t.cursorIndex = max(t.cursorIndex-1, 0)
 	if len(t.nodes) > 0 {
 		t.cursorNode = t.nodes[t.cursorIndex]
 	}
-	t.setStart()
+	t.setStart(height)
 }
 
-func (t *tracker) cursorDown() {
+func (t *tracker) cursorDown(height int) {
 	t.cursorIndex = min(t.cursorIndex+1, len(t.nodes)-1)
 	if len(t.nodes) > 0 {
 		t.cursorNode = t.nodes[t.cursorIndex]
 	}
-	t.setStart()
+	t.setStart(height)
 }
 
 func (t *tracker) toggleSelection() error {
@@ -129,15 +127,15 @@ func (t *tracker) toggleClose() {
 	}
 }
 
-func (t *tracker) setStart() {
+func (t *tracker) setStart(height int) {
 	// Start index must be at least the cursor position minus the max number
 	// of visible nodes.
-	minimum := max(0, t.cursorIndex-t.height+1)
+	minimum := max(0, t.cursorIndex-height+1)
 	// Start index must be at most the lesser of:
 	// (a) the cursor position, or
 	// (b) the number of nodes minus the maximum number of visible rows (as many
 	// rows as possible are rendered)
-	maximum := max(0, min(t.cursorIndex, len(t.nodes)-t.height))
+	maximum := max(0, min(t.cursorIndex, len(t.nodes)-height))
 	t.start = clamp(t.start, minimum, maximum)
 }
 
