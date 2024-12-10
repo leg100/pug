@@ -94,6 +94,12 @@ func (t *tree) filter(text string) *tree {
 		}
 	}
 	if len(to.children) == 0 {
+		if dir, ok := to.value.(dirNode); ok {
+			if dir.root {
+				// If nothing matches return at least the root node.
+				return to
+			}
+		}
 		return nil
 	}
 	return to
