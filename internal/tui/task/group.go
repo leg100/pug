@@ -52,16 +52,16 @@ func (mm *GroupMaker) Make(id resource.ID, width, height int) (tui.ChildModel, e
 	}
 
 	m := groupModel{
-		ChildModel: list,
-		group:      group,
-		Helpers:    mm.taskListMaker.Helpers,
+		List:    list.(*List),
+		group:   group,
+		Helpers: mm.taskListMaker.Helpers,
 	}
 	return &m, nil
 }
 
 // groupModel is a model for a taskgroup, listing and previewing its tasks.
 type groupModel struct {
-	tui.ChildModel
+	*List
 	*tui.Helpers
 
 	group *task.Group
@@ -95,7 +95,7 @@ func (m *groupModel) Update(msg tea.Msg) tea.Cmd {
 	}
 
 	// Forward message to wrapped task list model
-	cmds = append(cmds, m.ChildModel.Update(msg))
+	cmds = append(cmds, m.List.Update(msg))
 
 	return tea.Batch(cmds...)
 }
@@ -114,6 +114,10 @@ func (m *groupModel) skip(tasks ...*task.Task) bool {
 
 func (m groupModel) Title() string {
 	return m.Breadcrumbs("TaskGroup", m.group)
+}
+
+func (m groupModel) Metadata() string {
+	return "[task group] " + m.group.String() + " " + m.List.Model.Metadata()
 }
 
 func (m groupModel) Status() string {
