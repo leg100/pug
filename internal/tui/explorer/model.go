@@ -84,11 +84,21 @@ func (m *model) Update(msg tea.Msg) tea.Cmd {
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, keys.Navigation.LineUp):
-			m.tracker.cursorUp(m.treeHeight())
-			return nil
+			m.tracker.moveCursor(-1, m.treeHeight())
 		case key.Matches(msg, keys.Navigation.LineDown):
-			m.tracker.cursorDown(m.treeHeight())
-			return nil
+			m.tracker.moveCursor(1, m.treeHeight())
+		case key.Matches(msg, keys.Navigation.PageUp):
+			m.tracker.moveCursor(-m.treeHeight(), m.treeHeight())
+		case key.Matches(msg, keys.Navigation.PageDown):
+			m.tracker.moveCursor(m.treeHeight(), m.treeHeight())
+		case key.Matches(msg, keys.Navigation.HalfPageUp):
+			m.tracker.moveCursor(-m.treeHeight()/2, m.treeHeight())
+		case key.Matches(msg, keys.Navigation.HalfPageDown):
+			m.tracker.moveCursor(m.treeHeight()/2, m.treeHeight())
+		case key.Matches(msg, keys.Navigation.GotoTop):
+			m.tracker.moveCursor(-m.tracker.cursorIndex, m.treeHeight())
+		case key.Matches(msg, keys.Navigation.GotoBottom):
+			m.tracker.moveCursor(len(m.tracker.nodes), m.treeHeight())
 		case key.Matches(msg, keys.Global.Select):
 			err := m.tracker.toggleSelection()
 			return tui.ReportError(err)
@@ -108,25 +118,25 @@ func (m *model) Update(msg tea.Msg) tea.Cmd {
 			upgrade = true
 			fallthrough
 		case key.Matches(msg, keys.Common.Init):
-			kind, ids := m.tracker.getSelectedOrCurrentIDs()
-			if kind != resource.Module {
-				return tui.ReportError(errors.New("can only trigger init on modules"))
+			ids, err := m.getModuleIDs()
+			if err != nil {
+				return tui.ReportError(err)
 			}
 			fn := func(moduleID resource.ID) (task.Spec, error) {
 				return m.Modules.Init(moduleID, upgrade)
 			}
 			return m.CreateTasks(fn, ids...)
 		case key.Matches(msg, keys.Common.Validate):
-			kind, ids := m.tracker.getSelectedOrCurrentIDs()
-			if kind != resource.Module {
-				return tui.ReportError(errors.New("can only trigger init on modules"))
+			ids, err := m.getModuleIDs()
+			if err != nil {
+				return tui.ReportError(err)
 			}
 			cmd := m.CreateTasks(m.Modules.Validate, ids...)
 			return cmd
 		case key.Matches(msg, keys.Common.Format):
-			kind, ids := m.tracker.getSelectedOrCurrentIDs()
-			if kind != resource.Module {
-				return tui.ReportError(errors.New("can only trigger format on modules"))
+			ids, err := m.getModuleIDs()
+			if err != nil {
+				return tui.ReportError(err)
 			}
 			cmd := m.CreateTasks(m.Modules.Format, ids...)
 			return cmd
@@ -146,9 +156,9 @@ func (m *model) Update(msg tea.Msg) tea.Cmd {
 			createPlanOptions.Destroy = true
 			fallthrough
 		case key.Matches(msg, keys.Common.Plan):
-			kind, ids := m.tracker.getSelectedOrCurrentIDs()
-			if kind != resource.Workspace {
-				return tui.ReportError(errors.New("can only trigger plans on workspaces"))
+			ids, err := m.getWorkspaceIDs()
+			if err != nil {
+				return tui.ReportError(err)
 			}
 			fn := func(workspaceID resource.ID) (task.Spec, error) {
 				return m.Plans.Plan(workspaceID, createPlanOptions)
@@ -159,9 +169,9 @@ func (m *model) Update(msg tea.Msg) tea.Cmd {
 			applyPrompt = "Destroy resources of %d workspaces?"
 			fallthrough
 		case key.Matches(msg, keys.Common.Apply):
-			kind, ids := m.tracker.getSelectedOrCurrentIDs()
-			if kind != resource.Workspace {
-				return tui.ReportError(errors.New("can only trigger applies on workspaces"))
+			ids, err := m.getWorkspaceIDs()
+			if err != nil {
+				return tui.ReportError(err)
 			}
 			fn := func(workspaceID resource.ID) (task.Spec, error) {
 				return m.Plans.Apply(workspaceID, createPlanOptions)
@@ -171,9 +181,9 @@ func (m *model) Update(msg tea.Msg) tea.Cmd {
 				m.CreateTasks(fn, ids...),
 			)
 		case key.Matches(msg, keys.Common.Cost):
-			kind, ids := m.tracker.getSelectedOrCurrentIDs()
-			if kind != resource.Workspace {
-				return tui.ReportError(errors.New("can only trigger infracost on workspaces"))
+			ids, err := m.getWorkspaceIDs()
+			if err != nil {
+				return tui.ReportError(err)
 			}
 			spec, err := m.Workspaces.Cost(ids...)
 			if err != nil {
@@ -332,4 +342,56 @@ func (m model) buildTree() tea.Msg {
 func (m model) filterVisible() bool {
 	// Filter is visible if it's either in focus, or it has a non-empty value.
 	return m.filter.Focused() || m.filter.Value() != ""
+}
+
+// getWorkspaceIDs retrieves all selected rows, or if no rows are selected, then
+// it retrieves the cursor row, and if the rows are workspaces then it returns
+// their IDs; if the rows are modules then it returns the IDs of their
+// respective *current* workspaces. An error is returned if all modules don't
+// have a current workspace or if any other type of rows are selected or are
+// currently the cursor row.
+func (m model) getWorkspaceIDs() ([]resource.ID, error) {
+	kind, ids := m.tracker.getSelectedOrCurrentIDs()
+	switch kind {
+	case resource.Workspace:
+		return ids, nil
+	case resource.Module:
+		for i, moduleID := range ids {
+			mod, err := m.ModuleService.Get(moduleID)
+			if err != nil {
+				return nil, err
+			}
+			if mod.CurrentWorkspaceID == nil {
+				return nil, errors.New("modules must have a current workspace")
+			}
+			ids[i] = *mod.CurrentWorkspaceID
+		}
+		return ids, nil
+	default:
+		return nil, errors.New("valid only on workspaces and modules")
+	}
+}
+
+// getModuleIDs retrieves all selected rows, or if no rows are selected, then
+// it retrieves the cursor row, and if the rows are workspaces then it returns
+// the IDs of their respective parent modules; if the rows are modules then it
+// returns their IDs. An error is returned if the rows are not workspaces or
+// modules.
+func (m model) getModuleIDs() ([]resource.ID, error) {
+	kind, ids := m.tracker.getSelectedOrCurrentIDs()
+	switch kind {
+	case resource.Module:
+		return ids, nil
+	case resource.Workspace:
+		for i, workspaceID := range ids {
+			ws, err := m.WorkspaceService.Get(workspaceID)
+			if err != nil {
+				return nil, err
+			}
+			ids[i] = ws.ModuleID
+		}
+		return ids, nil
+	default:
+		return nil, errors.New("valid only on workspaces and modules")
+	}
 }

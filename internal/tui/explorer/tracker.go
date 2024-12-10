@@ -55,20 +55,12 @@ func (t *tracker) doReindex(tree *tree) {
 	}
 }
 
-func (t *tracker) cursorUp(height int) {
-	t.cursorIndex = max(t.cursorIndex-1, 0)
+func (t *tracker) moveCursor(delta, treeHeight int) {
+	t.cursorIndex = clamp(t.cursorIndex+delta, 0, len(t.nodes)-1)
 	if len(t.nodes) > 0 {
 		t.cursorNode = t.nodes[t.cursorIndex]
 	}
-	t.setStart(height)
-}
-
-func (t *tracker) cursorDown(height int) {
-	t.cursorIndex = min(t.cursorIndex+1, len(t.nodes)-1)
-	if len(t.nodes) > 0 {
-		t.cursorNode = t.nodes[t.cursorIndex]
-	}
-	t.setStart(height)
+	t.setStart(treeHeight)
 }
 
 func (t *tracker) toggleSelection() error {
