@@ -52,7 +52,7 @@ func TestTree(t *testing.T) {
 		helpers: &fakeTreeBuilderHelpers{},
 	}
 
-	got := builder.newTree()
+	got := builder.newTree("")
 
 	want := &tree{
 		value: dirNode{path: builder.wd.String(), root: true},
@@ -177,7 +177,6 @@ func TestSplitDirs(t *testing.T) {
 		"a",
 		"a/b",
 		"a/b/c",
-		"a/b/c/d",
 	}
 	assert.Equal(t, want, got)
 }

@@ -43,9 +43,8 @@ func (d dirNode) String() string {
 }
 
 type moduleNode struct {
-	id                 resource.ID
-	path               string
-	currentWorkspaceID *resource.ID
+	id   resource.ID
+	path string
 }
 
 func (m moduleNode) ID() any {
