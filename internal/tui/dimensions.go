@@ -16,7 +16,7 @@ const (
 	// defaultTopRightPaneHeight is the default height of the top right pane.
 	defaultTopRightPaneHeight = 15
 	// defaultLeftPaneWidth is the default width of the left pane.
-	defaultLeftPaneWidth = 30
+	defaultLeftPaneWidth = 40
 )
 
 func init() {

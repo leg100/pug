@@ -13,6 +13,10 @@ type tracker struct {
 	cursorIndex int
 	// index of first visible row
 	start int
+	// total number of modules
+	totalModules int
+	// total number of workspaces
+	totalWorkspaces int
 
 	*selector
 }
@@ -29,6 +33,8 @@ func newTracker(tree *tree, height int) *tracker {
 
 func (t *tracker) reindex(tree *tree, height int) {
 	t.nodes = nil
+	t.totalModules = 0
+	t.totalWorkspaces = 0
 	t.doReindex(tree)
 
 	if t.cursorNode == nil && len(t.nodes) > 0 {
@@ -40,6 +46,13 @@ func (t *tracker) reindex(tree *tree, height int) {
 
 func (t *tracker) doReindex(tree *tree) {
 	t.nodes = append(t.nodes, tree.value)
+	// maintain tally of numbers of types of nodes
+	switch tree.value.(type) {
+	case moduleNode:
+		t.totalModules++
+	case workspaceNode:
+		t.totalWorkspaces++
+	}
 	// Track index of cursor node
 	if t.cursorNode != nil && t.cursorNode.ID() == tree.value.ID() {
 		t.cursorIndex = len(t.nodes) - 1

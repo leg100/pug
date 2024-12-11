@@ -331,7 +331,9 @@ func (m model) Metadata() string {
 	e := lipgloss.NewStyle().
 		Foreground(tui.DarkRed).
 		Render("e")
-	return fmt.Sprintf("%sxplorer", e)
+	modules := fmt.Sprintf("%d%s", m.tracker.totalModules, moduleIcon)
+	workspaces := fmt.Sprintf("%d%s", m.tracker.totalWorkspaces, workspaceIcon)
+	return fmt.Sprintf("%sxplorer (%s%s)", e, modules, workspaces)
 }
 
 func (m model) buildTree() tea.Msg {
