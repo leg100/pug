@@ -27,19 +27,18 @@ var resourceColumn = table.Column{
 }
 
 type ResourceListMaker struct {
-	Workspaces *workspace.Service
 	States     *state.Service
+	Workspaces *workspace.Service
 	Plans      *plan.Service
 	Spinner    *spinner.Model
 	Helpers    *tui.Helpers
 }
 
-func (m *ResourceListMaker) Make(id resource.ID, width, height int) (tui.ChildModel, error) {
-	ws, err := m.Workspaces.Get(id)
+func (m *ResourceListMaker) Make(workspaceID resource.ID, width, height int) (tui.ChildModel, error) {
+	ws, err := m.Workspaces.Get(workspaceID)
 	if err != nil {
 		return nil, err
 	}
-
 	columns := []table.Column{resourceColumn}
 	renderer := func(resource *state.Resource) table.RenderedRow {
 		addr := string(resource.Address)
@@ -74,8 +73,8 @@ type resourceList struct {
 
 	states    *state.Service
 	plans     *plan.Service
-	workspace resource.Resource
 	state     *state.State
+	workspace *workspace.Workspace
 	reloading bool
 	height    int
 	width     int
@@ -87,7 +86,7 @@ type initState *state.State
 
 func (m *resourceList) Init() tea.Cmd {
 	return func() tea.Msg {
-		state, err := m.states.Get(m.workspace.GetID())
+		state, err := m.states.Get(m.workspace.ID)
 		if err != nil {
 			return tui.ReportError(fmt.Errorf("initializing state model: %w", err))
 		}
@@ -128,7 +127,7 @@ func (m *resourceList) Update(msg tea.Msg) tea.Cmd {
 			}
 			m.reloading = true
 			return func() tea.Msg {
-				msg := reloadedMsg{workspaceID: m.workspace.GetID()}
+				msg := reloadedMsg{workspaceID: m.workspace.ID}
 				if spec, err := m.states.Reload(msg.workspaceID); err != nil {
 					msg.err = err
 				} else {
@@ -152,7 +151,7 @@ func (m *resourceList) Update(msg tea.Msg) tea.Cmd {
 			}
 			return tui.YesNoPrompt(
 				fmt.Sprintf("Delete %d resource(s)?", len(addrs)),
-				m.CreateTasks(fn, m.workspace.GetID()),
+				m.CreateTasks(fn, m.workspace.ID),
 			)
 		case key.Matches(msg, resourcesKeys.Taint):
 			addrs := m.selectedOrCurrentAddresses()
@@ -163,7 +162,7 @@ func (m *resourceList) Update(msg tea.Msg) tea.Cmd {
 		case key.Matches(msg, resourcesKeys.Move):
 			if row, ok := m.CurrentRow(); ok {
 				from := row.Value.Address
-				return m.Move(m.workspace.GetID(), from)
+				return m.Move(m.workspace.ID, from)
 			}
 		case key.Matches(msg, keys.Common.PlanDestroy):
 			// Create a targeted destroy plan.
@@ -177,7 +176,7 @@ func (m *resourceList) Update(msg tea.Msg) tea.Cmd {
 			fn := func(workspaceID resource.ID) (task.Spec, error) {
 				return m.plans.Plan(workspaceID, createRunOptions)
 			}
-			return m.CreateTasks(fn, m.workspace.GetID())
+			return m.CreateTasks(fn, m.workspace.ID)
 		case key.Matches(msg, keys.Common.Destroy):
 			createRunOptions.Destroy = true
 			applyPrompt = "Destroy %d resources?"
@@ -191,17 +190,17 @@ func (m *resourceList) Update(msg tea.Msg) tea.Cmd {
 			}
 			return tui.YesNoPrompt(
 				fmt.Sprintf(applyPrompt, len(resourceIDs)),
-				m.CreateTasks(fn, m.workspace.GetID()),
+				m.CreateTasks(fn, m.workspace.ID),
 			)
 		}
 	case initState:
-		if msg.WorkspaceID != m.workspace.GetID() {
+		if msg.WorkspaceID != m.workspace.ID {
 			return nil
 		}
 		m.state = (*state.State)(msg)
 		m.SetItems(maps.Values(m.state.Resources)...)
 	case resource.Event[*state.State]:
-		if msg.Payload.WorkspaceID != m.workspace.GetID() {
+		if msg.Payload.WorkspaceID != m.workspace.ID {
 			return nil
 		}
 		switch msg.Type {
@@ -245,14 +244,6 @@ func (m resourceList) View() string {
 	)
 }
 
-func (m resourceList) Title() string {
-	var serial string
-	if m.state != nil {
-		serial = serialBreadcrumb(m.state.Serial)
-	}
-	return m.Breadcrumbs("State", m.workspace, serial)
-}
-
 func (m resourceList) HelpBindings() []key.Binding {
 	bindings := []key.Binding{
 		keys.Common.Plan,
@@ -279,8 +270,15 @@ func (m resourceList) selectedOrCurrentAddresses() []state.ResourceAddress {
 	return addrs
 }
 
-func (m *resourceList) Metadata() string {
-	return m.Model.Metadata() + " resources"
+func (m *resourceList) BorderText() map[tui.BorderPosition]string {
+	return map[tui.BorderPosition]string{
+		tui.TopLeft: fmt.Sprintf(
+			"[state]%s%s",
+			m.ModuleIcon(m.workspace.ModulePath),
+			m.WorkspaceIcon(m.workspace),
+		),
+		tui.TopMiddle: m.Metadata(),
+	}
 }
 
 func serialBreadcrumb(serial int64) string {

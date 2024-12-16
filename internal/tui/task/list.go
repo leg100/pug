@@ -7,6 +7,7 @@ import (
 
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/leg100/pug/internal/plan"
 	"github.com/leg100/pug/internal/resource"
 	"github.com/leg100/pug/internal/task"
@@ -84,7 +85,7 @@ func (mm *ListMaker) Make(_ resource.ID, width, height int) (tui.ChildModel, err
 			table.WorkspaceColumn.Key: mm.Helpers.TaskWorkspaceName(t),
 			commandColumn.Key:         t.String(),
 			ageColumn.Key:             tui.Ago(time.Now(), t.Updated),
-			statusColumn.Key:          mm.Helpers.TaskStatus(t, false),
+			statusColumn.Key:          mm.Helpers.TaskStatus(t, true),
 			table.SummaryColumn.Key:   mm.Helpers.TaskSummary(t, true),
 		}
 	}
@@ -168,12 +169,14 @@ func (m *List) Update(msg tea.Msg) tea.Cmd {
 	return cmd
 }
 
-func (m List) Title() string {
-	return m.Breadcrumbs("Tasks", nil)
-}
-
-func (m List) Metadata() string {
-	return "[tasks] " + m.Model.Metadata()
+func (m List) BorderText() map[tui.BorderPosition]string {
+	t := lipgloss.NewStyle().
+		Foreground(tui.DarkRed).
+		Render("t")
+	return map[tui.BorderPosition]string{
+		tui.TopLeft:   fmt.Sprintf("[%sasks]", t),
+		tui.TopMiddle: m.Metadata(),
+	}
 }
 
 func (m List) HelpBindings() []key.Binding {

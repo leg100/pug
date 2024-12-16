@@ -4,12 +4,10 @@ import (
 	"errors"
 	"fmt"
 	"slices"
-	"strings"
 
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/leg100/pug/internal"
 	"github.com/leg100/pug/internal/resource"
 	"golang.org/x/exp/maps"
 )
@@ -36,9 +34,7 @@ type PaneManager struct {
 	// the position of the currently active pane
 	active Position
 	// panes tracks currently visible panes
-	panes map[Position]ChildModel
-	// pages tracks which page each pane is currently showing.
-	pages map[Position]Page
+	panes map[Position]pane
 	// total width and height of the terminal space available to panes.
 	width, height int
 	// leftPaneWidth is the width of the left pane when sharing the terminal
@@ -46,6 +42,11 @@ type PaneManager struct {
 	leftPaneWidth int
 	// topRightPaneHeight is the height of the top right pane.
 	topRightHeight int
+}
+
+type pane struct {
+	model ChildModel
+	page  Page
 }
 
 type tablePane interface {
@@ -58,8 +59,7 @@ func NewPaneManager(makers map[Kind]Maker) *PaneManager {
 	p := &PaneManager{
 		makers:         makers,
 		cache:          NewCache(),
-		panes:          make(map[Position]ChildModel),
-		pages:          make(map[Position]Page),
+		panes:          make(map[Position]pane),
 		leftPaneWidth:  defaultLeftPaneWidth,
 		topRightHeight: defaultTopRightPaneHeight,
 	}
@@ -117,14 +117,16 @@ func (p *PaneManager) Update(msg tea.Msg) tea.Cmd {
 	// ensure the bottom left pane corresponds to that current row, e.g. if the
 	// top right pane is a tasks table, then the bottom right pane shows the
 	// output for the current task row.
-	if table, ok := p.panes[TopRightPane].(tablePane); ok {
-		if kind, id, ok := table.PreviewCurrentRow(); ok {
-			cmd := p.setPane(NavigationMsg{
-				Page:         Page{Kind: kind, ID: id},
-				Position:     BottomRightPane,
-				DisableFocus: true,
-			})
-			cmds = append(cmds, cmd)
+	if pane, ok := p.panes[TopRightPane]; ok {
+		if table, ok := pane.model.(tablePane); ok {
+			if kind, id, ok := table.PreviewCurrentRow(); ok {
+				cmd := p.setPane(NavigationMsg{
+					Page:         Page{Kind: kind, ID: id},
+					Position:     BottomRightPane,
+					DisableFocus: true,
+				})
+				cmds = append(cmds, cmd)
+			}
 		}
 	}
 	return tea.Batch(cmds...)
@@ -132,7 +134,7 @@ func (p *PaneManager) Update(msg tea.Msg) tea.Cmd {
 
 // ActiveModel retrieves the model of the active pane.
 func (p *PaneManager) ActiveModel() ChildModel {
-	return p.panes[p.active]
+	return p.panes[p.active].model
 }
 
 // cycleActivePane makes the next pane the active pane. If last is true then the
@@ -163,22 +165,24 @@ func (p *PaneManager) closeActivePane() tea.Cmd {
 		return ReportError(errors.New("cannot close last pane"))
 	}
 	delete(p.panes, p.active)
-	delete(p.pages, p.active)
 	p.updateChildSizes()
 	return p.cycleActivePane(false)
 }
 
 func (p *PaneManager) updateLeftWidth(delta int) {
-	if p.panes[LeftPane] == nil {
-		// There is no split to adjust
+	if _, ok := p.panes[LeftPane]; !ok {
+		// There is no vertical split to adjust
 		return
 	}
 	p.leftPaneWidth = clamp(p.leftPaneWidth+delta, minPaneWidth, p.width-minPaneWidth)
 }
 
 func (p *PaneManager) updateTopRightHeight(delta int) {
-	if p.panes[TopRightPane] == nil || p.panes[BottomRightPane] == nil {
-		// There is no split to adjust
+	if _, ok := p.panes[TopRightPane]; !ok {
+		// There is no horizontal split to adjust
+		return
+	} else if _, ok := p.panes[BottomRightPane]; !ok {
+		// There is no horizontal split to adjust
 		return
 	}
 	switch p.active {
@@ -198,11 +202,11 @@ func (p *PaneManager) updateChildSizes() {
 }
 
 func (p *PaneManager) updateModel(position Position, msg tea.Msg) tea.Cmd {
-	return p.panes[position].Update(msg)
+	return p.panes[position].model.Update(msg)
 }
 
 func (m *PaneManager) setPane(msg NavigationMsg) (cmd tea.Cmd) {
-	if page, ok := m.pages[msg.Position]; ok && page == msg.Page {
+	if pane, ok := m.panes[msg.Position]; ok && pane.page == msg.Page {
 		// Pane is already showing requested page, so just bring it into focus.
 		if !msg.DisableFocus {
 			return m.focusPane(msg.Position)
@@ -227,8 +231,10 @@ func (m *PaneManager) setPane(msg NavigationMsg) (cmd tea.Cmd) {
 		// A new top right pane replaces any bottom right pane as well.
 		delete(m.panes, BottomRightPane)
 	}
-	m.panes[msg.Position] = model
-	m.pages[msg.Position] = msg.Page
+	m.panes[msg.Position] = pane{
+		model: model,
+		page:  msg.Page,
+	}
 	m.updateChildSizes()
 	if !msg.DisableFocus {
 		focus := m.focusPane(msg.Position)
@@ -240,10 +246,10 @@ func (m *PaneManager) setPane(msg NavigationMsg) (cmd tea.Cmd) {
 func (m *PaneManager) focusPane(position Position) tea.Cmd {
 	var cmds []tea.Cmd
 	if previous, ok := m.panes[m.active]; ok {
-		cmds = append(cmds, previous.Update(UnfocusPaneMsg{}))
+		cmds = append(cmds, previous.model.Update(UnfocusPaneMsg{}))
 	}
 	m.active = position
-	cmds = append(cmds, m.panes[m.active].Update(FocusPaneMsg{}))
+	cmds = append(cmds, m.panes[m.active].model.Update(FocusPaneMsg{}))
 	return tea.Batch(cmds...)
 }
 
@@ -254,7 +260,7 @@ func (m *PaneManager) paneWidth(position Position) int {
 			return m.leftPaneWidth
 		}
 	default:
-		if m.panes[LeftPane] != nil {
+		if _, ok := m.panes[LeftPane]; ok {
 			return max(minPaneWidth, m.width-m.leftPaneWidth)
 		}
 	}
@@ -264,11 +270,11 @@ func (m *PaneManager) paneWidth(position Position) int {
 func (m *PaneManager) paneHeight(position Position) int {
 	switch position {
 	case TopRightPane:
-		if m.panes[BottomRightPane] != nil {
+		if _, ok := m.panes[BottomRightPane]; ok {
 			return m.topRightHeight
 		}
 	case BottomRightPane:
-		if m.panes[TopRightPane] != nil {
+		if _, ok := m.panes[TopRightPane]; ok {
 			return m.height - m.topRightHeight
 		}
 	}
@@ -289,68 +295,26 @@ func (m *PaneManager) View() string {
 	)
 }
 
-var border = map[bool]lipgloss.Border{
-	true:  lipgloss.Border(lipgloss.ThickBorder()),
-	false: lipgloss.Border(lipgloss.NormalBorder()),
-}
-
 func (m *PaneManager) renderPane(position Position) string {
-	if m.panes[position] == nil {
+	if _, ok := m.panes[position]; !ok {
 		return ""
 	}
-	model := m.panes[position]
+	model := m.panes[position].model
 	isActive := position == m.active
-	border := border[isActive]
-	topBorder := m.buildTopBorder(position)
 	renderedPane := lipgloss.NewStyle().
 		Width(m.paneWidth(position) - 2).    // -2 for border
 		Height(m.paneHeight(position) - 2).  // -2 for border
 		MaxWidth(m.paneWidth(position) - 2). // -2 for border
 		Render(model.View())
-	return lipgloss.JoinVertical(lipgloss.Top,
-		lipgloss.NewStyle().Render(topBorder),
-		lipgloss.NewStyle().
-			BorderForeground(BorderColor(isActive)).
-			Border(border, false, true, true, true).Render(renderedPane),
-	)
-}
-
-func (m *PaneManager) buildTopBorder(position Position) string {
-	var (
-		model       = m.panes[position]
-		width       = m.paneWidth(position)
-		isActive    = position == m.active
-		border      = border[isActive]
-		borderStyle = lipgloss.NewStyle().Foreground(BorderColor(isActive))
-	)
-	var middle string
-	if metadataModel, ok := model.(interface{ Metadata() string }); ok {
-		// Render top border with metadata in the center
-		//
-		// total length of top border runes, not including corners
-		length := max(0, width-2-lipgloss.Width(metadataModel.Metadata()))
-		leftLength := length / 2
-		rightLength := max(0, length-leftLength)
-		renderedMetadata := metadataModel.Metadata()
-		if isActive {
-			// If active border, then strip any styling from metadata and apply
-			// border style.
-			renderedMetadata = internal.StripAnsi(renderedMetadata)
-			renderedMetadata = borderStyle.Render(renderedMetadata)
-		}
-		middle = lipgloss.JoinHorizontal(lipgloss.Left,
-			borderStyle.Render(strings.Repeat(border.Top, leftLength)),
-			renderedMetadata,
-			borderStyle.Render(strings.Repeat(border.Top, rightLength)),
-		)
-	} else {
-		middle = borderStyle.Render(strings.Repeat(border.Top, max(0, width-2)))
+	// Optionally, the pane model can embed text in its borders.
+	var borderTexts map[BorderPosition]string
+	textInBorder, ok := model.(interface {
+		BorderText() map[BorderPosition]string
+	})
+	if ok {
+		borderTexts = textInBorder.BorderText()
 	}
-	return lipgloss.JoinHorizontal(lipgloss.Left,
-		borderStyle.Render(border.TopLeft),
-		middle,
-		borderStyle.Render(border.TopRight),
-	)
+	return borderize(renderedPane, isActive, borderTexts)
 }
 
 func RemoveEmptyStrings(strs ...string) []string {

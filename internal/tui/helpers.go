@@ -130,6 +130,13 @@ func (h *Helpers) TaskModulePath(t *task.Task) string {
 	return ""
 }
 
+func (h *Helpers) TaskModulePathWithIcon(t *task.Task) string {
+	if mod := h.TaskModule(t); mod != nil {
+		return h.ModuleIcon(mod.Path)
+	}
+	return ""
+}
+
 // TaskWorkspace retrieves the task's workspace if it belongs to one.
 func (h *Helpers) TaskWorkspace(t *task.Task) *workspace.Workspace {
 	workspaceID := t.WorkspaceID
@@ -146,6 +153,36 @@ func (h *Helpers) TaskWorkspace(t *task.Task) *workspace.Workspace {
 func (h *Helpers) TaskWorkspaceName(t *task.Task) string {
 	if ws := h.TaskWorkspace(t); ws != nil {
 		return ws.Name
+	}
+	return ""
+}
+
+func (h *Helpers) TaskWorkspaceNameWithIcon(t *task.Task) string {
+	if ws := h.TaskWorkspace(t); ws != nil {
+		return h.WorkspaceIcon(ws)
+	}
+	return ""
+}
+
+func (h *Helpers) ModuleIcon(modulePath string) string {
+	return fmt.Sprintf("[%s]",
+		lipgloss.NewStyle().
+			Foreground(Purple).
+			Render(
+				fmt.Sprintf("%s %s", ModuleIcon, modulePath),
+			),
+	)
+}
+
+func (h *Helpers) WorkspaceIcon(ws *workspace.Workspace) string {
+	if ws != nil {
+		return fmt.Sprintf("[%s]",
+			lipgloss.NewStyle().
+				Foreground(LightBlue).
+				Render(
+					fmt.Sprintf("%s %s", WorkspaceIcon, ws.Name),
+				),
+		)
 	}
 	return ""
 }
@@ -167,7 +204,7 @@ func (h *Helpers) TaskWorkspaceOrCurrentWorkspace(t *task.Task) *workspace.Works
 }
 
 // TaskStatus provides a rendered colored task status.
-func (h *Helpers) TaskStatus(t *task.Task, background bool) string {
+func (h *Helpers) TaskStatus(t *task.Task, table bool) string {
 	var color lipgloss.Color
 
 	switch t.State {
@@ -183,11 +220,11 @@ func (h *Helpers) TaskStatus(t *task.Task, background bool) string {
 		color = Red
 	}
 
-	if background {
-		return Padded.Background(color).Foreground(White).Render(string(t.State))
-	} else {
-		return Regular.Foreground(color).Render(string(t.State))
+	colored := Regular.Foreground(color).Render(string(t.State))
+	if table {
+		return colored
 	}
+	return fmt.Sprintf("[%s]", colored)
 }
 
 // TaskSummary renders a summary of the task's outcome.
@@ -195,10 +232,7 @@ func (h *Helpers) TaskSummary(t *task.Task, table bool) string {
 	if t.Summary == nil {
 		return ""
 	}
-	var style lipgloss.Style
-	if !table {
-		style = lipgloss.NewStyle().Background(TaskSummaryBackgroundColor)
-	}
+	style := lipgloss.NewStyle()
 	// Render special resource report
 	var content string
 	switch summary := t.Summary.(type) {
@@ -216,7 +250,7 @@ func (h *Helpers) TaskSummary(t *task.Task, table bool) string {
 	if table {
 		return content
 	}
-	return Padded.Background(TaskSummaryBackgroundColor).Render(content)
+	return fmt.Sprintf("[%s]", content)
 }
 
 // ResourceReport renders a colored summary of resource changes as a result of a

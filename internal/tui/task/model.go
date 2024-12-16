@@ -284,20 +284,20 @@ func boolToOnOff(b bool) string {
 	return "off"
 }
 
-func (m Model) Metadata() string {
-	return fmt.Sprintf(
-		"%s:%s[%s]",
-		m.TaskModulePath(m.task),
-		m.TaskWorkspaceName(m.task),
-		m.task.String(),
-	)
-}
-
-func (m Model) Status() string {
-	return lipgloss.JoinHorizontal(lipgloss.Top,
-		m.TaskSummary(m.task, false),
-		m.TaskStatus(m.task, true),
-	)
+func (m Model) BorderText() map[tui.BorderPosition]string {
+	return map[tui.BorderPosition]string{
+		tui.TopLeft: fmt.Sprintf(
+			"[%s]%s%s",
+			m.task.String(),
+			m.TaskModulePathWithIcon(m.task),
+			m.TaskWorkspaceNameWithIcon(m.task),
+		),
+		tui.BottomLeft: fmt.Sprintf(
+			"%s%s",
+			m.TaskStatus(m.task, false),
+			m.TaskSummary(m.task, false),
+		),
+	}
 }
 
 func (m Model) HelpBindings() []key.Binding {

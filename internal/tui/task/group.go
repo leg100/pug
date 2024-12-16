@@ -116,8 +116,11 @@ func (m groupModel) Title() string {
 	return m.Breadcrumbs("TaskGroup", m.group)
 }
 
-func (m groupModel) Metadata() string {
-	return "[task group] " + m.group.String() + " " + m.List.Model.Metadata()
+func (m groupModel) BorderText() map[tui.BorderPosition]string {
+	return map[tui.BorderPosition]string{
+		tui.TopLeft:   "[task group] " + m.group.String(),
+		tui.TopMiddle: m.Model.Metadata(),
+	}
 }
 
 func (m groupModel) Status() string {

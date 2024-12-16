@@ -67,8 +67,8 @@ func makeMakers(
 		},
 		tui.LogKind: logMaker,
 		tui.ResourceListKind: &workspacetui.ResourceListMaker{
-			Workspaces: app.Workspaces,
 			States:     app.States,
+			Workspaces: app.Workspaces,
 			Plans:      app.Plans,
 			Spinner:    spinner,
 			Helpers:    helpers,

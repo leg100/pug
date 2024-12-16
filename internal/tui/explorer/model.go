@@ -327,13 +327,16 @@ func (m model) View() string {
 	return content
 }
 
-func (m model) Metadata() string {
+func (m model) BorderText() map[tui.BorderPosition]string {
 	e := lipgloss.NewStyle().
 		Foreground(tui.DarkRed).
 		Render("e")
-	modules := fmt.Sprintf("%d%s", m.tracker.totalModules, moduleIcon)
-	workspaces := fmt.Sprintf("%d%s", m.tracker.totalWorkspaces, workspaceIcon)
-	return fmt.Sprintf("%sxplorer (%s%s)", e, modules, workspaces)
+	modules := fmt.Sprintf("%s %d", tui.ModuleIcon, m.tracker.totalModules)
+	workspaces := fmt.Sprintf("%s %d", tui.WorkspaceIcon, m.tracker.totalWorkspaces)
+	return map[tui.BorderPosition]string{
+		tui.TopLeft:   fmt.Sprintf("[%sxplorer]", e),
+		tui.TopMiddle: fmt.Sprintf("[%s][%s]", modules, workspaces),
+	}
 }
 
 func (m model) buildTree() tea.Msg {

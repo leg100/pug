@@ -9,12 +9,6 @@ import (
 	"github.com/leg100/pug/internal/tui"
 )
 
-const (
-	dirIcon       string = ""
-	moduleIcon    string = "󰠱"
-	workspaceIcon string = ""
-)
-
 type node interface {
 	fmt.Stringer
 
@@ -36,9 +30,9 @@ func (d dirNode) ID() any {
 
 func (d dirNode) String() string {
 	if d.root {
-		return fmt.Sprintf("%s %s", dirIcon, d.path)
+		return fmt.Sprintf("%s %s", tui.DirIcon, d.path)
 	} else {
-		return fmt.Sprintf("%s %s", dirIcon, filepath.Base(d.path))
+		return fmt.Sprintf("%s %s", tui.DirIcon, filepath.Base(d.path))
 	}
 }
 
@@ -52,7 +46,7 @@ func (m moduleNode) ID() any {
 }
 
 func (m moduleNode) String() string {
-	return fmt.Sprintf("%s %s", moduleIcon, filepath.Base(m.path))
+	return fmt.Sprintf("%s %s", tui.ModuleIcon, filepath.Base(m.path))
 }
 
 type workspaceNode struct {
@@ -70,7 +64,7 @@ func (w workspaceNode) String() string {
 	name := lipgloss.NewStyle().
 		Bold(w.current).
 		Render(w.name)
-	s := fmt.Sprintf("%s %s", workspaceIcon, name)
+	s := fmt.Sprintf("%s %s", tui.WorkspaceIcon, name)
 	if w.resourceCount != "" {
 		s += lipgloss.NewStyle().
 			Foreground(tui.LighterGrey).

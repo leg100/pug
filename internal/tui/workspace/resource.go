@@ -2,9 +2,11 @@ package workspace
 
 import (
 	"encoding/json"
+	"fmt"
 
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/leg100/pug/internal/plan"
 	"github.com/leg100/pug/internal/resource"
 	"github.com/leg100/pug/internal/state"
@@ -123,12 +125,20 @@ func (m *resourceModel) View() string {
 	return m.viewport.View()
 }
 
-func (m resourceModel) Title() string {
+func (m *resourceModel) BorderText() map[tui.BorderPosition]string {
 	var tainted string
 	if m.resource.Tainted {
-		tainted = tui.TitleTainted.Render("tainted")
+		tainted = lipgloss.NewStyle().
+			Foreground(tui.Red).
+			Render("(tainted)")
 	}
-	return m.Breadcrumbs("Resource", m.resource) + tainted
+	return map[tui.BorderPosition]string{
+		tui.TopLeft: fmt.Sprintf(
+			"[resource][%s]%s",
+			m.resource,
+			tainted,
+		),
+	}
 }
 
 func (m *resourceModel) Focus(focused bool) {

@@ -319,7 +319,7 @@ func (m *Model[V]) Metadata() string {
 	} else {
 		metadata = prefix + strconv.Itoa(len(m.rows))
 	}
-	return metadata
+	return fmt.Sprintf("[%s]", metadata)
 }
 
 func (m *Model[V]) SetBorderStyle(border lipgloss.Border, color lipgloss.TerminalColor) {
