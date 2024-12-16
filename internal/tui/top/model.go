@@ -311,19 +311,16 @@ func (m model) View() string {
 	return lipgloss.JoinVertical(lipgloss.Top, components...)
 }
 
-// viewHeight returns the height available to the current model (subordinate to
-// the top model).
+// viewHeight returns the height available to the panes
 //
 // TODO: rename contentHeight
 func (m model) viewHeight() int {
-	const messageFooterHeight = 1
-
-	vh := m.height - messageFooterHeight
+	vh := m.height - tui.FooterHeight
 	if m.mode == promptMode {
 		vh -= tui.PromptHeight
 	}
 	if m.showHelp {
-		vh -= helpWidgetHeight
+		vh -= tui.HelpWidgetHeight
 	}
 	return max(tui.MinContentHeight, vh)
 }
@@ -338,8 +335,6 @@ func (m model) viewWidth() int {
 var (
 	helpKeyStyle  = tui.Bold.Foreground(tui.HelpKey).Margin(0, 1, 0, 0)
 	helpDescStyle = tui.Regular.Foreground(tui.HelpDesc)
-	// Height of help widget, including borders
-	helpWidgetHeight = 12
 )
 
 // help renders key bindings
@@ -366,7 +361,7 @@ func (m model) help() string {
 		pairs []string
 		width int
 		// Subtract 2 to accommodate borders
-		rows = helpWidgetHeight - 2
+		rows = tui.HelpWidgetHeight - 2
 	)
 	for i := 0; i < len(bindings); i += rows {
 		var (

@@ -21,9 +21,6 @@ import (
 	"github.com/leg100/pug/internal/workspace"
 )
 
-// Height of filter widget
-const filterHeight = 2
-
 type Maker struct {
 	ModuleService    *module.Service
 	WorkspaceService *workspace.Service
@@ -258,6 +255,9 @@ func (m *model) Update(msg tea.Msg) tea.Cmd {
 }
 
 func (m model) treeHeight() int {
+	// Height of filter widget
+	const filterHeight = 2
+
 	if m.filterVisible() {
 		return max(0, m.height-filterHeight)
 	}
@@ -323,7 +323,6 @@ func (m model) View() string {
 		strings.Join(visibleLines, "\n"),
 		scrollbar,
 	)
-	// MaxHeight(m.height).
 	return content
 }
 

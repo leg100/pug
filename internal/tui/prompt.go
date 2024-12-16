@@ -9,9 +9,6 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-// Height of prompt including borders
-const PromptHeight = 3
-
 // PromptMsg enables the prompt widget.
 type PromptMsg struct {
 	// Prompt to display to the user.
