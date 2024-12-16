@@ -13,7 +13,6 @@ import (
 	"github.com/leg100/pug/internal/task"
 	"github.com/leg100/pug/internal/tui"
 	"github.com/leg100/pug/internal/tui/keys"
-	"github.com/leg100/pug/internal/tui/split"
 	"github.com/leg100/pug/internal/tui/table"
 )
 
@@ -180,11 +179,10 @@ func (m List) BorderText() map[tui.BorderPosition]string {
 }
 
 func (m List) HelpBindings() []key.Binding {
-	bindings := []key.Binding{
+	return []key.Binding{
 		keys.Common.Cancel,
 		keys.Common.Apply,
 		keys.Common.State,
 		keys.Common.Retry,
 	}
-	return append(bindings, keys.KeyMapToSlice(split.Keys)...)
 }

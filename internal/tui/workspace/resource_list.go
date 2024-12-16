@@ -14,7 +14,6 @@ import (
 	"github.com/leg100/pug/internal/task"
 	"github.com/leg100/pug/internal/tui"
 	"github.com/leg100/pug/internal/tui/keys"
-	"github.com/leg100/pug/internal/tui/split"
 	"github.com/leg100/pug/internal/tui/table"
 	"github.com/leg100/pug/internal/workspace"
 	"golang.org/x/exp/maps"
@@ -245,7 +244,7 @@ func (m resourceList) View() string {
 }
 
 func (m resourceList) HelpBindings() []key.Binding {
-	bindings := []key.Binding{
+	return []key.Binding{
 		keys.Common.Plan,
 		keys.Common.PlanDestroy,
 		keys.Common.Apply,
@@ -256,7 +255,6 @@ func (m resourceList) HelpBindings() []key.Binding {
 		resourcesKeys.Untaint,
 		resourcesKeys.Reload,
 	}
-	return append(bindings, keys.KeyMapToSlice(split.Keys)...)
 }
 
 func (m resourceList) selectedOrCurrentAddresses() []state.ResourceAddress {
@@ -271,6 +269,10 @@ func (m resourceList) selectedOrCurrentAddresses() []state.ResourceAddress {
 }
 
 func (m *resourceList) BorderText() map[tui.BorderPosition]string {
+	var serial int64
+	if m.state != nil {
+		serial = m.state.Serial
+	}
 	return map[tui.BorderPosition]string{
 		tui.TopLeft: fmt.Sprintf(
 			"[state]%s%s",
@@ -278,6 +280,11 @@ func (m *resourceList) BorderText() map[tui.BorderPosition]string {
 			m.WorkspaceIcon(m.workspace),
 		),
 		tui.TopMiddle: m.Metadata(),
+		tui.BottomLeft: fmt.Sprintf("[%s]",
+			lipgloss.NewStyle().
+				Foreground(tui.Orange).
+				Render(fmt.Sprintf("#%d", serial)),
+		),
 	}
 }
 
