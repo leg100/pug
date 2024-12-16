@@ -4,6 +4,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/charmbracelet/bubbles/cursor"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
@@ -164,19 +165,20 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				// switch back to normal mode, blur the filter widget, and let
 				// the key handler below handle the quit action.
 				m.mode = normalMode
-				_ = m.ActiveModel().Update(tui.FilterBlurMsg{})
+				cmd = m.ActiveModel().Update(tui.FilterBlurMsg{})
+				return m, cmd
 			case key.Matches(msg, keys.Filter.Blur):
 				// Switch back to normal mode, and send message to current model
 				// to blur the filter widget
 				m.mode = normalMode
-				_ = m.ActiveModel().Update(tui.FilterBlurMsg{})
-				return m, nil
+				cmd = m.ActiveModel().Update(tui.FilterBlurMsg{})
+				return m, cmd
 			case key.Matches(msg, keys.Filter.Close):
 				// Switch back to normal mode, and send message to current model
 				// to close the filter widget
 				m.mode = normalMode
-				_ = m.ActiveModel().Update(tui.FilterCloseMsg{})
-				return m, nil
+				cmd = m.ActiveModel().Update(tui.FilterCloseMsg{})
+				return m, cmd
 			default:
 				// Wrap key message in a filter key message and send to current
 				// model.
@@ -245,15 +247,18 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			Height: m.viewHeight(),
 			Width:  m.viewWidth(),
 		})
+	case cursor.BlinkMsg:
+		// Send blink message to prompt if in prompt mode otherwise forward it
+		// to the active pane to handle.
+		if m.mode == promptMode {
+			cmd = m.prompt.HandleBlink(msg)
+		} else {
+			cmd = m.ActiveModel().Update(msg)
+		}
+		return m, cmd
 	default:
 		// Send remaining msg types to pane manager to route accordingly.
 		cmds = append(cmds, m.PaneManager.Update(msg))
-
-		// Send message to the prompt too if in prompt mode (most likely a
-		// blink message)
-		if m.mode == promptMode {
-			cmds = append(cmds, m.prompt.HandleBlink(msg))
-		}
 	}
 	return m, tea.Batch(cmds...)
 }

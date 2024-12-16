@@ -35,9 +35,10 @@ func (t *tracker) reindex(tree *tree, height int) {
 	t.nodes = nil
 	t.totalModules = 0
 	t.totalWorkspaces = 0
+	t.cursorIndex = -1
 	t.doReindex(tree)
 
-	if t.cursorNode == nil && len(t.nodes) > 0 {
+	if t.cursorIndex < 0 && len(t.nodes) > 0 {
 		t.cursorNode = t.nodes[0]
 		t.cursorIndex = 0
 	}

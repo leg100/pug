@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/charmbracelet/bubbles/cursor"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
@@ -250,6 +251,10 @@ func (m *model) Update(msg tea.Msg) tea.Cmd {
 			blink,
 			m.buildTree,
 		)
+	case cursor.BlinkMsg:
+		var blink tea.Cmd
+		m.filter, blink = m.filter.Update(msg)
+		return blink
 	}
 	return nil
 }
