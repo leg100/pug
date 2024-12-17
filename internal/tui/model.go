@@ -3,7 +3,6 @@ package tui
 import (
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 	"github.com/leg100/pug/internal/resource"
 )
 
@@ -40,20 +39,4 @@ type ModelTitle interface {
 // specific to the model.
 type ModelHelpBindings interface {
 	HelpBindings() []key.Binding
-}
-
-func BorderStyle(focused bool) lipgloss.Border {
-	if focused {
-		return lipgloss.Border(lipgloss.ThickBorder())
-	} else {
-		return lipgloss.Border(lipgloss.NormalBorder())
-	}
-}
-
-func BorderColor(focused bool) lipgloss.TerminalColor {
-	if focused {
-		return Blue
-	} else {
-		return InactivePreviewBorder
-	}
 }

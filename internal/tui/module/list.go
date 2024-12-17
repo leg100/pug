@@ -245,10 +245,6 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, tea.Batch(cmds...)
 }
 
-func (m list) Title() string {
-	return m.Breadcrumbs("Modules", nil)
-}
-
 func (m list) View() string {
 	return m.table.View()
 }

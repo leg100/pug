@@ -55,15 +55,16 @@ func (mm *Maker) make(id resource.ID, width, height int, border bool) (tui.Child
 		showInfo: mm.showInfo,
 		width:    width,
 		program:  mm.Program,
+		// Disable autoscroll if either task is finished or user has disabled it
+		disableAutoscroll: task.State.IsFinal() || mm.disableAutoscroll,
 	}
 	m.setHeight(height)
 
 	m.viewport = tui.NewViewport(tui.ViewportOptions{
-		JSON:       m.task.JSON,
-		Autoscroll: false,
-		Width:      m.viewportWidth(),
-		Height:     m.height,
-		Spinner:    m.spinner,
+		JSON:    m.task.JSON,
+		Width:   m.viewportWidth(),
+		Height:  m.height,
+		Spinner: m.spinner,
 	})
 
 	return &m, nil
@@ -105,7 +106,6 @@ type Model struct {
 	buf    []byte
 
 	program           string
-	focused           bool
 	disableAutoscroll bool
 	showInfo          bool
 
@@ -114,10 +114,6 @@ type Model struct {
 
 	height int
 	width  int
-}
-
-func (m *Model) ID() uuid.UUID {
-	return m.id
 }
 
 func (m *Model) Init() tea.Cmd {
@@ -169,11 +165,7 @@ func (m *Model) Update(msg tea.Msg) tea.Cmd {
 		if msg.ModelID != m.id {
 			return nil
 		}
-		// Add output to viewport. Only autoscroll if:
-		// (a) autoscrolling is not disabled
-		// (b) task is in progress
-		autoscroll := !m.disableAutoscroll && !m.task.State.IsFinal()
-		err := m.viewport.AppendContent(msg.Output, msg.EOF, autoscroll)
+		err := m.viewport.AppendContent(msg.Output, msg.EOF, !m.disableAutoscroll)
 		if err != nil {
 			return tui.ReportError(err)
 		}
@@ -333,8 +325,4 @@ func (m Model) getOutput() tea.Msg {
 		msg.EOF = true
 	}
 	return msg
-}
-
-func (m *Model) Focus(focused bool) {
-	m.focused = focused
 }

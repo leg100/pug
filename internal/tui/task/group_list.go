@@ -61,9 +61,8 @@ func (m *GroupListMaker) Make(_ resource.ID, width, height int) (tui.ChildModel,
 type groupList struct {
 	*tui.Helpers
 
-	table   table.Model[*task.Group]
-	tasks   *task.Service
-	focused bool
+	table table.Model[*task.Group]
+	tasks *task.Service
 }
 
 func (m *groupList) Init() tea.Cmd {
@@ -95,16 +94,15 @@ func (m *groupList) Update(msg tea.Msg) tea.Cmd {
 	return tea.Batch(cmds...)
 }
 
-func (m groupList) Title() string {
-	return m.Breadcrumbs("TaskGroups", nil)
-}
-
 func (m groupList) View() string {
 	return m.table.View()
 }
 
-func (m *groupList) Focus(focused bool) {
-	m.focused = !focused
+func (m groupList) BorderText() map[tui.BorderPosition]string {
+	return map[tui.BorderPosition]string{
+		tui.TopLeft:   tui.Bold.Render("task groups"),
+		tui.TopMiddle: m.table.Metadata(),
+	}
 }
 
 func (m groupList) HelpBindings() (bindings []key.Binding) {

@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
-	"strings"
 
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
@@ -390,53 +389,4 @@ func (h *Helpers) Move(workspaceID resource.ID, from state.ResourceAddress) tea.
 		Key:    key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", "confirm")),
 		Cancel: key.NewBinding(key.WithKeys("esc"), key.WithHelp("esc", "cancel")),
 	})
-}
-
-func (h *Helpers) Breadcrumbs(title string, res resource.Resource, crumbs ...string) string {
-	// format: title{task command}[workspace name](module path)
-	switch res := res.(type) {
-	case *task.Task:
-		cmd := TitleCommand.Render(res.String())
-		if res.WorkspaceID != nil {
-			ws, err := h.Workspaces.Get(*res.WorkspaceID)
-			if err != nil {
-				h.Logger.Error("rendering breadcrumbs", "error", err)
-				return ""
-			}
-			return h.Breadcrumbs(title, ws, cmd)
-		}
-		if res.ModuleID != nil {
-			mod, err := h.Modules.Get(*res.ModuleID)
-			if err != nil {
-				h.Logger.Error("rendering breadcrumbs", "error", err)
-				return ""
-			}
-			return h.Breadcrumbs(title, mod, cmd)
-		}
-		// Global task
-		return h.Breadcrumbs(title, nil, cmd)
-	case *state.Resource:
-		addr := TitleAddress.Render(res.String())
-		ws, err := h.Workspaces.Get(res.WorkspaceID)
-		if err != nil {
-			h.Logger.Error("rendering breadcrumbs", "error", err)
-			return ""
-		}
-		return h.Breadcrumbs(title, ws, addr)
-	case *task.Group:
-		cmd := TitleCommand.Render(res.String())
-		id := TitleID.Render(res.GetID().String())
-		return h.Breadcrumbs(title, nil, cmd, id)
-	case *workspace.Workspace:
-		name := TitleWorkspace.Render(res.String())
-		mod, err := h.Modules.Get(res.ModuleID)
-		if err != nil {
-			h.Logger.Error("rendering breadcrumbs", "error", err)
-			return ""
-		}
-		return h.Breadcrumbs(title, mod, append(crumbs, name)...)
-	case *module.Module:
-		crumbs = append(crumbs, TitlePath.Render(res.String()))
-	}
-	return fmt.Sprintf("%s%s", Title.Render(title), strings.Join(crumbs, ""))
 }

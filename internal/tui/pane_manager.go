@@ -96,7 +96,11 @@ func (p *PaneManager) Update(msg tea.Msg) tea.Cmd {
 			p.cycleActivePane(true)
 		case key.Matches(msg, Keys.ClosePane):
 			cmds = append(cmds, p.closeActivePane())
-		case key.Matches(msg, Keys.OutputPane):
+		case key.Matches(msg, Keys.LeftPane):
+			cmds = append(cmds, p.focusPane(LeftPane))
+		case key.Matches(msg, Keys.TopRightPane):
+			cmds = append(cmds, p.focusPane(TopRightPane))
+		case key.Matches(msg, Keys.BottomRightPane):
 			cmds = append(cmds, p.focusPane(BottomRightPane))
 		default:
 			// Send remaining keys to active pane
@@ -320,13 +324,15 @@ func (m *PaneManager) renderPane(position Position) string {
 	if ok {
 		borderTexts = textInBorder.BorderText()
 	}
-	switch position {
-	case LeftPane:
-		borderTexts[TopRight] = "e"
-	case TopRightPane:
-		borderTexts[TopRight] = "l"
-	case BottomRightPane:
-		borderTexts[TopRight] = "o"
+	if !isActive {
+		switch position {
+		case LeftPane:
+			borderTexts[TopRight] = "^h"
+		case TopRightPane:
+			borderTexts[TopRight] = "^k"
+		case BottomRightPane:
+			borderTexts[TopRight] = "^j"
+		}
 	}
 	return borderize(renderedPane, isActive, borderTexts)
 }

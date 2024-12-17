@@ -286,7 +286,3 @@ func (m *resourceList) BorderText() map[tui.BorderPosition]string {
 			Render(fmt.Sprintf("#%d", serial)),
 	}
 }
-
-func serialBreadcrumb(serial int64) string {
-	return tui.TitleSerial.Render(fmt.Sprintf("%d", serial))
-}

@@ -1,8 +1,6 @@
 package logs
 
 import (
-	"fmt"
-
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/leg100/pug/internal/logging"
@@ -80,11 +78,10 @@ func (mm *Maker) Make(id resource.ID, width, height int) (tui.ChildModel, error)
 }
 
 type model struct {
-	msg     logging.Message
-	table   table.Model[logging.Attr]
-	width   int
-	height  int
-	focused bool
+	msg    logging.Message
+	table  table.Model[logging.Attr]
+	width  int
+	height int
 
 	*tui.Helpers
 }
@@ -99,21 +96,12 @@ func (m *model) Update(msg tea.Msg) tea.Cmd {
 	return cmd
 }
 
-func (m model) Title() string {
-	serial := tui.TitleSerial.Render(fmt.Sprintf("#%d", m.msg.Serial))
-	return m.Breadcrumbs("LogMessage", nil, serial)
-}
-
 func (m model) View() string {
 	return m.table.View()
 }
 
 func (m model) HelpBindings() (bindings []key.Binding) {
 	return nil
-}
-
-func (m *model) Focus(focused bool) {
-	m.focused = !focused
 }
 
 // byAttribute sorts the attributes of an individual message for display in the

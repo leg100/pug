@@ -29,11 +29,6 @@ import (
 // * BottomRight (scroll percentage)
 //
 
-var borderThickness = map[bool]lipgloss.Border{
-	true:  lipgloss.Border(lipgloss.ThickBorder()),
-	false: lipgloss.Border(lipgloss.NormalBorder()),
-}
-
 type BorderPosition int
 
 const (
@@ -50,10 +45,19 @@ func borderize(content string, active bool, embeddedText map[BorderPosition]stri
 		embeddedText = make(map[BorderPosition]string)
 	}
 	var (
-		border = borderThickness[active]
-		style  = lipgloss.NewStyle().Foreground(BorderColor(active))
+		thickness = map[bool]lipgloss.Border{
+			true:  lipgloss.Border(lipgloss.ThickBorder()),
+			false: lipgloss.Border(lipgloss.NormalBorder()),
+		}
+		color = map[bool]lipgloss.TerminalColor{
+			true:  Blue,
+			false: InactivePreviewBorder,
+		}
+		border = thickness[active]
+		style  = lipgloss.NewStyle().Foreground(color[active])
 		width  = lipgloss.Width(content)
 	)
+
 	encloseInSquareBrackets := func(text string) string {
 		if text != "" {
 			return fmt.Sprintf("%s%s%s",
@@ -103,7 +107,7 @@ func borderize(content string, active bool, embeddedText map[BorderPosition]stri
 			border.TopRight,
 		),
 		lipgloss.NewStyle().
-			BorderForeground(BorderColor(active)).
+			BorderForeground(color[active]).
 			Border(border, false, true, false, true).Render(content),
 		buildHorizontalBorder(
 			embeddedText[BottomLeft],
