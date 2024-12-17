@@ -275,16 +275,15 @@ func (m *resourceList) BorderText() map[tui.BorderPosition]string {
 	}
 	return map[tui.BorderPosition]string{
 		tui.TopLeft: fmt.Sprintf(
-			"[state]%s%s",
-			m.ModuleIcon(m.workspace.ModulePath),
-			m.WorkspaceIcon(m.workspace),
+			"%s %s %s",
+			tui.Bold.Render("state"),
+			tui.ModulePathWithIcon(m.workspace.ModulePath, true),
+			tui.WorkspaceNameWithIcon(m.workspace.Name, true),
 		),
 		tui.TopMiddle: m.Metadata(),
-		tui.BottomLeft: fmt.Sprintf("[%s]",
-			lipgloss.NewStyle().
-				Foreground(tui.Orange).
-				Render(fmt.Sprintf("#%d", serial)),
-		),
+		tui.BottomMiddle: lipgloss.NewStyle().
+			Foreground(tui.BurntOrange).
+			Render(fmt.Sprintf("#%d", serial)),
 	}
 }
 

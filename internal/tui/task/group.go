@@ -111,19 +111,15 @@ func (m *groupModel) skip(tasks ...*task.Task) bool {
 	return false
 }
 
-func (m groupModel) Title() string {
-	return m.Breadcrumbs("TaskGroup", m.group)
-}
-
 func (m groupModel) BorderText() map[tui.BorderPosition]string {
 	return map[tui.BorderPosition]string{
-		tui.TopLeft:   "[task group] " + m.group.String(),
-		tui.TopMiddle: m.Model.Metadata(),
+		tui.TopLeft: fmt.Sprintf(
+			"%s %s",
+			tui.Bold.Render(m.group.String()),
+			m.GroupReport(m.group, true),
+		),
+		tui.TopMiddle: m.Metadata(),
 	}
-}
-
-func (m groupModel) Status() string {
-	return m.GroupReport(m.group, false)
 }
 
 func (m groupModel) HelpBindings() []key.Binding {

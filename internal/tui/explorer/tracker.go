@@ -17,6 +17,8 @@ type tracker struct {
 	totalModules int
 	// total number of workspaces
 	totalWorkspaces int
+	// tracks whether tracker has been initialized with at least one module
+	initialized bool
 
 	*selector
 }
@@ -38,7 +40,22 @@ func (t *tracker) reindex(tree *tree, height int) {
 	t.cursorIndex = -1
 	t.doReindex(tree)
 
-	if t.cursorIndex < 0 && len(t.nodes) > 0 {
+	// When pug first starts up, for the user's convenience we want the cursor
+	// to be on the first module. Because modules are added asynchronously, a
+	// semaphore detects whether the cursor has been set to the first module, to
+	// ensure this is only done once.
+	if !t.initialized {
+		for i, n := range t.nodes {
+			if _, ok := n.(moduleNode); ok {
+				t.cursorNode = t.nodes[i]
+				t.cursorIndex = i
+				t.initialized = true
+				break
+			}
+		}
+	}
+	if t.cursorIndex < 0 {
+		// No modules, so set cursor to first node
 		t.cursorNode = t.nodes[0]
 		t.cursorIndex = 0
 	}

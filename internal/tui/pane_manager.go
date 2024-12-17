@@ -96,6 +96,8 @@ func (p *PaneManager) Update(msg tea.Msg) tea.Cmd {
 			p.cycleActivePane(true)
 		case key.Matches(msg, Keys.ClosePane):
 			cmds = append(cmds, p.closeActivePane())
+		case key.Matches(msg, Keys.OutputPane):
+			cmds = append(cmds, p.focusPane(BottomRightPane))
 		default:
 			// Send remaining keys to active pane
 			cmds = append(cmds, p.updateModel(p.active, msg))
@@ -244,6 +246,10 @@ func (m *PaneManager) setPane(msg NavigationMsg) (cmd tea.Cmd) {
 }
 
 func (m *PaneManager) focusPane(position Position) tea.Cmd {
+	if _, ok := m.panes[position]; !ok {
+		// There is no pane to focus at requested position
+		return nil
+	}
 	var cmds []tea.Cmd
 	if previous, ok := m.panes[m.active]; ok {
 		cmds = append(cmds, previous.model.Update(UnfocusPaneMsg{}))
@@ -283,10 +289,10 @@ func (m *PaneManager) paneHeight(position Position) int {
 
 func (m *PaneManager) View() string {
 	return lipgloss.JoinHorizontal(lipgloss.Top,
-		RemoveEmptyStrings(
+		removeEmptyStrings(
 			m.renderPane(LeftPane),
 			lipgloss.JoinVertical(lipgloss.Top,
-				RemoveEmptyStrings(
+				removeEmptyStrings(
 					m.renderPane(TopRightPane),
 					m.renderPane(BottomRightPane),
 				)...,
@@ -307,17 +313,25 @@ func (m *PaneManager) renderPane(position Position) string {
 		MaxWidth(m.paneWidth(position) - 2). // -2 for border
 		Render(model.View())
 	// Optionally, the pane model can embed text in its borders.
-	var borderTexts map[BorderPosition]string
+	borderTexts := make(map[BorderPosition]string)
 	textInBorder, ok := model.(interface {
 		BorderText() map[BorderPosition]string
 	})
 	if ok {
 		borderTexts = textInBorder.BorderText()
 	}
+	switch position {
+	case LeftPane:
+		borderTexts[TopRight] = "e"
+	case TopRightPane:
+		borderTexts[TopRight] = "l"
+	case BottomRightPane:
+		borderTexts[TopRight] = "o"
+	}
 	return borderize(renderedPane, isActive, borderTexts)
 }
 
-func RemoveEmptyStrings(strs ...string) []string {
+func removeEmptyStrings(strs ...string) []string {
 	n := 0
 	for _, s := range strs {
 		if s != "" {

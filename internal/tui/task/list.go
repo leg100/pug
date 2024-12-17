@@ -7,7 +7,6 @@ import (
 
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 	"github.com/leg100/pug/internal/plan"
 	"github.com/leg100/pug/internal/resource"
 	"github.com/leg100/pug/internal/task"
@@ -169,11 +168,8 @@ func (m *List) Update(msg tea.Msg) tea.Cmd {
 }
 
 func (m List) BorderText() map[tui.BorderPosition]string {
-	t := lipgloss.NewStyle().
-		Foreground(tui.DarkRed).
-		Render("t")
 	return map[tui.BorderPosition]string{
-		tui.TopLeft:   fmt.Sprintf("[%sasks]", t),
+		tui.TopLeft:   tui.Bold.Render("tasks"),
 		tui.TopMiddle: m.Metadata(),
 	}
 }

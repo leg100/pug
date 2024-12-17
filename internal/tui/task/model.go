@@ -169,7 +169,11 @@ func (m *Model) Update(msg tea.Msg) tea.Cmd {
 		if msg.ModelID != m.id {
 			return nil
 		}
-		err := m.viewport.AppendContent(msg.Output, msg.EOF, !m.disableAutoscroll)
+		// Add output to viewport. Only autoscroll if:
+		// (a) autoscrolling is not disabled
+		// (b) task is in progress
+		autoscroll := !m.disableAutoscroll && !m.task.State.IsFinal()
+		err := m.viewport.AppendContent(msg.Output, msg.EOF, autoscroll)
 		if err != nil {
 			return tui.ReportError(err)
 		}
@@ -287,13 +291,13 @@ func boolToOnOff(b bool) string {
 func (m Model) BorderText() map[tui.BorderPosition]string {
 	return map[tui.BorderPosition]string{
 		tui.TopLeft: fmt.Sprintf(
-			"[%s]%s%s",
-			m.task.String(),
+			"%s %s %s",
+			tui.Bold.Render(m.task.String()),
 			m.TaskModulePathWithIcon(m.task),
 			m.TaskWorkspaceNameWithIcon(m.task),
 		),
 		tui.BottomLeft: fmt.Sprintf(
-			"%s%s",
+			"%s %s",
 			m.TaskStatus(m.task, false),
 			m.TaskSummary(m.task, false),
 		),

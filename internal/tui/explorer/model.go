@@ -332,14 +332,18 @@ func (m model) View() string {
 }
 
 func (m model) BorderText() map[tui.BorderPosition]string {
-	e := lipgloss.NewStyle().
-		Foreground(tui.DarkRed).
-		Render("e")
-	modules := fmt.Sprintf("%s %d", tui.ModuleIcon, m.tracker.totalModules)
-	workspaces := fmt.Sprintf("%s %d", tui.WorkspaceIcon, m.tracker.totalWorkspaces)
+	modules := fmt.Sprintf(
+		"%s%s",
+		tui.ModuleIcon(),
+		tui.ModuleStyle.Render(fmt.Sprintf("%d", m.tracker.totalModules)),
+	)
+	workspaces := fmt.Sprintf(
+		"%s%s",
+		tui.WorkspaceIcon(),
+		tui.WorkspaceStyle.Render(fmt.Sprintf("%d", m.tracker.totalWorkspaces)),
+	)
 	return map[tui.BorderPosition]string{
-		tui.TopLeft:   fmt.Sprintf("[%sxplorer]", e),
-		tui.TopMiddle: fmt.Sprintf("[%s][%s]", modules, workspaces),
+		tui.BottomMiddle: fmt.Sprintf("%s %s", modules, workspaces),
 	}
 }
 

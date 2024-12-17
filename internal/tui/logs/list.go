@@ -112,12 +112,11 @@ func (m *list) Update(msg tea.Msg) tea.Cmd {
 	return tea.Batch(cmds...)
 }
 
-func (m list) Title() string {
-	return m.Breadcrumbs("Logs", nil)
-}
-
-func (m list) Metadata() string {
-	return "[logs] " + m.Model.Metadata()
+func (m list) BorderText() map[tui.BorderPosition]string {
+	return map[tui.BorderPosition]string{
+		tui.TopLeft:   "logs",
+		tui.TopMiddle: m.Metadata(),
+	}
 }
 
 func (m list) View() string {

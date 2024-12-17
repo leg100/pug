@@ -2,6 +2,6 @@ package tui
 
 const (
 	DirIcon       string = ""
-	ModuleIcon    string = "󰠱"
-	WorkspaceIcon string = ""
+	moduleIcon    string = "󰠱"
+	workspaceIcon string = ""
 )

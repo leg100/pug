@@ -46,7 +46,7 @@ func (m moduleNode) ID() any {
 }
 
 func (m moduleNode) String() string {
-	return fmt.Sprintf("%s %s", tui.ModuleIcon, filepath.Base(m.path))
+	return tui.ModulePathWithIcon(filepath.Base(m.path), false)
 }
 
 type workspaceNode struct {
@@ -64,7 +64,7 @@ func (w workspaceNode) String() string {
 	name := lipgloss.NewStyle().
 		Bold(w.current).
 		Render(w.name)
-	s := fmt.Sprintf("%s %s", tui.WorkspaceIcon, name)
+	s := tui.WorkspaceNameWithIcon(name, false)
 	if w.resourceCount != "" {
 		s += lipgloss.NewStyle().
 			Foreground(tui.LighterGrey).

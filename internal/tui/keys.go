@@ -11,6 +11,7 @@ type keyMap struct {
 	SwitchPaneBack   key.Binding
 	ClosePane        key.Binding
 	Explorer         key.Binding
+	OutputPane       key.Binding
 }
 
 var Keys = keyMap{
@@ -45,5 +46,9 @@ var Keys = keyMap{
 	ClosePane: key.NewBinding(
 		key.WithKeys("x"),
 		key.WithHelp("x", "close pane"),
+	),
+	OutputPane: key.NewBinding(
+		key.WithKeys("o"),
+		key.WithHelp("o", "focus output pane"),
 	),
 }

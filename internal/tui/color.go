@@ -8,6 +8,7 @@ const (
 	Red             = lipgloss.Color("#FF5353")
 	Purple          = lipgloss.Color("135")
 	Orange          = lipgloss.Color("214")
+	BurntOrange     = lipgloss.Color("214")
 	Yellow          = lipgloss.Color("#DBBD70")
 	Green           = lipgloss.Color("34")
 	LightGreen      = lipgloss.Color("86")
@@ -24,6 +25,7 @@ const (
 	DarkGrey        = lipgloss.Color("#606362")
 	White           = lipgloss.Color("#ffffff")
 	OffWhite        = lipgloss.Color("#a8a7a5")
+	Pink            = lipgloss.Color("30")
 )
 
 var (

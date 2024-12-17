@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
@@ -36,10 +37,12 @@ var borderThickness = map[bool]lipgloss.Border{
 type BorderPosition int
 
 const (
-	TopMiddle BorderPosition = iota
-	TopLeft
+	TopLeft BorderPosition = iota
+	TopMiddle
+	TopRight
 	BottomLeft
 	BottomMiddle
+	BottomRight
 )
 
 func borderize(content string, active bool, embeddedText map[BorderPosition]string) string {
@@ -49,35 +52,66 @@ func borderize(content string, active bool, embeddedText map[BorderPosition]stri
 	var (
 		border = borderThickness[active]
 		style  = lipgloss.NewStyle().Foreground(BorderColor(active))
+		width  = lipgloss.Width(content)
 	)
-	buildHorizontalBorder := func(leftText, middleText, leftCorner, inbetween, rightCorner string) string {
+	encloseInSquareBrackets := func(text string) string {
+		if text != "" {
+			return fmt.Sprintf("%s%s%s",
+				style.Render(border.TopRight),
+				text,
+				style.Render(border.TopLeft),
+			)
+		}
+		return text
+	}
+	buildHorizontalBorder := func(leftText, middleText, rightText, leftCorner, inbetween, rightCorner string) string {
+		leftText = encloseInSquareBrackets(leftText)
+		middleText = encloseInSquareBrackets(middleText)
+		rightText = encloseInSquareBrackets(rightText)
 		// Construct top border.
 		// First determine lengths of each component
-		i := lipgloss.Width(content)
+		i := width
 		i -= lipgloss.Width(leftText)
 		i -= lipgloss.Width(middleText)
-		rightBorderLen := min((lipgloss.Width(content)-lipgloss.Width(middleText))/2, i)
-		rightBorderLen = max(rightBorderLen, 0)
-		leftBorderLen := max(0, i-rightBorderLen)
+		i -= lipgloss.Width(rightText)
+		// Calculate length of border between embedded texts
+		borderLen := max(0, width-lipgloss.Width(leftText)-lipgloss.Width(middleText)-lipgloss.Width(rightText))
+		leftBorderLen := borderLen / 2
+		rightBorderLen := max(0, i-leftBorderLen)
 		// Then construct border string
 		s := leftText +
 			style.Render(strings.Repeat(inbetween, leftBorderLen)) +
 			middleText +
-			style.Render(strings.Repeat(inbetween, rightBorderLen))
+			style.Render(strings.Repeat(inbetween, rightBorderLen)) +
+			rightText
 		// Make it fit in the space available between the two corners.
 		s = lipgloss.NewStyle().
 			Inline(true).
-			MaxWidth(lipgloss.Width(content)).
+			MaxWidth(width).
 			Render(s)
 		// Add the corners
 		return style.Render(leftCorner) + s + style.Render(rightCorner)
 	}
 	// Stack top border onto remaining borders
 	return lipgloss.JoinVertical(lipgloss.Top,
-		buildHorizontalBorder(embeddedText[TopLeft], embeddedText[TopMiddle], border.TopLeft, border.Top, border.TopRight),
+		buildHorizontalBorder(
+			embeddedText[TopLeft],
+			embeddedText[TopMiddle],
+			embeddedText[TopRight],
+			border.TopLeft,
+			border.Top,
+			border.TopRight,
+		),
 		lipgloss.NewStyle().
 			BorderForeground(BorderColor(active)).
 			Border(border, false, true, false, true).Render(content),
-		buildHorizontalBorder(embeddedText[BottomLeft], embeddedText[BottomMiddle], border.BottomLeft, border.Bottom, border.BottomRight),
+		buildHorizontalBorder(
+			embeddedText[BottomLeft],
+			embeddedText[BottomMiddle],
+			embeddedText[BottomRight],
+			border.BottomLeft,
+			border.Bottom,
+			border.BottomRight,
+		),
 	)
 }

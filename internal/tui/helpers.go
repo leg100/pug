@@ -125,14 +125,14 @@ func (h *Helpers) TaskModule(t *task.Task) *module.Module {
 
 func (h *Helpers) TaskModulePath(t *task.Task) string {
 	if mod := h.TaskModule(t); mod != nil {
-		return mod.Path
+		return ModuleStyle.Render(mod.Path)
 	}
 	return ""
 }
 
 func (h *Helpers) TaskModulePathWithIcon(t *task.Task) string {
 	if mod := h.TaskModule(t); mod != nil {
-		return h.ModuleIcon(mod.Path)
+		return ModulePathWithIcon(mod.Path, true)
 	}
 	return ""
 }
@@ -152,39 +152,48 @@ func (h *Helpers) TaskWorkspace(t *task.Task) *workspace.Workspace {
 
 func (h *Helpers) TaskWorkspaceName(t *task.Task) string {
 	if ws := h.TaskWorkspace(t); ws != nil {
-		return ws.Name
+		return WorkspaceName(ws.Name)
 	}
 	return ""
 }
 
 func (h *Helpers) TaskWorkspaceNameWithIcon(t *task.Task) string {
 	if ws := h.TaskWorkspace(t); ws != nil {
-		return h.WorkspaceIcon(ws)
+		return WorkspaceNameWithIcon(ws.Name, true)
 	}
 	return ""
 }
 
-func (h *Helpers) ModuleIcon(modulePath string) string {
-	return fmt.Sprintf("[%s]",
-		lipgloss.NewStyle().
-			Foreground(Purple).
-			Render(
-				fmt.Sprintf("%s %s", ModuleIcon, modulePath),
-			),
+func ModulePath(modulePath string) string {
+	return ModuleStyle.Render(modulePath)
+}
+
+func ModuleIcon() string {
+	return ModuleStyle.Render(fmt.Sprintf("%s ", moduleIcon))
+}
+
+func ModulePathWithIcon(modulePath string, squareBrackets bool) string {
+	s := fmt.Sprintf("%s%s",
+		ModuleIcon(),
+		ModulePath(modulePath),
 	)
+	return s
 }
 
-func (h *Helpers) WorkspaceIcon(ws *workspace.Workspace) string {
-	if ws != nil {
-		return fmt.Sprintf("[%s]",
-			lipgloss.NewStyle().
-				Foreground(LightBlue).
-				Render(
-					fmt.Sprintf("%s %s", WorkspaceIcon, ws.Name),
-				),
-		)
-	}
-	return ""
+func WorkspaceName(name string) string {
+	return WorkspaceStyle.Render(name)
+}
+
+func WorkspaceIcon() string {
+	return WorkspaceStyle.Render(fmt.Sprintf("%s ", workspaceIcon))
+}
+
+func WorkspaceNameWithIcon(name string, squareBrackets bool) string {
+	s := fmt.Sprintf("%s%s",
+		WorkspaceIcon(),
+		WorkspaceName(name),
+	)
+	return s
 }
 
 // TaskWorkspaceOrCurrentWorkspace retrieves either the task's workspace if it belongs to a
@@ -220,11 +229,7 @@ func (h *Helpers) TaskStatus(t *task.Task, table bool) string {
 		color = Red
 	}
 
-	colored := Regular.Foreground(color).Render(string(t.State))
-	if table {
-		return colored
-	}
-	return fmt.Sprintf("[%s]", colored)
+	return Regular.Foreground(color).Render(string(t.State))
 }
 
 // TaskSummary renders a summary of the task's outcome.
@@ -247,10 +252,7 @@ func (h *Helpers) TaskSummary(t *task.Task, table bool) string {
 	default:
 		content = t.Summary.String()
 	}
-	if table {
-		return content
-	}
-	return fmt.Sprintf("[%s]", content)
+	return content
 }
 
 // ResourceReport renders a colored summary of resource changes as a result of a

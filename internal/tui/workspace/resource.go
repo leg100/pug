@@ -134,7 +134,8 @@ func (m *resourceModel) BorderText() map[tui.BorderPosition]string {
 	}
 	return map[tui.BorderPosition]string{
 		tui.TopLeft: fmt.Sprintf(
-			"[resource][%s]%s",
+			"%s %s %s",
+			tui.Bold.Render("resource"),
 			m.resource,
 			tainted,
 		),
