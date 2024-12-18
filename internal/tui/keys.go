@@ -46,8 +46,8 @@ var Keys = keyMap{
 		key.WithHelp("shift+tabab", "switch last pane"),
 	),
 	ClosePane: key.NewBinding(
-		key.WithKeys("x"),
-		key.WithHelp("x", "close pane"),
+		key.WithKeys("X"),
+		key.WithHelp("X", "close pane"),
 	),
 	LeftPane: key.NewBinding(
 		key.WithKeys("ctrl+h"),

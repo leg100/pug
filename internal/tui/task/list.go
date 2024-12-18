@@ -16,11 +16,6 @@ import (
 )
 
 var (
-	taskIDColumn = table.Column{
-		Key:   "task_id",
-		Title: "TASK ID",
-		Width: len("TASK_ID"),
-	}
 	commandColumn = table.Column{
 		Key:        "command",
 		Title:      "COMMAND",
@@ -68,7 +63,6 @@ type ListMaker struct {
 
 func (mm *ListMaker) Make(_ resource.ID, width, height int) (tui.ChildModel, error) {
 	columns := []table.Column{
-		taskIDColumn,
 		table.ModuleColumn,
 		table.WorkspaceColumn,
 		commandColumn,
@@ -78,7 +72,6 @@ func (mm *ListMaker) Make(_ resource.ID, width, height int) (tui.ChildModel, err
 	}
 	renderer := func(t *task.Task) table.RenderedRow {
 		return table.RenderedRow{
-			taskIDColumn.Key:          t.ID.String(),
 			table.ModuleColumn.Key:    mm.Helpers.TaskModulePath(t),
 			table.WorkspaceColumn.Key: mm.Helpers.TaskWorkspaceName(t),
 			commandColumn.Key:         t.String(),

@@ -124,6 +124,30 @@ func (m *model) Update(msg tea.Msg) tea.Cmd {
 				return m.Modules.Init(moduleID, upgrade)
 			}
 			return m.CreateTasks(fn, ids...)
+		case key.Matches(msg, localKeys.Execute):
+			ids, err := m.getModuleIDs()
+			if err != nil {
+				return tui.ReportError(err)
+			}
+			return tui.CmdHandler(tui.PromptMsg{
+				Prompt:      fmt.Sprintf("Execute program in %d module directories: ", len(ids)),
+				Placeholder: "terraform version",
+				Action: func(v string) tea.Cmd {
+					if v == "" {
+						return nil
+					}
+					// split value into program and any args
+					parts := strings.Split(v, " ")
+					prog := parts[0]
+					args := parts[1:]
+					fn := func(moduleID resource.ID) (task.Spec, error) {
+						return m.Modules.Execute(moduleID, prog, args...)
+					}
+					return m.CreateTasks(fn, ids...)
+				},
+				Key:    key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", "confirm")),
+				Cancel: key.NewBinding(key.WithKeys("esc"), key.WithHelp("esc", "cancel")),
+			})
 		case key.Matches(msg, keys.Common.Validate):
 			ids, err := m.getModuleIDs()
 			if err != nil {
