@@ -40,7 +40,7 @@ install-linter:
 
 .PHONY: debug
 debug:
-	dlv debug --headless --api-version=2 --listen=127.0.0.1:4300 . -- -w ./demo/dont_cost_money
+	dlv debug --headless --api-version=2 --listen=127.0.0.1:4300 . -- -w ./demo/dont_cost_money -d
 	# Exiting delve neglects to restore the terminal, so we do so here.
 	reset
 

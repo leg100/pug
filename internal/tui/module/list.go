@@ -138,8 +138,6 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	case tea.KeyMsg:
 		switch {
-		case key.Matches(msg, localKeys.ReloadModules):
-			return m, ReloadModules(false, m.Modules)
 		case key.Matches(msg, keys.Common.Edit):
 			if row, ok := m.table.CurrentRow(); ok {
 				path := m.workdir.Join(row.Value.Path)

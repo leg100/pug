@@ -55,7 +55,6 @@ func (t *tracker) reindex(tree *tree, height int) {
 		}
 	}
 	if t.cursorIndex < 0 {
-		// No modules, so set cursor to first node
 		t.cursorNode = t.nodes[0]
 		t.cursorIndex = 0
 	}

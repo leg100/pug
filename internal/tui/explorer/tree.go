@@ -34,6 +34,7 @@ type treeBuilderWorkspaceLister interface {
 
 type treeBuilderHelpers interface {
 	WorkspaceResourceCount(*workspace.Workspace) string
+	WorkspaceCost(ws *workspace.Workspace) string
 }
 
 func (b *treeBuilder) newTree(filter string) *tree {
@@ -57,6 +58,7 @@ func (b *treeBuilder) newTree(filter string) *tree {
 			name:          ws.Name,
 			current:       currentWorkspaces[ws.ID],
 			resourceCount: b.helpers.WorkspaceResourceCount(ws),
+			cost:          b.helpers.WorkspaceCost(ws),
 		}
 		workspaceNodes[ws.ModuleID] = append(workspaceNodes[ws.ModuleID], wsNode)
 	}
@@ -133,7 +135,7 @@ func (t *tree) addChild(child node) *tree {
 	t.children = append(t.children, newTree)
 	// keep children lexicographically ordered
 	slices.SortFunc(t.children, func(a, b *tree) int {
-		if a.value.String() < b.value.String() {
+		if internal.StripAnsi(a.value.String()) < internal.StripAnsi(b.value.String()) {
 			return -1
 		}
 		return 1

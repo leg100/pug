@@ -16,8 +16,6 @@ type node interface {
 	ID() any
 }
 
-type nodeID any
-
 type dirNode struct {
 	path   string
 	root   bool
@@ -25,7 +23,7 @@ type dirNode struct {
 }
 
 func (d dirNode) ID() any {
-	return nodeID(d.path)
+	return d.path
 }
 
 func (d dirNode) String() string {
@@ -42,7 +40,7 @@ type moduleNode struct {
 }
 
 func (m moduleNode) ID() any {
-	return nodeID(m.id)
+	return m.id
 }
 
 func (m moduleNode) String() string {
@@ -54,10 +52,11 @@ type workspaceNode struct {
 	name          string
 	current       bool
 	resourceCount string
+	cost          string
 }
 
 func (w workspaceNode) ID() any {
-	return nodeID(w.id)
+	return w.id
 }
 
 func (w workspaceNode) String() string {
@@ -70,6 +69,12 @@ func (w workspaceNode) String() string {
 			Foreground(tui.LighterGrey).
 			Italic(true).
 			Render(fmt.Sprintf(" %s", w.resourceCount))
+	}
+	if w.cost != "" {
+		s += lipgloss.NewStyle().
+			Foreground(tui.Green).
+			Italic(true).
+			Render(fmt.Sprintf(" $%s", w.cost))
 	}
 	return s
 }

@@ -163,16 +163,15 @@ func (m *model) Update(msg tea.Msg) tea.Cmd {
 			cmd := m.CreateTasks(m.Modules.Format, ids...)
 			return cmd
 		case key.Matches(msg, localKeys.SetCurrentWorkspace):
+			ws, ok := m.tracker.cursorNode.(workspaceNode)
+			if !ok {
+				return tui.ReportError(errors.New("cursor is not on a workspace"))
+			}
 			return func() tea.Msg {
-				currentID := m.tracker.getCursorID()
-				if currentID == nil || currentID.Kind != resource.Workspace {
-					// TODO: report error
-					return nil
+				if err := m.Workspaces.SelectWorkspace(ws.id); err != nil {
+					return fmt.Errorf("setting current workspace: %w", err)
 				}
-				if err := m.Workspaces.SelectWorkspace(*currentID); err != nil {
-					return tui.ReportError(fmt.Errorf("setting current workspace: %w", err))()
-				}
-				return nil
+				return tui.InfoMsg("set current workspace to " + ws.name)
 			}
 		case key.Matches(msg, keys.Common.PlanDestroy):
 			createPlanOptions.Destroy = true
@@ -224,15 +223,20 @@ func (m *model) Update(msg tea.Msg) tea.Cmd {
 			}
 			return tui.NavigateTo(tui.ResourceListKind, tui.WithParent(*currentID))
 		case key.Matches(msg, keys.Common.Delete):
-			workspaceNode, ok := m.tracker.cursorNode.(workspaceNode)
+			ws, ok := m.tracker.cursorNode.(workspaceNode)
 			if !ok {
-				// TODO: report error
-				return nil
+				return tui.ReportError(errors.New("cursor is not on a workspace"))
 			}
 			return tui.YesNoPrompt(
-				fmt.Sprintf("Delete workspace %s?", workspaceNode),
-				m.CreateTasks(m.Workspaces.Delete, workspaceNode.id),
+				fmt.Sprintf("Delete workspace %s?", ws.name),
+				m.CreateTasks(m.Workspaces.Delete, ws.id),
 			)
+		case key.Matches(msg, localKeys.ReloadWorkspaces):
+			ids, err := m.getModuleIDs()
+			if err != nil {
+				return tui.ReportError(err)
+			}
+			return m.CreateTasks(m.Workspaces.Reload, ids...)
 		}
 	case builtTreeMsg:
 		m.tree = (*tree)(msg)
@@ -323,7 +327,7 @@ func (m model) View() string {
 		var (
 			background lipgloss.Color
 			foreground lipgloss.Color
-			current    = node == m.tracker.cursorNode
+			current    = node.ID() == m.tracker.cursorNode.ID()
 			selected   = m.tracker.isSelected(node)
 		)
 		if current && selected {
@@ -367,6 +371,8 @@ func (m model) BorderText() map[tui.BorderPosition]string {
 		tui.WorkspaceStyle.Render(fmt.Sprintf("%d", m.tracker.totalWorkspaces)),
 	)
 	return map[tui.BorderPosition]string{
+		tui.TopLeft:      fmt.Sprintf("%v", m.tracker.cursorNode),
+		tui.TopMiddle:    fmt.Sprintf("%d", m.tracker.cursorIndex),
 		tui.BottomMiddle: fmt.Sprintf("%s %s", modules, workspaces),
 	}
 }
