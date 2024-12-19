@@ -74,7 +74,7 @@ func (w workspaceNode) String() string {
 		s += lipgloss.NewStyle().
 			Foreground(tui.Green).
 			Italic(true).
-			Render(fmt.Sprintf(" $%s", w.cost))
+			Render(fmt.Sprintf(" %s", w.cost))
 	}
 	return s
 }

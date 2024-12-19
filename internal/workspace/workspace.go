@@ -18,7 +18,7 @@ type Workspace struct {
 	Name       string
 	ModuleID   resource.ID
 	ModulePath string
-	Cost       float64
+	Cost       *float64
 }
 
 func New(mod *module.Module, name string) (*Workspace, error) {

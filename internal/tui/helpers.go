@@ -92,10 +92,10 @@ func (h *Helpers) ModuleCost(mod *module.Module) string {
 
 // WorkspaceCost renders the cost of the given workspace.
 func (h *Helpers) WorkspaceCost(ws *workspace.Workspace) string {
-	if ws.Cost == 0 {
-		return ""
+	if ws.Cost != nil {
+		return fmt.Sprintf("$%.2f", *ws.Cost)
 	}
-	return fmt.Sprintf("$%.2f", ws.Cost)
+	return ""
 }
 
 func (h *Helpers) WorkspaceResourceCount(ws *workspace.Workspace) string {

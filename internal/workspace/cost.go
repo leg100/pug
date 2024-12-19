@@ -89,7 +89,7 @@ func (s *costTaskSpecCreator) Cost(workspaceIDs ...resource.ID) (task.Spec, erro
 					return nil, err
 				}
 				_, err = s.table.Update(ws.ID, func(existing *Workspace) error {
-					existing.Cost = result.cost
+					existing.Cost = &result.cost
 					return nil
 				})
 				if err != nil {

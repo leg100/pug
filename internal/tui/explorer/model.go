@@ -371,8 +371,6 @@ func (m model) BorderText() map[tui.BorderPosition]string {
 		tui.WorkspaceStyle.Render(fmt.Sprintf("%d", m.tracker.totalWorkspaces)),
 	)
 	return map[tui.BorderPosition]string{
-		tui.TopLeft:      fmt.Sprintf("%v", m.tracker.cursorNode),
-		tui.TopMiddle:    fmt.Sprintf("%d", m.tracker.cursorIndex),
 		tui.BottomMiddle: fmt.Sprintf("%s %s", modules, workspaces),
 	}
 }
