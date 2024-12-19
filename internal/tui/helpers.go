@@ -348,6 +348,20 @@ func (h *Helpers) CreateTasks(fn task.SpecFunc, ids ...resource.ID) tea.Cmd {
 	}
 }
 
+func (h *Helpers) createTask(fn task.SpecFunc, id resource.ID) tea.Cmd {
+	return func() tea.Msg {
+		spec, err := fn(id)
+		if err != nil {
+			return ErrorMsg(fmt.Errorf("creating task: %w", err))
+		}
+		task, err := h.Tasks.Create(spec)
+		if err != nil {
+			return ErrorMsg(fmt.Errorf("creating task: %w", err))
+		}
+		return NewNavigationMsg(TaskKind, WithParent(task.ID))
+	}
+}
+
 func (h *Helpers) CreateTasksWithSpecs(specs ...task.Spec) tea.Cmd {
 	return func() tea.Msg {
 		switch len(specs) {
@@ -384,7 +398,15 @@ func (h *Helpers) Move(workspaceID resource.ID, from state.ResourceAddress) tea.
 			fn := func(workspaceID resource.ID) (task.Spec, error) {
 				return h.States.Move(workspaceID, from, state.ResourceAddress(v))
 			}
-			return h.CreateTasks(fn, workspaceID)
+			spec, err := fn(workspaceID)
+			if err != nil {
+				return ReportError(fmt.Errorf("creating task: %w", err))
+			}
+			_, err = h.Tasks.Create(spec)
+			if err != nil {
+				return ReportError(fmt.Errorf("creating task: %w", err))
+			}
+			return nil
 		},
 		Key:    key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", "confirm")),
 		Cancel: key.NewBinding(key.WithKeys("esc"), key.WithHelp("esc", "cancel")),

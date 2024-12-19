@@ -74,14 +74,9 @@ func borderize(content string, active bool, embeddedText map[BorderPosition]stri
 		rightText = encloseInSquareBrackets(rightText)
 		// Construct top border.
 		// First determine lengths of each component
-		i := width
-		i -= lipgloss.Width(leftText)
-		i -= lipgloss.Width(middleText)
-		i -= lipgloss.Width(rightText)
 		// Calculate length of border between embedded texts
-		borderLen := max(0, width-lipgloss.Width(leftText)-lipgloss.Width(middleText)-lipgloss.Width(rightText))
-		leftBorderLen := borderLen / 2
-		rightBorderLen := max(0, i-leftBorderLen)
+		leftBorderLen := max(0, (width/2)-lipgloss.Width(leftText)-(lipgloss.Width(middleText)/2))
+		rightBorderLen := max(0, width-leftBorderLen-(lipgloss.Width(middleText)/2)-lipgloss.Width(rightText))
 		// Then construct border string
 		s := leftText +
 			style.Render(strings.Repeat(inbetween, leftBorderLen)) +

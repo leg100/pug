@@ -281,18 +281,23 @@ func boolToOnOff(b bool) string {
 }
 
 func (m Model) BorderText() map[tui.BorderPosition]string {
+	topRight := tui.Bold.Render(m.task.String())
+	if path := m.TaskModulePathWithIcon(m.task); path != "" {
+		topRight += " "
+		topRight += path
+	}
+	if name := m.TaskWorkspaceNameWithIcon(m.task); name != "" {
+		topRight += " "
+		topRight += name
+	}
+	bottomLeft := m.TaskStatus(m.task, false)
+	if summary := m.TaskSummary(m.task, false); summary != "" {
+		bottomLeft += " "
+		bottomLeft += summary
+	}
 	return map[tui.BorderPosition]string{
-		tui.TopLeft: fmt.Sprintf(
-			"%s %s %s",
-			tui.Bold.Render(m.task.String()),
-			m.TaskModulePathWithIcon(m.task),
-			m.TaskWorkspaceNameWithIcon(m.task),
-		),
-		tui.BottomLeft: fmt.Sprintf(
-			"%s %s",
-			m.TaskStatus(m.task, false),
-			m.TaskSummary(m.task, false),
-		),
+		tui.TopLeft:    topRight,
+		tui.BottomLeft: bottomLeft,
 	}
 }
 

@@ -212,16 +212,11 @@ func (m *model) Update(msg tea.Msg) tea.Cmd {
 			}
 			return m.CreateTasksWithSpecs(spec)
 		case key.Matches(msg, keys.Common.State, localKeys.Enter):
-			currentID := m.tracker.getCursorID()
-			if currentID == nil {
-				// TODO: report error
-				return nil
+			workspaceID, err := m.getWorkspaceID()
+			if err != nil {
+				return tui.ReportError(err)
 			}
-			if currentID.Kind != resource.Workspace {
-				// TODO: report error
-				return nil
-			}
-			return tui.NavigateTo(tui.ResourceListKind, tui.WithParent(*currentID))
+			return tui.NavigateTo(tui.ResourceListKind, tui.WithParent(workspaceID))
 		case key.Matches(msg, keys.Common.Delete):
 			ws, ok := m.tracker.cursorNode.(workspaceNode)
 			if !ok {
@@ -410,6 +405,31 @@ func (m model) getWorkspaceIDs() ([]resource.ID, error) {
 		return ids, nil
 	default:
 		return nil, errors.New("valid only on workspaces and modules")
+	}
+}
+
+// getWorkspaceID retrieves the cursor row and if it is a workspace then its ID
+// is returned; if it is a module and it has a current workspace then its ID is
+// returned; otherwise an error is returned.
+func (m model) getWorkspaceID() (resource.ID, error) {
+	id := m.tracker.getCursorID()
+	if id == nil {
+		return resource.ID{}, errors.New("valid only on workspaces and modules")
+	}
+	switch id.Kind {
+	case resource.Workspace:
+		return resource.ID{}, nil
+	case resource.Module:
+		mod, err := m.ModuleService.Get(*id)
+		if err != nil {
+			return resource.ID{}, err
+		}
+		if mod.CurrentWorkspaceID == nil {
+			return resource.ID{}, errors.New("module must have a current workspace")
+		}
+		return *mod.CurrentWorkspaceID, nil
+	default:
+		return resource.ID{}, errors.New("valid only on workspaces and modules")
 	}
 }
 

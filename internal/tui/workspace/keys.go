@@ -38,8 +38,8 @@ var resourcesKeys = resourcesKeyMap{
 		key.WithHelp("U", "untaint"),
 	),
 	Move: key.NewBinding(
-		key.WithKeys("M"),
-		key.WithHelp("M", "move"),
+		key.WithKeys("m"),
+		key.WithHelp("m", "move"),
 	),
 	Reload: key.NewBinding(
 		key.WithKeys("ctrl+r"),
