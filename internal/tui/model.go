@@ -26,15 +26,6 @@ type Page struct {
 	ID resource.ID
 }
 
-type ModelStatus interface {
-	Status() string
-}
-
-// ModelTitle is implemented by models that show a title
-type ModelTitle interface {
-	Title() string
-}
-
 // ModelHelpBindings is implemented by models that surface further help bindings
 // specific to the model.
 type ModelHelpBindings interface {
