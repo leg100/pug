@@ -5,9 +5,7 @@ package tui
 type Kind int
 
 const (
-	ModuleListKind Kind = iota
-	WorkspaceListKind
-	TaskListKind
+	TaskListKind Kind = iota
 	TaskKind
 	TaskGroupListKind
 	TaskGroupKind
@@ -15,4 +13,5 @@ const (
 	ResourceKind
 	LogListKind
 	LogKind
+	ExplorerKind
 )

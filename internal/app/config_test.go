@@ -44,11 +44,10 @@ func TestConfig(t *testing.T) {
 				require.NoError(t, err)
 
 				want := Config{
-					Program:   "terraform",
-					MaxTasks:  2 * runtime.NumCPU(),
-					FirstPage: "modules",
-					Workdir:   wd,
-					DataDir:   filepath.Join(os.Getenv("HOME"), ".pug"),
+					Program:  "terraform",
+					MaxTasks: 2 * runtime.NumCPU(),
+					Workdir:  wd,
+					DataDir:  filepath.Join(os.Getenv("HOME"), ".pug"),
 					Logging: logging.Options{
 						Level: "info",
 					},
@@ -126,15 +125,6 @@ func TestConfig(t *testing.T) {
 			[]string{"TF_PLUGIN_CACHE_DIR=../testdata/plugin_cache"},
 			func(t *testing.T, got Config) {
 				assert.True(t, got.PluginCache)
-			},
-		},
-		{
-			"set first page via environment variable",
-			"",
-			nil,
-			[]string{"PUG_FIRST_PAGE=tasks"},
-			func(t *testing.T, got Config) {
-				assert.Equal(t, got.FirstPage, "tasks")
 			},
 		},
 		{

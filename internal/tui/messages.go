@@ -7,8 +7,9 @@ import (
 
 // NavigationMsg is an instruction to navigate to a page.
 type NavigationMsg struct {
-	Page Page
-	Tag  int
+	Page         Page
+	Position     Position
+	DisableFocus bool
 }
 
 func NewNavigationMsg(kind Kind, opts ...NavigateOption) NavigationMsg {
@@ -27,6 +28,18 @@ func WithParent(parent resource.ID) NavigateOption {
 	}
 }
 
+func WithPosition(position Position) NavigateOption {
+	return func(msg *NavigationMsg) {
+		msg.Position = position
+	}
+}
+
+func DisableFocus() NavigateOption {
+	return func(msg *NavigationMsg) {
+		msg.DisableFocus = true
+	}
+}
+
 type InfoMsg string
 
 // FilterFocusReqMsg is a request to focus the filter widget.
@@ -42,3 +55,12 @@ type FilterCloseMsg struct{}
 
 // FilterKeyMsg is a key entered by the user into the filter widget
 type FilterKeyMsg tea.KeyMsg
+
+// FocusExplorerMsg switches the focus to the explorer pane.
+type FocusExplorerMsg struct{}
+
+// FocusPaneMsg is sent to a model when it focused
+type FocusPaneMsg struct{}
+
+// UnfocusPaneMsg is sent to a model when it unfocused
+type UnfocusPaneMsg struct{}

@@ -32,11 +32,12 @@ var (
 )
 
 type ListMaker struct {
-	Logger  *logging.Logger
-	Helpers *tui.Helpers
+	Logger        *logging.Logger
+	LogModelMaker tui.Maker
+	Helpers       *tui.Helpers
 }
 
-func (m *ListMaker) Make(_ resource.ID, width, height int) (tea.Model, error) {
+func (m *ListMaker) Make(_ resource.ID, width, height int) (tui.ChildModel, error) {
 	columns := []table.Column{
 		timeColumn,
 		levelColumn,
@@ -59,32 +60,36 @@ func (m *ListMaker) Make(_ resource.ID, width, height int) (tea.Model, error) {
 			msgColumn.Key:   tui.Regular.Render(b.String()),
 		}
 	}
-	table := table.New(columns, renderer, width, height,
+	tbl := table.New(
+		columns,
+		renderer,
+		width,
+		height,
 		table.WithSortFunc(logging.BySerialDesc),
 		table.WithSelectable[logging.Message](false),
+		table.WithPreview[logging.Message](tui.LogKind),
 	)
-
-	return list{
+	return &list{
 		logger:  m.Logger,
-		table:   table,
+		Model:   tbl,
 		Helpers: m.Helpers,
 	}, nil
 }
 
 type list struct {
 	logger *logging.Logger
-	table  table.Model[logging.Message]
 
+	table.Model[logging.Message]
 	*tui.Helpers
 }
 
-func (m list) Init() tea.Cmd {
+func (m *list) Init() tea.Cmd {
 	return func() tea.Msg {
 		return table.BulkInsertMsg[logging.Message](m.logger.List())
 	}
 }
 
-func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m *list) Update(msg tea.Msg) tea.Cmd {
 	var (
 		cmd  tea.Cmd
 		cmds []tea.Cmd
@@ -94,25 +99,28 @@ func (m list) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, localKeys.Enter):
-			if row, ok := m.table.CurrentRow(); ok {
-				return m, tui.NavigateTo(tui.LogKind, tui.WithParent(row.ID))
+			if row, ok := m.CurrentRow(); ok {
+				return tui.NavigateTo(tui.LogKind, tui.WithParent(row.ID), tui.WithPosition(tui.BottomRightPane))
 			}
 		}
 	}
 
 	// Handle keyboard and mouse events in the table widget
-	m.table, cmd = m.table.Update(msg)
+	m.Model, cmd = m.Model.Update(msg)
 	cmds = append(cmds, cmd)
 
-	return m, tea.Batch(cmds...)
+	return tea.Batch(cmds...)
 }
 
-func (m list) Title() string {
-	return m.Breadcrumbs("Logs", nil)
+func (m list) BorderText() map[tui.BorderPosition]string {
+	return map[tui.BorderPosition]string{
+		tui.TopLeftBorder:   "logs",
+		tui.TopMiddleBorder: m.Metadata(),
+	}
 }
 
 func (m list) View() string {
-	return m.table.View()
+	return m.Model.View()
 }
 
 func (m list) HelpBindings() []key.Binding {

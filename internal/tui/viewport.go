@@ -8,17 +8,14 @@ import (
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/x/ansi"
 	"github.com/hokaccha/go-prettyjson"
 	"github.com/leg100/pug/internal/tui/keys"
-	"github.com/leg100/reflow/wordwrap"
-	"github.com/leg100/reflow/wrap"
 )
 
 // Viewport is a wrapper of the upstream viewport bubble.
 type Viewport struct {
 	viewport viewport.Model
-
-	Autoscroll bool
 
 	content []byte
 	json    bool
@@ -36,10 +33,9 @@ type ViewportOptions struct {
 
 func NewViewport(opts ViewportOptions) Viewport {
 	m := Viewport{
-		Autoscroll: opts.Autoscroll,
-		viewport:   viewport.New(0, 0),
-		json:       opts.JSON,
-		spinner:    opts.Spinner,
+		viewport: viewport.New(0, 0),
+		json:     opts.JSON,
+		spinner:  opts.Spinner,
 	}
 	m.SetDimensions(opts.Width, opts.Height)
 	return m
@@ -107,7 +103,7 @@ func (m *Viewport) SetDimensions(width, height int) {
 	}
 }
 
-func (m *Viewport) AppendContent(content []byte, finished bool) (err error) {
+func (m *Viewport) AppendContent(content []byte, finished, autoScroll bool) (err error) {
 	m.content = append(m.content, content...)
 	if finished {
 		if len(m.content) == 0 {
@@ -126,7 +122,7 @@ func (m *Viewport) AppendContent(content []byte, finished bool) (err error) {
 		}
 	}
 	m.setContent()
-	if m.Autoscroll {
+	if autoScroll {
 		m.viewport.GotoBottom()
 	}
 	return err
@@ -134,9 +130,8 @@ func (m *Viewport) AppendContent(content []byte, finished bool) (err error) {
 
 func (m *Viewport) setContent() {
 	// Wrap content to the width of the viewport, whilst respecting ANSI escape
-	// codes (i.e. don't split codes across lines). The wrapper also ensures
-	// thekkkk
-	wrapped := wrap.Bytes(wordwrap.Bytes(m.content, m.viewport.Width), m.viewport.Width)
-	sanitized := SanitizeColors(wrapped)
+	// codes (i.e. don't split codes across lines).
+	wrapped := ansi.Wrap(ansi.Wordwrap(string(m.content), m.viewport.Width, ""), m.viewport.Width, "")
+	sanitized := SanitizeColors([]byte(wrapped))
 	m.viewport.SetContent(string(sanitized))
 }

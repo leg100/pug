@@ -12,8 +12,11 @@ func TestWorkspace_SetCurrentWorkspace(t *testing.T) {
 
 	tm := setupAndInitModuleWithTwoWorkspaces(t)
 
-	// Navigate one row down to the dev workspace (default should be the first
-	// row because it is lexicographically before dev).
+	// Navigate two children down in the tree - the cursor should be on the
+	// module, and default - the current workspace - should be the next child -
+	// and then the workspace we want to set as the new current workspace - dev
+	// - is the last child.
+	tm.Send(tea.KeyMsg{Type: tea.KeyDown})
 	tm.Send(tea.KeyMsg{Type: tea.KeyDown})
 
 	// Make dev the current workspace
@@ -21,82 +24,56 @@ func TestWorkspace_SetCurrentWorkspace(t *testing.T) {
 
 	// Expect dev to be the new current workspace
 	waitFor(t, tm, func(s string) bool {
-		return matchPattern(t, `modules/a.*default.*`, s) &&
-			matchPattern(t, `modules/a.*dev.*✓`, s)
+		return strings.Contains(s, "set current workspace to dev")
 	})
 }
 
 func TestWorkspace_SinglePlan(t *testing.T) {
 	t.Parallel()
 
-	tm := setupAndInitModule(t)
+	tm := setupAndInitModule_Explorer(t)
 
-	// Go to workspace listing
-	tm.Type("w")
+	// Place cursor on workspace
+	tm.Send(tea.KeyMsg{Type: tea.KeyDown})
 
-	// Wait for modules/a's default workspace to be listed. This should be the
-	// first workspace listed.
-	waitFor(t, tm, func(s string) bool {
-		return strings.Contains(s, "Workspaces") &&
-			matchPattern(t, `modules/a.*default.*✓`, s)
-	})
-
-	// Create plan on modules/a's default workspace
+	// Create plan on default workspace
 	tm.Type("p")
 
 	// Expect to be taken to the plan's task page
 	waitFor(t, tm, func(s string) bool {
-		return matchPattern(t, `Task.*plan.*default.*modules/a.*\+10~0-0.*exited`, s)
+		return strings.Contains(s, "plan 󰠱 modules/a  default") &&
+			strings.Contains(s, "exited +10~0-0")
 	})
 }
 
 func TestWorkspace_MultiplePlans(t *testing.T) {
 	t.Parallel()
 
-	// Initialize all modules
-	tm := setupAndInitModuleList(t)
+	tm := setupAndInitMultipleModules(t)
 
-	// Go to workspace listing
-	tm.Type("w")
-
-	// Wait for all four workspaces to be listed.
-	waitFor(t, tm, func(s string) bool {
-		return matchPattern(t, `modules/a.*default.*`, s) &&
-			matchPattern(t, `modules/a.*dev`, s) &&
-			matchPattern(t, `modules/b.*default`, s) &&
-			matchPattern(t, `modules/c.*default`, s)
-	})
+	// Place cursor on module a's default workspace
+	tm.Send(tea.KeyMsg{Type: tea.KeyDown})
 
 	// Create plan on all four workspaces
 	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlA})
 	tm.Type("p")
 
-	// Expect to be taken to task group's page
 	waitFor(t, tm, func(s string) bool {
-		return matchPattern(t, "TaskGroup.*plan.*4/4", s) &&
-			matchPattern(t, `modules/a.*default.*\+10~0-0`, s) &&
-			matchPattern(t, `modules/a.*dev.*\+10~0-0`, s) &&
-			matchPattern(t, `modules/b.*default.*\+10~0-0`, s) &&
-			matchPattern(t, `modules/c.*default.*\+10~0-0`, s)
+		return strings.Contains(s, "plan 4/4") &&
+			matchPattern(t, `modules/a.*default.*plan.*exited.*\+10~0-0`, s) &&
+			matchPattern(t, `modules/a.*dev.*plan.*exited.*\+10~0-0`, s) &&
+			matchPattern(t, `modules/b.*default.*plan.*exited.*\+10~0-0`, s) &&
+			matchPattern(t, `modules/c.*default.*plan.*exited.*\+10~0-0`, s)
 	})
-
 }
 
 func TestWorkspace_SingleApply(t *testing.T) {
 	t.Parallel()
 
-	// Initialize module
-	tm := setupAndInitModule(t)
+	tm := setupAndInitModule_Explorer(t)
 
-	// Go to workspace listing
-	tm.Type("w")
-
-	// Wait for modules/a's default workspace to be listed. This should be the
-	// first workspace listed.
-	waitFor(t, tm, func(s string) bool {
-		return strings.Contains(s, "Workspaces") &&
-			matchPattern(t, `modules/a.*default.*✓`, s)
-	})
+	// Place cursor on workspace
+	tm.Send(tea.KeyMsg{Type: tea.KeyDown})
 
 	// Create apply on workspace
 	tm.Type("a")
@@ -109,29 +86,20 @@ func TestWorkspace_SingleApply(t *testing.T) {
 
 	// Send to apply task page
 	waitFor(t, tm, func(s string) bool {
-		return matchPattern(t, `Task.*apply.*default.*modules/a.*\+10~0-0.*exited`, s)
+		return strings.Contains(s, "apply 󰠱 modules/a  default") &&
+			strings.Contains(s, "exited +10~0-0")
 	})
-
 }
 
 func TestWorkspace_MultipleApplies(t *testing.T) {
 	t.Parallel()
 
-	// Initialize all modules
-	tm := setupAndInitModuleList(t)
+	tm := setupAndInitMultipleModules(t)
 
-	// Go to workspace listing
-	tm.Type("w")
+	// Place cursor on module a's default workspace
+	tm.Send(tea.KeyMsg{Type: tea.KeyDown})
 
-	// Wait for all four workspaces to be listed.
-	waitFor(t, tm, func(s string) bool {
-		return matchPattern(t, `modules/a.*default.*`, s) &&
-			matchPattern(t, `modules/a.*dev`, s) &&
-			matchPattern(t, `modules/b.*default`, s) &&
-			matchPattern(t, `modules/c.*default`, s)
-	})
-
-	// Select all workspaces and create apply on each
+	// Create apply on all four workspaces
 	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlA})
 	tm.Type("a")
 
@@ -142,11 +110,11 @@ func TestWorkspace_MultipleApplies(t *testing.T) {
 	tm.Type("y")
 
 	waitFor(t, tm, func(s string) bool {
-		return matchPattern(t, "TaskGroup.*apply.*4/4", s) &&
-			matchPattern(t, `modules/a.*default.*\+10~0-0`, s) &&
-			matchPattern(t, `modules/a.*dev.*\+10~0-0`, s) &&
-			matchPattern(t, `modules/b.*default.*\+10~0-0`, s) &&
-			matchPattern(t, `modules/c.*default.*\+10~0-0`, s)
+		return strings.Contains(s, "apply 4/4") &&
+			matchPattern(t, `modules/a.*default.*apply.*exited.*\+10~0-0`, s) &&
+			matchPattern(t, `modules/a.*dev.*apply.*exited.*\+10~0-0`, s) &&
+			matchPattern(t, `modules/b.*default.*apply.*exited.*\+10~0-0`, s) &&
+			matchPattern(t, `modules/c.*default.*apply.*exited.*\+10~0-0`, s)
 	})
 }
 
@@ -156,30 +124,28 @@ func TestWorkspace_SingleDestroy(t *testing.T) {
 	// Setup test with pre-existing state
 	tm := setup(t, "./testdata/module_destroy")
 
-	// Wait for module to be loaded
+	// Expect single module to be listed
 	waitFor(t, tm, func(s string) bool {
-		return strings.Contains(s, "modules/a")
+		return strings.Contains(s, "└ 󰠱 a")
 	})
 
 	// Initialize module
 	tm.Type("i")
 
-	// Expect user to be taken to init's task page.
+	// Init should finish successfully and there should now be a workspace
+	// listed in the tree with 10 resources.
 	waitFor(t, tm, func(s string) bool {
-		return strings.Contains(s, "Terraform has been successfully initialized!")
+		return strings.Contains(s, "Terraform has been successfully initialized!") &&
+			strings.Contains(s, "init 󰠱 modules/a") &&
+			strings.Contains(s, "exited") &&
+			strings.Contains(s, "└ 󰠱 a") &&
+			strings.Contains(s, "└  default 10")
 	})
 
-	// Go to workspace listing
-	tm.Type("w")
-
-	// Workspace should have 10 resources in its state loaded.
-	waitFor(t, tm, func(s string) bool {
-		return strings.Contains(s, "Workspaces") &&
-			matchPattern(t, `modules/a.*default.*10`, s)
-	})
-
-	// Destroy all resources in workspace
-	tm.Type("d")
+	// Go back to explorer and place cursor on default workspace
+	tm.Type("0")
+	tm.Send(tea.KeyMsg{Type: tea.KeyDown})
+	tm.Type("D")
 
 	// Give approval
 	waitFor(t, tm, func(s string) bool {
@@ -187,9 +153,11 @@ func TestWorkspace_SingleDestroy(t *testing.T) {
 	})
 	tm.Type("y")
 
-	// Send to apply task page
+	// Expect destroy task to result in destruction of 10 resources
 	waitFor(t, tm, func(s string) bool {
-		return matchPattern(t, `Task.*apply \(destroy\).*default.*modules/a.*\+0~0-10.*exited`, s)
+		return strings.Contains(s, "apply (destroy) 󰠱 modules/a  default") &&
+			strings.Contains(s, "exited +0~0-10") &&
+			strings.Contains(s, "└  default 0")
 	})
 }
 
@@ -201,35 +169,27 @@ func TestWorkspace_MultipleDestroy(t *testing.T) {
 
 	// Expect three modules to be listed
 	waitFor(t, tm, func(s string) bool {
-		return strings.Contains(s, "modules/a") &&
-			strings.Contains(s, "modules/b") &&
-			strings.Contains(s, "modules/c")
+		return strings.Contains(s, "├ 󰠱 a") &&
+			strings.Contains(s, "├ 󰠱 b") &&
+			strings.Contains(s, "└ 󰠱 c")
 	})
 
 	// Select all modules and init
 	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlA})
 	tm.Type("i")
+
+	// Each module should now be populated with at least one workspace.
 	waitFor(t, tm, func(s string) bool {
-		return matchPattern(t, "TaskGroup.*init", s) &&
-			matchPattern(t, `modules/a.*exited`, s) &&
-			matchPattern(t, `modules/b.*exited`, s) &&
-			matchPattern(t, `modules/c.*exited`, s)
+		return strings.Contains(s, "󰠱 3  3")
 	})
 
-	// Go to workspace listing
-	tm.Type("w")
+	// Go back to explorer and place cursor on default workspace
+	tm.Type("0")
+	tm.Send(tea.KeyMsg{Type: tea.KeyDown})
 
-	// Expect three workspaces to be listed, each with 10 resources
-	waitFor(t, tm, func(s string) bool {
-		return strings.Contains(s, "Workspaces") &&
-			matchPattern(t, `modules/a.*default.*10`, s) &&
-			matchPattern(t, `modules/b.*default.*10`, s) &&
-			matchPattern(t, `modules/c.*default.*10`, s)
-	})
-
-	// Destroy all resources in all three workspaces
+	// Destroy all resources on all three workspaces
 	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlA})
-	tm.Type("d")
+	tm.Type("D")
 
 	// Give approval
 	waitFor(t, tm, func(s string) bool {
@@ -239,44 +199,10 @@ func TestWorkspace_MultipleDestroy(t *testing.T) {
 
 	// Send to task group page
 	waitFor(t, tm, func(s string) bool {
-		return matchPattern(t, `TaskGroup.*apply \(destroy\).*3/3`, s) &&
-			matchPattern(t, `modules/a.*default.*\+0~0-10`, s) &&
-			matchPattern(t, `modules/b.*default.*\+0~0-10`, s) &&
-			matchPattern(t, `modules/c.*default.*\+0~0-10`, s)
-	})
-}
-
-func TestWorkspace_Filter(t *testing.T) {
-	t.Parallel()
-
-	// Initialize all modules
-	tm := setupAndInitModuleList(t)
-
-	// Go to workspaces listing
-	tm.Type("w")
-
-	// Wait for all four workspaces to be listed.
-	waitFor(t, tm, func(s string) bool {
-		return matchPattern(t, `modules/a.*default`, s) &&
-			matchPattern(t, `modules/a.*dev`, s) &&
-			matchPattern(t, `modules/b.*default`, s) &&
-			matchPattern(t, `modules/c.*default`, s)
-	})
-
-	// Focus filter widget
-	tm.Type("/")
-
-	// Expect filter prompt
-	waitFor(t, tm, func(s string) bool {
-		return strings.Contains(s, "Filter:")
-	})
-
-	// Filter to only show modules/a
-	tm.Type("modules/a")
-
-	// Expect title to show 2 workspaces filtered out of a total 4.
-	waitFor(t, tm, func(s string) bool {
-		return strings.Contains(s, "2/4")
+		return strings.Contains(s, "apply (destroy) 3/3") &&
+			matchPattern(t, `modules/a.*default.*apply \(destroy\).*exited.*\+0~0-10`, s) &&
+			matchPattern(t, `modules/b.*default.*apply \(destroy\).*exited.*\+0~0-10`, s) &&
+			matchPattern(t, `modules/c.*default.*apply \(destroy\).*exited.*\+0~0-10`, s)
 	})
 }
 
@@ -285,41 +211,26 @@ func TestWorkspace_Delete(t *testing.T) {
 
 	tm := setupAndInitModuleWithTwoWorkspaces(t)
 
-	// Filter workspaces to only show dev workspace. This is the only way to
-	// ensure the dev workspace is currently highlighted.
-
-	// Focus filter widget
-	tm.Type("/")
-
-	// Expect filter prompt
-	waitFor(t, tm, func(s string) bool {
-		return strings.Contains(s, "Filter:")
-	})
-
-	// Filter to only show dev workspace
-	tm.Type("dev")
-
-	// Expect title to show 1 workspaces filtered out of a total of 2.
-	waitFor(t, tm, func(s string) bool {
-		return strings.Contains(s, "1/2")
-	})
-
-	// Exit filter
-	tm.Send(tea.KeyMsg{Type: tea.KeyEnter})
-
-	// Now the dev workspace should be highlighted.
+	// Navigate two children down in the tree - the cursor should be on the
+	// module, and default - the current workspace - should be the next child -
+	// and then the workspace we want to set as the new current workspace - dev
+	// - is the last child.
+	tm.Send(tea.KeyMsg{Type: tea.KeyDown})
+	tm.Send(tea.KeyMsg{Type: tea.KeyDown})
 
 	// Delete dev workspace
-	tm.Type("D")
+	tm.Send(tea.KeyMsg{Type: tea.KeyDelete})
 
 	// Give approval
 	waitFor(t, tm, func(s string) bool {
-		return strings.Contains(s, "Delete 1 workspace(s)? (y/N):")
+		t.Log(s)
+		return strings.Contains(s, "Delete workspace dev? (y/N):")
 	})
 	tm.Type("y")
 
 	waitFor(t, tm, func(s string) bool {
-		return matchPattern(t, `Task.*workspace delete.*modules/a.*exited`, s) &&
+		t.Log(s)
+		return strings.Contains(s, "workspace delete 󰠱 modules/a") &&
 			strings.Contains(s, `Deleted workspace "dev"!`)
 	})
 }
@@ -327,26 +238,26 @@ func TestWorkspace_Delete(t *testing.T) {
 func setupAndInitModuleWithTwoWorkspaces(t *testing.T) *testModel {
 	tm := setup(t, "./testdata/module_with_two_workspaces")
 
-	// Wait for module to be loaded
+	// Expect single module to be listed
 	waitFor(t, tm, func(s string) bool {
-		return strings.Contains(s, "modules/a")
+		return strings.Contains(s, "└ 󰠱 a")
 	})
 
 	// Initialize module
 	tm.Type("i")
+
+	// Expect init to succeed, and to populate pug with two workspaces with 0
+	// resources each
 	waitFor(t, tm, func(s string) bool {
-		return strings.Contains(s, "Terraform has been successfully initialized!")
+		return strings.Contains(s, "Terraform has been successfully initialized!") &&
+			strings.Contains(s, "init 󰠱 modules/a") &&
+			strings.Contains(s, "exited") &&
+			strings.Contains(s, "├  default 0") &&
+			strings.Contains(s, "└  dev 0")
 	})
 
-	// Go to workspace listing
-	tm.Type("w")
-
-	// Expect two workspaces to be listed, and expect default to be the current
-	// workspace
-	waitFor(t, tm, func(s string) bool {
-		return matchPattern(t, `modules/a.*default.*✓`, s) &&
-			matchPattern(t, `modules/a.*dev`, s)
-	})
+	// Go back to explorer
+	tm.Type("0")
 
 	return tm
 }

@@ -9,25 +9,20 @@ import (
 // page and later return to the page, and they would expect the same row still
 // to be selected.
 type Cache struct {
-	cache map[Page]tea.Model
+	cache map[Page]ChildModel
 }
 
 func NewCache() *Cache {
 	return &Cache{
-		cache: make(map[Page]tea.Model),
+		cache: make(map[Page]ChildModel),
 	}
 }
 
-func (c *Cache) Exists(page Page) bool {
-	_, ok := c.cache[page]
-	return ok
-}
-
-func (c *Cache) Get(page Page) tea.Model {
+func (c *Cache) Get(page Page) ChildModel {
 	return c.cache[page]
 }
 
-func (c *Cache) Put(page Page, model tea.Model) {
+func (c *Cache) Put(page Page, model ChildModel) {
 	c.cache[page] = model
 }
 
@@ -42,7 +37,5 @@ func (c *Cache) UpdateAll(msg tea.Msg) []tea.Cmd {
 }
 
 func (c *Cache) Update(key Page, msg tea.Msg) tea.Cmd {
-	updated, cmd := c.cache[key].Update(msg)
-	c.cache[key] = updated
-	return cmd
+	return c.cache[key].Update(msg)
 }

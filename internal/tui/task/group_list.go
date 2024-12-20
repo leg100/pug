@@ -29,7 +29,7 @@ type GroupListMaker struct {
 	Helpers *tui.Helpers
 }
 
-func (m *GroupListMaker) Make(_ resource.ID, width, height int) (tea.Model, error) {
+func (m *GroupListMaker) Make(_ resource.ID, width, height int) (tui.ChildModel, error) {
 	columns := []table.Column{
 		taskGroupID,
 		commandColumn,
@@ -51,7 +51,7 @@ func (m *GroupListMaker) Make(_ resource.ID, width, height int) (tea.Model, erro
 		table.WithSortFunc(task.SortGroupsByCreated),
 	)
 
-	return groupList{
+	return &groupList{
 		table:   table,
 		tasks:   m.Tasks,
 		Helpers: m.Helpers,
@@ -65,14 +65,14 @@ type groupList struct {
 	tasks *task.Service
 }
 
-func (m groupList) Init() tea.Cmd {
+func (m *groupList) Init() tea.Cmd {
 	return func() tea.Msg {
 		groups := m.tasks.ListGroups()
 		return table.BulkInsertMsg[*task.Group](groups)
 	}
 }
 
-func (m groupList) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m *groupList) Update(msg tea.Msg) tea.Cmd {
 	var (
 		cmd  tea.Cmd
 		cmds []tea.Cmd
@@ -83,7 +83,7 @@ func (m groupList) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch {
 		case key.Matches(msg, groupListKeys.Enter):
 			if row, ok := m.table.CurrentRow(); ok {
-				return m, tui.NavigateTo(tui.TaskGroupKind, tui.WithParent(row.ID))
+				return tui.NavigateTo(tui.TaskGroupKind, tui.WithParent(row.ID))
 			}
 		}
 	}
@@ -91,15 +91,18 @@ func (m groupList) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	m.table, cmd = m.table.Update(msg)
 	cmds = append(cmds, cmd)
 
-	return m, tea.Batch(cmds...)
-}
-
-func (m groupList) Title() string {
-	return m.Breadcrumbs("TaskGroups", nil)
+	return tea.Batch(cmds...)
 }
 
 func (m groupList) View() string {
 	return m.table.View()
+}
+
+func (m groupList) BorderText() map[tui.BorderPosition]string {
+	return map[tui.BorderPosition]string{
+		tui.TopLeftBorder:   tui.Bold.Render("task groups"),
+		tui.TopMiddleBorder: m.table.Metadata(),
+	}
 }
 
 func (m groupList) HelpBindings() (bindings []key.Binding) {

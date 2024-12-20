@@ -24,9 +24,9 @@ func TestTerragrunt_SinglePlan(t *testing.T) {
 	// Create plan on first module
 	tm.Type("p")
 	waitFor(t, tm, func(s string) bool {
-		return matchPattern(t, "Task.*plan.*default.*modules/a.*exited", s) &&
+		return strings.Contains(s, "plan 󰠱 modules/a  default") &&
+			strings.Contains(s, "exited +10~0-0") &&
 			strings.Contains(s, "terragrunt")
-
 	})
 }
 
@@ -41,15 +41,15 @@ func TestTerragrunt_SingleApply(t *testing.T) {
 
 	// Give approval
 	waitFor(t, tm, func(s string) bool {
-		return strings.Contains(s, "Auto-apply 1 modules? (y/N):")
+		return strings.Contains(s, "Auto-apply 1 workspaces? (y/N):")
 	})
 	tm.Type("y")
 
 	// Send to apply task page
 	waitFor(t, tm, func(s string) bool {
-		return matchPattern(t, `Task.*apply.*default.*modules/a.*\+10~0-0.*exited`, s) &&
+		return strings.Contains(s, "apply 󰠱 modules/a  default") &&
+			strings.Contains(s, "exited +10~0-0") &&
 			strings.Contains(s, "terragrunt")
-
 	})
 }
 
@@ -67,64 +67,53 @@ func TestTerragrunt_Dependencies(t *testing.T) {
 
 	// Give approval
 	waitFor(t, tm, func(s string) bool {
-		return strings.Contains(s, "Auto-apply 6 modules? (y/N):")
+		return strings.Contains(s, "Auto-apply 6 workspaces? (y/N):")
 	})
 	tm.Type("y")
 
 	// Expect 6 applies. The "." module fails because it doesn't have any config
 	// files.
 	waitFor(t, tm, func(s string) bool {
-		return matchPattern(t, "TaskGroup.*apply.*1/5/6", s) &&
+		return strings.Contains(s, "apply 1/5/6") &&
 			matchPattern(t, `modules/vpc.*default.*\+0~0-0`, s) &&
 			matchPattern(t, `modules/redis.*default.*\+0~0-0`, s) &&
 			matchPattern(t, `modules/mysql.*default.*\+0~0-0`, s) &&
 			matchPattern(t, `modules/backend-app.*default.*\+0~0-0`, s) &&
 			matchPattern(t, `modules/frontend-app.*default.*\+0~0-0`, s) &&
-			matchPattern(t, `\..*default.*errored`, s)
+			matchPattern(t, `\..*default.*errored`, s) &&
+			// Expect several modules to now have some resources
+			strings.Contains(s, "└  default 3") &&
+			strings.Contains(s, "└  default 2") &&
+			strings.Contains(s, "└  default 1") &&
+			strings.Contains(s, "└  default 1") &&
+			strings.Contains(s, "└  default 0") &&
+			strings.Contains(s, "└  default 0")
 	})
 
-	// Go back to modules listing
-	tm.Type("m")
-
-	// Expect several modules to now have some resources
-	waitFor(t, tm, func(s string) bool {
-		return matchPattern(t, "modules/vpc.*default.*0", s) &&
-			matchPattern(t, `modules/mysql.*default.*1`, s) &&
-			matchPattern(t, "modules/redis.*default.*1", s) &&
-			matchPattern(t, "modules/backend-app.*default.*3", s) &&
-			matchPattern(t, "modules/frontend-app.*default.*2", s)
-	})
+	// Go back to explorer.
+	tm.Type("0")
 
 	// Destroy resources in all modules (they should still all be selected).
-	tm.Type("d")
+	tm.Type("D")
 
 	// Give approval
 	waitFor(t, tm, func(s string) bool {
-		return strings.Contains(s, "Destroy resources of 6 modules? (y/N):")
+		return strings.Contains(s, "Destroy resources of 6 workspaces? (y/N):")
 	})
 	tm.Type("y")
 
 	// Expect 6 apply tasks.
 	waitFor(t, tm, func(s string) bool {
-		return matchPattern(t, "TaskGroup.*apply.*6/6", s) &&
-			matchPattern(t, `modules/vpc.*default.*\+0~0-0`, s) &&
-			matchPattern(t, `modules/redis.*default.*\+0~0-0`, s) &&
-			matchPattern(t, `modules/mysql.*default.*\+0~0-0`, s) &&
-			matchPattern(t, `modules/backend-app.*default.*\+0~0-0`, s) &&
-			matchPattern(t, `modules/frontend-app.*default.*\+0~0-0`, s) &&
-			matchPattern(t, `\..*default.*exited`, s)
-	})
-
-	// Go to modules listing
-	tm.Type("m")
-
-	// Expect modules to now have some 0 resources
-	waitFor(t, tm, func(s string) bool {
-		return matchPattern(t, "modules/vpc.*default.*0", s) &&
-			matchPattern(t, `modules/mysql.*default.*0`, s) &&
-			matchPattern(t, "modules/redis.*default.*0", s) &&
-			matchPattern(t, "modules/backend-app.*default.*0", s) &&
-			matchPattern(t, "modules/frontend-app.*default.*0", s)
+		t.Log(s)
+		return strings.Contains(s, "apply (destroy) 6/6") &&
+			matchPattern(t, `modules/vpc.*default.*apply \(destroy\).*exited.*\+0~0-0`, s) &&
+			matchPattern(t, `modules/redis.*default.*apply \(destroy\).*exited.*\+0~0-0`, s) &&
+			matchPattern(t, `modules/mysql.*default.*apply \(destroy\).*exited.*\+0~0-0`, s) &&
+			matchPattern(t, `modules/backend-app.*default.*apply \(destroy\).*exited.*\+0~0-0`, s) &&
+			matchPattern(t, `modules/frontend-app.*default.*apply \(destroy\).*exited.*\+0~0-0`, s) &&
+			matchPattern(t, `\..*default.*apply \(destroy\).*exited.*\+0~0-0`, s) &&
+			// Expect modules to now have some 0 resources
+			strings.Count(s, "└  default 0") >= 6
 	})
 }
 
@@ -139,14 +128,18 @@ func setupAndInitTerragruntModule(t *testing.T) *testModel {
 
 	// Expect single module to be listed
 	waitFor(t, tm, func(s string) bool {
-		return strings.Contains(s, "modules/a")
+		return strings.Contains(s, "└ 󰠱 a")
 	})
 
 	// Initialize module
 	tm.Type("i")
+	// Expect init to succeed, and to populate pug with one workspace with 0
+	// resources
 	waitFor(t, tm, func(s string) bool {
-		return matchPattern(t, "Task.*init.*modules/a.*exited", s)
-
+		return strings.Contains(s, "Terraform has been successfully initialized!") &&
+			strings.Contains(s, "init 󰠱 modules/a") &&
+			strings.Contains(s, "exited") &&
+			strings.Contains(s, "└  default 0")
 	})
 
 	// Show task info sidebar so tests can check that terragrunt is indeed being
@@ -154,16 +147,10 @@ func setupAndInitTerragruntModule(t *testing.T) *testModel {
 	tm.Type("I")
 	waitFor(t, tm, func(s string) bool {
 		return strings.Contains(s, "terragrunt")
-
 	})
 
-	// Go back to modules listing
-	tm.Send(tea.KeyMsg{Type: tea.KeyEsc})
-
-	// Expect single modules to be listed, along with its default workspace.
-	waitFor(t, tm, func(s string) bool {
-		return matchPattern(t, "modules/a.*default", s)
-	})
+	// Go back to explorer
+	tm.Type("0")
 
 	return tm
 }
@@ -171,52 +158,32 @@ func setupAndInitTerragruntModule(t *testing.T) *testModel {
 func setupAndInitTerragruntModulesWithDependencies(t *testing.T) *testModel {
 	tm := setup(t, "./testdata/terragrunt_modules_with_dependencies", withTerragrunt())
 
-	// Expect several modules to be listed, along with dependencies.
-	//
-	// NOTE: the integration test terminal width is limited, therefore
-	// the dependencies column is cut short with an ellipsis, preventing full
-	// assertion of all dependencies.
 	waitFor(t, tm, func(s string) bool {
-		return strings.Contains(s, "modules/vpc") &&
-			matchPattern(t, `modules/mysql.*modules/vpc`, s) &&
-			matchPattern(t, `modules/redis.*modules/vpc`, s) &&
-			strings.Contains(s, `modules/backend-app`) &&
-			strings.Contains(s, `modules/frontend-app`) &&
-			matchPattern(t, `\..*local.*default`, s)
+		return strings.Contains(s, "├ 󰠱 backend-app") &&
+			strings.Contains(s, "├ 󰠱 frontend-app") &&
+			strings.Contains(s, "├ 󰠱 mysql") &&
+			strings.Contains(s, "├ 󰠱 redis") &&
+			strings.Contains(s, "└ 󰠱 vpc") &&
+			strings.Contains(s, "└ 󰠱 .")
 	})
 
 	// Select all modules and init
 	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlA})
 	tm.Type("i")
 	waitFor(t, tm, func(s string) bool {
-		return matchPattern(t, "TaskGroup.*init", s) &&
+		return strings.Contains(s, "init 6/6") &&
 			matchPattern(t, `modules/vpc.*init.*exited`, s) &&
 			matchPattern(t, `modules/redis.*init.*exited`, s) &&
 			matchPattern(t, `modules/mysql.*init.*exited`, s) &&
 			matchPattern(t, `modules/frontend-app.*init.*exited`, s) &&
 			matchPattern(t, `modules/backend-app.*init.*exited`, s) &&
-			matchPattern(t, `\..*init.*exited`, s)
+			matchPattern(t, `\..*init.*exited`, s) &&
+			// Expect modules to be listed along with their default workspace.
+			strings.Count(s, "└  default 0") >= 6
 	})
 
-	// Go to workspace listing and expect one workspace for each module. We make
-	// assertions here on the workspace listing rather than the module listing
-	// because the latter has a dependencies column which makes it tricky to
-	// write regular expressions that don't accidentally pick up false
-	// positives...
-	tm.Type("w")
-
-	// Expect modules to be listed along with their default workspace.
-	waitFor(t, tm, func(s string) bool {
-		return matchPattern(t, `modules/vpc.*default`, s) &&
-			matchPattern(t, `modules/mysql.*default`, s) &&
-			matchPattern(t, `modules/redis.*default`, s) &&
-			matchPattern(t, `modules/backend-app.*default`, s) &&
-			matchPattern(t, `modules/frontend-app.*default`, s) &&
-			matchPattern(t, `\..*default`, s)
-	})
-
-	// Go to modules listing and clear selection
-	tm.Type("m")
+	// Go back to explorer and clear selection.
+	tm.Type("0")
 	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlBackslash})
 
 	return tm

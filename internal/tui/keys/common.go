@@ -12,8 +12,6 @@ type common struct {
 	State       key.Binding
 	Retry       key.Binding
 	Reload      key.Binding
-	Module      key.Binding
-	Workspace   key.Binding
 	Edit        key.Binding
 	Init        key.Binding
 	InitUpgrade key.Binding
@@ -29,24 +27,24 @@ var Common = common{
 		key.WithHelp("p", "plan"),
 	),
 	PlanDestroy: key.NewBinding(
-		key.WithKeys("P"),
-		key.WithHelp("P", "plan destroy"),
+		key.WithKeys("d"),
+		key.WithHelp("d", "plan destroy"),
 	),
 	Apply: key.NewBinding(
 		key.WithKeys("a"),
 		key.WithHelp("a", "apply"),
 	),
 	Destroy: key.NewBinding(
-		key.WithKeys("d"),
-		key.WithHelp("d", "destroy"),
+		key.WithKeys("D"),
+		key.WithHelp("D", "destroy"),
 	),
 	Cancel: key.NewBinding(
 		key.WithKeys("c"),
 		key.WithHelp("c", "cancel"),
 	),
 	Delete: key.NewBinding(
-		key.WithKeys("D"),
-		key.WithHelp("D", "delete"),
+		key.WithKeys("delete"),
+		key.WithHelp("delete", "delete"),
 	),
 	State: key.NewBinding(
 		key.WithKeys("s"),
@@ -60,17 +58,9 @@ var Common = common{
 		key.WithKeys("ctrl+r"),
 		key.WithHelp("ctrl+r", "reload"),
 	),
-	Module: key.NewBinding(
-		key.WithKeys("m"),
-		key.WithHelp("m", "module"),
-	),
-	Workspace: key.NewBinding(
-		key.WithKeys("w"),
-		key.WithHelp("w", "workspace"),
-	),
 	Edit: key.NewBinding(
-		key.WithKeys("e"),
-		key.WithHelp("e", "edit"),
+		key.WithKeys("E"),
+		key.WithHelp("E", "edit"),
 	),
 	Init: key.NewBinding(
 		key.WithKeys("i"),

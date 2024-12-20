@@ -21,4 +21,7 @@ var (
 	TitleAddress   = Padded.Foreground(White).Background(Blue)
 	TitleSerial    = Padded.Foreground(Black).Background(Orange)
 	TitleTainted   = Padded.Foreground(White).Background(Red)
+
+	ModuleStyle    = Regular.Foreground(Purple)
+	WorkspaceStyle = Regular.Foreground(Pink)
 )

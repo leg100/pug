@@ -1,4 +1,4 @@
-package module
+package explorer
 
 import (
 	"fmt"
@@ -8,10 +8,10 @@ import (
 	"github.com/leg100/pug/internal/tui"
 )
 
-// ReloadModules reloads pug modules, resolving any differences between the
-// modules on the user's disk, and those loaded in pug. Set firsttime to toggle
-// whether this is the first time modules are being loaded.
-func ReloadModules(firsttime bool, modules *module.Service) tea.Cmd {
+// reload pug modules, resolving any differences between the modules on the
+// user's disk, and those loaded in pug. Set firsttime to toggle whether this is
+// the first time modules are being loaded.
+func reload(firsttime bool, modules *module.Service) tea.Cmd {
 	return func() tea.Msg {
 		added, removed, err := modules.Reload()
 		if err != nil {

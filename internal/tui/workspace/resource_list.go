@@ -14,7 +14,6 @@ import (
 	"github.com/leg100/pug/internal/task"
 	"github.com/leg100/pug/internal/tui"
 	"github.com/leg100/pug/internal/tui/keys"
-	"github.com/leg100/pug/internal/tui/split"
 	"github.com/leg100/pug/internal/tui/table"
 	"github.com/leg100/pug/internal/workspace"
 	"golang.org/x/exp/maps"
@@ -27,19 +26,18 @@ var resourceColumn = table.Column{
 }
 
 type ResourceListMaker struct {
-	Workspaces *workspace.Service
 	States     *state.Service
+	Workspaces *workspace.Service
 	Plans      *plan.Service
 	Spinner    *spinner.Model
 	Helpers    *tui.Helpers
 }
 
-func (m *ResourceListMaker) Make(id resource.ID, width, height int) (tea.Model, error) {
-	ws, err := m.Workspaces.Get(id)
+func (m *ResourceListMaker) Make(workspaceID resource.ID, width, height int) (tui.ChildModel, error) {
+	ws, err := m.Workspaces.Get(workspaceID)
 	if err != nil {
 		return nil, err
 	}
-
 	columns := []table.Column{resourceColumn}
 	renderer := func(resource *state.Resource) table.RenderedRow {
 		addr := string(resource.Address)
@@ -48,24 +46,16 @@ func (m *ResourceListMaker) Make(id resource.ID, width, height int) (tea.Model, 
 		}
 		return table.RenderedRow{resourceColumn.Key: addr}
 	}
-	tableOptions := []table.Option[*state.Resource]{
+	tbl := table.New(
+		columns,
+		renderer,
+		width,
+		height,
 		table.WithSortFunc(state.Sort),
-	}
-	splitModel := split.New(split.Options[*state.Resource]{
-		Columns:      columns,
-		Renderer:     renderer,
-		TableOptions: tableOptions,
-		Width:        width,
-		Height:       height,
-		Maker: &ResourceMaker{
-			States:         m.States,
-			Plans:          m.Plans,
-			Helpers:        m.Helpers,
-			disableBorders: true,
-		},
-	})
-	return resourceList{
-		Model:     splitModel,
+		table.WithPreview[*state.Resource](tui.ResourceKind),
+	)
+	return &resourceList{
+		Model:     tbl,
 		states:    m.States,
 		plans:     m.Plans,
 		workspace: ws,
@@ -77,13 +67,13 @@ func (m *ResourceListMaker) Make(id resource.ID, width, height int) (tea.Model, 
 }
 
 type resourceList struct {
-	split.Model[*state.Resource]
+	table.Model[*state.Resource]
 	*tui.Helpers
 
 	states    *state.Service
 	plans     *plan.Service
-	workspace resource.Resource
 	state     *state.State
+	workspace *workspace.Workspace
 	reloading bool
 	height    int
 	width     int
@@ -93,9 +83,9 @@ type resourceList struct {
 
 type initState *state.State
 
-func (m resourceList) Init() tea.Cmd {
+func (m *resourceList) Init() tea.Cmd {
 	return func() tea.Msg {
-		state, err := m.states.Get(m.workspace.GetID())
+		state, err := m.states.Get(m.workspace.ID)
 		if err != nil {
 			return tui.ReportError(fmt.Errorf("initializing state model: %w", err))
 		}
@@ -109,7 +99,7 @@ type reloadedMsg struct {
 	err         error
 }
 
-func (m resourceList) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m *resourceList) Update(msg tea.Msg) tea.Cmd {
 	var (
 		cmd              tea.Cmd
 		cmds             []tea.Cmd
@@ -121,22 +111,22 @@ func (m resourceList) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case reloadedMsg:
 		m.reloading = false
 		if msg.err != nil {
-			return m, tui.ReportError(fmt.Errorf("reloading state failed: %w", msg.err))
+			return tui.ReportError(fmt.Errorf("reloading state failed: %w", msg.err))
 		}
-		return m, tui.ReportInfo("reloading finished")
+		return tui.ReportInfo("reloading finished")
 	case tea.KeyMsg:
 		switch {
-		case key.Matches(msg, localKeys.Enter):
-			if row, ok := m.Table.CurrentRow(); ok {
-				return m, tui.NavigateTo(tui.ResourceKind, tui.WithParent(row.ID))
+		case key.Matches(msg, resourcesKeys.Enter):
+			if row, ok := m.CurrentRow(); ok {
+				return tui.NavigateTo(tui.ResourceKind, tui.WithParent(row.ID))
 			}
 		case key.Matches(msg, resourcesKeys.Reload):
 			if m.reloading {
-				return m, tui.ReportError(errors.New("reloading in progress"))
+				return tui.ReportError(errors.New("reloading in progress"))
 			}
 			m.reloading = true
-			return m, func() tea.Msg {
-				msg := reloadedMsg{workspaceID: m.workspace.GetID()}
+			return func() tea.Msg {
+				msg := reloadedMsg{workspaceID: m.workspace.ID}
 				if spec, err := m.states.Reload(msg.workspaceID); err != nil {
 					msg.err = err
 				} else {
@@ -153,25 +143,25 @@ func (m resourceList) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			addrs := m.selectedOrCurrentAddresses()
 			if len(addrs) == 0 {
 				// no rows; do nothing
-				return m, nil
+				return nil
 			}
 			fn := func(workspaceID resource.ID) (task.Spec, error) {
 				return m.states.Delete(workspaceID, addrs...)
 			}
-			return m, tui.YesNoPrompt(
+			return tui.YesNoPrompt(
 				fmt.Sprintf("Delete %d resource(s)?", len(addrs)),
-				m.CreateTasks(fn, m.workspace.GetID()),
+				m.CreateTasks(fn, m.workspace.ID),
 			)
 		case key.Matches(msg, resourcesKeys.Taint):
 			addrs := m.selectedOrCurrentAddresses()
-			return m, m.createStateCommand(m.states.Taint, addrs...)
+			return m.createStateCommand(m.states.Taint, addrs...)
 		case key.Matches(msg, resourcesKeys.Untaint):
 			addrs := m.selectedOrCurrentAddresses()
-			return m, m.createStateCommand(m.states.Untaint, addrs...)
+			return m.createStateCommand(m.states.Untaint, addrs...)
 		case key.Matches(msg, resourcesKeys.Move):
-			if row, ok := m.Table.CurrentRow(); ok {
+			if row, ok := m.CurrentRow(); ok {
 				from := row.Value.Address
-				return m, m.Move(m.workspace.GetID(), from)
+				return m.Move(m.workspace.ID, from)
 			}
 		case key.Matches(msg, keys.Common.PlanDestroy):
 			// Create a targeted destroy plan.
@@ -185,7 +175,7 @@ func (m resourceList) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			fn := func(workspaceID resource.ID) (task.Spec, error) {
 				return m.plans.Plan(workspaceID, createRunOptions)
 			}
-			return m, m.CreateTasks(fn, m.workspace.GetID())
+			return m.CreateTasks(fn, m.workspace.ID)
 		case key.Matches(msg, keys.Common.Destroy):
 			createRunOptions.Destroy = true
 			applyPrompt = "Destroy %d resources?"
@@ -193,30 +183,30 @@ func (m resourceList) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, keys.Common.Apply):
 			// Create a targeted apply.
 			createRunOptions.TargetAddrs = m.selectedOrCurrentAddresses()
-			resourceIDs := m.Table.SelectedOrCurrentIDs()
+			resourceIDs := m.SelectedOrCurrentIDs()
 			fn := func(workspaceID resource.ID) (task.Spec, error) {
 				return m.plans.Apply(workspaceID, createRunOptions)
 			}
-			return m, tui.YesNoPrompt(
+			return tui.YesNoPrompt(
 				fmt.Sprintf(applyPrompt, len(resourceIDs)),
-				m.CreateTasks(fn, m.workspace.GetID()),
+				m.CreateTasks(fn, m.workspace.ID),
 			)
 		}
 	case initState:
-		if msg.WorkspaceID != m.workspace.GetID() {
-			return m, nil
+		if msg.WorkspaceID != m.workspace.ID {
+			return nil
 		}
 		m.state = (*state.State)(msg)
-		m.Table.SetItems(maps.Values(m.state.Resources)...)
+		m.SetItems(maps.Values(m.state.Resources)...)
 	case resource.Event[*state.State]:
-		if msg.Payload.WorkspaceID != m.workspace.GetID() {
-			return m, nil
+		if msg.Payload.WorkspaceID != m.workspace.ID {
+			return nil
 		}
 		switch msg.Type {
 		case resource.CreatedEvent, resource.UpdatedEvent:
 			// Whenever state is created or updated, re-populate table with
 			// resources.
-			m.Table.SetItems(maps.Values(msg.Payload.Resources)...)
+			m.SetItems(maps.Values(msg.Payload.Resources)...)
 			m.state = msg.Payload
 		}
 	case tea.WindowSizeMsg:
@@ -228,48 +218,21 @@ func (m resourceList) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	m.Model, cmd = m.Model.Update(msg)
 	cmds = append(cmds, cmd)
 
-	return m, tea.Batch(cmds...)
+	return tea.Batch(cmds...)
 }
 
 func (m resourceList) View() string {
-	border := tui.Regular.
-		Padding(0, 1).
-		Border(lipgloss.NormalBorder()).
-		// Subtract 2 to accomodate borders
-		Width(m.width - 2).
-		// Subtract 2 to accomodate borders
-		Height(m.height - 2)
-
 	if m.reloading {
-		return border.Render(fmt.Sprintf("Pulling state %s", m.spinner.View()))
+		return fmt.Sprintf("Pulling state %s", m.spinner.View())
 	}
 	if m.state == nil || m.state.Serial < 0 {
-		return border.Render("No state found")
+		return "No state found"
 	}
-	//metadata := fmt.Sprintf("Serial: %d | Terraform Version: %s | Lineage: %s", m.state.Serial, m.state.TerraformVersion, m.state.Lineage)
-	return lipgloss.JoinVertical(lipgloss.Left,
-		m.Model.View(),
-		//strings.Repeat("─", m.width),
-		//tui.Regular.
-		//	Margin(0, 1).
-		//	Render(
-		//		tui.Regular.
-		//			Inline(true).
-		//			Render(metadata),
-		//	),
-	)
-}
-
-func (m resourceList) Title() string {
-	var serial string
-	if m.state != nil {
-		serial = serialBreadcrumb(m.state.Serial)
-	}
-	return m.Breadcrumbs("State", m.workspace, serial)
+	return m.Model.View()
 }
 
 func (m resourceList) HelpBindings() []key.Binding {
-	bindings := []key.Binding{
+	return []key.Binding{
 		keys.Common.Plan,
 		keys.Common.PlanDestroy,
 		keys.Common.Apply,
@@ -280,11 +243,10 @@ func (m resourceList) HelpBindings() []key.Binding {
 		resourcesKeys.Untaint,
 		resourcesKeys.Reload,
 	}
-	return append(bindings, keys.KeyMapToSlice(split.Keys)...)
 }
 
 func (m resourceList) selectedOrCurrentAddresses() []state.ResourceAddress {
-	rows := m.Table.SelectedOrCurrent()
+	rows := m.SelectedOrCurrent()
 	addrs := make([]state.ResourceAddress, len(rows))
 	var i int
 	for _, v := range rows {
@@ -294,6 +256,21 @@ func (m resourceList) selectedOrCurrentAddresses() []state.ResourceAddress {
 	return addrs
 }
 
-func serialBreadcrumb(serial int64) string {
-	return tui.TitleSerial.Render(fmt.Sprintf("%d", serial))
+func (m *resourceList) BorderText() map[tui.BorderPosition]string {
+	var serial int64
+	if m.state != nil {
+		serial = m.state.Serial
+	}
+	return map[tui.BorderPosition]string{
+		tui.TopLeftBorder: fmt.Sprintf(
+			"%s %s %s",
+			tui.Bold.Render("state"),
+			tui.ModulePathWithIcon(m.workspace.ModulePath, true),
+			tui.WorkspaceNameWithIcon(m.workspace.Name, true),
+		),
+		tui.TopMiddleBorder: m.Metadata(),
+		tui.BottomMiddleBorder: lipgloss.NewStyle().
+			Foreground(tui.BurntOrange).
+			Render(fmt.Sprintf("#%d", serial)),
+	}
 }

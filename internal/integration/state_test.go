@@ -25,7 +25,7 @@ func TestState_SingleTaint_Untaint(t *testing.T) {
 	})
 
 	// Go back to state page
-	tm.Send(tea.KeyMsg{Type: tea.KeyEsc})
+	tm.Type("s")
 
 	// Expect resource to be marked as tainted
 	waitFor(t, tm, func(s string) bool {
@@ -52,12 +52,12 @@ func TestState_MultipleTaint_Untaint(t *testing.T) {
 
 	// Expect to be taken to task group page for taint
 	waitFor(t, tm, func(s string) bool {
-		return matchPattern(t, "TaskGroup.*taint.*10/10", s) &&
-			matchPattern(t, `modules/a.*default.*exited`, s)
+		return strings.Contains(s, "taint 10/10") &&
+			matchPattern(t, `modules/a.*default.*taint.*exited`, s)
 	})
 
 	// Go back to state page
-	tm.Send(tea.KeyMsg{Type: tea.KeyEsc})
+	tm.Type("s")
 
 	// Expect all resources to be marked as tainted. Note we wait until serial
 	// 21 of the state has been loaded, which is the final state after 10 taints
@@ -65,7 +65,7 @@ func TestState_MultipleTaint_Untaint(t *testing.T) {
 	// operation in the next step can be undone by a state reload, which loads
 	// brand new resources, removing all selections.
 	waitFor(t, tm, func(s string) bool {
-		return matchPattern(t, `State.*21.*default.*modules/a`, s) &&
+		return strings.Contains(s, "state 󰠱 modules/a  default") &&
 			strings.Contains(s, "random_pet.pet[0] (tainted)") &&
 			strings.Contains(s, "random_pet.pet[1] (tainted)") &&
 			strings.Contains(s, "random_pet.pet[2] (tainted)") &&
@@ -75,7 +75,8 @@ func TestState_MultipleTaint_Untaint(t *testing.T) {
 			strings.Contains(s, "random_pet.pet[6] (tainted)") &&
 			strings.Contains(s, "random_pet.pet[7] (tainted)") &&
 			strings.Contains(s, "random_pet.pet[8] (tainted)") &&
-			strings.Contains(s, "random_pet.pet[9] (tainted)")
+			strings.Contains(s, "random_pet.pet[9] (tainted)") &&
+			strings.Contains(s, "#21")
 	})
 
 	// Untaint all resources (need to select all again, because resources have
@@ -85,8 +86,8 @@ func TestState_MultipleTaint_Untaint(t *testing.T) {
 
 	// Expect to be taken to task group page for untaint
 	waitFor(t, tm, func(s string) bool {
-		return matchPattern(t, "TaskGroup.*untaint.*10/10", s) &&
-			matchPattern(t, `modules/a.*default.*exited`, s)
+		return strings.Contains(s, "untaint 10/10") &&
+			matchPattern(t, `modules/a.*default.*untaint.*exited`, s)
 	})
 }
 
@@ -96,7 +97,7 @@ func TestState_Move(t *testing.T) {
 	tm := setupState(t)
 
 	// Move resource random_pet.pet[0]
-	tm.Type("M")
+	tm.Type("m")
 
 	// Expect to see prompt prompting to enter a destination address
 	waitFor(t, tm, func(s string) bool {
@@ -115,7 +116,7 @@ func TestState_Move(t *testing.T) {
 
 	// Expect to be taken to task page for move
 	waitFor(t, tm, func(s string) bool {
-		return matchPattern(t, `Task.*state mv.*default.*modules/a.*exited`, s) &&
+		return strings.Contains(s, "state mv 󰠱 modules/a  default") &&
 			strings.Contains(s, `Move "random_pet.pet[0]" to "random_pet.giraffe[99]"`) &&
 			strings.Contains(s, `Successfully moved 1 object(s).`)
 	})
@@ -127,7 +128,7 @@ func TestState_SingleDelete(t *testing.T) {
 	tm := setupState(t)
 
 	// Delete first resource
-	tm.Type("D")
+	tm.Send(tea.KeyMsg{Type: tea.KeyDelete})
 
 	// Confirm deletion
 	waitFor(t, tm, func(s string) bool {
@@ -138,12 +139,13 @@ func TestState_SingleDelete(t *testing.T) {
 	// User is taken to its task page, which should provide the output from the
 	// command.
 	waitFor(t, tm, func(s string) bool {
-		return strings.Contains(s, "Removed random_pet.pet[0]") &&
+		return strings.Contains(s, "state rm 󰠱 modules/a  default") &&
+			strings.Contains(s, "Removed random_pet.pet[0]") &&
 			strings.Contains(s, "Successfully removed 1 resource instance(s).")
 	})
 
 	// Go back to state page
-	tm.Send(tea.KeyMsg{Type: tea.KeyEsc})
+	tm.Type("s")
 
 	// Expect only 9 resources.
 	waitFor(t, tm, func(s string) bool {
@@ -158,7 +160,7 @@ func TestState_MultipleDelete(t *testing.T) {
 
 	// Delete all resources
 	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlA})
-	tm.Type("D")
+	tm.Send(tea.KeyMsg{Type: tea.KeyDelete})
 
 	// Confirm deletion
 	waitFor(t, tm, func(s string) bool {
@@ -169,7 +171,8 @@ func TestState_MultipleDelete(t *testing.T) {
 	// User is taken to its task page, which should provide the output from the
 	// command.
 	waitFor(t, tm, func(s string) bool {
-		return strings.Contains(s, "Removed random_pet.pet[0]") &&
+		return strings.Contains(s, "state rm 󰠱 modules/a  default") &&
+			strings.Contains(s, "Removed random_pet.pet[0]") &&
 			strings.Contains(s, "Removed random_pet.pet[1]") &&
 			strings.Contains(s, "Removed random_pet.pet[2]") &&
 			strings.Contains(s, "Removed random_pet.pet[3]") &&
@@ -202,7 +205,8 @@ func TestState_TargetedPlan_SingleResource(t *testing.T) {
 	waitFor(t, tm, func(s string) bool {
 		// Strip ANSI formatting from output
 		s = internal.StripAnsi(s)
-		return matchPattern(t, `Task.*plan.*default.*modules/a.*\+1~0\-1.*exited`, s) &&
+		return strings.Contains(s, "plan 󰠱 modules/a  default") &&
+			strings.Contains(s, "exited +1~0-1") &&
 			strings.Contains(s, "Warning: Resource targeting is in effect")
 	})
 }
@@ -221,7 +225,8 @@ func TestState_TargetedPlan_MultipleResource(t *testing.T) {
 	waitFor(t, tm, func(s string) bool {
 		// Remove bold formatting
 		s = internal.StripAnsi(s)
-		return matchPattern(t, `Task.*plan.*default.*modules/a.*\+10~0\-10.*exited`, s) &&
+		return strings.Contains(s, "plan 󰠱 modules/a  default") &&
+			strings.Contains(s, "exited +10~0-10") &&
 			strings.Contains(s, "Warning: Resource targeting is in effect")
 	})
 }
@@ -232,7 +237,7 @@ func TestState_TargetedPlanDestroy_SingleResource(t *testing.T) {
 	tm := setupState(t)
 
 	// Create targeted destroy plan for first resource
-	tm.Type("P")
+	tm.Type("d")
 
 	// Expect to be taken to the task page for the destroy plan, with a
 	// completed destroy plan, and a warning that resource targeting is in
@@ -240,7 +245,8 @@ func TestState_TargetedPlanDestroy_SingleResource(t *testing.T) {
 	waitFor(t, tm, func(s string) bool {
 		// Strip ANSI formatting from output
 		s = internal.StripAnsi(s)
-		return matchPattern(t, `Task.*plan \(destroy\).*default.*modules/a.*\+0~0\-1.*exited`, s) &&
+		return strings.Contains(s, "plan (destroy) 󰠱 modules/a  default") &&
+			strings.Contains(s, "exited +0~0-1") &&
 			strings.Contains(s, "Warning: Resource targeting is in effect")
 	})
 }
@@ -252,7 +258,7 @@ func TestState_TargetedPlanDestroy_MultipleResource(t *testing.T) {
 
 	// Create targeted destroy plan for all resources
 	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlA})
-	tm.Type("P")
+	tm.Type("d")
 
 	// Expect to be taken to the task page for the destroy plan, with a
 	// completed destroy plan, and a warning that resource targeting is in
@@ -260,7 +266,8 @@ func TestState_TargetedPlanDestroy_MultipleResource(t *testing.T) {
 	waitFor(t, tm, func(s string) bool {
 		// Remove bold formatting
 		s = internal.StripAnsi(s)
-		return matchPattern(t, `Task.*plan \(destroy\).*default.*modules/a.*\+0~0\-10.*exited`, s) &&
+		return strings.Contains(s, "plan (destroy) 󰠱 modules/a  default") &&
+			strings.Contains(s, "exited +0~0-10") &&
 			strings.Contains(s, "Warning: Resource targeting is in effect")
 	})
 }
@@ -284,7 +291,8 @@ func TestState_TargetedApply_SingleResource(t *testing.T) {
 	waitFor(t, tm, func(s string) bool {
 		// Strip ANSI formatting from output
 		s = internal.StripAnsi(s)
-		return matchPattern(t, `Task.*apply.*default.*modules/a.*\+1~0\-1.*exited`, s) &&
+		return strings.Contains(s, "apply 󰠱 modules/a  default") &&
+			strings.Contains(s, "exited +1~0-1") &&
 			strings.Contains(s, "Warning: Resource targeting is in effect")
 	})
 }
@@ -309,7 +317,8 @@ func TestState_TargetedApply_MultipleResource(t *testing.T) {
 	waitFor(t, tm, func(s string) bool {
 		// Remove bold formatting
 		s = internal.StripAnsi(s)
-		return matchPattern(t, `Task.*apply.*default.*modules/a.*\+10~0\-10.*exited`, s) &&
+		return strings.Contains(s, "apply 󰠱 modules/a  default") &&
+			strings.Contains(s, "exited +10~0-10") &&
 			strings.Contains(s, "Warning: Resource targeting is in effect")
 	})
 }
@@ -320,7 +329,7 @@ func TestState_TargetedDestroy_SingleResource(t *testing.T) {
 	tm := setupState(t)
 
 	// Create targeted destroy for first resource
-	tm.Type("d")
+	tm.Type("D")
 
 	// Give approval
 	waitFor(t, tm, func(s string) bool {
@@ -333,7 +342,8 @@ func TestState_TargetedDestroy_SingleResource(t *testing.T) {
 	waitFor(t, tm, func(s string) bool {
 		// Strip ANSI formatting from output
 		s = internal.StripAnsi(s)
-		return matchPattern(t, `Task.*apply \(destroy\).*default.*modules/a.*\+0~0\-1.*exited`, s) &&
+		return strings.Contains(s, "apply (destroy) 󰠱 modules/a  default") &&
+			strings.Contains(s, "exited +0~0-1") &&
 			strings.Contains(s, "Warning: Resource targeting is in effect")
 	})
 }
@@ -345,7 +355,7 @@ func TestState_TargetedDestroy_MultipleResource(t *testing.T) {
 
 	// Create targeted destroy for all resources
 	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlA})
-	tm.Type("d")
+	tm.Type("D")
 
 	// Give approval
 	waitFor(t, tm, func(s string) bool {
@@ -358,7 +368,8 @@ func TestState_TargetedDestroy_MultipleResource(t *testing.T) {
 	waitFor(t, tm, func(s string) bool {
 		// Remove bold formatting
 		s = internal.StripAnsi(s)
-		return matchPattern(t, `Task.*apply \(destroy\).*default.*modules/a.*\+0~0\-10.*exited`, s) &&
+		return strings.Contains(s, "apply (destroy) 󰠱 modules/a  default") &&
+			strings.Contains(s, "exited +0~0-10") &&
 			strings.Contains(s, "Warning: Resource targeting is in effect")
 	})
 }
@@ -410,26 +421,23 @@ func TestState_NoState(t *testing.T) {
 
 	tm := setup(t, "./testdata/workspace_resources_empty")
 
-	// Wait for module to be loaded
+	// Expect single module to be listed
 	waitFor(t, tm, func(s string) bool {
-		return strings.Contains(s, "modules/a")
+		return strings.Contains(s, "└ 󰠱 a")
 	})
 
 	// Initialize module
 	tm.Type("i")
+	// Expect init to succeed, and to populate pug with one workspace with 10
+	// resources
 	waitFor(t, tm, func(s string) bool {
-		return strings.Contains(s, "Terraform has been successfully initialized!")
+		return strings.Contains(s, "Terraform has been successfully initialized!") &&
+			strings.Contains(s, "init 󰠱 modules/a") &&
+			strings.Contains(s, "exited") &&
+			strings.Contains(s, "└  default 0")
 	})
 
-	// Go workspaces
-	tm.Type("w")
-
-	// Wait for default workspace to be loaded
-	waitFor(t, tm, func(s string) bool {
-		return matchPattern(t, `modules/a.*default.*✓.*0`, s)
-	})
-
-	// Go to state page
+	// Go to state page for workspace
 	tm.Type("s")
 
 	// Expect message indicating no state found
@@ -447,7 +455,7 @@ func TestState_ViewResource(t *testing.T) {
 	tm.Send(tea.KeyMsg{Type: tea.KeyEnter})
 
 	waitFor(t, tm, func(s string) bool {
-		return matchPattern(t, `Resource.*random_pet\.pet\[0\].*default.*modules/a`, s)
+		return strings.Contains(s, `resource random_pet.pet[0]`)
 	})
 }
 
@@ -460,7 +468,7 @@ func TestState_ViewResourceTargetPlan(t *testing.T) {
 	tm.Send(tea.KeyMsg{Type: tea.KeyEnter})
 
 	waitFor(t, tm, func(s string) bool {
-		return matchPattern(t, `Resource.*random_pet\.pet\[0\].*default.*modules/a`, s)
+		return strings.Contains(s, `resource random_pet.pet[0]`)
 	})
 
 	// Create targeted plan for resource
@@ -471,7 +479,8 @@ func TestState_ViewResourceTargetPlan(t *testing.T) {
 	waitFor(t, tm, func(s string) bool {
 		// Strip ANSI formatting from output
 		s = internal.StripAnsi(s)
-		return matchPattern(t, `Task.*plan.*default.*modules/a.*\+1~0\-1.*exited`, s) &&
+		return strings.Contains(s, "plan 󰠱 modules/a  default") &&
+			strings.Contains(s, "exited +1~0-1") &&
 			strings.Contains(s, "Warning: Resource targeting is in effect")
 	})
 }
@@ -480,23 +489,20 @@ func setupState(t *testing.T) *testModel {
 	// Setup test with pre-existing state
 	tm := setup(t, "./testdata/state")
 
-	// Wait for module to be loaded
+	// Expect single module to be listed
 	waitFor(t, tm, func(s string) bool {
-		return strings.Contains(s, "modules/a")
+		return strings.Contains(s, "└ 󰠱 a")
 	})
 
 	// Initialize module
 	tm.Type("i")
+	// Expect init to succeed, and to populate pug with one workspace with 10
+	// resources
 	waitFor(t, tm, func(s string) bool {
-		return strings.Contains(s, "Terraform has been successfully initialized!")
-	})
-
-	// Go workspaces
-	tm.Type("w")
-
-	// Wait for default workspace to be loaded
-	waitFor(t, tm, func(s string) bool {
-		return matchPattern(t, `modules/a.*default.*✓.*10`, s)
+		return strings.Contains(s, "Terraform has been successfully initialized!") &&
+			strings.Contains(s, "init 󰠱 modules/a") &&
+			strings.Contains(s, "exited") &&
+			strings.Contains(s, "└  default 10")
 	})
 
 	// Go to state page for workspace
@@ -504,7 +510,7 @@ func setupState(t *testing.T) *testModel {
 
 	// Expect to see title and several resources listed
 	waitFor(t, tm, func(s string) bool {
-		return matchPattern(t, `State.*11.*default.*modules/a`, s) &&
+		return strings.Contains(s, "state 󰠱 modules/a  default") &&
 			strings.Contains(s, "random_pet.pet[0]") &&
 			strings.Contains(s, "random_pet.pet[1]") &&
 			strings.Contains(s, "random_pet.pet[2]") &&

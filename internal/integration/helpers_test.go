@@ -4,13 +4,12 @@ import (
 	"fmt"
 	"io"
 	"os"
-
-	cp "github.com/otiai10/copy"
-
 	"path/filepath"
 	"regexp"
 	"testing"
 	"time"
+
+	cp "github.com/otiai10/copy"
 
 	"github.com/charmbracelet/x/exp/teatest"
 	"github.com/leg100/pug/internal"
@@ -52,12 +51,11 @@ func setup(t *testing.T, workdir string, opts ...configOption) *testModel {
 	require.NoError(t, err)
 
 	cfg := app.Config{
-		FirstPage: "modules",
-		Program:   "terraform",
-		MaxTasks:  3,
-		DataDir:   t.TempDir(),
-		Debug:     true,
-		Envs:      []string{fmt.Sprintf("TF_CLI_CONFIG_FILE=%s", mirrorConfigPath)},
+		Program:  "terraform",
+		MaxTasks: 3,
+		DataDir:  t.TempDir(),
+		Debug:    true,
+		Envs:     []string{fmt.Sprintf("TF_CLI_CONFIG_FILE=%s", mirrorConfigPath)},
 		Logging: logging.Options{
 			Level: "debug",
 			AdditionalWriters: []io.Writer{

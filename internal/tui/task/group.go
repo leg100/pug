@@ -10,7 +10,6 @@ import (
 	"github.com/leg100/pug/internal/task"
 	"github.com/leg100/pug/internal/tui"
 	"github.com/leg100/pug/internal/tui/keys"
-	"github.com/leg100/pug/internal/tui/split"
 	"github.com/leg100/pug/internal/tui/table"
 )
 
@@ -19,7 +18,7 @@ type groupTaskMaker struct {
 	*Maker
 }
 
-func (m *groupTaskMaker) Make(id resource.ID, width, height int) (tea.Model, error) {
+func (m *groupTaskMaker) Make(id resource.ID, width, height int) (tui.ChildModel, error) {
 	return m.make(id, width, height, false)
 }
 
@@ -40,7 +39,7 @@ func NewGroupMaker(tasks *task.Service, plans *plan.Service, taskMaker *Maker, h
 	}
 }
 
-func (mm *GroupMaker) Make(id resource.ID, width, height int) (tea.Model, error) {
+func (mm *GroupMaker) Make(id resource.ID, width, height int) (tui.ChildModel, error) {
 	group, err := mm.taskListMaker.Tasks.GetGroup(id)
 	if err != nil {
 		return nil, err
@@ -52,16 +51,16 @@ func (mm *GroupMaker) Make(id resource.ID, width, height int) (tea.Model, error)
 	}
 
 	m := groupModel{
-		Model:   list,
+		List:    list.(*List),
 		group:   group,
 		Helpers: mm.taskListMaker.Helpers,
 	}
-	return m, nil
+	return &m, nil
 }
 
 // groupModel is a model for a taskgroup, listing and previewing its tasks.
 type groupModel struct {
-	tea.Model
+	*List
 	*tui.Helpers
 
 	group *task.Group
@@ -80,28 +79,24 @@ func (m groupModel) Init() tea.Cmd {
 	return tea.Batch(cmds...)
 }
 
-func (m groupModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	var (
-		cmd  tea.Cmd
-		cmds []tea.Cmd
-	)
+func (m *groupModel) Update(msg tea.Msg) tea.Cmd {
+	var cmds []tea.Cmd
 
 	switch msg := msg.(type) {
 	case table.BulkInsertMsg[*task.Task]:
 		if m.skip(([]*task.Task)(msg)...) {
-			return m, nil
+			return nil
 		}
 	case resource.Event[*task.Task]:
 		if m.skip(msg.Payload) {
-			return m, nil
+			return nil
 		}
 	}
 
 	// Forward message to wrapped task list model
-	m.Model, cmd = m.Model.Update(msg)
-	cmds = append(cmds, cmd)
+	cmds = append(cmds, m.List.Update(msg))
 
-	return m, tea.Batch(cmds...)
+	return tea.Batch(cmds...)
 }
 
 // skip determines whether to skip forwarding the task to the wrapped task list
@@ -116,20 +111,22 @@ func (m *groupModel) skip(tasks ...*task.Task) bool {
 	return false
 }
 
-func (m groupModel) Title() string {
-	return m.Breadcrumbs("TaskGroup", m.group)
-}
-
-func (m groupModel) Status() string {
-	return m.GroupReport(m.group, false)
+func (m groupModel) BorderText() map[tui.BorderPosition]string {
+	return map[tui.BorderPosition]string{
+		tui.TopLeftBorder: fmt.Sprintf(
+			"%s %s",
+			tui.Bold.Render(m.group.String()),
+			m.GroupReport(m.group, true),
+		),
+		tui.TopMiddleBorder: m.Metadata(),
+	}
 }
 
 func (m groupModel) HelpBindings() []key.Binding {
-	bindings := []key.Binding{
+	return []key.Binding{
 		keys.Common.Cancel,
 		keys.Common.Apply,
 		keys.Common.State,
 		keys.Common.Retry,
 	}
-	return append(bindings, keys.KeyMapToSlice(split.Keys)...)
 }

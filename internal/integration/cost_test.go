@@ -20,25 +20,24 @@ func TestCost(t *testing.T) {
 
 	tm := setupInfracostWorkspaces(t)
 
+	// Navigate explorer cursor to first workspace
+	tm.Send(tea.KeyMsg{Type: tea.KeyDown})
+
 	// Calculate cost for all four workspaces
 	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlA})
 	tm.Type("$")
 
-	// Wait for infracost task to produce overall total
+	// Wait for infracost task to produce overall total. Each workspace in the
+	// explorer should also have a cost alongside it.
 	waitFor(t, tm, func(s string) bool {
-		return matchPattern(t, `Task.*cost.*exited`, s) &&
-			matchPattern(t, `OVERALL TOTAL.*\$2\,621\.90`, s)
-	})
-
-	// Go back to workspace listing
-	tm.Type("w")
-
-	// Each workspace should now have a cost.
-	waitFor(t, tm, func(s string) bool {
-		return matchPattern(t, `modules/a.*default.*\$87.12`, s) &&
-			matchPattern(t, `modules/a.*dev.*\$2360.55`, s) &&
-			matchPattern(t, `modules/b.*default.*\$87.12`, s) &&
-			matchPattern(t, `modules/c.*default.*\$87.12`, s)
+		t.Log(s)
+		return strings.Contains(s, "cost") &&
+			strings.Contains(s, "exited $2621.90") &&
+			matchPattern(t, `OVERALL TOTAL.*\$2\,621\.90`, s) &&
+			strings.Contains(s, `default 0 $87.12`) &&
+			strings.Contains(s, `dev 0 $2360.55`) &&
+			strings.Contains(s, `default 0 $87.12`) &&
+			strings.Contains(s, `default 0 $87.12`)
 	})
 }
 
@@ -62,33 +61,30 @@ func setupInfracostWorkspaces(t *testing.T) *testModel {
 
 	tm := setup(t, "./testdata/workspaces_that_cost_money", withInfracostEnvs(srv.URL))
 
-	// Expect three modules to be listed
+	// Expect three modules in tree
 	waitFor(t, tm, func(s string) bool {
-		return strings.Contains(s, "modules/a") &&
-			strings.Contains(s, "modules/b") &&
-			strings.Contains(s, "modules/c")
+		return strings.Contains(s, "├ 󰠱 a") &&
+			strings.Contains(s, "├ 󰠱 b") &&
+			strings.Contains(s, "└ 󰠱 c")
 	})
 
 	// Select all modules and init
 	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlA})
 	tm.Type("i")
+
 	waitFor(t, tm, func(s string) bool {
-		return matchPattern(t, "TaskGroup.*init", s) &&
-			matchPattern(t, `modules/a.*exited`, s) &&
-			matchPattern(t, `modules/b.*exited`, s) &&
-			matchPattern(t, `modules/c.*exited`, s)
+		return strings.Contains(s, "init 3/3") &&
+			matchPattern(t, `modules/a.*init.*exited`, s) &&
+			matchPattern(t, `modules/b.*init.*exited`, s) &&
+			matchPattern(t, `modules/c.*init.*exited`, s) &&
+			strings.Contains(s, "󰠱 3  4")
 	})
 
-	// Go to workspace listing
-	tm.Type("w")
+	// Go back to explorer
+	tm.Type("0")
 
-	// Wait for all four workspaces to be listed.
-	waitFor(t, tm, func(s string) bool {
-		return matchPattern(t, `modules/a.*default`, s) &&
-			matchPattern(t, `modules/a.*dev`, s) &&
-			matchPattern(t, `modules/b.*default`, s) &&
-			matchPattern(t, `modules/c.*default`, s)
-	})
+	// Clear selection
+	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlBackslash})
 
 	return tm
 }

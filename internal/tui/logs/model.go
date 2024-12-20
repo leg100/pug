@@ -1,8 +1,6 @@
 package logs
 
 import (
-	"fmt"
-
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/leg100/pug/internal/logging"
@@ -35,10 +33,10 @@ type Maker struct {
 	Helpers *tui.Helpers
 }
 
-func (mm *Maker) Make(id resource.ID, width, height int) (tea.Model, error) {
+func (mm *Maker) Make(id resource.ID, width, height int) (tui.ChildModel, error) {
 	msg, err := mm.Logger.Get(id)
 	if err != nil {
-		return model{}, err
+		return nil, err
 	}
 	columns := []table.Column{keyColumn, valueColumn}
 	renderer := func(attr logging.Attr) table.RenderedRow {
@@ -71,7 +69,7 @@ func (mm *Maker) Make(id resource.ID, width, height int) (tea.Model, error) {
 	items = append(items, msg.Attributes...)
 	table.SetItems(items...)
 
-	return model{
+	return &model{
 		msg:    msg,
 		table:  table,
 		width:  width,
@@ -88,19 +86,14 @@ type model struct {
 	*tui.Helpers
 }
 
-func (m model) Init() tea.Cmd {
+func (m *model) Init() tea.Cmd {
 	return nil
 }
 
-func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m *model) Update(msg tea.Msg) tea.Cmd {
 	var cmd tea.Cmd
 	m.table, cmd = m.table.Update(msg)
-	return m, cmd
-}
-
-func (m model) Title() string {
-	serial := tui.TitleSerial.Render(fmt.Sprintf("#%d", m.msg.Serial))
-	return m.Breadcrumbs("LogMessage", nil, serial)
+	return cmd
 }
 
 func (m model) View() string {

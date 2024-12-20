@@ -19,144 +19,6 @@ func TestModule_Loaded(t *testing.T) {
 	})
 }
 
-func TestModule_Backend(t *testing.T) {
-	t.Parallel()
-
-	tm := setup(t, "./testdata/module_list")
-
-	// Expect three modules, each with a local backend
-	waitFor(t, tm, func(s string) bool {
-		return matchPattern(t, `modules/a.*local`, s) &&
-			matchPattern(t, `modules/b.*local`, s) &&
-			matchPattern(t, `modules/c.*local`, s)
-	})
-}
-
-func TestModule_SingleInit(t *testing.T) {
-	t.Parallel()
-
-	tm := setup(t, "./testdata/module_list")
-
-	// Expect module to be listed
-	waitFor(t, tm, func(s string) bool {
-		return strings.Contains(s, "modules/a")
-	})
-
-	// Initialize module
-	tm.Type("i")
-
-	// Expect to see successful init message
-	waitFor(t, tm, func(s string) bool {
-		return strings.Contains(s, "Terraform has been successfully initialized!")
-	})
-}
-
-func TestModule_MultipleInit(t *testing.T) {
-	t.Parallel()
-
-	setupAndInitModuleList(t)
-}
-
-func TestModule_SingleInitUpgrade(t *testing.T) {
-	t.Parallel()
-
-	tm := setup(t, "./testdata/module_list")
-
-	// Expect module to be listed
-	waitFor(t, tm, func(s string) bool {
-		return strings.Contains(s, "modules/a")
-	})
-
-	// Initialize module, upgrading any providers
-	tm.Type("u")
-
-	// Expect to see successful init message
-	waitFor(t, tm, func(s string) bool {
-		return strings.Contains(s, "Terraform has been successfully initialized!")
-	})
-
-	// Show task info sidebar
-	tm.Type("I")
-
-	// Expect to see -upgrade argument
-	waitFor(t, tm, func(s string) bool {
-		return strings.Contains(s, "-upgrade")
-	})
-}
-
-func TestModule_MultipleInitUpgrade(t *testing.T) {
-	t.Parallel()
-
-	tm := setup(t, "./testdata/module_list")
-
-	// Go to modules listing
-	tm.Type("m")
-
-	// Expect three modules to be listed
-	waitFor(t, tm, func(s string) bool {
-		return strings.Contains(s, "modules/a") &&
-			strings.Contains(s, "modules/b") &&
-			strings.Contains(s, "modules/c")
-	})
-
-	// Select all modules and run `init -upgrade`
-	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlA})
-	tm.Type("u")
-	waitFor(t, tm, func(s string) bool {
-		return matchPattern(t, "TaskGroup.*init", s) &&
-			matchPattern(t, `modules/a.*exited`, s) &&
-			matchPattern(t, `modules/b.*exited`, s) &&
-			matchPattern(t, `modules/c.*exited`, s)
-	})
-
-	// Show task info sidebar
-	tm.Type("I")
-
-	// Expect to see -upgrade argument
-	waitFor(t, tm, func(s string) bool {
-		return strings.Contains(s, "-upgrade")
-	})
-}
-
-func TestModule_MultipleFormat(t *testing.T) {
-	t.Parallel()
-
-	tm := setup(t, "./testdata/module_list")
-
-	// Expect three modules to be listed
-	waitFor(t, tm, func(s string) bool {
-		return strings.Contains(s, "modules/a") &&
-			strings.Contains(s, "modules/b") &&
-			strings.Contains(s, "modules/c")
-	})
-
-	// Format all modules
-	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlA})
-	tm.Type("f")
-	waitFor(t, tm, func(s string) bool {
-		return matchPattern(t, "TaskGroup.*fmt", s) &&
-			matchPattern(t, `modules/a.*exited`, s) &&
-			matchPattern(t, `modules/b.*exited`, s) &&
-			matchPattern(t, `modules/c.*exited`, s)
-	})
-}
-
-func TestModule_MultipleValidate(t *testing.T) {
-	t.Parallel()
-
-	tm := setupAndInitModuleList(t)
-
-	// Validate all modules
-	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlA})
-	tm.Type("v")
-	waitFor(t, tm, func(s string) bool {
-		return matchPattern(t, "TaskGroup.*validate", s) &&
-			matchPattern(t, `modules/a.*exited`, s) &&
-			matchPattern(t, `modules/b.*exited`, s) &&
-			matchPattern(t, `modules/c.*exited`, s)
-	})
-}
-
 func TestModule_Reload(t *testing.T) {
 	t.Parallel()
 
@@ -180,13 +42,13 @@ func TestModule_Reload(t *testing.T) {
 func TestModuleList_ReloadWorkspacesSingleModule(t *testing.T) {
 	t.Parallel()
 
-	tm := setupAndInitModuleList(t)
+	tm := setupAndInitModule_Explorer(t)
 
-	// Reload workspaces for what ever module is currently selected.
+	// Reload workspaces for module
 	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlW})
 
 	waitFor(t, tm, func(s string) bool {
-		return matchPattern(t, "Task.*workspace list", s) &&
+		return strings.Contains(s, "workspace list 󰠱 modules/a") &&
 			strings.Contains(s, "* default")
 	})
 }
@@ -194,178 +56,287 @@ func TestModuleList_ReloadWorkspacesSingleModule(t *testing.T) {
 func TestModuleList_ReloadWorkspacesMultipleModules(t *testing.T) {
 	t.Parallel()
 
-	tm := setupAndInitModuleList(t)
+	tm := setupAndInitMultipleModules(t)
 
 	// Select all modules and reload workspaces for each and every module
 	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlA})
 	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlW})
 
 	waitFor(t, tm, func(s string) bool {
-		return matchPattern(t, "TaskGroup.*workspace list", s) &&
-			matchPattern(t, "modules/a.*exited", s) &&
-			matchPattern(t, "modules/b.*exited", s) &&
-			matchPattern(t, "modules/c.*exited", s)
+		return matchPattern(t, "workspace list 3/3", s) &&
+			matchPattern(t, "modules/a.*workspace list.*exited", s) &&
+			matchPattern(t, "modules/b.*workspace list.*exited", s) &&
+			matchPattern(t, "modules/c.*workspace list.*exited", s)
 	})
 }
 
-// TODO: test creating plan on an uninitialized module(s)
-
-func TestModule_SinglePlan(t *testing.T) {
+func TestExplorer_SingleInit(t *testing.T) {
 	t.Parallel()
 
-	tm := setupAndInitModule(t)
+	tm := setup(t, "./testdata/single_module")
 
-	// Create plan on first module
+	// Expect single module in tree
+	waitFor(t, tm, func(s string) bool {
+		return strings.Contains(s, "└ 󰠱 a")
+	})
+
+	// Cursor should automatically be on module.
+	// Initialize module.
+	tm.Type("i")
+
+	// Expect to see successful init message.
+	// Tree should now have workspace under module.
+	waitFor(t, tm, func(s string) bool {
+		return strings.Contains(s, "Terraform has been successfully initialized!") &&
+			strings.Contains(s, "init 󰠱 modules/a") &&
+			strings.Contains(s, "└ 󰠱 a") &&
+			strings.Contains(s, "└  default")
+	})
+}
+
+func TestExplorer_MultipleInit(t *testing.T) {
+	t.Parallel()
+
+	tm := setup(t, "./testdata/module_list")
+
+	// Expect three modules in tree
+	waitFor(t, tm, func(s string) bool {
+		return strings.Contains(s, "├ 󰠱 a") &&
+			strings.Contains(s, "├ 󰠱 b") &&
+			strings.Contains(s, "└ 󰠱 c")
+	})
+
+	// Select all modules and init
+	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlA})
+	tm.Type("i")
+
+	// Expect init task group with 3 successful tasks
+	waitFor(t, tm, func(s string) bool {
+		return strings.Contains(s, "init 3/3") &&
+			matchPattern(t, `modules/a.*init.*exited`, s) &&
+			matchPattern(t, `modules/b.*init.*exited`, s) &&
+			matchPattern(t, `modules/c.*init.*exited`, s)
+	})
+}
+
+func TestExplorer_SingleInitUpgrade(t *testing.T) {
+	t.Parallel()
+
+	tm := setup(t, "./testdata/single_module")
+
+	// Expect single module in tree
+	waitFor(t, tm, func(s string) bool {
+		return strings.Contains(s, "└ 󰠱 a")
+	})
+
+	// Cursor should automatically be on module.
+	// Initialize module, upgrading any providers
+	tm.Type("u")
+
+	// Expect to see task header
+	waitFor(t, tm, func(s string) bool {
+		return strings.Contains(s, "init 󰠱 modules/a")
+	})
+
+	// Show task info sidebar
+	tm.Type("I")
+
+	// Expect to see -upgrade argument
+	waitFor(t, tm, func(s string) bool {
+		return strings.Contains(s, "-upgrade")
+	})
+}
+
+func TestExplorer_MultipleFormat(t *testing.T) {
+	t.Parallel()
+
+	tm := setup(t, "./testdata/module_list")
+
+	// Expect three modules in tree
+	waitFor(t, tm, func(s string) bool {
+		return strings.Contains(s, "├ 󰠱 a") &&
+			strings.Contains(s, "├ 󰠱 b") &&
+			strings.Contains(s, "└ 󰠱 c")
+	})
+
+	// Format all modules
+	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlA})
+	tm.Type("f")
+	waitFor(t, tm, func(s string) bool {
+		return strings.Contains(s, "fmt 3/3") &&
+			matchPattern(t, `modules/a.*fmt.*exited`, s) &&
+			matchPattern(t, `modules/b.*fmt.*exited`, s) &&
+			matchPattern(t, `modules/c.*fmt.*exited`, s)
+	})
+}
+
+func TestExplorer_MultipleValidate(t *testing.T) {
+	t.Parallel()
+
+	tm := setupAndInitMultipleModules(t)
+
+	// Validate all modules
+	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlA})
+	tm.Type("v")
+	waitFor(t, tm, func(s string) bool {
+		return strings.Contains(s, "validate 3/3") &&
+			matchPattern(t, `modules/a.*validate.*exited`, s) &&
+			matchPattern(t, `modules/b.*validate.*exited`, s) &&
+			matchPattern(t, `modules/c.*validate.*exited`, s)
+	})
+}
+
+func TestExplorer_SinglePlan(t *testing.T) {
+	t.Parallel()
+
+	tm := setupAndInitModule_Explorer(t)
+
+	// Create plan on module
 	tm.Type("p")
 	waitFor(t, tm, func(s string) bool {
-		return matchPattern(t, "Task.*plan.*default.*modules/a.*exited", s)
+		return strings.Contains(s, "plan 󰠱 modules/a  default") &&
+			strings.Contains(s, "exited +10~0-0")
 	})
-
 }
 
-func TestModule_MultiplePlans(t *testing.T) {
+func TestExplorer_MultiplePlans(t *testing.T) {
 	t.Parallel()
 
-	// Initialize all modules
-	tm := setupAndInitModuleList(t)
+	tm := setupAndInitMultipleModules(t)
 
 	// Select all modules and invoke plan.
 	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlA})
 	tm.Type("p")
 	waitFor(t, tm, func(s string) bool {
-		return matchPattern(t, "TaskGroup.*plan.*3/3", s) &&
-			matchPattern(t, `modules/a.*default.*\+10~0-0`, s) &&
-			matchPattern(t, `modules/b.*default.*\+10~0-0`, s) &&
-			matchPattern(t, `modules/c.*default.*\+10~0-0`, s)
-	})
-
-}
-
-func TestModule_SingleDestroyPlan(t *testing.T) {
-	t.Parallel()
-
-	// Setup test with pre-existing state
-	tm := setup(t, "./testdata/module_destroy")
-
-	// Wait for module to be loaded
-	waitFor(t, tm, func(s string) bool {
-		return strings.Contains(s, "modules/a")
-	})
-
-	// Initialize module
-	tm.Type("i")
-
-	// Expect user to be taken to init's task page.
-	waitFor(t, tm, func(s string) bool {
-		return strings.Contains(s, "Terraform has been successfully initialized!")
-	})
-
-	// Go back to module listing
-	tm.Type("m")
-
-	// Module should have 10 resources in its state loaded.
-	waitFor(t, tm, func(s string) bool {
-		return matchPattern(t, `modules/a.*default.*10`, s)
-	})
-
-	// Create destroy plan
-	tm.Type("P")
-
-	// Expect 10 resources to be proposed for deletion
-	waitFor(t, tm, func(s string) bool {
-		return matchPattern(t, `Task.*plan \(destroy\).*default.*modules/a.*\+0~0\-10.*exited`, s)
+		return strings.Contains(s, "plan 3/3") &&
+			matchPattern(t, `modules/a.*default.*plan.*exited.*\+10~0-0`, s) &&
+			matchPattern(t, `modules/b.*default.*plan.*exited.*\+10~0-0`, s) &&
+			matchPattern(t, `modules/c.*default.*plan.*exited.*\+10~0-0`, s)
 	})
 }
 
-func TestModule_SingleApply(t *testing.T) {
+func TestExplorer_SingleApply(t *testing.T) {
 	t.Parallel()
 
-	// Initialize single module
-	tm := setupAndInitModule(t)
+	tm := setupAndInitModule_Explorer(t)
 
-	// Create apply on whatever the currently highlighted module is
+	// Create apply
 	tm.Type("a")
 
 	// Give approval
 	waitFor(t, tm, func(s string) bool {
-		return strings.Contains(s, "Auto-apply 1 modules? (y/N):")
+		t.Log(s)
+		return strings.Contains(s, "Auto-apply 1 workspaces? (y/N):")
 	})
 	tm.Type("y")
 
-	// Send to apply task page
 	waitFor(t, tm, func(s string) bool {
-		return matchPattern(t, `Task.*apply.*default.*modules/a.*\+10~0-0.*exited`, s)
+		return strings.Contains(s, "apply 󰠱 modules/a  default") &&
+			strings.Contains(s, "exited +10~0-0")
 	})
-
 }
 
-func TestModule_SingleDestroy(t *testing.T) {
+func TestExplorer_MultipleApplies(t *testing.T) {
 	t.Parallel()
 
-	// Setup test with pre-existing state
-	tm := setup(t, "./testdata/module_destroy")
+	tm := setupAndInitMultipleModules(t)
 
-	// Wait for module to be loaded
-	waitFor(t, tm, func(s string) bool {
-		return strings.Contains(s, "modules/a")
-	})
-
-	// Initialize module
-	tm.Type("i")
-
-	// Expect user to be taken to init's task page.
-	waitFor(t, tm, func(s string) bool {
-		return strings.Contains(s, "Terraform has been successfully initialized!")
-	})
-
-	// Go back to module listing
-	tm.Type("m")
-
-	// Module should have 10 resources in its state loaded.
-	waitFor(t, tm, func(s string) bool {
-		return matchPattern(t, `modules/a.*default.*10`, s)
-	})
-
-	// Create destroy
-	tm.Type("d")
-
-	// Give approval
-	waitFor(t, tm, func(s string) bool {
-		return strings.Contains(s, "Destroy resources of 1 modules? (y/N):")
-	})
-	tm.Type("y")
-
-	// Send to apply task page
-	waitFor(t, tm, func(s string) bool {
-		return matchPattern(t, `Task.*apply \(destroy\).*default.*modules/a.*\+0~0-10.*exited`, s)
-	})
-
-}
-
-func TestModule_MultipleApplies(t *testing.T) {
-	t.Parallel()
-
-	tm := setupAndInitModuleList(t)
-
-	// Select all modules and create apply on each
+	// Select all modules and invoke applies.
 	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlA})
 	tm.Type("a")
 
 	// Give approval
 	waitFor(t, tm, func(s string) bool {
-		return strings.Contains(s, "Auto-apply 3 modules? (y/N):")
+		return strings.Contains(s, "Auto-apply 3 workspaces? (y/N):")
 	})
 	tm.Type("y")
 
 	waitFor(t, tm, func(s string) bool {
-		return matchPattern(t, "TaskGroup.*apply.*3/3", s) &&
-			matchPattern(t, `modules/a.*default.*\+10~0-0`, s) &&
-			matchPattern(t, `modules/b.*default.*\+10~0-0`, s) &&
-			matchPattern(t, `modules/c.*default.*\+10~0-0`, s)
+		return strings.Contains(s, "apply 3/3") &&
+			matchPattern(t, `modules/a.*default.*apply.*exited.*\+10~0-0`, s) &&
+			matchPattern(t, `modules/b.*default.*apply.*exited.*\+10~0-0`, s) &&
+			matchPattern(t, `modules/c.*default.*apply.*exited.*\+10~0-0`, s)
 	})
 }
 
-func TestModule_MultipleDestroy(t *testing.T) {
+func TestExplorer_SingleDestroyPlan(t *testing.T) {
+	t.Parallel()
+
+	// Setup test with pre-existing state
+	tm := setup(t, "./testdata/module_destroy")
+
+	// Expect single module to be listed
+	waitFor(t, tm, func(s string) bool {
+		return strings.Contains(s, "└ 󰠱 a")
+	})
+
+	// Initialize module
+	tm.Type("i")
+
+	// Init should finish successfully and there should now be a workspace
+	// listed in the tree with 10 resources.
+	waitFor(t, tm, func(s string) bool {
+		return strings.Contains(s, "Terraform has been successfully initialized!") &&
+			strings.Contains(s, "init 󰠱 modules/a") &&
+			strings.Contains(s, "exited") &&
+			strings.Contains(s, "└ 󰠱 a") &&
+			strings.Contains(s, "└  default 10")
+	})
+
+	// Create destroy plan
+	tm.Type("0")
+	tm.Type("d")
+
+	// Expect 10 resources to be proposed for deletion
+	waitFor(t, tm, func(s string) bool {
+		return strings.Contains(s, "plan (destroy) 󰠱 modules/a  default") &&
+			strings.Contains(s, "exited +0~0-10")
+	})
+}
+
+func TestExplorer_SingleDestroy(t *testing.T) {
+	t.Parallel()
+
+	// Setup test with pre-existing state
+	tm := setup(t, "./testdata/module_destroy")
+
+	// Expect single module to be listed
+	waitFor(t, tm, func(s string) bool {
+		return strings.Contains(s, "└ 󰠱 a")
+	})
+
+	// Initialize module
+	tm.Type("i")
+
+	// Init should finish successfully and there should now be a workspace
+	// listed in the tree with 10 resources.
+	waitFor(t, tm, func(s string) bool {
+		return strings.Contains(s, "Terraform has been successfully initialized!") &&
+			strings.Contains(s, "init 󰠱 modules/a") &&
+			strings.Contains(s, "exited") &&
+			strings.Contains(s, "└ 󰠱 a") &&
+			strings.Contains(s, "└  default 10")
+	})
+
+	// Create destroy
+	tm.Type("0")
+	tm.Type("D")
+
+	// Give approval
+	waitFor(t, tm, func(s string) bool {
+		return strings.Contains(s, "Destroy resources of 1 workspaces? (y/N):")
+	})
+	tm.Type("y")
+
+	// Expect destroy task to result in destruction of 10 resources
+	waitFor(t, tm, func(s string) bool {
+		return strings.Contains(s, "apply (destroy) 󰠱 modules/a  default") &&
+			strings.Contains(s, "exited +0~0-10") &&
+			strings.Contains(s, "└  default 0")
+	})
+}
+
+func TestExplorer_MultipleDestroys(t *testing.T) {
 	t.Parallel()
 
 	// Setup test with modules with pre-existing state
@@ -373,82 +344,76 @@ func TestModule_MultipleDestroy(t *testing.T) {
 
 	// Expect three modules to be listed
 	waitFor(t, tm, func(s string) bool {
-		return strings.Contains(s, "modules/a") &&
-			strings.Contains(s, "modules/b") &&
-			strings.Contains(s, "modules/c")
+		return strings.Contains(s, "├ 󰠱 a") &&
+			strings.Contains(s, "├ 󰠱 b") &&
+			strings.Contains(s, "└ 󰠱 c")
 	})
 
 	// Select all modules and init
 	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlA})
 	tm.Type("i")
+
+	// Each module should now be populated with at least one workspace.
 	waitFor(t, tm, func(s string) bool {
-		return matchPattern(t, "TaskGroup.*init", s) &&
-			matchPattern(t, `modules/a.*exited`, s) &&
-			matchPattern(t, `modules/b.*exited`, s) &&
-			matchPattern(t, `modules/c.*exited`, s)
+		return strings.Contains(s, "󰠱 3  3")
 	})
 
-	// Go back to modules listing
-	tm.Send(tea.KeyMsg{Type: tea.KeyEsc})
+	// Go back to explorer
+	tm.Type("0")
 
-	// Expect three modules to be listed, along with their default workspace.
-	waitFor(t, tm, func(s string) bool {
-		return matchPattern(t, "modules/a.*default", s) &&
-			matchPattern(t, "modules/b.*default", s) &&
-			matchPattern(t, "modules/c.*default", s)
-	})
-
-	// Destroy resources of all 3 modules (all modules should still be selected)
-	tm.Type("d")
+	// Select all modules and invoke destroy.
+	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlA})
+	tm.Type("D")
 
 	// Give approval
 	waitFor(t, tm, func(s string) bool {
-		return strings.Contains(s, "Destroy resources of 3 modules? (y/N):")
+		return strings.Contains(s, "Destroy resources of 3 workspaces? (y/N):")
 	})
 	tm.Type("y")
 
 	waitFor(t, tm, func(s string) bool {
-		return matchPattern(t, `TaskGroup.*apply \(destroy\).*3/3`, s) &&
-			matchPattern(t, `modules/a.*default.*\+0~0-10`, s) &&
-			matchPattern(t, `modules/b.*default.*\+0~0-10`, s) &&
-			matchPattern(t, `modules/c.*default.*\+0~0-10`, s)
+		t.Log(s)
+		return strings.Contains(s, "apply (destroy) 3/3") &&
+			matchPattern(t, `modules/a.*default.*apply \(destroy\).*exited.*\+0~0-10`, s) &&
+			matchPattern(t, `modules/b.*default.*apply \(destroy\).*exited.*\+0~0-10`, s) &&
+			matchPattern(t, `modules/c.*default.*apply \(destroy\).*exited.*\+0~0-10`, s)
 	})
 }
 
-func TestModule_WithVars(t *testing.T) {
+func TestExplorer_WithVars(t *testing.T) {
 	t.Parallel()
 
 	tm := setup(t, "./testdata/module_with_vars")
 
-	// Wait for module to be loaded
+	// Expect single module to be listed
 	waitFor(t, tm, func(s string) bool {
-		return strings.Contains(s, "modules/a")
+		return strings.Contains(s, "└ 󰠱 a")
 	})
 
 	// Initialize module
 	tm.Type("i")
-	waitFor(t, tm, func(s string) bool {
-		return strings.Contains(s, "Terraform has been successfully initialized!")
-	})
 
-	// Go to module page
-	tm.Type("m")
-
-	// Wait for default workspace to be loaded
+	// Init should finish successfully and there should now be a workspace
 	waitFor(t, tm, func(s string) bool {
-		return strings.Contains(s, "default")
+		return strings.Contains(s, "Terraform has been successfully initialized!") &&
+			strings.Contains(s, "init 󰠱 modules/a") &&
+			strings.Contains(s, "exited") &&
+			strings.Contains(s, "└ 󰠱 a") &&
+			strings.Contains(s, "└  default 0")
 	})
 
 	// Create plan for default workspace
+	tm.Type("0")
 	tm.Type("p")
 
 	// Expect to see summary of changes
 	waitFor(t, tm, func(s string) bool {
 		// Remove formatting
 		s = internal.StripAnsi(s)
-		return matchPattern(t, `Task.*plan.*default.*modules/a.*\+0~0-0.*exited`, s) &&
+		return strings.Contains(s, "plan 󰠱 modules/a  default") &&
 			strings.Contains(s, "Changes to Outputs:") &&
-			strings.Contains(s, `+ foo = "override"`)
+			strings.Contains(s, `+ foo = "override"`) &&
+			strings.Contains(s, "exited +0~0-0")
 	})
 
 	// Apply plan and provide confirmation
@@ -465,36 +430,17 @@ func TestModule_WithVars(t *testing.T) {
 	})
 }
 
-// TODO: test pruning: attempt to create plans / applies on multiple modules,
-// some of which are uninitialized. User should receive message that their
-// selection has been pruned.
-
-func TestModuleList_Filter(t *testing.T) {
+func TestExplorer_MultipleExecute(t *testing.T) {
 	t.Parallel()
 
-	tm := setupAndInitModuleList(t)
+	tm := setup(t, "./testdata/module_list")
 
-	// Focus filter widget
-	tm.Type("/")
-
-	// Expect filter prompt
+	// Expect three modules in tree
 	waitFor(t, tm, func(s string) bool {
-		return strings.Contains(s, "Filter:")
+		return strings.Contains(s, "├ 󰠱 a") &&
+			strings.Contains(s, "├ 󰠱 b") &&
+			strings.Contains(s, "└ 󰠱 c")
 	})
-
-	// Filter to only show modules/a
-	tm.Type("modules/a")
-
-	// Expect table title to show 1 module filtered out of a total 3.
-	waitFor(t, tm, func(s string) bool {
-		return strings.Contains(s, "1/3")
-	})
-}
-
-func TestModule_MultipleExecute(t *testing.T) {
-	t.Parallel()
-
-	tm := setupAndInitModuleList(t)
 
 	// Select all modules and run program in each module directory.
 	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlA})
@@ -508,76 +454,69 @@ func TestModule_MultipleExecute(t *testing.T) {
 	tm.Send(tea.KeyMsg{Type: tea.KeyEnter})
 
 	waitFor(t, tm, func(s string) bool {
-		return matchPattern(t, "TaskGroup.*terraform.*3/3", s) &&
-			matchPattern(t, `modules/a.*terraform`, s) &&
-			matchPattern(t, `modules/b.*terraform`, s) &&
-			matchPattern(t, `modules/c.*terraform`, s)
+		return strings.Contains(s, "terraform 3/3") &&
+			matchPattern(t, `modules/a.*terraform.*exited`, s) &&
+			matchPattern(t, `modules/b.*terraform.*exited`, s) &&
+			matchPattern(t, `modules/c.*terraform.*exited`, s)
 	})
 }
 
-func setupAndInitModuleList(t *testing.T) *testModel {
+func setupAndInitModule_Explorer(t *testing.T) *testModel {
+	tm := setup(t, "./testdata/single_module")
+
+	// Expect single module to be listed
+	waitFor(t, tm, func(s string) bool {
+		return strings.Contains(s, "└ 󰠱 a")
+	})
+
+	// Initialize module
+	tm.Type("i")
+	// Expect init to succeed, and to populate pug with one workspace with 0
+	// resources
+	waitFor(t, tm, func(s string) bool {
+		return strings.Contains(s, "Terraform has been successfully initialized!") &&
+			strings.Contains(s, "init 󰠱 modules/a") &&
+			strings.Contains(s, "exited") &&
+			strings.Contains(s, "└  default 0")
+	})
+
+	// Go back to explorer
+	tm.Type("0")
+
+	return tm
+}
+
+func setupAndInitMultipleModules(t *testing.T) *testModel {
+	// TODO: helper?
+	//
 	tm := setup(t, "./testdata/module_list")
 
-	// Go to modules listing
-	tm.Type("m")
-
-	// Expect three modules to be listed
+	// Expect three modules in tree
 	waitFor(t, tm, func(s string) bool {
-		return strings.Contains(s, "modules/a") &&
-			strings.Contains(s, "modules/b") &&
-			strings.Contains(s, "modules/c")
+		return strings.Contains(s, "├ 󰠱 a") &&
+			strings.Contains(s, "├ 󰠱 b") &&
+			strings.Contains(s, "└ 󰠱 c")
 	})
 
 	// Select all modules and init
 	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlA})
 	tm.Type("i")
+
+	// Expect init task group with 3 successful tasks.
+	// Each module should now be populated with at least one workspace.
 	waitFor(t, tm, func(s string) bool {
-		return matchPattern(t, "TaskGroup.*init", s) &&
-			matchPattern(t, `modules/a.*exited`, s) &&
-			matchPattern(t, `modules/b.*exited`, s) &&
-			matchPattern(t, `modules/c.*exited`, s)
+		return strings.Contains(s, "init 3/3") &&
+			matchPattern(t, `modules/a.*init.*exited`, s) &&
+			matchPattern(t, `modules/b.*init.*exited`, s) &&
+			matchPattern(t, `modules/c.*init.*exited`, s) &&
+			strings.Contains(s, "󰠱 3  4")
 	})
 
-	// Go back to modules listing
-	tm.Send(tea.KeyMsg{Type: tea.KeyEsc})
-
-	// Expect three modules to be listed, along with their default workspace.
-	waitFor(t, tm, func(s string) bool {
-		return matchPattern(t, "modules/a.*default", s) &&
-			matchPattern(t, "modules/b.*default", s) &&
-			matchPattern(t, "modules/c.*default", s)
-	})
+	// Go back to explorer
+	tm.Type("0")
 
 	// Clear selection
 	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlBackslash})
-
-	return tm
-}
-
-func setupAndInitModule(t *testing.T) *testModel {
-	tm := setup(t, "./testdata/single_module")
-
-	// Go to modules listing
-	tm.Type("m")
-
-	// Expect single module to be listed
-	waitFor(t, tm, func(s string) bool {
-		return strings.Contains(s, "modules/a")
-	})
-
-	// Initialize module
-	tm.Type("i")
-	waitFor(t, tm, func(s string) bool {
-		return matchPattern(t, "Task.*init.*modules/a.*exited", s)
-	})
-
-	// Go back to modules listing
-	tm.Send(tea.KeyMsg{Type: tea.KeyEsc})
-
-	// Expect single module to be listed, along with its default workspace.
-	waitFor(t, tm, func(s string) bool {
-		return matchPattern(t, "modules/a.*default", s)
-	})
 
 	return tm
 }

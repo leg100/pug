@@ -1,7 +1,6 @@
 package table
 
 import (
-	"errors"
 	"fmt"
 	"slices"
 	"strconv"
@@ -11,10 +10,8 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/leg100/go-runewidth"
 	"github.com/leg100/pug/internal"
 	"github.com/leg100/pug/internal/resource"
-	"github.com/leg100/pug/internal/task"
 	"github.com/leg100/pug/internal/tui"
 	"github.com/leg100/pug/internal/tui/keys"
 	"golang.org/x/exp/maps"
@@ -60,6 +57,8 @@ type Model[V resource.Resource] struct {
 	width int
 	// height of table without borders
 	height int
+
+	previewKind *tui.Kind
 }
 
 // Column defines the table structure.
@@ -100,7 +99,6 @@ func New[V resource.Resource](cols []Column, fn RowRenderer[V], width, height in
 		rendered:        make(map[resource.ID]RenderedRow),
 		selected:        make(map[resource.ID]V),
 		selectable:      true,
-		focus:           true,
 		filter:          filter,
 		border:          lipgloss.NormalBorder(),
 		currentRowIndex: -1,
@@ -140,6 +138,14 @@ func WithSelectable[V resource.Resource](s bool) Option[V] {
 	}
 }
 
+// WithPreview configures the table to automatically populate the bottom right
+// pane with a model corresponding to the current row.
+func WithPreview[V resource.Resource](maker tui.Kind) Option[V] {
+	return func(m *Model[V]) {
+		m.previewKind = &maker
+	}
+}
+
 func (m *Model[V]) filterVisible() bool {
 	// Filter is visible if it's either in focus, or it has a non-empty value.
 	return m.filter.Focused() || m.filter.Value() != ""
@@ -147,10 +153,8 @@ func (m *Model[V]) filterVisible() bool {
 
 // setDimensions sets the dimensions of the table.
 func (m *Model[V]) setDimensions(width, height int) {
-	// Adjust height to accomodate borders
-	m.height = height - 2
-	// Adjust width to accomodate borders
-	m.width = width - 2
+	m.height = height
+	m.width = width
 	m.setColumnWidths()
 
 	m.setStart()
@@ -175,10 +179,6 @@ func (m Model[V]) visibleRows() int {
 
 // Update is the Bubble Tea update loop.
 func (m Model[V]) Update(msg tea.Msg) (Model[V], tea.Cmd) {
-	if !m.focus {
-		return m, nil
-	}
-
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch {
@@ -242,6 +242,10 @@ func (m Model[V]) Update(msg tea.Msg) (Model[V], tea.Cmd) {
 		// Filter table items
 		m.setRows(maps.Values(m.items)...)
 		return m, cmd
+	case tui.FocusPaneMsg:
+		m.focus = true
+	case tui.UnfocusPaneMsg:
+		m.focus = false
 	default:
 		// Send any other messages to the filter if it is focused.
 		if m.filter.Focused() {
@@ -250,24 +254,17 @@ func (m Model[V]) Update(msg tea.Msg) (Model[V], tea.Cmd) {
 			return m, cmd
 		}
 	}
-
 	return m, nil
 }
 
-// Focused returns the focus state of the table.
-func (m Model[V]) Focused() bool {
-	return m.focus
-}
-
-// Focus focuses the table, allowing the user to move around the rows and
-// interact.
-func (m *Model[V]) Focus() {
-	m.focus = true
-}
-
-// Blur blurs the table, preventing selection or movement.
-func (m *Model[V]) Blur() {
-	m.focus = false
+func (m *Model[V]) PreviewCurrentRow() (tui.Kind, resource.ID, bool) {
+	if _, ok := m.CurrentRow(); !ok {
+		return 0, resource.ID{}, false
+	}
+	if m.previewKind == nil {
+		return 0, resource.ID{}, false
+	}
+	return *m.previewKind, m.currentRowID, true
 }
 
 // View renders the table.
@@ -276,6 +273,8 @@ func (m Model[V]) View() string {
 	// (a) optional filter widget
 	// (b) header
 	// (c) rows + scrollbar
+	//
+	// TODO: this allocation logic is wrong
 	components := make([]string, 0, 1+1+m.visibleRows())
 	if m.filterVisible() {
 		components = append(components, tui.Regular.Margin(0, 1).Render(m.filter.View()))
@@ -286,6 +285,8 @@ func (m Model[V]) View() string {
 	// Generate scrollbar
 	scrollbar := tui.Scrollbar(m.rowAreaHeight(), len(m.rows), m.visibleRows(), m.start)
 	// Get all the visible rows
+	//
+	// TODO: pre-allocate rows
 	var rows []string
 	for i := range m.visibleRows() {
 		rows = append(rows, m.renderRow(m.start+i))
@@ -298,41 +299,24 @@ func (m Model[V]) View() string {
 	// Render table components, ensuring it is at least a min height
 	content := lipgloss.NewStyle().
 		Height(m.height).
+		MaxHeight(m.height).
 		Render(lipgloss.JoinVertical(lipgloss.Top, components...))
-	// Render table metadata
+	return content
+}
+
+// Metadata renders a short string summarizing table row metadata.
+func (m *Model[V]) Metadata() string {
 	var metadata string
-	{
-		// Calculate the top and bottom visible row ordinal numbers
-		top := m.start + 1
-		bottom := m.start + m.visibleRows()
-		prefix := fmt.Sprintf("%d-%d of ", top, bottom)
-		if m.filterVisible() {
-			metadata = prefix + fmt.Sprintf("%d/%d", len(m.rows), len(m.items))
-		} else {
-			metadata = prefix + strconv.Itoa(len(m.rows))
-		}
+	// Calculate the top and bottom visible row ordinal numbers
+	top := m.start + 1
+	bottom := m.start + m.visibleRows()
+	prefix := fmt.Sprintf("%d-%d of ", top, bottom)
+	if m.filterVisible() {
+		metadata = prefix + fmt.Sprintf("%d/%d", len(m.rows), len(m.items))
+	} else {
+		metadata = prefix + strconv.Itoa(len(m.rows))
 	}
-	// Render top border with metadata in the center
-	var topBorder string
-	{
-		// total length of top border runes, not including corners
-		length := max(0, m.width-lipgloss.Width(metadata))
-		leftLength := length / 2
-		rightLength := max(0, length-leftLength)
-		topBorder = lipgloss.JoinHorizontal(lipgloss.Left,
-			m.border.TopLeft,
-			strings.Repeat(m.border.Top, leftLength),
-			metadata,
-			strings.Repeat(m.border.Top, rightLength),
-			m.border.TopRight,
-		)
-	}
-	// Join top border with table components wrapped with borders on remaining
-	// sides.
-	return lipgloss.JoinVertical(lipgloss.Top,
-		lipgloss.NewStyle().Foreground(m.borderColor).Render(topBorder),
-		lipgloss.NewStyle().Border(m.border, false, true, true, true).BorderForeground(m.borderColor).Render(content),
-	)
+	return metadata
 }
 
 func (m *Model[V]) SetBorderStyle(border lipgloss.Border, color lipgloss.TerminalColor) {
@@ -340,8 +324,8 @@ func (m *Model[V]) SetBorderStyle(border lipgloss.Border, color lipgloss.Termina
 	m.borderColor = color
 }
 
-// CurrentRow returns the current row the user has highlighted. If its index is
-// out of bounds then false is returned along with an empty row.
+// CurrentRow returns the current row the user has highlighted.  If the table is
+// empty then false is returned.
 func (m Model[V]) CurrentRow() (Row[V], bool) {
 	if m.currentRowIndex < 0 || m.currentRowIndex >= len(m.rows) {
 		return *new(Row[V]), false
@@ -608,16 +592,19 @@ func (m *Model[V]) GotoBottom() {
 }
 
 func (m Model[V]) headersView() string {
-	var s = make([]string, 0, len(m.cols))
+	s := make([]string, 0, len(m.cols))
+	// TODO: use index and don't use append below
 	for _, col := range m.cols {
 		style := lipgloss.NewStyle().Width(col.Width).MaxWidth(col.Width).Inline(true)
 		if col.RightAlign {
 			style = style.AlignHorizontal(lipgloss.Right)
 		}
-		renderedCell := style.Render(runewidth.Truncate(col.Title, col.Width, "…"))
+		renderedCell := style.Render(TruncateRight(col.Title, col.Width, "…"))
 		s = append(s, tui.Regular.Padding(0, 1).Render(renderedCell))
 	}
-	return lipgloss.JoinHorizontal(lipgloss.Left, s...)
+	return lipgloss.NewStyle().
+		MaxWidth(m.width).
+		Render(lipgloss.JoinHorizontal(lipgloss.Left, s...))
 }
 
 func (m *Model[V]) renderRow(rowIdx int) string {
@@ -632,9 +619,7 @@ func (m *Model[V]) renderRow(rowIdx int) string {
 	if _, ok := m.selected[row.ID]; ok {
 		selected = true
 	}
-	if rowIdx == m.currentRowIndex {
-		current = true
-	}
+	current = rowIdx == m.currentRowIndex
 	if current && selected {
 		background = tui.CurrentAndSelectedBackground
 		foreground = tui.CurrentAndSelectedForeground
@@ -668,8 +653,14 @@ func (m *Model[V]) renderRow(rowIdx int) string {
 		styledCells[i] = boxed
 	}
 
-	// Join cells together to form a row
+	// Join cells together to form a row, ensuring it doesn't exceed maximum
+	// table width
 	renderedRow := lipgloss.JoinHorizontal(lipgloss.Left, styledCells...)
+	// Join cells together to form a row, ensuring it doesn't exceed maximum
+	// table width
+	renderedRow = lipgloss.NewStyle().
+		MaxWidth(m.width).
+		Render(renderedRow)
 
 	// If current row or selected rows, strip colors and apply background color
 	if current || selected {
@@ -680,58 +671,6 @@ func (m *Model[V]) renderRow(rowIdx int) string {
 			Render(renderedRow)
 	}
 	return renderedRow
-}
-
-// Prune invokes the provided function with each selected value, and if the
-// function returns true then it is de-selected. If there are any de-selections
-// then an error is returned. If no pruning occurs then the id from each
-// function invocation is returned.
-//
-// In the case where there are no selections then the current value is passed to
-// the function, and if the function returns true then an error is reported. If
-// it returns false then the resulting id is returned.
-//
-// If there are no rows in the table then a nil error is returned.
-func (m *Model[V]) Prune(fn func(value V) (task.Spec, error)) ([]task.Spec, error) {
-	rows := m.SelectedOrCurrent()
-	switch len(rows) {
-	case 0:
-		return nil, errors.New("no rows in table")
-	case 1:
-		// current row, no selections
-		spec, err := fn(rows[0].Value)
-		if err != nil {
-			// the single current row is to be pruned, so report this as an
-			// error
-			return nil, err
-		}
-		return []task.Spec{spec}, nil
-	default:
-		// one or more selections: iterate thru and prune accordingly.
-		var (
-			ids    []task.Spec
-			before = len(m.selected)
-			pruned int
-		)
-		for k, v := range m.selected {
-			spec, err := fn(v)
-			if err != nil {
-				// De-select
-				m.ToggleSelectionByID(k)
-				pruned++
-				continue
-			}
-			ids = append(ids, spec)
-		}
-		switch {
-		case len(ids) == 0:
-			return nil, errors.New("no selected rows are applicable to the given action")
-		case len(ids) != before:
-			// some rows have been pruned
-			return nil, fmt.Errorf("de-selected %d inapplicable rows out of %d", pruned, before)
-		}
-		return ids, nil
-	}
 }
 
 func clamp(v, low, high int) int {

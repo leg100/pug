@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
-	"strings"
 
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
@@ -93,10 +92,10 @@ func (h *Helpers) ModuleCost(mod *module.Module) string {
 
 // WorkspaceCost renders the cost of the given workspace.
 func (h *Helpers) WorkspaceCost(ws *workspace.Workspace) string {
-	if ws.Cost == 0 {
-		return "-"
+	if ws.Cost != nil {
+		return fmt.Sprintf("$%.2f", *ws.Cost)
 	}
-	return fmt.Sprintf("$%.2f", ws.Cost)
+	return ""
 }
 
 func (h *Helpers) WorkspaceResourceCount(ws *workspace.Workspace) string {
@@ -125,7 +124,14 @@ func (h *Helpers) TaskModule(t *task.Task) *module.Module {
 
 func (h *Helpers) TaskModulePath(t *task.Task) string {
 	if mod := h.TaskModule(t); mod != nil {
-		return mod.Path
+		return ModuleStyle.Render(mod.Path)
+	}
+	return ""
+}
+
+func (h *Helpers) TaskModulePathWithIcon(t *task.Task) string {
+	if mod := h.TaskModule(t); mod != nil {
+		return ModulePathWithIcon(mod.Path, true)
 	}
 	return ""
 }
@@ -145,9 +151,48 @@ func (h *Helpers) TaskWorkspace(t *task.Task) *workspace.Workspace {
 
 func (h *Helpers) TaskWorkspaceName(t *task.Task) string {
 	if ws := h.TaskWorkspace(t); ws != nil {
-		return ws.Name
+		return WorkspaceName(ws.Name)
 	}
 	return ""
+}
+
+func (h *Helpers) TaskWorkspaceNameWithIcon(t *task.Task) string {
+	if ws := h.TaskWorkspace(t); ws != nil {
+		return WorkspaceNameWithIcon(ws.Name, true)
+	}
+	return ""
+}
+
+func ModulePath(modulePath string) string {
+	return ModuleStyle.Render(modulePath)
+}
+
+func ModuleIcon() string {
+	return ModuleStyle.Render(fmt.Sprintf("%s ", moduleIcon))
+}
+
+func ModulePathWithIcon(modulePath string, squareBrackets bool) string {
+	s := fmt.Sprintf("%s%s",
+		ModuleIcon(),
+		ModulePath(modulePath),
+	)
+	return s
+}
+
+func WorkspaceName(name string) string {
+	return WorkspaceStyle.Render(name)
+}
+
+func WorkspaceIcon() string {
+	return WorkspaceStyle.Render(fmt.Sprintf("%s ", workspaceIcon))
+}
+
+func WorkspaceNameWithIcon(name string, squareBrackets bool) string {
+	s := fmt.Sprintf("%s%s",
+		WorkspaceIcon(),
+		WorkspaceName(name),
+	)
+	return s
 }
 
 // TaskWorkspaceOrCurrentWorkspace retrieves either the task's workspace if it belongs to a
@@ -167,7 +212,7 @@ func (h *Helpers) TaskWorkspaceOrCurrentWorkspace(t *task.Task) *workspace.Works
 }
 
 // TaskStatus provides a rendered colored task status.
-func (h *Helpers) TaskStatus(t *task.Task, background bool) string {
+func (h *Helpers) TaskStatus(t *task.Task, table bool) string {
 	var color lipgloss.Color
 
 	switch t.State {
@@ -183,11 +228,7 @@ func (h *Helpers) TaskStatus(t *task.Task, background bool) string {
 		color = Red
 	}
 
-	if background {
-		return Padded.Background(color).Foreground(White).Render(string(t.State))
-	} else {
-		return Regular.Foreground(color).Render(string(t.State))
-	}
+	return Regular.Foreground(color).Render(string(t.State))
 }
 
 // TaskSummary renders a summary of the task's outcome.
@@ -195,10 +236,7 @@ func (h *Helpers) TaskSummary(t *task.Task, table bool) string {
 	if t.Summary == nil {
 		return ""
 	}
-	var style lipgloss.Style
-	if !table {
-		style = lipgloss.NewStyle().Background(TaskSummaryBackgroundColor)
-	}
+	style := lipgloss.NewStyle()
 	// Render special resource report
 	var content string
 	switch summary := t.Summary.(type) {
@@ -213,10 +251,7 @@ func (h *Helpers) TaskSummary(t *task.Task, table bool) string {
 	default:
 		content = t.Summary.String()
 	}
-	if table {
-		return content
-	}
-	return Padded.Background(TaskSummaryBackgroundColor).Render(content)
+	return content
 }
 
 // ResourceReport renders a colored summary of resource changes as a result of a
@@ -354,53 +389,4 @@ func (h *Helpers) Move(workspaceID resource.ID, from state.ResourceAddress) tea.
 		Key:    key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", "confirm")),
 		Cancel: key.NewBinding(key.WithKeys("esc"), key.WithHelp("esc", "cancel")),
 	})
-}
-
-func (h *Helpers) Breadcrumbs(title string, res resource.Resource, crumbs ...string) string {
-	// format: title{task command}[workspace name](module path)
-	switch res := res.(type) {
-	case *task.Task:
-		cmd := TitleCommand.Render(res.String())
-		if res.WorkspaceID != nil {
-			ws, err := h.Workspaces.Get(*res.WorkspaceID)
-			if err != nil {
-				h.Logger.Error("rendering breadcrumbs", "error", err)
-				return ""
-			}
-			return h.Breadcrumbs(title, ws, cmd)
-		}
-		if res.ModuleID != nil {
-			mod, err := h.Modules.Get(*res.ModuleID)
-			if err != nil {
-				h.Logger.Error("rendering breadcrumbs", "error", err)
-				return ""
-			}
-			return h.Breadcrumbs(title, mod, cmd)
-		}
-		// Global task
-		return h.Breadcrumbs(title, nil, cmd)
-	case *state.Resource:
-		addr := TitleAddress.Render(res.String())
-		ws, err := h.Workspaces.Get(res.WorkspaceID)
-		if err != nil {
-			h.Logger.Error("rendering breadcrumbs", "error", err)
-			return ""
-		}
-		return h.Breadcrumbs(title, ws, addr)
-	case *task.Group:
-		cmd := TitleCommand.Render(res.String())
-		id := TitleID.Render(res.GetID().String())
-		return h.Breadcrumbs(title, nil, cmd, id)
-	case *workspace.Workspace:
-		name := TitleWorkspace.Render(res.String())
-		mod, err := h.Modules.Get(res.ModuleID)
-		if err != nil {
-			h.Logger.Error("rendering breadcrumbs", "error", err)
-			return ""
-		}
-		return h.Breadcrumbs(title, mod, append(crumbs, name)...)
-	case *module.Module:
-		crumbs = append(crumbs, TitlePath.Render(res.String()))
-	}
-	return fmt.Sprintf("%s%s", Title.Render(title), strings.Join(crumbs, ""))
 }
