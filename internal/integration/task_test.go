@@ -206,7 +206,7 @@ func TestTask_Cancel(t *testing.T) {
 	setupHTTPServer(t, tm.workdir, "a")
 
 	// Go back to explorer and invoke plan
-	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlH})
+	tm.Type("0")
 	tm.Type("p")
 
 	// Wait for something that never arrives
@@ -261,7 +261,7 @@ func TestTask_CancelMultiple(t *testing.T) {
 
 	// Go back to explorer and invoke plan on all modules (they should still be
 	// selected)
-	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlH})
+	tm.Type("0")
 	tm.Type("p")
 
 	// Wait for plan tasks to enter running state.

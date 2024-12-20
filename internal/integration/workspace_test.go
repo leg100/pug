@@ -143,7 +143,7 @@ func TestWorkspace_SingleDestroy(t *testing.T) {
 	})
 
 	// Go back to explorer and place cursor on default workspace
-	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlH})
+	tm.Type("0")
 	tm.Send(tea.KeyMsg{Type: tea.KeyDown})
 	tm.Type("D")
 
@@ -184,7 +184,7 @@ func TestWorkspace_MultipleDestroy(t *testing.T) {
 	})
 
 	// Go back to explorer and place cursor on default workspace
-	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlH})
+	tm.Type("0")
 	tm.Send(tea.KeyMsg{Type: tea.KeyDown})
 
 	// Destroy all resources on all three workspaces
@@ -257,7 +257,7 @@ func setupAndInitModuleWithTwoWorkspaces(t *testing.T) *testModel {
 	})
 
 	// Go back to explorer
-	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlH})
+	tm.Type("0")
 
 	return tm
 }

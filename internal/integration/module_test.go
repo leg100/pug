@@ -284,7 +284,7 @@ func TestExplorer_SingleDestroyPlan(t *testing.T) {
 	})
 
 	// Create destroy plan
-	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlH})
+	tm.Type("0")
 	tm.Type("d")
 
 	// Expect 10 resources to be proposed for deletion
@@ -319,7 +319,7 @@ func TestExplorer_SingleDestroy(t *testing.T) {
 	})
 
 	// Create destroy
-	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlH})
+	tm.Type("0")
 	tm.Type("D")
 
 	// Give approval
@@ -359,7 +359,7 @@ func TestExplorer_MultipleDestroys(t *testing.T) {
 	})
 
 	// Go back to explorer
-	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlH})
+	tm.Type("0")
 
 	// Select all modules and invoke destroy.
 	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlA})
@@ -403,7 +403,7 @@ func TestExplorer_WithVars(t *testing.T) {
 	})
 
 	// Create plan for default workspace
-	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlH})
+	tm.Type("0")
 	tm.Type("p")
 
 	// Expect to see summary of changes
@@ -481,7 +481,7 @@ func setupAndInitModule_Explorer(t *testing.T) *testModel {
 	})
 
 	// Go back to explorer
-	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlH})
+	tm.Type("0")
 
 	return tm
 }
@@ -513,7 +513,7 @@ func setupAndInitMultipleModules(t *testing.T) *testModel {
 	})
 
 	// Go back to explorer
-	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlH})
+	tm.Type("0")
 
 	// Clear selection
 	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlBackslash})

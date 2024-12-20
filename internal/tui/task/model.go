@@ -151,7 +151,7 @@ func (m *Model) Update(msg tea.Msg) tea.Cmd {
 				"Retry task?",
 				m.CreateTasksWithSpecs(m.task.Spec),
 			)
-		case key.Matches(msg, tui.Keys.SwitchPane):
+		case key.Matches(msg, keys.Navigation.SwitchPane):
 			return tui.CmdHandler(tui.FocusExplorerMsg{})
 		}
 	case toggleAutoscrollMsg:
@@ -293,8 +293,8 @@ func (m Model) BorderText() map[tui.BorderPosition]string {
 		bottomLeft += summary
 	}
 	return map[tui.BorderPosition]string{
-		tui.TopLeft:    topRight,
-		tui.BottomLeft: bottomLeft,
+		tui.TopLeftBorder:    topRight,
+		tui.BottomLeftBorder: bottomLeft,
 	}
 }
 

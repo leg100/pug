@@ -91,7 +91,7 @@ func TestTerragrunt_Dependencies(t *testing.T) {
 	})
 
 	// Go back to explorer.
-	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlH})
+	tm.Type("0")
 
 	// Destroy resources in all modules (they should still all be selected).
 	tm.Type("D")
@@ -150,7 +150,7 @@ func setupAndInitTerragruntModule(t *testing.T) *testModel {
 	})
 
 	// Go back to explorer
-	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlH})
+	tm.Type("0")
 
 	return tm
 }
@@ -183,7 +183,7 @@ func setupAndInitTerragruntModulesWithDependencies(t *testing.T) *testModel {
 	})
 
 	// Go back to explorer and clear selection.
-	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlH})
+	tm.Type("0")
 	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlBackslash})
 
 	return tm

@@ -9,6 +9,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/leg100/pug/internal/resource"
+	"github.com/leg100/pug/internal/tui/keys"
 	"golang.org/x/exp/maps"
 )
 
@@ -78,29 +79,29 @@ func (p *PaneManager) Update(msg tea.Msg) tea.Cmd {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch {
-		case key.Matches(msg, Keys.ShrinkPaneWidth):
+		case key.Matches(msg, keys.Global.ShrinkPaneWidth):
 			p.updateLeftWidth(-1)
 			p.updateChildSizes()
-		case key.Matches(msg, Keys.GrowPaneWidth):
+		case key.Matches(msg, keys.Global.GrowPaneWidth):
 			p.updateLeftWidth(1)
 			p.updateChildSizes()
-		case key.Matches(msg, Keys.ShrinkPaneHeight):
+		case key.Matches(msg, keys.Global.ShrinkPaneHeight):
 			p.updateTopRightHeight(-1)
 			p.updateChildSizes()
-		case key.Matches(msg, Keys.GrowPaneHeight):
+		case key.Matches(msg, keys.Global.GrowPaneHeight):
 			p.updateTopRightHeight(1)
 			p.updateChildSizes()
-		case key.Matches(msg, Keys.SwitchPane):
+		case key.Matches(msg, keys.Navigation.SwitchPane):
 			p.cycleActivePane(false)
-		case key.Matches(msg, Keys.SwitchPaneBack):
+		case key.Matches(msg, keys.Navigation.SwitchPaneBack):
 			p.cycleActivePane(true)
-		case key.Matches(msg, Keys.ClosePane):
+		case key.Matches(msg, keys.Global.ClosePane):
 			cmds = append(cmds, p.closeActivePane())
-		case key.Matches(msg, Keys.LeftPane):
+		case key.Matches(msg, keys.Navigation.LeftPane):
 			cmds = append(cmds, p.focusPane(LeftPane))
-		case key.Matches(msg, Keys.TopRightPane):
+		case key.Matches(msg, keys.Navigation.TopRightPane):
 			cmds = append(cmds, p.focusPane(TopRightPane))
-		case key.Matches(msg, Keys.BottomRightPane):
+		case key.Matches(msg, keys.Navigation.BottomRightPane):
 			cmds = append(cmds, p.focusPane(BottomRightPane))
 		default:
 			// Send remaining keys to active pane
@@ -318,20 +319,19 @@ func (m *PaneManager) renderPane(position Position) string {
 		Render(model.View())
 	// Optionally, the pane model can embed text in its borders.
 	borderTexts := make(map[BorderPosition]string)
-	textInBorder, ok := model.(interface {
+	if textInBorder, ok := model.(interface {
 		BorderText() map[BorderPosition]string
-	})
-	if ok {
+	}); ok {
 		borderTexts = textInBorder.BorderText()
 	}
 	if !isActive {
 		switch position {
 		case LeftPane:
-			borderTexts[TopRight] = "^h"
+			borderTexts[TopRightBorder] = keys.Navigation.LeftPane.Keys()[0]
 		case TopRightPane:
-			borderTexts[TopRight] = "^k"
+			borderTexts[TopRightBorder] = keys.Navigation.TopRightPane.Keys()[0]
 		case BottomRightPane:
-			borderTexts[TopRight] = "^j"
+			borderTexts[TopRightBorder] = keys.Navigation.BottomRightPane.Keys()[0]
 		}
 	}
 	return borderize(renderedPane, isActive, borderTexts)

@@ -100,8 +100,8 @@ func (m groupList) View() string {
 
 func (m groupList) BorderText() map[tui.BorderPosition]string {
 	return map[tui.BorderPosition]string{
-		tui.TopLeft:   tui.Bold.Render("task groups"),
-		tui.TopMiddle: m.table.Metadata(),
+		tui.TopLeftBorder:   tui.Bold.Render("task groups"),
+		tui.TopMiddleBorder: m.table.Metadata(),
 	}
 }
 

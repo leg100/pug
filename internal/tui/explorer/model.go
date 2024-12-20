@@ -371,7 +371,7 @@ func (m model) BorderText() map[tui.BorderPosition]string {
 		tui.WorkspaceStyle.Render(fmt.Sprintf("%d", m.tracker.totalWorkspaces)),
 	)
 	return map[tui.BorderPosition]string{
-		tui.BottomMiddle: fmt.Sprintf("%s %s", modules, workspaces),
+		tui.BottomMiddleBorder: fmt.Sprintf("%s %s", modules, workspaces),
 	}
 }
 

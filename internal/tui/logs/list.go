@@ -114,8 +114,8 @@ func (m *list) Update(msg tea.Msg) tea.Cmd {
 
 func (m list) BorderText() map[tui.BorderPosition]string {
 	return map[tui.BorderPosition]string{
-		tui.TopLeft:   "logs",
-		tui.TopMiddle: m.Metadata(),
+		tui.TopLeftBorder:   "logs",
+		tui.TopMiddleBorder: m.Metadata(),
 	}
 }
 

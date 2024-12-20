@@ -32,12 +32,12 @@ import (
 type BorderPosition int
 
 const (
-	TopLeft BorderPosition = iota
-	TopMiddle
-	TopRight
-	BottomLeft
-	BottomMiddle
-	BottomRight
+	TopLeftBorder BorderPosition = iota
+	TopMiddleBorder
+	TopRightBorder
+	BottomLeftBorder
+	BottomMiddleBorder
+	BottomRightBorder
 )
 
 func borderize(content string, active bool, embeddedText map[BorderPosition]string) string {
@@ -72,11 +72,10 @@ func borderize(content string, active bool, embeddedText map[BorderPosition]stri
 		leftText = encloseInSquareBrackets(leftText)
 		middleText = encloseInSquareBrackets(middleText)
 		rightText = encloseInSquareBrackets(rightText)
-		// Construct top border.
-		// First determine lengths of each component
 		// Calculate length of border between embedded texts
+		remaining := max(0, width-lipgloss.Width(leftText)-lipgloss.Width(middleText)-lipgloss.Width(rightText))
 		leftBorderLen := max(0, (width/2)-lipgloss.Width(leftText)-(lipgloss.Width(middleText)/2))
-		rightBorderLen := max(0, width-leftBorderLen-(lipgloss.Width(middleText)/2)-lipgloss.Width(rightText))
+		rightBorderLen := max(0, remaining-leftBorderLen)
 		// Then construct border string
 		s := leftText +
 			style.Render(strings.Repeat(inbetween, leftBorderLen)) +
@@ -94,9 +93,9 @@ func borderize(content string, active bool, embeddedText map[BorderPosition]stri
 	// Stack top border onto remaining borders
 	return lipgloss.JoinVertical(lipgloss.Top,
 		buildHorizontalBorder(
-			embeddedText[TopLeft],
-			embeddedText[TopMiddle],
-			embeddedText[TopRight],
+			embeddedText[TopLeftBorder],
+			embeddedText[TopMiddleBorder],
+			embeddedText[TopRightBorder],
 			border.TopLeft,
 			border.Top,
 			border.TopRight,
@@ -105,9 +104,9 @@ func borderize(content string, active bool, embeddedText map[BorderPosition]stri
 			BorderForeground(color[active]).
 			Border(border, false, true, false, true).Render(content),
 		buildHorizontalBorder(
-			embeddedText[BottomLeft],
-			embeddedText[BottomMiddle],
-			embeddedText[BottomRight],
+			embeddedText[BottomLeftBorder],
+			embeddedText[BottomMiddleBorder],
+			embeddedText[BottomRightBorder],
 			border.BottomLeft,
 			border.Bottom,
 			border.BottomRight,

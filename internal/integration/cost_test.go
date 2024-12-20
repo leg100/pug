@@ -81,7 +81,7 @@ func setupInfracostWorkspaces(t *testing.T) *testModel {
 	})
 
 	// Go back to explorer
-	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlH})
+	tm.Type("0")
 
 	// Clear selection
 	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlBackslash})

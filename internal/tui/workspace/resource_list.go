@@ -274,14 +274,14 @@ func (m *resourceList) BorderText() map[tui.BorderPosition]string {
 		serial = m.state.Serial
 	}
 	return map[tui.BorderPosition]string{
-		tui.TopLeft: fmt.Sprintf(
+		tui.TopLeftBorder: fmt.Sprintf(
 			"%s %s %s",
 			tui.Bold.Render("state"),
 			tui.ModulePathWithIcon(m.workspace.ModulePath, true),
 			tui.WorkspaceNameWithIcon(m.workspace.Name, true),
 		),
-		tui.TopMiddle: m.Metadata(),
-		tui.BottomMiddle: lipgloss.NewStyle().
+		tui.TopMiddleBorder: m.Metadata(),
+		tui.BottomMiddleBorder: lipgloss.NewStyle().
 			Foreground(tui.BurntOrange).
 			Render(fmt.Sprintf("#%d", serial)),
 	}
