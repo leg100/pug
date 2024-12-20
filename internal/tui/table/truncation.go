@@ -3,7 +3,6 @@ package table
 import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/x/ansi"
-	"github.com/leg100/reflow/truncate"
 )
 
 var defaultTruncationFunc = TruncateRight
@@ -11,7 +10,7 @@ var defaultTruncationFunc = TruncateRight
 type TruncationFunc func(s string, w int, tailOrPrefix string) string
 
 func TruncateRight(s string, w int, tail string) string {
-	return truncate.StringWithTail(s, uint(w), tail)
+	return ansi.Truncate(s, w, tail)
 }
 
 func TruncateLeft(s string, w int, prefix string) string {

@@ -7,14 +7,13 @@ require (
 	github.com/charmbracelet/bubbles v0.20.0
 	github.com/charmbracelet/bubbletea v1.1.0
 	github.com/charmbracelet/lipgloss v1.0.0
+	github.com/charmbracelet/x/ansi v0.6.0
 	github.com/charmbracelet/x/exp/teatest v0.0.0-20240329185201-62a6965a9fad
 	github.com/davecgh/go-spew v1.1.1
 	github.com/go-logfmt/logfmt v0.6.0
 	github.com/google/uuid v1.6.0
 	github.com/hashicorp/hcl/v2 v2.20.1
 	github.com/hokaccha/go-prettyjson v0.0.0-20211117102719-0474bc63780f
-	github.com/leg100/go-runewidth v0.0.16-0.20240513191656-9e28d2bebd46
-	github.com/leg100/reflow v0.0.0-20240513191534-e77d7e432a72
 	github.com/otiai10/copy v1.14.0
 	github.com/peterbourgon/ff/v4 v4.0.0-alpha.4
 	github.com/stretchr/testify v1.9.0
@@ -34,7 +33,6 @@ require (
 	github.com/atotto/clipboard v0.1.4 // indirect
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect
 	github.com/aymanbagabas/go-udiff v0.2.0 // indirect
-	github.com/charmbracelet/x/ansi v0.6.0 // indirect
 	github.com/charmbracelet/x/exp/golden v0.0.0-20240815200342-61de596daa2b // indirect
 	github.com/charmbracelet/x/term v0.2.0 // indirect
 	github.com/erikgeiser/coninput v0.0.0-20211004153227-1c3628e74d0f // indirect

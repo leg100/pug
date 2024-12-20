@@ -8,10 +8,9 @@ import (
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/x/ansi"
 	"github.com/hokaccha/go-prettyjson"
 	"github.com/leg100/pug/internal/tui/keys"
-	"github.com/leg100/reflow/wordwrap"
-	"github.com/leg100/reflow/wrap"
 )
 
 // Viewport is a wrapper of the upstream viewport bubble.
@@ -131,9 +130,8 @@ func (m *Viewport) AppendContent(content []byte, finished, autoScroll bool) (err
 
 func (m *Viewport) setContent() {
 	// Wrap content to the width of the viewport, whilst respecting ANSI escape
-	// codes (i.e. don't split codes across lines). The wrapper also ensures
-	// thekkkk
-	wrapped := wrap.Bytes(wordwrap.Bytes(m.content, m.viewport.Width), m.viewport.Width)
-	sanitized := SanitizeColors(wrapped)
+	// codes (i.e. don't split codes across lines).
+	wrapped := ansi.Wrap(ansi.Wordwrap(string(m.content), m.viewport.Width, ""), m.viewport.Width, "")
+	sanitized := SanitizeColors([]byte(wrapped))
 	m.viewport.SetContent(string(sanitized))
 }

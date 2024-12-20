@@ -10,6 +10,7 @@ import (
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/x/ansi"
 	"github.com/google/uuid"
 	"github.com/leg100/pug/internal/logging"
 	"github.com/leg100/pug/internal/plan"
@@ -17,7 +18,6 @@ import (
 	"github.com/leg100/pug/internal/task"
 	"github.com/leg100/pug/internal/tui"
 	"github.com/leg100/pug/internal/tui/keys"
-	"github.com/leg100/reflow/wordwrap"
 )
 
 type Maker struct {
@@ -251,11 +251,8 @@ func (m *Model) View() string {
 		)
 
 		// Word wrap task info to ensure it wraps "cleanly".
-		wrapper := wordwrap.NewWriter(infoContentWidth)
 		// Wrap on spaces and path separator
-		wrapper.Breakpoints = []rune{' ', filepath.Separator}
-		wrapper.Write([]byte(content))
-		wrapped := wrapper.String()
+		wrapped := ansi.Wordwrap(content, infoContentWidth, " "+string(filepath.Separator))
 
 		container := tui.Regular.
 			Padding(0, 1).

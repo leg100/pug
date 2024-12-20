@@ -10,7 +10,6 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/leg100/go-runewidth"
 	"github.com/leg100/pug/internal"
 	"github.com/leg100/pug/internal/resource"
 	"github.com/leg100/pug/internal/tui"
@@ -600,7 +599,7 @@ func (m Model[V]) headersView() string {
 		if col.RightAlign {
 			style = style.AlignHorizontal(lipgloss.Right)
 		}
-		renderedCell := style.Render(runewidth.Truncate(col.Title, col.Width, "…"))
+		renderedCell := style.Render(TruncateRight(col.Title, col.Width, "…"))
 		s = append(s, tui.Regular.Padding(0, 1).Render(renderedCell))
 	}
 	return lipgloss.NewStyle().

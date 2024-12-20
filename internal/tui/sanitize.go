@@ -4,6 +4,9 @@ import (
 	"bytes"
 )
 
+// SanitizeColors ensures ANSI color codes are reset before a newline and
+// re-activated on the next line. This is necessary when ANSI color-coded
+// strings are wrapped in a pane where there is more than one vertical pane.
 func SanitizeColors(b []byte) []byte {
 	var (
 		ansi         bool
