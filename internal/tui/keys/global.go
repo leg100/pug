@@ -5,21 +5,20 @@ import (
 )
 
 type global struct {
-	ShrinkPaneHeight key.Binding
-	GrowPaneHeight   key.Binding
-	ShrinkPaneWidth  key.Binding
-	GrowPaneWidth    key.Binding
-	ClosePane        key.Binding
 	Explorer         key.Binding
 	Tasks            key.Binding
 	TaskGroups       key.Binding
 	Logs             key.Binding
-	Back             key.Binding
 	Select           key.Binding
 	SelectAll        key.Binding
 	SelectClear      key.Binding
 	SelectRange      key.Binding
 	Filter           key.Binding
+	ShrinkPaneHeight key.Binding
+	GrowPaneHeight   key.Binding
+	ShrinkPaneWidth  key.Binding
+	GrowPaneWidth    key.Binding
+	ClosePane        key.Binding
 	Autoscroll       key.Binding
 	Quit             key.Binding
 	Suspend          key.Binding
@@ -27,26 +26,6 @@ type global struct {
 }
 
 var Global = global{
-	ShrinkPaneHeight: key.NewBinding(
-		key.WithKeys("-"),
-		key.WithHelp("-", "shrink pane height"),
-	),
-	GrowPaneHeight: key.NewBinding(
-		key.WithKeys("+"),
-		key.WithHelp("+", "grow pane height"),
-	),
-	ShrinkPaneWidth: key.NewBinding(
-		key.WithKeys("<"),
-		key.WithHelp("<", "shrink pane width"),
-	),
-	GrowPaneWidth: key.NewBinding(
-		key.WithKeys(">"),
-		key.WithHelp(">", "grow pane width"),
-	),
-	ClosePane: key.NewBinding(
-		key.WithKeys("X"),
-		key.WithHelp("X", "close pane"),
-	),
 	Explorer: key.NewBinding(
 		key.WithKeys("e"),
 		key.WithHelp("e", "explorer"),
@@ -82,6 +61,26 @@ var Global = global{
 	Filter: key.NewBinding(
 		key.WithKeys("/"),
 		key.WithHelp(`/`, "filter"),
+	),
+	ShrinkPaneHeight: key.NewBinding(
+		key.WithKeys("-"),
+		key.WithHelp("-", "reduce height"),
+	),
+	GrowPaneHeight: key.NewBinding(
+		key.WithKeys("+"),
+		key.WithHelp("+", "increase height"),
+	),
+	ShrinkPaneWidth: key.NewBinding(
+		key.WithKeys("<"),
+		key.WithHelp("<", "reduce width"),
+	),
+	GrowPaneWidth: key.NewBinding(
+		key.WithKeys(">"),
+		key.WithHelp(">", "increase width"),
+	),
+	ClosePane: key.NewBinding(
+		key.WithKeys("X"),
+		key.WithHelp("X", "close pane"),
 	),
 	Autoscroll: key.NewBinding(
 		key.WithKeys("ctrl+s"),

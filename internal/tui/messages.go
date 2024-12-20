@@ -2,7 +2,6 @@ package tui
 
 import (
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/google/uuid"
 	"github.com/leg100/pug/internal/resource"
 )
 
@@ -65,11 +64,3 @@ type FocusPaneMsg struct{}
 
 // UnfocusPaneMsg is sent to a model when it unfocused
 type UnfocusPaneMsg struct{}
-
-type OutputMsg struct {
-	Autoscroll bool
-
-	ModelID uuid.UUID
-	Output  []byte
-	EOF     bool
-}

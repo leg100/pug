@@ -122,8 +122,9 @@ func (m *Model) Init() tea.Cmd {
 
 func (m *Model) Update(msg tea.Msg) tea.Cmd {
 	var (
-		cmd  tea.Cmd
-		cmds []tea.Cmd
+		cmd               tea.Cmd
+		cmds              []tea.Cmd
+		createPlanOptions plan.CreateOptions
 	)
 
 	switch msg := msg.(type) {
@@ -131,6 +132,14 @@ func (m *Model) Update(msg tea.Msg) tea.Cmd {
 		switch {
 		case key.Matches(msg, keys.Common.Cancel):
 			return cancel(m.tasks, m.task.ID)
+		case key.Matches(msg, keys.Common.Plan):
+			if m.task.WorkspaceID != nil {
+				return tui.ReportError(errors.New("task not associated with a workspace"))
+			}
+			fn := func(workspaceID resource.ID) (task.Spec, error) {
+				return m.Plans.Plan(workspaceID, createPlanOptions)
+			}
+			return m.CreateTasks(fn, *m.task.WorkspaceID)
 		case key.Matches(msg, keys.Common.Apply):
 			spec, err := m.plans.ApplyPlan(m.task.ID)
 			if err != nil {
@@ -160,16 +169,16 @@ func (m *Model) Update(msg tea.Msg) tea.Cmd {
 		m.showInfo = !m.showInfo
 		// adjust width of viewport to accomodate info
 		m.viewport.SetDimensions(m.viewportWidth(), m.height)
-	case tui.OutputMsg:
+	case outputMsg:
 		// Ensure output is for this model
-		if msg.ModelID != m.id {
+		if msg.modelID != m.id {
 			return nil
 		}
-		err := m.viewport.AppendContent(msg.Output, msg.EOF, !m.disableAutoscroll)
+		err := m.viewport.AppendContent(msg.output, msg.eof, !m.disableAutoscroll)
 		if err != nil {
 			return tui.ReportError(err)
 		}
-		if !msg.EOF {
+		if !msg.eof {
 			cmds = append(cmds, m.getOutput)
 		}
 	case resource.Event[*task.Task]:
@@ -312,13 +321,19 @@ func (m Model) HelpBindings() []key.Binding {
 }
 
 func (m Model) getOutput() tea.Msg {
-	msg := tui.OutputMsg{ModelID: m.id}
+	msg := outputMsg{modelID: m.id}
 
 	b, ok := <-m.output
 	if ok {
-		msg.Output = b
+		msg.output = b
 	} else {
-		msg.EOF = true
+		msg.eof = true
 	}
 	return msg
+}
+
+type outputMsg struct {
+	modelID uuid.UUID
+	output  []byte
+	eof     bool
 }
