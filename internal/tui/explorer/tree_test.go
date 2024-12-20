@@ -212,3 +212,7 @@ type fakeTreeBuilderHelpers struct{}
 func (f *fakeTreeBuilderHelpers) WorkspaceResourceCount(*workspace.Workspace) string {
 	return ""
 }
+
+func (f *fakeTreeBuilderHelpers) WorkspaceCost(*workspace.Workspace) string {
+	return ""
+}

@@ -231,7 +231,6 @@ func TestExplorer_SingleApply(t *testing.T) {
 	tm.Type("y")
 
 	waitFor(t, tm, func(s string) bool {
-		t.Log(s)
 		return strings.Contains(s, "apply 󰠱 modules/a  default") &&
 			strings.Contains(s, "exited +10~0-0")
 	})

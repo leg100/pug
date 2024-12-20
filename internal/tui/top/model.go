@@ -89,7 +89,6 @@ func newModel(cfg app.Config, app *app.App) (model, error) {
 func (m model) Init() tea.Cmd {
 	return tea.Batch(
 		m.PaneManager.Init(),
-		reload(true, m.modules),
 	)
 }
 
@@ -218,8 +217,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tui.NavigateTo(tui.LogListKind)
 		case key.Matches(msg, keys.Global.Tasks):
 			return m, tui.NavigateTo(tui.TaskListKind)
-		case key.Matches(msg, keys.Global.ReloadModules):
-			return m, reload(false, m.modules)
 		default:
 			// Send all other keys to panes.
 			if cmd := m.PaneManager.Update(msg); cmd != nil {

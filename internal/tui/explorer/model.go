@@ -69,7 +69,10 @@ type model struct {
 }
 
 func (m model) Init() tea.Cmd {
-	return m.buildTree
+	return tea.Batch(
+		m.buildTree,
+		reload(true, m.Modules),
+	)
 }
 
 func (m *model) Update(msg tea.Msg) tea.Cmd {
@@ -232,6 +235,8 @@ func (m *model) Update(msg tea.Msg) tea.Cmd {
 				return tui.ReportError(err)
 			}
 			return m.CreateTasks(m.Workspaces.Reload, ids...)
+		case key.Matches(msg, keys.Global.ReloadModules):
+			return reload(false, m.Modules)
 		}
 	case builtTreeMsg:
 		m.tree = (*tree)(msg)
