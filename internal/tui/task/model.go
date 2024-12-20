@@ -308,12 +308,6 @@ func (m Model) HelpBindings() []key.Binding {
 		keys.Common.Retry,
 		localKeys.ToggleInfo,
 	}
-	if moduleID := m.task.ModuleID; moduleID != nil {
-		bindings = append(bindings, keys.Common.Module)
-	}
-	if workspaceID := m.task.WorkspaceID; workspaceID != nil {
-		bindings = append(bindings, keys.Common.Workspace)
-	}
 	if m.task.Identifier == plan.ApplyTask {
 		bindings = append(bindings, keys.Common.Apply)
 	}

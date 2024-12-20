@@ -4,22 +4,6 @@ import (
 	"github.com/charmbracelet/bubbles/key"
 )
 
-type keyMap struct {
-	SetCurrent key.Binding
-	Enter      key.Binding
-}
-
-var localKeys = keyMap{
-	SetCurrent: key.NewBinding(
-		key.WithKeys("C"),
-		key.WithHelp("C", "set current"),
-	),
-	Enter: key.NewBinding(
-		key.WithKeys("enter"),
-		key.WithHelp("enter", "state"),
-	),
-}
-
 type resourcesKeyMap struct {
 	Taint   key.Binding
 	Untaint key.Binding

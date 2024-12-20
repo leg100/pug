@@ -6,6 +6,7 @@ type keyMap struct {
 	Enter               key.Binding
 	SetCurrentWorkspace key.Binding
 	Execute             key.Binding
+	ReloadModules       key.Binding
 	ReloadWorkspaces    key.Binding
 }
 
@@ -21,6 +22,10 @@ var localKeys = keyMap{
 	Execute: key.NewBinding(
 		key.WithKeys("x"),
 		key.WithHelp("x", "execute program"),
+	),
+	ReloadModules: key.NewBinding(
+		key.WithKeys("ctrl+r"),
+		key.WithHelp("ctrl+r", "reload modules"),
 	),
 	ReloadWorkspaces: key.NewBinding(
 		key.WithKeys("ctrl+w"),

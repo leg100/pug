@@ -124,16 +124,13 @@ func (m *List) Update(msg tea.Msg) tea.Cmd {
 				return tui.NavigateTo(tui.TaskKind, tui.WithParent(row.ID), tui.WithPosition(tui.BottomRightPane))
 			}
 		case key.Matches(msg, keys.Common.Apply):
-			specs, err := m.Prune(func(t *task.Task) (task.Spec, error) {
-				// Task must be a plan in order to be applied
-				return m.plans.ApplyPlan(t.ID)
-			})
+			ids, err := m.allPlans()
 			if err != nil {
 				return tui.ReportError(fmt.Errorf("applying tasks: %w", err))
 			}
 			return tui.YesNoPrompt(
-				fmt.Sprintf("Apply %d plans?", len(specs)),
-				m.CreateTasksWithSpecs(specs...),
+				fmt.Sprintf("Apply %d plans?", len(ids)),
+				m.CreateTasks(m.plans.ApplyPlan, ids...),
 			)
 		case key.Matches(msg, keys.Common.State):
 			if row, ok := m.CurrentRow(); ok {
@@ -168,10 +165,25 @@ func (m List) BorderText() map[tui.BorderPosition]string {
 }
 
 func (m List) HelpBindings() []key.Binding {
-	return []key.Binding{
+	bindings := []key.Binding{
 		keys.Common.Cancel,
-		keys.Common.Apply,
 		keys.Common.State,
 		keys.Common.Retry,
 	}
+	if _, err := m.allPlans(); err == nil {
+		bindings = append(bindings, keys.Common.Apply)
+	}
+	return bindings
+}
+
+func (m List) allPlans() ([]resource.ID, error) {
+	rows := m.SelectedOrCurrent()
+	ids := make([]resource.ID, len(rows))
+	for i, row := range rows {
+		if row.Value.Identifier != plan.PlanTask {
+			return nil, errors.New("tasks must all be plans")
+		}
+		ids[i] = row.ID
+	}
+	return ids, nil
 }

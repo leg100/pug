@@ -104,6 +104,7 @@ func (r *plan) args() []string {
 func (r *plan) planTaskSpec() task.Spec {
 	// TODO: assert planFile is true first
 	spec := task.Spec{
+		Identifier:  PlanTask,
 		ModuleID:    &r.ModuleID,
 		WorkspaceID: &r.WorkspaceID,
 		Path:        r.ModulePath,
@@ -141,7 +142,10 @@ func (r *plan) planTaskSpec() task.Spec {
 	return spec
 }
 
-const ApplyTask task.Identifier = "apply"
+const (
+	PlanTask  task.Identifier = "plan"
+	ApplyTask task.Identifier = "apply"
+)
 
 func (r *plan) applyTaskSpec() (task.Spec, error) {
 	if r.planFile && !r.HasChanges {

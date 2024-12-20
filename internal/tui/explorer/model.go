@@ -235,7 +235,7 @@ func (m *model) Update(msg tea.Msg) tea.Cmd {
 				return tui.ReportError(err)
 			}
 			return m.CreateTasks(m.Workspaces.Reload, ids...)
-		case key.Matches(msg, keys.Global.ReloadModules):
+		case key.Matches(msg, localKeys.ReloadModules):
 			return reload(false, m.Modules)
 		}
 	case builtTreeMsg:
@@ -460,4 +460,25 @@ func (m model) getModuleIDs() ([]resource.ID, error) {
 	default:
 		return nil, errors.New("valid only on workspaces and modules")
 	}
+}
+
+func (m model) HelpBindings() []key.Binding {
+	bindings := []key.Binding{
+		keys.Common.Init,
+		keys.Common.InitUpgrade,
+		keys.Common.Format,
+		keys.Common.Validate,
+		keys.Common.Plan,
+		keys.Common.PlanDestroy,
+		keys.Common.Apply,
+		keys.Common.Destroy,
+		keys.Common.Cost,
+		keys.Common.State,
+	}
+	// Only show these help bindings when the cursor is on a workspace.
+	if _, ok := m.tracker.cursorNode.(workspaceNode); ok {
+		bindings = append(bindings, localKeys.SetCurrentWorkspace)
+		bindings = append(bindings, keys.Common.Delete)
+	}
+	return bindings
 }

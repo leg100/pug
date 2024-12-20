@@ -5,34 +5,23 @@ import (
 )
 
 type global struct {
-	Modules       key.Binding
-	Workspaces    key.Binding
-	Explorer      key.Binding
-	Tasks         key.Binding
-	TaskGroups    key.Binding
-	ReloadModules key.Binding
-	Logs          key.Binding
-	Back          key.Binding
-	Select        key.Binding
-	SelectAll     key.Binding
-	SelectClear   key.Binding
-	SelectRange   key.Binding
-	Filter        key.Binding
-	Autoscroll    key.Binding
-	Quit          key.Binding
-	Suspend       key.Binding
-	Help          key.Binding
+	Explorer    key.Binding
+	Tasks       key.Binding
+	TaskGroups  key.Binding
+	Logs        key.Binding
+	Back        key.Binding
+	Select      key.Binding
+	SelectAll   key.Binding
+	SelectClear key.Binding
+	SelectRange key.Binding
+	Filter      key.Binding
+	Autoscroll  key.Binding
+	Quit        key.Binding
+	Suspend     key.Binding
+	Help        key.Binding
 }
 
 var Global = global{
-	Modules: key.NewBinding(
-		key.WithKeys("m"),
-		key.WithHelp("m", "modules"),
-	),
-	Workspaces: key.NewBinding(
-		key.WithKeys("w"),
-		key.WithHelp("w", "workspaces"),
-	),
 	Explorer: key.NewBinding(
 		key.WithKeys("e"),
 		key.WithHelp("e", "explorer"),
@@ -45,17 +34,9 @@ var Global = global{
 		key.WithKeys("T"),
 		key.WithHelp("T", "taskgroups"),
 	),
-	ReloadModules: key.NewBinding(
-		key.WithKeys("ctrl+r"),
-		key.WithHelp("ctrl+r", "reload modules"),
-	),
 	Logs: key.NewBinding(
 		key.WithKeys("l"),
 		key.WithHelp("l", "logs"),
-	),
-	Back: key.NewBinding(
-		key.WithKeys("esc"),
-		key.WithHelp("esc", "back"),
 	),
 	Select: key.NewBinding(
 		key.WithKeys(" "),

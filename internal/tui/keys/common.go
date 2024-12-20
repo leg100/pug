@@ -12,8 +12,6 @@ type common struct {
 	State       key.Binding
 	Retry       key.Binding
 	Reload      key.Binding
-	Module      key.Binding
-	Workspace   key.Binding
 	Edit        key.Binding
 	Init        key.Binding
 	InitUpgrade key.Binding
@@ -59,14 +57,6 @@ var Common = common{
 	Reload: key.NewBinding(
 		key.WithKeys("ctrl+r"),
 		key.WithHelp("ctrl+r", "reload"),
-	),
-	Module: key.NewBinding(
-		key.WithKeys("m"),
-		key.WithHelp("m", "module"),
-	),
-	Workspace: key.NewBinding(
-		key.WithKeys("w"),
-		key.WithHelp("w", "workspace"),
 	),
 	Edit: key.NewBinding(
 		key.WithKeys("E"),
