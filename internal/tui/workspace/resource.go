@@ -60,7 +60,6 @@ type resourceModel struct {
 	viewport tui.Viewport
 	resource *state.Resource
 	border   bool
-	focused  bool
 }
 
 func (m *resourceModel) Init() tea.Cmd {
@@ -140,10 +139,6 @@ func (m *resourceModel) BorderText() map[tui.BorderPosition]string {
 			tainted,
 		),
 	}
-}
-
-func (m *resourceModel) Focus(focused bool) {
-	m.focused = !focused
 }
 
 func (m resourceModel) HelpBindings() []key.Binding {

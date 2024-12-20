@@ -228,19 +228,7 @@ func (m resourceList) View() string {
 	if m.state == nil || m.state.Serial < 0 {
 		return "No state found"
 	}
-	// Make footer
-	// metadata := fmt.Sprintf("Serial: %d | Terraform Version: %s | Lineage: %s", m.state.Serial, m.state.TerraformVersion, m.state.Lineage)
-	return lipgloss.JoinVertical(lipgloss.Left,
-		m.Model.View(),
-		// strings.Repeat("─", m.width),
-		// tui.Regular.
-		//	Margin(0, 1).
-		//	Render(
-		//		tui.Regular.
-		//			Inline(true).
-		//			Render(metadata),
-		//	),
-	)
+	return m.Model.View()
 }
 
 func (m resourceList) HelpBindings() []key.Binding {

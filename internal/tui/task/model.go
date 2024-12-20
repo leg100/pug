@@ -133,7 +133,7 @@ func (m *Model) Update(msg tea.Msg) tea.Cmd {
 		case key.Matches(msg, keys.Common.Cancel):
 			return cancel(m.tasks, m.task.ID)
 		case key.Matches(msg, keys.Common.Plan):
-			if m.task.WorkspaceID != nil {
+			if m.task.WorkspaceID == nil {
 				return tui.ReportError(errors.New("task not associated with a workspace"))
 			}
 			fn := func(workspaceID resource.ID) (task.Spec, error) {
