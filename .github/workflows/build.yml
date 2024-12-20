@@ -25,6 +25,9 @@ jobs:
         run: make install-linter lint
       - name: Vet check
         run: make vet
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_wrapper: false
       - name: Setup provider mirror for tests
         run: ./hacks/setup_mirror.sh
       - name: Install test dependencies
