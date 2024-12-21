@@ -39,7 +39,6 @@ func makeMakers(
 		tui.ExplorerKind: &explorer.Maker{
 			ModuleService:    app.Modules,
 			WorkspaceService: app.Workspaces,
-			PlanService:      app.Plans,
 			Workdir:          cfg.Workdir,
 			Helpers:          helpers,
 		},

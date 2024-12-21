@@ -131,24 +131,6 @@ func (t *tracker) getSelectedOrCurrentIDs() (resource.Kind, []resource.ID) {
 	return *t.selector.kind, maps.Keys(t.selections)
 }
 
-func (t *tracker) getCursorID() *resource.ID {
-	id, ok := t.cursorNode.ID().(resource.ID)
-	if !ok {
-		// TODO: consider returning error
-		return nil
-	}
-	return &id
-}
-
-func (t *tracker) toggleClose() {
-	if t.cursorNode == nil {
-		return
-	}
-	if dir, ok := t.cursorNode.(dirNode); ok {
-		dir.closed = !dir.closed
-	}
-}
-
 func (t *tracker) setStart(height int) {
 	// Start index must be at least the cursor position minus the max number
 	// of visible nodes.

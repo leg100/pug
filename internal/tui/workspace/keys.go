@@ -5,14 +5,34 @@ import (
 )
 
 type resourcesKeyMap struct {
-	Taint   key.Binding
-	Untaint key.Binding
-	Move    key.Binding
-	Reload  key.Binding
-	Enter   key.Binding
+	Plan        key.Binding
+	PlanDestroy key.Binding
+	Apply       key.Binding
+	Destroy     key.Binding
+	Taint       key.Binding
+	Untaint     key.Binding
+	Move        key.Binding
+	Reload      key.Binding
+	Enter       key.Binding
 }
 
 var resourcesKeys = resourcesKeyMap{
+	Plan: key.NewBinding(
+		key.WithKeys("p"),
+		key.WithHelp("p", "targeted plan"),
+	),
+	PlanDestroy: key.NewBinding(
+		key.WithKeys("d"),
+		key.WithHelp("d", "targeted plan destroy"),
+	),
+	Apply: key.NewBinding(
+		key.WithKeys("a"),
+		key.WithHelp("a", "targeted auto-apply"),
+	),
+	Destroy: key.NewBinding(
+		key.WithKeys("D"),
+		key.WithHelp("D", "targeted destroy"),
+	),
 	Taint: key.NewBinding(
 		key.WithKeys("ctrl+t"),
 		key.WithHelp("ctrl+t", "taint"),

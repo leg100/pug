@@ -1,6 +1,7 @@
 package plan
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/leg100/pug/internal"
@@ -123,14 +124,24 @@ func (s *Service) ApplyPlan(taskID resource.ID) (task.Spec, error) {
 	if err != nil {
 		return task.Spec{}, err
 	}
-	if planTask.State != task.Exited {
-		return task.Spec{}, fmt.Errorf("plan task is not in the exited state: %s", planTask.State)
+	if err := IsApplyable(planTask); err != nil {
+		return task.Spec{}, err
 	}
 	plan, err := s.getByTaskID(taskID)
 	if err != nil {
 		return task.Spec{}, err
 	}
 	return plan.applyTaskSpec()
+}
+
+func IsApplyable(t *task.Task) error {
+	if t.Identifier != PlanTask {
+		return errors.New("task is not a plan")
+	}
+	if t.State != task.Exited {
+		return fmt.Errorf("plan task is in state other than exited: %s", t.State)
+	}
+	return nil
 }
 
 func (s *Service) Get(runID resource.ID) (*plan, error) {

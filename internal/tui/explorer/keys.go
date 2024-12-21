@@ -5,7 +5,6 @@ import "github.com/charmbracelet/bubbles/key"
 type keyMap struct {
 	Enter               key.Binding
 	SetCurrentWorkspace key.Binding
-	Execute             key.Binding
 	ReloadModules       key.Binding
 	ReloadWorkspaces    key.Binding
 }
@@ -18,10 +17,6 @@ var localKeys = keyMap{
 	SetCurrentWorkspace: key.NewBinding(
 		key.WithKeys("C"),
 		key.WithHelp("C", "set current workspace"),
-	),
-	Execute: key.NewBinding(
-		key.WithKeys("x"),
-		key.WithHelp("x", "execute program"),
 	),
 	ReloadModules: key.NewBinding(
 		key.WithKeys("ctrl+r"),

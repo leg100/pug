@@ -66,6 +66,10 @@ func (mm *Maker) make(id resource.ID, width, height int, border bool) (tui.Child
 		Height:  m.height,
 		Spinner: m.spinner,
 	})
+	m.common = &tui.ActionHandler{
+		Helpers:     mm.Helpers,
+		IDRetriever: &m,
+	}
 
 	return &m, nil
 }
@@ -98,9 +102,10 @@ type Model struct {
 
 	id uuid.UUID
 
-	tasks *task.Service
-	task  *task.Task
-	plans *plan.Service
+	tasks  *task.Service
+	task   *task.Task
+	plans  *plan.Service
+	common *tui.ActionHandler
 
 	output <-chan []byte
 	buf    []byte
@@ -122,9 +127,8 @@ func (m *Model) Init() tea.Cmd {
 
 func (m *Model) Update(msg tea.Msg) tea.Cmd {
 	var (
-		cmd               tea.Cmd
-		cmds              []tea.Cmd
-		createPlanOptions plan.CreateOptions
+		cmd  tea.Cmd
+		cmds []tea.Cmd
 	)
 
 	switch msg := msg.(type) {
@@ -132,15 +136,7 @@ func (m *Model) Update(msg tea.Msg) tea.Cmd {
 		switch {
 		case key.Matches(msg, keys.Common.Cancel):
 			return cancel(m.tasks, m.task.ID)
-		case key.Matches(msg, keys.Common.Plan):
-			if m.task.WorkspaceID == nil {
-				return tui.ReportError(errors.New("task not associated with a workspace"))
-			}
-			fn := func(workspaceID resource.ID) (task.Spec, error) {
-				return m.Plans.Plan(workspaceID, createPlanOptions)
-			}
-			return m.CreateTasks(fn, *m.task.WorkspaceID)
-		case key.Matches(msg, keys.Common.Apply):
+		case key.Matches(msg, keys.Common.AutoApply):
 			spec, err := m.plans.ApplyPlan(m.task.ID)
 			if err != nil {
 				return tui.ReportError(err)
@@ -149,12 +145,6 @@ func (m *Model) Update(msg tea.Msg) tea.Cmd {
 				"Apply plan?",
 				m.CreateTasksWithSpecs(spec),
 			)
-		case key.Matches(msg, keys.Common.State):
-			if ws := m.TaskWorkspaceOrCurrentWorkspace(m.task); ws != nil {
-				return tui.NavigateTo(tui.ResourceListKind, tui.WithParent(ws.GetID()))
-			} else {
-				return tui.ReportError(errors.New("task not associated with a workspace"))
-			}
 		case key.Matches(msg, keys.Common.Retry):
 			return tui.YesNoPrompt(
 				"Retry task?",
@@ -162,6 +152,9 @@ func (m *Model) Update(msg tea.Msg) tea.Cmd {
 			)
 		case key.Matches(msg, keys.Navigation.SwitchPane):
 			return tui.CmdHandler(tui.FocusExplorerMsg{})
+		default:
+			cmd := m.common.Update(msg)
+			cmds = append(cmds, cmd)
 		}
 	case toggleAutoscrollMsg:
 		m.disableAutoscroll = !m.disableAutoscroll
@@ -314,9 +307,10 @@ func (m Model) HelpBindings() []key.Binding {
 		keys.Common.Retry,
 		localKeys.ToggleInfo,
 	}
-	if m.task.Identifier == plan.ApplyTask {
-		bindings = append(bindings, keys.Common.Apply)
+	if err := plan.IsApplyable(m.task); err == nil {
+		bindings = append(bindings, localKeys.ApplyPlan)
 	}
+	bindings = append(bindings, m.common.HelpBindings()...)
 	return bindings
 }
 
@@ -336,4 +330,31 @@ type outputMsg struct {
 	modelID uuid.UUID
 	output  []byte
 	eof     bool
+}
+
+func (m Model) GetModuleIDs() ([]resource.ID, error) {
+	if m.task.ModuleID == nil {
+		return nil, errors.New("valid only on modules")
+	}
+	return []resource.ID{*m.task.ModuleID}, nil
+}
+
+func (m Model) GetWorkspaceIDs() ([]resource.ID, error) {
+	if m.task.WorkspaceID != nil {
+		return []resource.ID{*m.task.WorkspaceID}, nil
+	} else if m.task.ModuleID == nil {
+		return nil, errors.New("valid only on tasks associated with a module or a workspace")
+	} else {
+		// task has a module ID but no workspace ID, so find out if if
+		// module has a current workspace, and if so, use that. Otherwise
+		// return error
+		mod, err := m.Modules.Get(*m.task.ModuleID)
+		if err != nil {
+			return nil, err
+		}
+		if mod.CurrentWorkspaceID == nil {
+			return nil, errors.New("valid only on tasks associated with a module with a current workspace, or a workspace")
+		}
+		return []resource.ID{*mod.CurrentWorkspaceID}, nil
+	}
 }

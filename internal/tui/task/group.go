@@ -3,13 +3,11 @@ package task
 import (
 	"fmt"
 
-	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/leg100/pug/internal/plan"
 	"github.com/leg100/pug/internal/resource"
 	"github.com/leg100/pug/internal/task"
 	"github.com/leg100/pug/internal/tui"
-	"github.com/leg100/pug/internal/tui/keys"
 	"github.com/leg100/pug/internal/tui/table"
 )
 
@@ -119,14 +117,5 @@ func (m groupModel) BorderText() map[tui.BorderPosition]string {
 			m.GroupReport(m.group, true),
 		),
 		tui.TopMiddleBorder: m.Metadata(),
-	}
-}
-
-func (m groupModel) HelpBindings() []key.Binding {
-	return []key.Binding{
-		keys.Common.Cancel,
-		keys.Common.Apply,
-		keys.Common.State,
-		keys.Common.Retry,
 	}
 }

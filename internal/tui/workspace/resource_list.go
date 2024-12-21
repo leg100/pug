@@ -33,8 +33,8 @@ type ResourceListMaker struct {
 	Helpers    *tui.Helpers
 }
 
-func (m *ResourceListMaker) Make(workspaceID resource.ID, width, height int) (tui.ChildModel, error) {
-	ws, err := m.Workspaces.Get(workspaceID)
+func (mm *ResourceListMaker) Make(workspaceID resource.ID, width, height int) (tui.ChildModel, error) {
+	ws, err := mm.Workspaces.Get(workspaceID)
 	if err != nil {
 		return nil, err
 	}
@@ -54,22 +54,28 @@ func (m *ResourceListMaker) Make(workspaceID resource.ID, width, height int) (tu
 		table.WithSortFunc(state.Sort),
 		table.WithPreview[*state.Resource](tui.ResourceKind),
 	)
-	return &resourceList{
+	m := &resourceList{
 		Model:     tbl,
-		states:    m.States,
-		plans:     m.Plans,
+		states:    mm.States,
+		plans:     mm.Plans,
 		workspace: ws,
-		spinner:   m.Spinner,
+		spinner:   mm.Spinner,
 		width:     width,
 		height:    height,
-		Helpers:   m.Helpers,
-	}, nil
+		Helpers:   mm.Helpers,
+	}
+	m.common = &tui.ActionHandler{
+		Helpers:     mm.Helpers,
+		IDRetriever: m,
+	}
+	return m, nil
 }
 
 type resourceList struct {
 	table.Model[*state.Resource]
 	*tui.Helpers
 
+	common    *tui.ActionHandler
 	states    *state.Service
 	plans     *plan.Service
 	state     *state.State
@@ -180,7 +186,7 @@ func (m *resourceList) Update(msg tea.Msg) tea.Cmd {
 			createRunOptions.Destroy = true
 			applyPrompt = "Destroy %d resources?"
 			fallthrough
-		case key.Matches(msg, keys.Common.Apply):
+		case key.Matches(msg, keys.Common.AutoApply):
 			// Create a targeted apply.
 			createRunOptions.TargetAddrs = m.selectedOrCurrentAddresses()
 			resourceIDs := m.SelectedOrCurrentIDs()
@@ -232,17 +238,19 @@ func (m resourceList) View() string {
 }
 
 func (m resourceList) HelpBindings() []key.Binding {
-	return []key.Binding{
-		keys.Common.Plan,
-		keys.Common.PlanDestroy,
-		keys.Common.Apply,
-		keys.Common.Destroy,
+	bindings := []key.Binding{
+		resourcesKeys.Plan,
+		resourcesKeys.PlanDestroy,
+		resourcesKeys.Apply,
+		resourcesKeys.Destroy,
 		keys.Common.Delete,
 		resourcesKeys.Move,
 		resourcesKeys.Taint,
 		resourcesKeys.Untaint,
 		resourcesKeys.Reload,
 	}
+	bindings = append(bindings, m.common.HelpBindings()...)
+	return bindings
 }
 
 func (m resourceList) selectedOrCurrentAddresses() []state.ResourceAddress {
@@ -273,4 +281,12 @@ func (m *resourceList) BorderText() map[tui.BorderPosition]string {
 			Foreground(tui.BurntOrange).
 			Render(fmt.Sprintf("#%d", serial)),
 	}
+}
+
+func (m *resourceList) GetModuleIDs() ([]resource.ID, error) {
+	return []resource.ID{m.workspace.ModuleID}, nil
+}
+
+func (m *resourceList) GetWorkspaceIDs() ([]resource.ID, error) {
+	return []resource.ID{m.workspace.ID}, nil
 }

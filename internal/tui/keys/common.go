@@ -5,10 +5,11 @@ import "github.com/charmbracelet/bubbles/key"
 type common struct {
 	Plan        key.Binding
 	PlanDestroy key.Binding
-	Apply       key.Binding
+	AutoApply   key.Binding
 	Destroy     key.Binding
 	Cancel      key.Binding
 	Delete      key.Binding
+	Execute     key.Binding
 	State       key.Binding
 	Retry       key.Binding
 	Reload      key.Binding
@@ -30,9 +31,9 @@ var Common = common{
 		key.WithKeys("d"),
 		key.WithHelp("d", "plan destroy"),
 	),
-	Apply: key.NewBinding(
+	AutoApply: key.NewBinding(
 		key.WithKeys("a"),
-		key.WithHelp("a", "apply"),
+		key.WithHelp("a", "auto-apply"),
 	),
 	Destroy: key.NewBinding(
 		key.WithKeys("D"),
@@ -45,6 +46,10 @@ var Common = common{
 	Delete: key.NewBinding(
 		key.WithKeys("delete"),
 		key.WithHelp("delete", "delete"),
+	),
+	Execute: key.NewBinding(
+		key.WithKeys("x"),
+		key.WithHelp("x", "execute program"),
 	),
 	State: key.NewBinding(
 		key.WithKeys("s"),

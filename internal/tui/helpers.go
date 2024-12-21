@@ -195,22 +195,6 @@ func WorkspaceNameWithIcon(name string, squareBrackets bool) string {
 	return s
 }
 
-// TaskWorkspaceOrCurrentWorkspace retrieves either the task's workspace if it belongs to a
-// workspace, or if it belongs to a module, then it retrieves the module's
-// current workspace
-func (h *Helpers) TaskWorkspaceOrCurrentWorkspace(t *task.Task) *workspace.Workspace {
-	if ws := h.TaskWorkspace(t); ws != nil {
-		return ws
-	}
-	if mod := h.TaskModule(t); mod != nil {
-		if ws := h.ModuleCurrentWorkspace(mod); ws != nil {
-			return ws
-		}
-		return nil
-	}
-	return nil
-}
-
 // TaskStatus provides a rendered colored task status.
 func (h *Helpers) TaskStatus(t *task.Task, table bool) string {
 	var color lipgloss.Color

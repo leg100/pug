@@ -94,6 +94,10 @@ func (mm *ListMaker) Make(_ resource.ID, width, height int) (tui.ChildModel, err
 		tasks:   mm.Tasks,
 		Helpers: mm.Helpers,
 	}
+	m.common = &tui.ActionHandler{
+		Helpers:     mm.Helpers,
+		IDRetriever: &m,
+	}
 	return &m, nil
 }
 
@@ -101,8 +105,9 @@ type List struct {
 	table.Model[*task.Task]
 	*tui.Helpers
 
-	plans *plan.Service
-	tasks *task.Service
+	common *tui.ActionHandler
+	plans  *plan.Service
+	tasks  *task.Service
 }
 
 func (m *List) Init() tea.Cmd {
@@ -113,17 +118,14 @@ func (m *List) Init() tea.Cmd {
 }
 
 func (m *List) Update(msg tea.Msg) tea.Cmd {
+	var cmds []tea.Cmd
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, keys.Common.Cancel):
 			taskIDs := m.SelectedOrCurrentIDs()
 			return cancel(m.tasks, taskIDs...)
-		case key.Matches(msg, localKeys.Enter):
-			if row, ok := m.CurrentRow(); ok {
-				return tui.NavigateTo(tui.TaskKind, tui.WithParent(row.ID), tui.WithPosition(tui.BottomRightPane))
-			}
-		case key.Matches(msg, keys.Common.Apply):
+		case key.Matches(msg, keys.Common.AutoApply):
 			ids, err := m.allPlans()
 			if err != nil {
 				return tui.ReportError(fmt.Errorf("applying tasks: %w", err))
@@ -132,14 +134,6 @@ func (m *List) Update(msg tea.Msg) tea.Cmd {
 				fmt.Sprintf("Apply %d plans?", len(ids)),
 				m.CreateTasks(m.plans.ApplyPlan, ids...),
 			)
-		case key.Matches(msg, keys.Common.State):
-			if row, ok := m.CurrentRow(); ok {
-				if ws := m.TaskWorkspaceOrCurrentWorkspace(row.Value); ws != nil {
-					return tui.NavigateTo(tui.ResourceListKind, tui.WithParent(ws.GetID()))
-				} else {
-					return tui.ReportError(errors.New("task not associated with a workspace"))
-				}
-			}
 		case key.Matches(msg, keys.Common.Retry):
 			rows := m.SelectedOrCurrent()
 			specs := make([]task.Spec, len(rows))
@@ -150,11 +144,15 @@ func (m *List) Update(msg tea.Msg) tea.Cmd {
 				fmt.Sprintf("Retry %d tasks?", len(rows)),
 				m.CreateTasksWithSpecs(specs...),
 			)
+		default:
+			cmd := m.common.Update(msg)
+			cmds = append(cmds, cmd)
 		}
 	}
 	var cmd tea.Cmd
 	m.Model, cmd = m.Model.Update(msg)
-	return cmd
+	cmds = append(cmds, cmd)
+	return tea.Batch(cmds...)
 }
 
 func (m List) BorderText() map[tui.BorderPosition]string {
@@ -171,8 +169,9 @@ func (m List) HelpBindings() []key.Binding {
 		keys.Common.Retry,
 	}
 	if _, err := m.allPlans(); err == nil {
-		bindings = append(bindings, keys.Common.Apply)
+		bindings = append(bindings, localKeys.ApplyPlan)
 	}
+	bindings = append(bindings, m.common.HelpBindings()...)
 	return bindings
 }
 
@@ -180,10 +179,47 @@ func (m List) allPlans() ([]resource.ID, error) {
 	rows := m.SelectedOrCurrent()
 	ids := make([]resource.ID, len(rows))
 	for i, row := range rows {
-		if row.Value.Identifier != plan.PlanTask {
-			return nil, errors.New("tasks must all be plans")
+		if err := plan.IsApplyable(row.Value); err != nil {
+			return nil, fmt.Errorf("at least one task is not applyable: %w", err)
 		}
 		ids[i] = row.ID
+	}
+	return ids, nil
+}
+
+func (m List) GetModuleIDs() ([]resource.ID, error) {
+	rows := m.SelectedOrCurrent()
+	ids := make([]resource.ID, len(rows))
+	for i, row := range rows {
+		if row.Value.ModuleID == nil {
+			return nil, errors.New("valid only on modules")
+		}
+		ids[i] = *row.Value.ModuleID
+	}
+	return ids, nil
+}
+
+func (m List) GetWorkspaceIDs() ([]resource.ID, error) {
+	rows := m.SelectedOrCurrent()
+	ids := make([]resource.ID, len(rows))
+	for i, row := range rows {
+		if row.Value.WorkspaceID != nil {
+			ids[i] = *row.Value.WorkspaceID
+		} else if row.Value.ModuleID == nil {
+			return nil, errors.New("valid only on tasks associated with a module or a workspace")
+		} else {
+			// task has a module ID but no workspace ID, so find out if its
+			// module has a current workspace, and if so, use that. Otherwise
+			// return error
+			mod, err := m.Modules.Get(*row.Value.ModuleID)
+			if err != nil {
+				return nil, err
+			}
+			if mod.CurrentWorkspaceID == nil {
+				return nil, errors.New("valid only on tasks associated with a module with a current workspace, or a workspace")
+			}
+			ids[i] = *mod.CurrentWorkspaceID
+		}
 	}
 	return ids, nil
 }
