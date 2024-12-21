@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.5.6](https://github.com/leg100/pug/compare/v0.5.5...v0.5.6) (2024-12-21)
+
+
+### Features
+
+* make common actions avail in all panes ([953cbae](https://github.com/leg100/pug/commit/953cbae12779ce87118c85d2f8de53c80e3533ab))
+* tree UI ([#137](https://github.com/leg100/pug/issues/137)) ([4a10ce8](https://github.com/leg100/pug/commit/4a10ce83a8511d8766bf8d61f0ffb62c08557ab7))
+
+
+### Miscellaneous
+
+* bump go and deps ([79a0ec4](https://github.com/leg100/pug/commit/79a0ec43099a5bbae4c739ffbb0ffa536c7b0b97))
+
 ## [0.5.5](https://github.com/leg100/pug/compare/v0.5.4...v0.5.5) (2024-10-07)
 
 
