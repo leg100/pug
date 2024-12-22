@@ -261,7 +261,6 @@ func TestExplorer_SingleApply(t *testing.T) {
 
 	// Give approval
 	waitFor(t, tm, func(s string) bool {
-		t.Log(s)
 		return strings.Contains(s, "Auto-apply 1 workspaces? (y/N):")
 	})
 	tm.Type("y")
@@ -408,7 +407,6 @@ func TestExplorer_MultipleDestroys(t *testing.T) {
 	tm.Type("y")
 
 	waitFor(t, tm, func(s string) bool {
-		t.Log(s)
 		return strings.Contains(s, "apply (destroy) 3/3") &&
 			matchPattern(t, `modules/a.*default.*apply \(destroy\).*exited.*\+0~0-10`, s) &&
 			matchPattern(t, `modules/b.*default.*apply \(destroy\).*exited.*\+0~0-10`, s) &&

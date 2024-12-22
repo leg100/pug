@@ -30,7 +30,6 @@ func TestCost(t *testing.T) {
 	// Wait for infracost task to produce overall total. Each workspace in the
 	// explorer should also have a cost alongside it.
 	waitFor(t, tm, func(s string) bool {
-		t.Log(s)
 		return strings.Contains(s, "cost") &&
 			strings.Contains(s, "exited $2621.90") &&
 			matchPattern(t, `OVERALL TOTAL.*\$2\,621\.90`, s) &&

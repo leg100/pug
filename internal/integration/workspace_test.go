@@ -223,13 +223,11 @@ func TestWorkspace_Delete(t *testing.T) {
 
 	// Give approval
 	waitFor(t, tm, func(s string) bool {
-		t.Log(s)
 		return strings.Contains(s, "Delete workspace dev? (y/N):")
 	})
 	tm.Type("y")
 
 	waitFor(t, tm, func(s string) bool {
-		t.Log(s)
 		return strings.Contains(s, "workspace delete 󰠱 modules/a") &&
 			strings.Contains(s, `Deleted workspace "dev"!`)
 	})

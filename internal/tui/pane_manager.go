@@ -43,6 +43,8 @@ type PaneManager struct {
 	leftPaneWidth int
 	// topRightPaneHeight is the height of the top right pane.
 	topRightHeight int
+	// history tracks previously visited models for the top right pane.
+	history []pane
 }
 
 type pane struct {
@@ -79,6 +81,22 @@ func (p *PaneManager) Update(msg tea.Msg) tea.Cmd {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch {
+		case key.Matches(msg, keys.Common.Back):
+			if p.active != TopRightPane {
+				// History is only maintained for the top right pane.
+				break
+			}
+			if len(p.history) == 1 {
+				// At dawn of history; can't go further back.
+				return ReportError(errors.New("already at first page"))
+			}
+			// Pop current model from history
+			p.history = p.history[:len(p.history)-1]
+			// Set pane to last model
+			p.panes[TopRightPane] = p.history[len(p.history)-1]
+			// A new top right pane replaces any bottom right pane as well.
+			delete(p.panes, BottomRightPane)
+			p.updateChildSizes()
 		case key.Matches(msg, keys.Global.ShrinkPaneWidth):
 			p.updateLeftWidth(-1)
 			p.updateChildSizes()
@@ -234,13 +252,16 @@ func (m *PaneManager) setPane(msg NavigationMsg) (cmd tea.Cmd) {
 		m.cache.Put(msg.Page, model)
 		cmd = model.Init()
 	}
-	if msg.Position == TopRightPane {
-		// A new top right pane replaces any bottom right pane as well.
-		delete(m.panes, BottomRightPane)
-	}
 	m.panes[msg.Position] = pane{
 		model: model,
 		page:  msg.Page,
+	}
+	if msg.Position == TopRightPane {
+		// A new top right pane replaces any bottom right pane as well.
+		delete(m.panes, BottomRightPane)
+		// Track the models for the top right pane, so that the user can go back
+		// to previous models.
+		m.history = append(m.history, m.panes[TopRightPane])
 	}
 	m.updateChildSizes()
 	if !msg.DisableFocus {
@@ -335,6 +356,17 @@ func (m *PaneManager) renderPane(position Position) string {
 		}
 	}
 	return borderize(renderedPane, isActive, borderTexts)
+}
+
+func (m *PaneManager) HelpBindings() (bindings []key.Binding) {
+	if m.active == TopRightPane {
+		// Only the top right pane has the ability to "go back"
+		bindings = append(bindings, keys.Common.Back)
+	}
+	if model, ok := m.ActiveModel().(ModelHelpBindings); ok {
+		bindings = append(bindings, model.HelpBindings()...)
+	}
+	return bindings
 }
 
 func removeEmptyStrings(strs ...string) []string {

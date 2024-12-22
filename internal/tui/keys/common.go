@@ -20,6 +20,7 @@ type common struct {
 	Format      key.Binding
 	Cost        key.Binding
 	LastTask    key.Binding
+	Back        key.Binding
 }
 
 // Keys shared by several models.
@@ -91,5 +92,9 @@ var Common = common{
 	LastTask: key.NewBinding(
 		key.WithKeys("o"),
 		key.WithHelp("o", "last task output"),
+	),
+	Back: key.NewBinding(
+		key.WithKeys("esc"),
+		key.WithHelp("esc", "back"),
 	),
 }

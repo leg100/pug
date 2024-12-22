@@ -104,7 +104,6 @@ func TestTerragrunt_Dependencies(t *testing.T) {
 
 	// Expect 6 apply tasks.
 	waitFor(t, tm, func(s string) bool {
-		t.Log(s)
 		return strings.Contains(s, "apply (destroy) 6/6") &&
 			matchPattern(t, `modules/vpc.*default.*apply \(destroy\).*exited.*\+0~0-0`, s) &&
 			matchPattern(t, `modules/redis.*default.*apply \(destroy\).*exited.*\+0~0-0`, s) &&

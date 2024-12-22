@@ -414,9 +414,7 @@ func (m model) help() string {
 	case filterMode:
 		bindings = append(bindings, keys.KeyMapToSlice(keys.Filter)...)
 	default:
-		if model, ok := m.ActiveModel().(tui.ModelHelpBindings); ok {
-			bindings = append(bindings, model.HelpBindings()...)
-		}
+		bindings = append(bindings, m.PaneManager.HelpBindings()...)
 	}
 	bindings = append(bindings, keys.KeyMapToSlice(keys.Global)...)
 	bindings = append(bindings, keys.KeyMapToSlice(keys.Navigation)...)
