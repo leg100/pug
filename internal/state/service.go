@@ -79,6 +79,7 @@ func (s *Service) Delete(workspaceID resource.ID, addrs ...ResourceAddress) (tas
 		AfterExited: func(t *task.Task) {
 			s.CreateReloadTask(workspaceID)
 		},
+		Short: true,
 	})
 }
 
@@ -95,6 +96,7 @@ func (s *Service) Taint(workspaceID resource.ID, addr ResourceAddress) (task.Spe
 		AfterExited: func(t *task.Task) {
 			s.CreateReloadTask(workspaceID)
 		},
+		Short: true,
 	})
 }
 
@@ -111,6 +113,7 @@ func (s *Service) Untaint(workspaceID resource.ID, addr ResourceAddress) (task.S
 		AfterExited: func(t *task.Task) {
 			s.CreateReloadTask(workspaceID)
 		},
+		Short: true,
 	})
 }
 
@@ -127,6 +130,7 @@ func (s *Service) Move(workspaceID resource.ID, src, dest ResourceAddress) (task
 		AfterExited: func(t *task.Task) {
 			s.CreateReloadTask(workspaceID)
 		},
+		Short: true,
 	})
 }
 

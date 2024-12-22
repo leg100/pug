@@ -10,6 +10,9 @@ type Spec struct {
 	// WorkspaceID is the ID of the workspace the task belongs to. If nil, the
 	// task does not belong to a workspace.
 	WorkspaceID *resource.ID
+	// TaskGroupID specifies the ID of the task group this task is to belong to.
+	// Nil means the task does not belong to a group.
+	TaskGroupID *resource.ID
 	// Execution specifies the execution of a program.
 	Execution Execution
 	// AdditionalExecution specifies the execution of another program. The
@@ -30,6 +33,9 @@ type Spec struct {
 	JSON bool
 	// Skip queue and immediately start task
 	Immediate bool
+	// Short if true indicates that the task runtime is short and the output is
+	// minimal.
+	Short bool
 	// Wait blocks until the task has finished
 	Wait bool
 	// Description assigns an optional description to the task to display to the

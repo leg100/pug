@@ -1,6 +1,9 @@
 package top
 
 import (
+	"errors"
+	"fmt"
+	"io"
 	"os"
 	"strings"
 
@@ -31,21 +34,21 @@ const (
 type model struct {
 	*tui.PaneManager
 
-	makers   map[tui.Kind]tui.Maker
-	modules  *module.Service
-	width    int
-	height   int
-	mode     mode
-	showHelp bool
-	prompt   *tui.Prompt
-	dump     *os.File
-	workdir  string
-	err      error
-	info     string
-	tasks    *task.Service
-	spinner  *spinner.Model
-	spinning bool
-	maxTasks int
+	makers     map[tui.Kind]tui.Maker
+	modules    *module.Service
+	width      int
+	height     int
+	mode       mode
+	showHelp   bool
+	prompt     *tui.Prompt
+	dump       *os.File
+	workdir    string
+	tasks      *task.Service
+	spinner    *spinner.Model
+	spinning   bool
+	lastTaskID *resource.ID
+	err        error
+	info       string
 }
 
 func newModel(cfg app.Config, app *app.App) (model, error) {
@@ -79,7 +82,6 @@ func newModel(cfg app.Config, app *app.App) (model, error) {
 		modules:     app.Modules,
 		spinner:     &spinner,
 		tasks:       app.Tasks,
-		maxTasks:    cfg.MaxTasks,
 		dump:        dump,
 		workdir:     cfg.Workdir.PrettyString(),
 	}
@@ -123,6 +125,52 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.spinning {
 			// Continue spinning spinner.
 			return m, cmd
+		}
+	}
+
+	// Watch tasks as they finish and announce success/failure in the
+	// footer. This is only done for short tasks because these tasks do
+	// not redirect the user to the task output therefore the user needs to be
+	// notified of its success/failure.
+	switch msg := msg.(type) {
+	case resource.Event[*task.Task]:
+		if msg.Type == resource.UpdatedEvent {
+			t := msg.Payload
+			if t.TaskGroupID != nil {
+				break
+			}
+			if !t.Short {
+				break
+			}
+			if t.State != task.Exited && t.State != task.Errored {
+				break
+			}
+			b, err := io.ReadAll(t.NewReader(true))
+			if err != nil {
+				err = fmt.Errorf("unable to report task completion: %w", err)
+				cmds = append(cmds, tui.ReportError(err))
+				break
+			}
+			m.lastTaskID = &msg.Payload.ID
+			report := fmt.Sprintf("%s: ", t.String())
+			errored := t.State == task.Errored
+			if errored {
+				report += task.StripError(string(b))
+			} else {
+				report += "finished successfully"
+			}
+			// Ensure that the suggestion fits within visible width of message.
+			suggestion := "…(Press 'o' for full output)"
+			if len(report)+len(suggestion) > m.availableFooterMsgWidth() {
+				report = report[:m.availableFooterMsgWidth()-len(suggestion)]
+			}
+			report += suggestion
+			if errored {
+				err = errors.New(report)
+				cmds = append(cmds, tui.ReportError(err))
+			} else {
+				cmds = append(cmds, tui.ReportInfo(report))
+			}
 		}
 	}
 
@@ -217,6 +265,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tui.NavigateTo(tui.LogListKind)
 		case key.Matches(msg, keys.Global.Tasks):
 			return m, tui.NavigateTo(tui.TaskListKind)
+		case key.Matches(msg, keys.Common.LastTask):
+			if m.lastTaskID != nil {
+				return m, tui.NavigateTo(tui.TaskKind, tui.WithParent(*m.lastTaskID))
+			}
 		default:
 			// Send all other keys to panes.
 			if cmd := m.PaneManager.Update(msg); cmd != nil {
@@ -280,30 +332,28 @@ func (m model) View() string {
 		components = append(components, m.help())
 	}
 	// Compose footer
-	footer := tui.Padded.Background(tui.Grey).Foreground(tui.White).Render("? help")
+	footer := helpWidget
 	if m.err != nil {
-		footer += tui.Padded.
-			Bold(true).
+		footer += tui.Regular.Padding(0, 1).
 			Background(tui.Red).
 			Foreground(tui.White).
-			Render("Error:")
-		footer += tui.Regular.Padding(0, 1, 0, 0).
-			Background(tui.Red).
-			Foreground(tui.White).
+			Width(m.availableFooterMsgWidth()).
 			Render(m.err.Error())
 	} else if m.info != "" {
 		footer += tui.Padded.
 			Foreground(tui.Black).
+			Background(tui.LightGreen).
+			Width(m.availableFooterMsgWidth()).
+			Render(m.info)
+	} else {
+		footer += tui.Padded.
+			Foreground(tui.Black).
 			Background(tui.EvenLighterGrey).
+			Width(m.availableFooterMsgWidth()).
 			Render(m.info)
 	}
-	pug := tui.Padded.Background(tui.LightGrey).Foreground(tui.White).Render("PUG")
-	version := tui.Padded.Background(tui.DarkGrey).Foreground(tui.White).Render(version.Version)
-	// Fill in left over space with background color
-	leftover := m.width - tui.Width(footer) - tui.Width(pug) - tui.Width(version)
-	footer += tui.Regular.Width(leftover).Background(tui.EvenLighterGrey).Render()
-	footer += version
-	footer += pug
+	footer += versionWidget
+	footer += pugIconWidget
 	// Add footer
 	components = append(components, tui.Regular.
 		Inline(true).
@@ -313,6 +363,20 @@ func (m model) View() string {
 	)
 	return lipgloss.JoinVertical(lipgloss.Top, components...)
 }
+
+var (
+	helpWidget    = tui.Padded.Background(tui.Grey).Foreground(tui.White).Render("? help")
+	pugIconWidget = tui.Padded.Background(tui.HotPink).Foreground(tui.EvenLighterGrey).Render("󰩃 ")
+	versionWidget = tui.Padded.Background(tui.DarkGrey).Foreground(tui.White).Render(version.Version)
+)
+
+func (m model) availableFooterMsgWidth() int {
+	// -2 to accommodate padding
+	return max(0, m.width-lipgloss.Width(helpWidget)-lipgloss.Width(pugIconWidget)-lipgloss.Width(versionWidget))
+}
+
+// type taskCompletionMsg struct {
+//	error
 
 // viewHeight returns the height available to the panes
 //

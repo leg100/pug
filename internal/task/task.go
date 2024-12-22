@@ -12,6 +12,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode"
 
 	"github.com/leg100/pug/internal"
 	"github.com/leg100/pug/internal/resource"
@@ -26,6 +27,7 @@ type Task struct {
 
 	ModuleID            *resource.ID
 	WorkspaceID         *resource.ID
+	TaskGroupID         *resource.ID
 	Identifier          Identifier
 	Program             string
 	Args                []string
@@ -35,6 +37,7 @@ type Task struct {
 	State               Status
 	JSON                bool
 	Immediate           bool
+	Short               bool
 	AdditionalEnv       []string
 	DependsOn           []resource.ID
 	// Summary summarises the outcome of a task to the end-user.
@@ -109,10 +112,14 @@ func (f *factory) newTask(spec Spec) (*Task, error) {
 	if spec.WorkspaceID != nil && spec.ModuleID == nil {
 		return nil, errors.New("workspace ID cannot be provided without module ID")
 	}
+	if spec.Blocking && spec.Immediate {
+		return nil, errors.New("a task cannot both be blocking and immediately")
+	}
 	task := &Task{
 		ID:                  resource.NewID(resource.Task),
 		ModuleID:            spec.ModuleID,
 		WorkspaceID:         spec.WorkspaceID,
+		TaskGroupID:         spec.TaskGroupID,
 		Identifier:          spec.Identifier,
 		State:               Pending,
 		Created:             time.Now(),
@@ -128,6 +135,7 @@ func (f *factory) newTask(spec Spec) (*Task, error) {
 		Blocking:            spec.Blocking,
 		DependsOn:           spec.dependsOn,
 		Immediate:           spec.Immediate,
+		Short:               spec.Short,
 		exclusive:           spec.Exclusive,
 		Description:         spec.Description,
 		Spec:                spec,
@@ -413,4 +421,21 @@ func (t *Task) updateState(state Status) {
 			t.AfterExited(t)
 		}
 	}
+}
+
+func StripError(s string) string {
+	//  Strip ANSI escape codes
+	s = internal.StripAnsi(s)
+	// Strip non-ascii chars
+	s = strings.Map(func(r rune) rune {
+		if r > unicode.MaxASCII {
+			return -1
+		}
+		return r
+	}, s)
+	// Strip leading and trailing whitespace
+	s = strings.TrimSpace(s)
+	// Compact whitespace
+	s = strings.Join(strings.Fields(s), " ")
+	return s
 }

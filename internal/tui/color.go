@@ -11,8 +11,9 @@ const (
 	BurntOrange     = lipgloss.Color("214")
 	Yellow          = lipgloss.Color("#DBBD70")
 	Green           = lipgloss.Color("34")
-	LightGreen      = lipgloss.Color("86")
+	Turquoise       = lipgloss.Color("86")
 	DarkGreen       = lipgloss.Color("#325451")
+	LightGreen      = lipgloss.Color("47")
 	GreenBlue       = lipgloss.Color("#00A095")
 	DeepBlue        = lipgloss.Color("39")
 	LightBlue       = lipgloss.Color("81")
@@ -26,11 +27,12 @@ const (
 	White           = lipgloss.Color("#ffffff")
 	OffWhite        = lipgloss.Color("#a8a7a5")
 	Pink            = lipgloss.Color("30")
+	HotPink         = lipgloss.Color("200")
 )
 
 var (
 	DebugLogLevel = Blue
-	InfoLogLevel  = lipgloss.AdaptiveColor{Dark: string(LightGreen), Light: string(Green)}
+	InfoLogLevel  = lipgloss.AdaptiveColor{Dark: string(Turquoise), Light: string(Green)}
 	ErrorLogLevel = Red
 	WarnLogLevel  = Yellow
 

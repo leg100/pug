@@ -147,6 +147,24 @@ func TestExplorer_SingleInitUpgrade(t *testing.T) {
 	})
 }
 
+func TestExplorer_SingleFormat(t *testing.T) {
+	t.Parallel()
+
+	tm := setup(t, "./testdata/single_module")
+
+	// Expect one module in tree
+	waitFor(t, tm, func(s string) bool {
+		return strings.Contains(s, "└ 󰠱 a")
+	})
+
+	// Format module
+	tm.Type("f")
+	// Expect short message in footer.
+	waitFor(t, tm, func(s string) bool {
+		return strings.Contains(s, "fmt: finished successfully…(Press 'o' for full output)")
+	})
+}
+
 func TestExplorer_MultipleFormat(t *testing.T) {
 	t.Parallel()
 
@@ -167,6 +185,24 @@ func TestExplorer_MultipleFormat(t *testing.T) {
 			matchPattern(t, `modules/a.*fmt.*exited`, s) &&
 			matchPattern(t, `modules/b.*fmt.*exited`, s) &&
 			matchPattern(t, `modules/c.*fmt.*exited`, s)
+	})
+}
+
+func TestExplorer_SingleValidate(t *testing.T) {
+	t.Parallel()
+
+	tm := setupAndInitModule_Explorer(t)
+
+	// Expect one module in tree
+	waitFor(t, tm, func(s string) bool {
+		return strings.Contains(s, "└ 󰠱 a")
+	})
+
+	// Format module
+	tm.Type("v")
+	// Expect short message in footer.
+	waitFor(t, tm, func(s string) bool {
+		return strings.Contains(s, "validate: finished successfully…(Press 'o' for full output)")
 	})
 }
 

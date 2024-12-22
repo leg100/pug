@@ -3,6 +3,8 @@ package task
 import (
 	"context"
 	"io"
+	"os"
+	"strings"
 	"testing"
 
 	"github.com/leg100/pug/internal"
@@ -73,36 +75,10 @@ func TestTask_cancel(t *testing.T) {
 	assert.Equal(t, Exited, task.State)
 }
 
-// func TestTask_WaitFor_immediateExit(t *testing.T) {
-// 	f := factory{program: "../testdata/task"}
-// 	task, err := f.newTask(".")
-// 	require.NoError(t, err)
-// 	task.run()()
-//
-// 	require.True(t, task.WaitFor(Exited))
-// }
-//
-// func TestTask_WaitFor(t *testing.T) {
-// 	f := factory{program: "../testdata/killme"}
-// 	task, err := f.newTask(".")
-// 	require.NoError(t, err)
-//
-// 	// wait for task to exit in background
-// 	got := make(chan bool)
-// 	go func() {
-// 		got <- task.WaitFor(Exited)
-// 	}()
-//
-// 	// start task in background
-// 	go func() {
-// 		task.run()()
-// 	}()
-//
-// 	// wait for task to start
-// 	assert.Equal(t, "ok, you can kill me now\n", <-iochan.DelimReader(task.NewReader(), '\n'))
-// 	// then cancel
-// 	task.cancel()
-//
-// 	// verify task exits
-// 	require.True(t, <-got)
-// }
+func TestStripError(t *testing.T) {
+	b, err := os.ReadFile("./testdata/validate.out")
+	require.NoError(t, err)
+	got := StripError(string(b))
+	want := "Error: Could not load plugin Plugin reinitialization required. Please run \"terraform init\"."
+	assert.True(t, strings.HasPrefix(got, want), got)
+}

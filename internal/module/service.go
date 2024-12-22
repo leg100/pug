@@ -241,6 +241,8 @@ func (s *Service) Format(moduleID resource.ID) (task.Spec, error) {
 		Execution: task.Execution{
 			TerraformCommand: []string{"fmt"},
 		},
+		Immediate: true,
+		Short:     true,
 	}
 	return spec, nil
 }
@@ -256,6 +258,8 @@ func (s *Service) Validate(moduleID resource.ID) (task.Spec, error) {
 		Execution: task.Execution{
 			TerraformCommand: []string{"validate"},
 		},
+		Immediate: true,
+		Short:     true,
 	}
 	return spec, nil
 }

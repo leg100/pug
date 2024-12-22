@@ -7,9 +7,6 @@ var (
 	Bold    = Regular.Bold(true)
 	Padded  = Regular.Padding(0, 1)
 
-	Width  = lipgloss.Width
-	Height = lipgloss.Height
-
 	Border      = Regular.Border(lipgloss.NormalBorder())
 	ThickBorder = Regular.Border(lipgloss.ThickBorder()).BorderForeground(Violet)
 

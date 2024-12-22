@@ -316,6 +316,10 @@ func (h *Helpers) CreateTasks(fn task.SpecFunc, ids ...resource.ID) tea.Cmd {
 			if err != nil {
 				return ErrorMsg(fmt.Errorf("creating task: %w", err))
 			}
+			if task.Short {
+				// Don't navigate the user to the task page for short tasks.
+				return nil
+			}
 			return NewNavigationMsg(TaskKind, WithParent(task.ID))
 		default:
 			specs := make([]task.Spec, 0, len(ids))

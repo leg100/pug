@@ -19,25 +19,19 @@ func TestState_SingleTaint_Untaint(t *testing.T) {
 	// Taint first resource, which should be random_pet.pet[0]
 	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlT})
 
-	// Expect to be taken to task page for taint
+	// Expect short message in footer.
 	waitFor(t, tm, func(s string) bool {
-		return strings.Contains(s, "Resource instance random_pet.pet[0] has been marked as tainted.")
-	})
-
-	// Go back to state page
-	tm.Type("s")
-
-	// Expect resource to be marked as tainted
-	waitFor(t, tm, func(s string) bool {
-		return strings.Contains(s, "random_pet.pet[0] (tainted)")
+		return strings.Contains(s, "taint: finished successfully…(Press 'o' for full output)") &&
+			strings.Contains(s, "random_pet.pet[0] (tainted)")
 	})
 
 	// Untaint resource
 	tm.Type("U")
 
-	// Expect to be taken to task page for untaint
+	// Expect short message in footer.
 	waitFor(t, tm, func(s string) bool {
-		return strings.Contains(s, "Resource instance random_pet.pet[0] has been successfully untainted.")
+		return strings.Contains(s, "untaint: finished successfully…(Press 'o' for full output)") &&
+			strings.Contains(s, "random_pet.pet[0]")
 	})
 }
 
@@ -114,11 +108,10 @@ func TestState_Move(t *testing.T) {
 	tm.Type("giraffe[99]")
 	tm.Send(tea.KeyMsg{Type: tea.KeyEnter})
 
-	// Expect to be taken to task page for move
+	// Expect short message in footer.
 	waitFor(t, tm, func(s string) bool {
-		return strings.Contains(s, "state mv 󰠱 modules/a  default") &&
-			strings.Contains(s, `Move "random_pet.pet[0]" to "random_pet.giraffe[99]"`) &&
-			strings.Contains(s, `Successfully moved 1 object(s).`)
+		return strings.Contains(s, "random_pet.giraffe[99]") &&
+			strings.Contains(s, "state mv: finished successfully…(Press 'o' for full output)")
 	})
 }
 
@@ -136,20 +129,11 @@ func TestState_SingleDelete(t *testing.T) {
 	})
 	tm.Type("y")
 
-	// User is taken to its task page, which should provide the output from the
-	// command.
+	// Expect short message in footer.
 	waitFor(t, tm, func(s string) bool {
-		return strings.Contains(s, "state rm 󰠱 modules/a  default") &&
-			strings.Contains(s, "Removed random_pet.pet[0]") &&
-			strings.Contains(s, "Successfully removed 1 resource instance(s).")
-	})
-
-	// Go back to state page
-	tm.Type("s")
-
-	// Expect only 9 resources.
-	waitFor(t, tm, func(s string) bool {
-		return strings.Contains(s, "1-9 of 9")
+		return strings.Contains(s, "state rm: finished successfully…(Press 'o' for full output)") &&
+			// Expect only 9 resources now.
+			strings.Contains(s, "1-9 of 9")
 	})
 }
 
@@ -171,25 +155,10 @@ func TestState_MultipleDelete(t *testing.T) {
 	// User is taken to its task page, which should provide the output from the
 	// command.
 	waitFor(t, tm, func(s string) bool {
-		return strings.Contains(s, "state rm 󰠱 modules/a  default") &&
-			strings.Contains(s, "Removed random_pet.pet[0]") &&
-			strings.Contains(s, "Removed random_pet.pet[1]") &&
-			strings.Contains(s, "Removed random_pet.pet[2]") &&
-			strings.Contains(s, "Removed random_pet.pet[3]") &&
-			strings.Contains(s, "Removed random_pet.pet[4]") &&
-			strings.Contains(s, "Removed random_pet.pet[5]") &&
-			strings.Contains(s, "Removed random_pet.pet[6]") &&
-			strings.Contains(s, "Removed random_pet.pet[7]") &&
-			strings.Contains(s, "Removed random_pet.pet[8]") &&
-			strings.Contains(s, "Removed random_pet.pet[9]") &&
-			strings.Contains(s, "Successfully removed 10 resource instance(s).")
+		return strings.Contains(s, "state rm: finished successfully…(Press 'o' for full output)") &&
+			// Expect only 0 resources now.
+			strings.Contains(s, "1-0 of 0")
 	})
-
-	// Go back to state page
-	tm.Send(tea.KeyMsg{Type: tea.KeyEsc})
-
-	// TODO: test that there are zero resources in state. There is currently
-	// scant information to test for.
 }
 
 func TestState_TargetedPlan_SingleResource(t *testing.T) {
