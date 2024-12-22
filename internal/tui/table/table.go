@@ -32,7 +32,6 @@ type Model[V resource.Resource] struct {
 	cols        []Column
 	rows        []Row[V]
 	rowRenderer RowRenderer[V]
-	focus       bool
 	rendered    map[resource.ID]RenderedRow
 
 	border      lipgloss.Border
@@ -242,10 +241,6 @@ func (m Model[V]) Update(msg tea.Msg) (Model[V], tea.Cmd) {
 		// Filter table items
 		m.setRows(maps.Values(m.items)...)
 		return m, cmd
-	case tui.FocusPaneMsg:
-		m.focus = true
-	case tui.UnfocusPaneMsg:
-		m.focus = false
 	default:
 		// Send any other messages to the filter if it is focused.
 		if m.filter.Focused() {

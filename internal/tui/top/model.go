@@ -211,24 +211,24 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				// switch back to normal mode, blur the filter widget, and let
 				// the key handler below handle the quit action.
 				m.mode = normalMode
-				cmd = m.ActiveModel().Update(tui.FilterBlurMsg{})
+				cmd = m.FocusedModel().Update(tui.FilterBlurMsg{})
 				return m, cmd
 			case key.Matches(msg, keys.Filter.Blur):
 				// Switch back to normal mode, and send message to current model
 				// to blur the filter widget
 				m.mode = normalMode
-				cmd = m.ActiveModel().Update(tui.FilterBlurMsg{})
+				cmd = m.FocusedModel().Update(tui.FilterBlurMsg{})
 				return m, cmd
 			case key.Matches(msg, keys.Filter.Close):
 				// Switch back to normal mode, and send message to current model
 				// to close the filter widget
 				m.mode = normalMode
-				cmd = m.ActiveModel().Update(tui.FilterCloseMsg{})
+				cmd = m.FocusedModel().Update(tui.FilterCloseMsg{})
 				return m, cmd
 			default:
 				// Wrap key message in a filter key message and send to current
 				// model.
-				cmd = m.ActiveModel().Update(tui.FilterKeyMsg(msg))
+				cmd = m.FocusedModel().Update(tui.FilterKeyMsg(msg))
 				return m, cmd
 			}
 		}
@@ -252,7 +252,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, keys.Global.Filter):
 			// '/' enables filter mode if the current model indicates it
 			// supports it, which it does so by sending back a non-nil command.
-			if cmd = m.ActiveModel().Update(tui.FilterFocusReqMsg{}); cmd != nil {
+			if cmd = m.FocusedModel().Update(tui.FilterFocusReqMsg{}); cmd != nil {
 				m.mode = filterMode
 			}
 			return m, cmd
@@ -303,7 +303,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.mode == promptMode {
 			cmd = m.prompt.HandleBlink(msg)
 		} else {
-			cmd = m.ActiveModel().Update(msg)
+			cmd = m.FocusedModel().Update(msg)
 		}
 		return m, cmd
 	default:

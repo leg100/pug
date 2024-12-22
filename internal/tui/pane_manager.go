@@ -32,8 +32,8 @@ type PaneManager struct {
 	makers map[Kind]Maker
 	// cache of previously made models
 	cache *Cache
-	// the position of the currently active pane
-	active Position
+	// the position of the currently focused pane
+	focused Position
 	// panes tracks currently visible panes
 	panes map[Position]pane
 	// total width and height of the terminal space available to panes.
@@ -82,7 +82,7 @@ func (p *PaneManager) Update(msg tea.Msg) tea.Cmd {
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, keys.Common.Back):
-			if p.active != TopRightPane {
+			if p.focused != TopRightPane {
 				// History is only maintained for the top right pane.
 				break
 			}
@@ -110,20 +110,20 @@ func (p *PaneManager) Update(msg tea.Msg) tea.Cmd {
 			p.updateTopRightHeight(1)
 			p.updateChildSizes()
 		case key.Matches(msg, keys.Navigation.SwitchPane):
-			p.cycleActivePane(false)
+			p.cycleFocusedPane(false)
 		case key.Matches(msg, keys.Navigation.SwitchPaneBack):
-			p.cycleActivePane(true)
+			p.cycleFocusedPane(true)
 		case key.Matches(msg, keys.Global.ClosePane):
-			cmds = append(cmds, p.closeActivePane())
+			cmds = append(cmds, p.closeFocusedPane())
 		case key.Matches(msg, keys.Navigation.LeftPane):
-			cmds = append(cmds, p.focusPane(LeftPane))
+			p.focusPane(LeftPane)
 		case key.Matches(msg, keys.Navigation.TopRightPane):
-			cmds = append(cmds, p.focusPane(TopRightPane))
+			p.focusPane(TopRightPane)
 		case key.Matches(msg, keys.Navigation.BottomRightPane):
-			cmds = append(cmds, p.focusPane(BottomRightPane))
+			p.focusPane(BottomRightPane)
 		default:
-			// Send remaining keys to active pane
-			cmds = append(cmds, p.updateModel(p.active, msg))
+			// Send remaining keys to focused pane
+			cmds = append(cmds, p.updateModel(p.focused, msg))
 		}
 	case tea.WindowSizeMsg:
 		p.width = msg.Width
@@ -157,41 +157,42 @@ func (p *PaneManager) Update(msg tea.Msg) tea.Cmd {
 	return tea.Batch(cmds...)
 }
 
-// ActiveModel retrieves the model of the active pane.
-func (p *PaneManager) ActiveModel() ChildModel {
-	return p.panes[p.active].model
+// FocusedModel retrieves the model of the focused pane.
+func (p *PaneManager) FocusedModel() ChildModel {
+	return p.panes[p.focused].model
 }
 
-// cycleActivePane makes the next pane the active pane. If last is true then the
-// previous pane is made the active pane.
-func (p *PaneManager) cycleActivePane(last bool) tea.Cmd {
+// cycleFocusedPane makes the next pane the focused pane. If last is true then the
+// previous pane is made the focused pane.
+func (p *PaneManager) cycleFocusedPane(last bool) {
 	positions := maps.Keys(p.panes)
 	slices.Sort(positions)
-	var activeIndex int
+	var focusedIndex int
 	for i, pos := range positions {
-		if pos == p.active {
-			activeIndex = i
+		if pos == p.focused {
+			focusedIndex = i
 		}
 	}
-	var newActiveIndex int
+	var newFocusedIndex int
 	if last {
-		newActiveIndex = activeIndex - 1
-		if newActiveIndex < 0 {
-			newActiveIndex = len(positions) + newActiveIndex
+		newFocusedIndex = focusedIndex - 1
+		if newFocusedIndex < 0 {
+			newFocusedIndex = len(positions) + newFocusedIndex
 		}
 	} else {
-		newActiveIndex = (activeIndex + 1) % len(positions)
+		newFocusedIndex = (focusedIndex + 1) % len(positions)
 	}
-	return p.focusPane(positions[newActiveIndex])
+	p.focusPane(positions[newFocusedIndex])
 }
 
-func (p *PaneManager) closeActivePane() tea.Cmd {
+func (p *PaneManager) closeFocusedPane() tea.Cmd {
 	if len(p.panes) == 1 {
 		return ReportError(errors.New("cannot close last pane"))
 	}
-	delete(p.panes, p.active)
+	delete(p.panes, p.focused)
 	p.updateChildSizes()
-	return p.cycleActivePane(false)
+	p.cycleFocusedPane(false)
+	return nil
 }
 
 func (p *PaneManager) updateLeftWidth(delta int) {
@@ -210,7 +211,7 @@ func (p *PaneManager) updateTopRightHeight(delta int) {
 		// There is no horizontal split to adjust
 		return
 	}
-	switch p.active {
+	switch p.focused {
 	case BottomRightPane:
 		delta = -delta
 	}
@@ -234,7 +235,7 @@ func (m *PaneManager) setPane(msg NavigationMsg) (cmd tea.Cmd) {
 	if pane, ok := m.panes[msg.Position]; ok && pane.page == msg.Page {
 		// Pane is already showing requested page, so just bring it into focus.
 		if !msg.DisableFocus {
-			return m.focusPane(msg.Position)
+			m.focusPane(msg.Position)
 		}
 		return nil
 	}
@@ -265,24 +266,17 @@ func (m *PaneManager) setPane(msg NavigationMsg) (cmd tea.Cmd) {
 	}
 	m.updateChildSizes()
 	if !msg.DisableFocus {
-		focus := m.focusPane(msg.Position)
-		cmd = tea.Batch(focus, cmd)
+		m.focusPane(msg.Position)
 	}
 	return cmd
 }
 
-func (m *PaneManager) focusPane(position Position) tea.Cmd {
+func (m *PaneManager) focusPane(position Position) {
 	if _, ok := m.panes[position]; !ok {
 		// There is no pane to focus at requested position
-		return nil
+		return
 	}
-	var cmds []tea.Cmd
-	if previous, ok := m.panes[m.active]; ok {
-		cmds = append(cmds, previous.model.Update(UnfocusPaneMsg{}))
-	}
-	m.active = position
-	cmds = append(cmds, m.panes[m.active].model.Update(FocusPaneMsg{}))
-	return tea.Batch(cmds...)
+	m.focused = position
 }
 
 func (m *PaneManager) paneWidth(position Position) int {
@@ -332,7 +326,7 @@ func (m *PaneManager) renderPane(position Position) string {
 		return ""
 	}
 	model := m.panes[position].model
-	isActive := position == m.active
+	isFocused := position == m.focused
 	renderedPane := lipgloss.NewStyle().
 		Width(m.paneWidth(position) - 2).    // -2 for border
 		Height(m.paneHeight(position) - 2).  // -2 for border
@@ -345,7 +339,7 @@ func (m *PaneManager) renderPane(position Position) string {
 	}); ok {
 		borderTexts = textInBorder.BorderText()
 	}
-	if !isActive {
+	if !isFocused {
 		switch position {
 		case LeftPane:
 			borderTexts[TopRightBorder] = keys.Navigation.LeftPane.Keys()[0]
@@ -355,15 +349,15 @@ func (m *PaneManager) renderPane(position Position) string {
 			borderTexts[TopRightBorder] = keys.Navigation.BottomRightPane.Keys()[0]
 		}
 	}
-	return borderize(renderedPane, isActive, borderTexts)
+	return borderize(renderedPane, isFocused, borderTexts)
 }
 
 func (m *PaneManager) HelpBindings() (bindings []key.Binding) {
-	if m.active == TopRightPane {
+	if m.focused == TopRightPane {
 		// Only the top right pane has the ability to "go back"
 		bindings = append(bindings, keys.Common.Back)
 	}
-	if model, ok := m.ActiveModel().(ModelHelpBindings); ok {
+	if model, ok := m.FocusedModel().(ModelHelpBindings); ok {
 		bindings = append(bindings, model.HelpBindings()...)
 	}
 	return bindings

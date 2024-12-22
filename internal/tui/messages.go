@@ -55,12 +55,3 @@ type FilterCloseMsg struct{}
 
 // FilterKeyMsg is a key entered by the user into the filter widget
 type FilterKeyMsg tea.KeyMsg
-
-// FocusExplorerMsg switches the focus to the explorer pane.
-type FocusExplorerMsg struct{}
-
-// FocusPaneMsg is sent to a model when it focused
-type FocusPaneMsg struct{}
-
-// UnfocusPaneMsg is sent to a model when it unfocused
-type UnfocusPaneMsg struct{}

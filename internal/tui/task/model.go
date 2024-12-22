@@ -150,8 +150,6 @@ func (m *Model) Update(msg tea.Msg) tea.Cmd {
 				"Retry task?",
 				m.CreateTasksWithSpecs(m.task.Spec),
 			)
-		case key.Matches(msg, keys.Navigation.SwitchPane):
-			return tui.CmdHandler(tui.FocusExplorerMsg{})
 		default:
 			cmd := m.common.Update(msg)
 			cmds = append(cmds, cmd)
