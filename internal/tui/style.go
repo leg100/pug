@@ -10,15 +10,6 @@ var (
 	Border      = Regular.Border(lipgloss.NormalBorder())
 	ThickBorder = Regular.Border(lipgloss.ThickBorder()).BorderForeground(Violet)
 
-	Title          = Padded.Foreground(White).Background(Purple)
-	TitleCommand   = Padded.Foreground(White).Background(Blue)
-	TitlePath      = Padded.Foreground(White).Background(modulePathColor)
-	TitleWorkspace = Padded.Foreground(White).Background(Green)
-	TitleID        = Padded.Foreground(White).Background(Green)
-	TitleAddress   = Padded.Foreground(White).Background(Blue)
-	TitleSerial    = Padded.Foreground(Black).Background(Orange)
-	TitleTainted   = Padded.Foreground(White).Background(Red)
-
-	ModuleStyle    = Regular.Foreground(Purple)
-	WorkspaceStyle = Regular.Foreground(Pink)
+	ModuleStyle    = Regular.Foreground(DarkishGreen)
+	WorkspaceStyle = Regular.Foreground(Purple)
 )

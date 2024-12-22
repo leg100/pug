@@ -72,6 +72,7 @@ func newModel(cfg app.Config, app *app.App) (model, error) {
 		States:     app.States,
 		Tasks:      app.Tasks,
 		Logger:     app.Logger,
+		Workdir:    cfg.Workdir,
 	}
 	spinner := spinner.New(spinner.WithSpinner(spinner.Line))
 	makers := makeMakers(cfg, app, &spinner, helpers)
@@ -353,7 +354,6 @@ func (m model) View() string {
 			Render(m.info)
 	}
 	footer += versionWidget
-	footer += pugIconWidget
 	// Add footer
 	components = append(components, tui.Regular.
 		Inline(true).
@@ -366,13 +366,12 @@ func (m model) View() string {
 
 var (
 	helpWidget    = tui.Padded.Background(tui.Grey).Foreground(tui.White).Render("? help")
-	pugIconWidget = tui.Padded.Background(tui.HotPink).Foreground(tui.EvenLighterGrey).Render("󰩃 ")
 	versionWidget = tui.Padded.Background(tui.DarkGrey).Foreground(tui.White).Render(version.Version)
 )
 
 func (m model) availableFooterMsgWidth() int {
 	// -2 to accommodate padding
-	return max(0, m.width-lipgloss.Width(helpWidget)-lipgloss.Width(pugIconWidget)-lipgloss.Width(versionWidget))
+	return max(0, m.width-lipgloss.Width(helpWidget)-lipgloss.Width(versionWidget))
 }
 
 // type taskCompletionMsg struct {

@@ -131,6 +131,19 @@ func (m *ActionHandler) Update(msg tea.Msg) tea.Cmd {
 				return nil
 			}
 			return NavigateTo(ResourceListKind, WithParent(ids[0]))
+		case key.Matches(msg, keys.Common.Edit):
+			ids, err := m.GetModuleIDs()
+			if err != nil {
+				return ReportError(err)
+			}
+			if len(ids) == 0 {
+				return nil
+			}
+			mod, err := m.Modules.Get(ids[0])
+			if err != nil {
+				return ReportError(err)
+			}
+			return OpenEditor(m.Workdir.Join(mod.Path))
 		}
 	}
 	return nil

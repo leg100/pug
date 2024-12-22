@@ -13,6 +13,7 @@ const (
 	Green           = lipgloss.Color("34")
 	Turquoise       = lipgloss.Color("86")
 	DarkGreen       = lipgloss.Color("#325451")
+	DarkishGreen    = lipgloss.Color("75")
 	LightGreen      = lipgloss.Color("47")
 	GreenBlue       = lipgloss.Color("#00A095")
 	DeepBlue        = lipgloss.Color("39")
@@ -26,7 +27,6 @@ const (
 	DarkGrey        = lipgloss.Color("#606362")
 	White           = lipgloss.Color("#ffffff")
 	OffWhite        = lipgloss.Color("#a8a7a5")
-	Pink            = lipgloss.Color("30")
 	HotPink         = lipgloss.Color("200")
 )
 
@@ -62,11 +62,6 @@ var (
 	TitleColor = lipgloss.AdaptiveColor{
 		Dark:  "",
 		Light: "",
-	}
-
-	modulePathColor = lipgloss.AdaptiveColor{
-		Dark:  string(Grey),
-		Light: string(Grey),
 	}
 
 	GroupReportBackgroundColor = EvenLighterGrey

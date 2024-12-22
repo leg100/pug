@@ -1,0 +1,23 @@
+[31m╷[0m[0m
+[31m│[0m [0m[1m[31mError: [0m[0m[1mCould not load plugin[0m
+[31m│[0m [0m
+[31m│[0m [0m[0m
+[31m│[0m [0mPlugin reinitialization required. Please run "terraform init".
+[31m│[0m [0m
+[31m│[0m [0mPlugins are external binaries that Terraform uses to access and manipulate
+[31m│[0m [0mresources. The configuration provided requires plugins which can't be
+[31m│[0m [0mlocated,
+[31m│[0m [0mdon't satisfy the version constraints, or are otherwise incompatible.
+[31m│[0m [0m
+[31m│[0m [0mTerraform automatically discovers provider requirements from your
+[31m│[0m [0mconfiguration, including providers used in child modules. To see the
+[31m│[0m [0mrequirements and constraints, run "terraform providers".
+[31m│[0m [0m
+[31m│[0m [0m2 problems:
+[31m│[0m [0m
+[31m│[0m [0m- failed to instantiate provider "registry.terraform.io/hashicorp/random"
+[31m│[0m [0mto obtain schema: unknown provider "registry.terraform.io/hashicorp/random"
+[31m│[0m [0m- failed to instantiate provider "registry.terraform.io/hashicorp/time" to
+[31m│[0m [0mobtain schema: unknown provider "registry.terraform.io/hashicorp/time"
+[31m│[0m [0m
+[31m╵[0m[0m

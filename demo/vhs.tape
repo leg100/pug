@@ -1,32 +1,47 @@
 Output demo/demo.gif
 
+Require terraform
+Require infracost
+Require asdf
+
 Set Shell "bash"
 Set FontSize 14
 Set Width 1200
 Set Height 800
 Set Framerate 24
 Set Padding 5
+Set FontFamily "JetBrainsMono Nerd Font"
+
+# Clear any leftover artefacts from last demo
+Hide
+Type@1ms "asdf uninstall terraform" Enter
+Type@1ms "find demo/ -name .terraform -exec rm -rf {} \; > /dev/null 2>&1 || true" Enter
+Type@1ms "find demo/ -name terraform.tfstate -exec rm {} \; > /dev/null 2>&1 || true" Enter
+Type@1ms "find demo/ -name terraform.tfstate.* -exec rm {} \; > /dev/null 2>&1 || true" Enter
+Type@1ms "find demo/ -name .terraform.lock.hcl -exec rm {} \; > /dev/null 2>&1 || true" Enter
+Type@1ms "find demo/ -name environment -exec rm {} \; > /dev/null 2>&1 || true" Enter
+Show
 
 Hide
-Type `TF_CLI_CONFIG_FILE=$PWD/mirror/mirror.tfrc go run main.go -w demo/dont_cost_money` Enter
+Type@1ms `TF_CLI_CONFIG_FILE=$PWD/mirror/mirror.tfrc go run main.go -w demo/dont_cost_money` Enter
 Sleep 1s
 Show
 
-# show unintialized modules
+# show explorer tree
 Sleep 1s
 
 # init all modules
 Ctrl+a Sleep 0.5s Type "i"
-# we're taken to the init task group page
+# show init task group
 Sleep 0.5s
 # preview output for several tasks
 Down Sleep 0.5s Down Sleep 0.5s Down Sleep 0.5s
 
-# go back to modules
-Type "m"
+# go back to explorer
+Type "0"
 # validate all modules
 Type "v"
-# we're taken to the validate task group page
+# show validate task group
 Sleep 0.5s
 # enable task info side panel
 Type "I" Sleep 0.5s
@@ -37,13 +52,13 @@ Down Sleep 0.5s Down Sleep 0.5s Down Sleep 0.5s
 # disable task info side panel
 Type "I" Sleep 0.5s
 
-# go back to modules
-Type "m" Sleep 0.5s
+# go back to explorer
+Type "0" Sleep 0.5s
 # show help
 Type "?" Sleep 0.5s
 # run plan on all modules
 Type "p"
-# we're taken to the plan task group page
+# show plan task group page
 Sleep 1s
 # hide help
 Type "?"
@@ -57,14 +72,16 @@ Sleep 0.5s Type "y"
 # preview output for several tasks
 Sleep 2s Down Sleep 1s Down Sleep 1s Down Sleep 1s
 
-# go to workspaces
-Type "w" Sleep 1s
-# take screen shot of workspaces
+# go back to explorer
+Type "0" Sleep 1s
+# take screen shot of explorer tree populated with workspaces
 Screenshot demo/workspaces.png
 # filter dev workspaces
 Type "/" Sleep 0.5s Type "dev" Sleep 0.5s Enter
 # take screen shot of filter mode
 Screenshot demo/filter.png Sleep 0.5s
+# move cursor down one onto dev workspace belonging to module a
+Down Sleep 0.5s
 # select all dev workspaces and auto-apply
 Ctrl+a Sleep 0.5s Type "a"
 # accept confirmation
@@ -72,36 +89,31 @@ Sleep 0.5s Type "y"
 # preview output for several tasks
 Sleep 2s Down Sleep 1s Down Sleep 1s
 
-# go back to modules
-Type "m" Sleep 0.5s
+# go back to explorer
+Type "0" Sleep 0.5s
 # take screen shot of modules (sleep to ensure page doesn't switch too soon)
 Screenshot demo/modules.png Sleep 0.5s
 
-# go to state for current module
+# go to state for current dev workspace
 Type "s" Sleep 0.5s
 # see preview for several resources
 Sleep 0.5s Down Sleep 0.5s Down Sleep 0.5s Down Sleep 0.5s
 
 # move current resource
-Type "M" Sleep 0.5s Backspace 6 Sleep 0.5s Type "giraffe[99]" Sleep 0.5s Enter
-# look at task output for a bit
-Sleep 1s
+Type "m" Sleep 0.5s Backspace 6 Sleep 0.5s Type "giraffe[99]" Sleep 0.5s Enter
+# wait a bit of move to occur and message to appear in footer
+Sleep 1.5s
 
-# go back to state
-Escape Sleep 0.5s
 # take screen shot of state
 Screenshot demo/state.png
 
 # delete another resource
 Down Sleep 0.5s
-Type "D"
+Delete
 # confirm deletion
 Sleep 0.5s Type "y" Sleep 0.5s
 # look at task output for a bit
-Sleep 1s
-
-# go back to state
-Escape Sleep 0.5s
+Sleep 1.5s
 
 # select all resources
 Ctrl+a Sleep 0.5s
@@ -117,7 +129,7 @@ Escape Sleep 0.5s
 
 # select all resources
 Ctrl+a Sleep 0.5s
-# taint all resources
+# untaint all resources
 Type "U"
 # we're taken to the untaint task group page
 Sleep 0.5s
@@ -167,7 +179,7 @@ Type `TF_CLI_CONFIG_FILE=$PWD/mirror/mirror.tfrc go run main.go -w demo/do_cost_
 Sleep 1s
 Show
 
-# show unintialized modules
+# show explorer tree
 Sleep 1s
 
 # init all modules
@@ -175,9 +187,7 @@ Ctrl+a Sleep 0.5s Type "i"
 # we're taken to the init task group page, wait for a few seconds for tasks to finish
 Sleep 2s
 
-# go to workspaces
-Type "w" Sleep 2s
-# select all workspaces
+# select all modules
 Ctrl+a Sleep 0.5s
 # calculate cost
 Type "$"
@@ -186,27 +196,27 @@ Sleep 6s
 # take screen shot of infracost output (sleep to ensure page doesn't switch too soon)
 Screenshot demo/infracost_output.png Sleep 0.5s
 
-# go back to workspaces
-Type "w" Sleep 0.5s
-# take screen shot of workspaces (sleep to ensure page doesn't switch too soon)
+# go back to explorer
+Type "0" Sleep 0.5s
+# take screen shot of workspaces with costs (sleep to ensure page doesn't switch too soon)
 Screenshot demo/workspaces_with_cost.png Sleep 0.5s
 Sleep 3s
 
 # quit app and restart, this time with modules with .tool-versions files, to demonstrate support for executing arbitrary programs, in this case, `asdf`
 Hide
 Ctrl+c Type "y"
-Type `TF_CLI_CONFIG_FILE=$PWD/mirror/mirror.tfrc go run main.go -w demo/multiple_versions` Enter
+Type@1ms `TF_CLI_CONFIG_FILE=$PWD/mirror/mirror.tfrc go run main.go -w demo/multiple_versions` Enter
 Sleep 1s
 Show
 
-# show unintialized modules
+# show explorer
 Sleep 1s
 
 # select all modules
 Ctrl+a Sleep 0.5s
 # install terraform for each module
 Type "x" Sleep 1s
-Type "asdf install terraform" Sleep 1s
+Type@1ms "asdf install terraform" Sleep 1s
 # take screen shot (sleep to ensure page doesn't switch too soon)
 Screenshot demo/execute_asdf_install_terraform.png Sleep 0.5s
 # Execute asdf

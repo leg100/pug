@@ -8,6 +8,7 @@ import (
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/leg100/pug/internal"
 	"github.com/leg100/pug/internal/logging"
 	"github.com/leg100/pug/internal/module"
 	"github.com/leg100/pug/internal/plan"
@@ -30,6 +31,7 @@ type Helpers struct {
 	Tasks      *task.Service
 	States     *state.Service
 	Logger     logging.Interface
+	Workdir    internal.Workdir
 }
 
 func (h *Helpers) ModuleCurrentWorkspace(mod *module.Module) *workspace.Workspace {

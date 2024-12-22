@@ -60,3 +60,7 @@ install-infracost:
 	curl -L https://github.com/infracost/infracost/releases/download/v0.10.38/infracost-linux-amd64.tar.gz | tar -zxf -
 	mv infracost-linux-amd64 ~/.local/bin/infracost
 	chmod +x ~/.local/bin/infracost
+
+.PHONY: demo
+demo:
+	vhs demo/vhs.tape

@@ -64,7 +64,6 @@ FLAGS
       --data-dir STRING              Directory in which to store plan files. (default: /home/louis/.pug)
   -e, --env STRING                   Environment variable to pass to terraform process. Can set more than once.
   -a, --arg STRING                   CLI arg to pass to terraform process. Can set more than once.
-  -f, --first-page STRING            The first page to open on startup. (default: modules)
   -d, --debug                        Log bubbletea messages to messages.log
   -v, --version                      Print version.
   -c, --config STRING                Path to config file. (default: /home/louis/.pug.yaml)
@@ -84,55 +83,40 @@ max-tasks: 100
 
 Pug automatically loads variables from a .tfvars file. It looks for a file named `<workspace>.tfvars` in the module directory, where `<workspace>` is the name of the workspace. For example, if the workspace is named `dev` then it'll look for `dev.tfvars`. If the file exists then it'll pass the name to `terraform plan`, e.g. for a workspace named `dev`, it'll invoke `terraform plan -vars-file=dev.tfvars`.
 
-## Pages
+## Panes
 
-### Modules
+### Explorer
+
+The explorer pane a tree of [modules](#module) and [workspaces](#workspace) discovered on your filesystem. From here, terraform commands can be carried out on both modules and workspaces.
+
+You can select multiple modules or workspaces; you cannot select a combination of the two. Any terraform commands are then carried out on the selection.
+
+The number of resources in the state is shown alongside the workspace.
 
 ![Modules screenshot](./demo/modules.png)
  
-Press `m` to go to the modules page.
-
-*Note: what Pug calls a module is equivalent to a [root module](https://developer.hashicorp.com/terraform/language/modules#the-root-module), i.e. a directory containing terraform configuration, including a state backend. It is not to be confused with a [child module](https://developer.hashicorp.com/terraform/language/modules#child-modules).*
-
 #### Key bindings
 
-| Key | Description | Multi-select |
-|--|--|--|
-|`i`|Run `terraform init`|&check;|
-|`u`|Run `terraform init -upgrade`|&check;|
-|`f`|Run `terraform fmt`|&check;|
-|`v`|Run `terraform validate`|&check;|
-|`p`|Run `terraform plan`|&check;|
-|`P`|Run `terraform plan -destroy`|&check;|
-|`a`|Run `terraform apply`|&check;|
-|`d`|Run `terraform apply -destroy`|&check;|
-|`e`|Open module in editor|&cross;|
-|`x`|Run any program|&check;|
-|`Ctrl+r`|Reload all modules|-|
-|`Ctrl+w`|Reload module's workspaces|&check;|
+| Key | Description | Multi-select | Module | Workspace |
+|--|--|--|--|--|
+|`i`|Run `terraform init`|&check;|&check;|&check;\*\*|
+|`u`|Run `terraform init -upgrade`|&check;|&check;|&check;\*\*|
+|`f`|Run `terraform fmt`|&check;|&check;|&check;\*\*|
+|`v`|Run `terraform validate`|&check;|&check;|&check;\*\*|
+|`p`|Run `terraform plan`|&check;|&check;\*|&check;|
+|`P`|Run `terraform plan -destroy`|&check;|&check;\*|&check;|
+|`a`|Run `terraform apply`|&check;|&check;\*|&check;|
+|`d`|Run `terraform apply -destroy`|&check;|&check;\*|&check;|
+|`C`|Run `terraform workspace select`|&cross;|&cross;|&check;|
+|`$`|Run `infracost breakdown`|&check;|&check;\*|&check;|
+|`E`|Open module in editor|&cross;|&check;|&check;\*\*|
+|`x`|Run any program|&check;|&check;|&check;\*\*|
+|`Ctrl+r`|Reload all modules|-|&check;|&check;|
+|`Ctrl+w`|Reload module's workspaces|&check;|&check;|&check;\*\*|
 
-### Workspaces
+\* Operate on module's current workspace.
 
-![Workspaces screenshot](./demo/workspaces.png)
-
-Press `w` to go to the workspaces page.
-
-*Note: A workspace is directly equivalent to a [terraform workspace](https://developer.hashicorp.com/terraform/language/state/workspaces).*
-
-#### Key bindings
-
-| Key | Description | Multi-select |
-|--|--|--|
-|`i`|Run `terraform init`|&check;|
-|`u`|Run `terraform init -upgrade`|&check;|
-|`f`|Run `terraform fmt`|&check;|
-|`v`|Run `terraform validate`|&check;|
-|`p`|Run `terraform plan`|&check;|
-|`P`|Run `terraform plan -destroy`|&check;|
-|`a`|Run `terraform apply`|&check;|
-|`d`|Run `terraform apply -destroy`|&check;|
-|`C`|Run `terraform workspace select`|&cross;|
-|`$`|Run `infracost breakdown`|&check;|
+\*\* Operate on workspace's parent module.
 
 ### State
 
@@ -149,14 +133,10 @@ Press `s` to go to the state page, listing a workspace's resources.
 |`a`|Run `terraform apply -target`|&check;|
 |`d`|Run `terraform apply -destroy -target`|&check;|
 |`D`|Run `terraform state rm`|&check;|
-|`M`|Run `terraform state mv`|&cross;|
+|`m`|Run `terraform state mv`|&cross;|
 |`Ctrl+t`|Run `terraform taint`|&check;|
 |`U`|Run `terraform untaint`|&check;|
 |`Ctrl+r`|Run `terraform state pull`|-|
-|`S`|Toggle split screen|-|
-|`+`|Increase split screen top pane|-|
-|`-`|Decrease split screen top pane|-|
-|`tab`|Switch split screen pane focus|-|
 
 ### Tasks
 
@@ -170,11 +150,6 @@ Press `t` to go to the tasks page.
 |--|--|--|
 |`c`|Cancel task|&check;|
 |`r`|Retry task|&check;|
-|`Enter`|Full screen task output|&cross;|
-|`S`|Toggle split screen|-|
-|`+`|Increase split screen top pane|-|
-|`-`|Decrease split screen top pane|-|
-|`tab`|Switch split screen pane focus|-|
 |`I`|Toggle task info sidebar|-|
 
 ### Task Group
@@ -189,11 +164,6 @@ Creating multiple tasks, via a selection, creates a task group, and takes you to
 |--|--|--|
 |`c`|Cancel task|&check;|
 |`r`|Retry task|&check;|
-|`Enter`|Full screen task output|&cross;|
-|`S`|Toggle split screen|-|
-|`+`|Increase split screen top pane|-|
-|`-`|Decrease split screen top pane|-|
-|`tab`|Switch split screen pane focus|-|
 |`I`|Toggle task info sidebar|-|
 
 ### Task Groups Listing
@@ -218,16 +188,26 @@ These keys are valid on any page.
 |--|--|
 |`?`|Open help pane|
 |`Ctrl+c`|Quit|
-|`Esc`|Go to previous page|
-|`m`|Go to modules page|
-|`w`|Go to workspaces page|
-|`s`|Go to state page\*|
-|`t`|Go to tasks page|
-|`T`|Go to task groups page|
+|`Esc`|Go to previous page\*\*|
+|`0`|Focus left pane (explorer)|
+|`1`|Focus top right pane|
+|`2`|Focus bottom right pane|
+|`e`|Go to explorer|
+|`s`|Go to state \*|
+|`t`|Go to tasks|
+|`T`|Go to task groups|
 |`l`|Go to logs|
+|`X`|Close pane|
+|`+`|Increase pane height|-|
+|`-`|Decrease pane height|-|
+|`<`|Increase pane width|-|
+|`>`|Decrease pane width|-|
+|`tab`|Switch split screen pane focus|-|
 |`Ctrl+s`|Toggle auto-scrolling of terraform output|
 
 \* Only where the workspace can be ascertained.
+
+\*\* Only history for the top right pane is maintained.
 
 ### Selections
 
@@ -254,7 +234,7 @@ Items can be filtered to those containing a sub-string.
 
 ### Navigation
 
-Common vim key bindings are supported for navigation.
+Common vim key bindings are supported for navigating task output.
 
 | Key | Description |
 |--|--|
