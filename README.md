@@ -64,7 +64,6 @@ FLAGS
       --data-dir STRING              Directory in which to store plan files. (default: /home/louis/.pug)
   -e, --env STRING                   Environment variable to pass to terraform process. Can set more than once.
   -a, --arg STRING                   CLI arg to pass to terraform process. Can set more than once.
-  -f, --first-page STRING            The first page to open on startup. (default: modules)
   -d, --debug                        Log bubbletea messages to messages.log
   -v, --version                      Print version.
   -c, --config STRING                Path to config file. (default: /home/louis/.pug.yaml)
@@ -84,14 +83,12 @@ max-tasks: 100
 
 Pug automatically loads variables from a .tfvars file. It looks for a file named `<workspace>.tfvars` in the module directory, where `<workspace>` is the name of the workspace. For example, if the workspace is named `dev` then it'll look for `dev.tfvars`. If the file exists then it'll pass the name to `terraform plan`, e.g. for a workspace named `dev`, it'll invoke `terraform plan -vars-file=dev.tfvars`.
 
-## Pages
+## Panes
 
-### Modules
+### Explorer
 
 ![Modules screenshot](./demo/modules.png)
  
-Press `m` to go to the modules page.
-
 *Note: what Pug calls a module is equivalent to a [root module](https://developer.hashicorp.com/terraform/language/modules#the-root-module), i.e. a directory containing terraform configuration, including a state backend. It is not to be confused with a [child module](https://developer.hashicorp.com/terraform/language/modules#child-modules).*
 
 #### Key bindings
@@ -149,11 +146,10 @@ Press `s` to go to the state page, listing a workspace's resources.
 |`a`|Run `terraform apply -target`|&check;|
 |`d`|Run `terraform apply -destroy -target`|&check;|
 |`D`|Run `terraform state rm`|&check;|
-|`M`|Run `terraform state mv`|&cross;|
+|`m`|Run `terraform state mv`|&cross;|
 |`Ctrl+t`|Run `terraform taint`|&check;|
 |`U`|Run `terraform untaint`|&check;|
 |`Ctrl+r`|Run `terraform state pull`|-|
-|`S`|Toggle split screen|-|
 |`+`|Increase split screen top pane|-|
 |`-`|Decrease split screen top pane|-|
 |`tab`|Switch split screen pane focus|-|
@@ -219,8 +215,9 @@ These keys are valid on any page.
 |`?`|Open help pane|
 |`Ctrl+c`|Quit|
 |`Esc`|Go to previous page|
-|`m`|Go to modules page|
-|`w`|Go to workspaces page|
+|`0`|Focus left pane (explorer)|
+|`1`|Focus top right pane|
+|`2`|Focus bottom right pane|
 |`s`|Go to state page\*|
 |`t`|Go to tasks page|
 |`T`|Go to task groups page|
