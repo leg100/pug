@@ -10,6 +10,9 @@ var (
 	Border      = Regular.Border(lipgloss.NormalBorder())
 	ThickBorder = Regular.Border(lipgloss.ThickBorder()).BorderForeground(Violet)
 
-	ModuleStyle    = Regular.Foreground(DarkishGreen)
+	ModuleStyle = Regular.Foreground(lipgloss.AdaptiveColor{
+		Dark:  string(LightishBlue),
+		Light: "27",
+	})
 	WorkspaceStyle = Regular.Foreground(Purple)
 )
