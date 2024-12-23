@@ -1,5 +1,30 @@
 # Changelog
 
+## [0.6.0](https://github.com/leg100/pug/compare/v0.5.5...v0.6.0) (2024-12-23)
+
+
+### ⚠ BREAKING CHANGES
+
+* trigger new minor release
+
+### Features
+
+* don't redirect short tasks ([1925a2d](https://github.com/leg100/pug/commit/1925a2db28024048f0791e5746e05ee5edace3a2))
+* make common actions avail in all panes ([953cbae](https://github.com/leg100/pug/commit/953cbae12779ce87118c85d2f8de53c80e3533ab))
+* re-introduce history for top right pane ([41a5ce2](https://github.com/leg100/pug/commit/41a5ce24faac4b5ccdea3713fe6b83dc0b6ad143))
+* tree UI ([#137](https://github.com/leg100/pug/issues/137)) ([4a10ce8](https://github.com/leg100/pug/commit/4a10ce83a8511d8766bf8d61f0ffb62c08557ab7))
+* trigger new minor release ([3433260](https://github.com/leg100/pug/commit/3433260ec8275f36bf692657bcfd03d9438ed5ae))
+* use checkmark to denote current workspace ([2e6cf4c](https://github.com/leg100/pug/commit/2e6cf4ca9d215e7654708cc9faf105da9f616bbb))
+
+
+### Miscellaneous
+
+* bump go and deps ([79a0ec4](https://github.com/leg100/pug/commit/79a0ec43099a5bbae4c739ffbb0ffa536c7b0b97))
+* clean up active pane mgmt ([134e53e](https://github.com/leg100/pug/commit/134e53ee5d2c54131730bbb9f32fa93b8735f94c))
+* document nerdfonts ([00c1275](https://github.com/leg100/pug/commit/00c12758b7d35089dee90611e6d743a187e42d7d))
+* improve module color on light bg ([41dca83](https://github.com/leg100/pug/commit/41dca83c141a483f020acf5096bf11a2b7056005))
+* update demo and docs ([0e3e9fa](https://github.com/leg100/pug/commit/0e3e9fa50421eb431de49d943e3f1c5d6283ba5d))
+
 ## [0.5.5](https://github.com/leg100/pug/compare/v0.5.4...v0.5.5) (2024-10-07)
 
 
