@@ -403,7 +403,7 @@ func TestState_NoState(t *testing.T) {
 		return strings.Contains(s, "Terraform has been successfully initialized!") &&
 			strings.Contains(s, "init 󰠱 modules/a") &&
 			strings.Contains(s, "exited") &&
-			strings.Contains(s, "└  default 0")
+			strings.Contains(s, "└  default ✓ 0")
 	})
 
 	// Go to state page for workspace
@@ -471,7 +471,7 @@ func setupState(t *testing.T) *testModel {
 		return strings.Contains(s, "Terraform has been successfully initialized!") &&
 			strings.Contains(s, "init 󰠱 modules/a") &&
 			strings.Contains(s, "exited") &&
-			strings.Contains(s, "└  default 10")
+			strings.Contains(s, "└  default ✓ 10")
 	})
 
 	// Go to state page for workspace

@@ -91,6 +91,8 @@ The explorer pane a tree of [modules](#module) and [workspaces](#workspace) disc
 
 You can select multiple modules or workspaces; you cannot select a combination of the two. Any terraform commands are then carried out on the selection.
 
+The *current* workspace for a module is distinguished by a check mark. If you run any workspace-level commands on a module, such as a plan or apply, then those commands operate on the current workspace. See key bindings below for how to change the current workspace.
+
 The number of resources in the state is shown alongside the workspace.
 
 ![Modules screenshot](./demo/modules.png)

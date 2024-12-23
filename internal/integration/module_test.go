@@ -315,7 +315,7 @@ func TestExplorer_SingleDestroyPlan(t *testing.T) {
 			strings.Contains(s, "init 󰠱 modules/a") &&
 			strings.Contains(s, "exited") &&
 			strings.Contains(s, "└ 󰠱 a") &&
-			strings.Contains(s, "└  default 10")
+			strings.Contains(s, "└  default ✓ 10")
 	})
 
 	// Create destroy plan
@@ -350,7 +350,7 @@ func TestExplorer_SingleDestroy(t *testing.T) {
 			strings.Contains(s, "init 󰠱 modules/a") &&
 			strings.Contains(s, "exited") &&
 			strings.Contains(s, "└ 󰠱 a") &&
-			strings.Contains(s, "└  default 10")
+			strings.Contains(s, "└  default ✓ 10")
 	})
 
 	// Create destroy
@@ -367,7 +367,7 @@ func TestExplorer_SingleDestroy(t *testing.T) {
 	waitFor(t, tm, func(s string) bool {
 		return strings.Contains(s, "apply (destroy) 󰠱 modules/a  default") &&
 			strings.Contains(s, "exited +0~0-10") &&
-			strings.Contains(s, "└  default 0")
+			strings.Contains(s, "└  default ✓ 0")
 	})
 }
 
@@ -433,7 +433,7 @@ func TestExplorer_WithVars(t *testing.T) {
 			strings.Contains(s, "init 󰠱 modules/a") &&
 			strings.Contains(s, "exited") &&
 			strings.Contains(s, "└ 󰠱 a") &&
-			strings.Contains(s, "└  default 0")
+			strings.Contains(s, "└  default ✓ 0")
 	})
 
 	// Create plan for default workspace
@@ -511,7 +511,7 @@ func setupAndInitModule_Explorer(t *testing.T) *testModel {
 		return strings.Contains(s, "Terraform has been successfully initialized!") &&
 			strings.Contains(s, "init 󰠱 modules/a") &&
 			strings.Contains(s, "exited") &&
-			strings.Contains(s, "└  default 0")
+			strings.Contains(s, "└  default ✓ 0")
 	})
 
 	// Go back to explorer

@@ -61,9 +61,13 @@ func (w workspaceNode) ID() any {
 
 func (w workspaceNode) String() string {
 	name := lipgloss.NewStyle().
-		Bold(w.current).
 		Render(w.name)
 	s := tui.WorkspaceNameWithIcon(name, false)
+	if w.current {
+		s += lipgloss.NewStyle().
+			Foreground(tui.LighterGrey).
+			Render(" ✓")
+	}
 	if w.resourceCount != "" {
 		s += lipgloss.NewStyle().
 			Foreground(tui.LighterGrey).

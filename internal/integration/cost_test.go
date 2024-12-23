@@ -33,10 +33,10 @@ func TestCost(t *testing.T) {
 		return strings.Contains(s, "cost") &&
 			strings.Contains(s, "exited $2621.90") &&
 			matchPattern(t, `OVERALL TOTAL.*\$2\,621\.90`, s) &&
-			strings.Contains(s, `default 0 $87.12`) &&
+			strings.Contains(s, `default ✓ 0 $87.12`) &&
 			strings.Contains(s, `dev 0 $2360.55`) &&
-			strings.Contains(s, `default 0 $87.12`) &&
-			strings.Contains(s, `default 0 $87.12`)
+			strings.Contains(s, `default ✓ 0 $87.12`) &&
+			strings.Contains(s, `default ✓ 0 $87.12`)
 	})
 }
 

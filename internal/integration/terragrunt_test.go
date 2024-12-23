@@ -82,12 +82,12 @@ func TestTerragrunt_Dependencies(t *testing.T) {
 			matchPattern(t, `modules/frontend-app.*default.*\+0~0-0`, s) &&
 			matchPattern(t, `\..*default.*errored`, s) &&
 			// Expect several modules to now have some resources
-			strings.Contains(s, "└  default 3") &&
-			strings.Contains(s, "└  default 2") &&
-			strings.Contains(s, "└  default 1") &&
-			strings.Contains(s, "└  default 1") &&
-			strings.Contains(s, "└  default 0") &&
-			strings.Contains(s, "└  default 0")
+			strings.Contains(s, "└  default ✓ 3") &&
+			strings.Contains(s, "└  default ✓ 2") &&
+			strings.Contains(s, "└  default ✓ 1") &&
+			strings.Contains(s, "└  default ✓ 1") &&
+			strings.Contains(s, "└  default ✓ 0") &&
+			strings.Contains(s, "└  default ✓ 0")
 	})
 
 	// Go back to explorer.
@@ -112,7 +112,7 @@ func TestTerragrunt_Dependencies(t *testing.T) {
 			matchPattern(t, `modules/frontend-app.*default.*apply \(destroy\).*exited.*\+0~0-0`, s) &&
 			matchPattern(t, `\..*default.*apply \(destroy\).*exited.*\+0~0-0`, s) &&
 			// Expect modules to now have some 0 resources
-			strings.Count(s, "└  default 0") >= 6
+			strings.Count(s, "└  default ✓ 0") >= 6
 	})
 }
 
@@ -138,7 +138,7 @@ func setupAndInitTerragruntModule(t *testing.T) *testModel {
 		return strings.Contains(s, "Terraform has been successfully initialized!") &&
 			strings.Contains(s, "init 󰠱 modules/a") &&
 			strings.Contains(s, "exited") &&
-			strings.Contains(s, "└  default 0")
+			strings.Contains(s, "└  default ✓ 0")
 	})
 
 	// Show task info sidebar so tests can check that terragrunt is indeed being
@@ -178,7 +178,7 @@ func setupAndInitTerragruntModulesWithDependencies(t *testing.T) *testModel {
 			matchPattern(t, `modules/backend-app.*init.*exited`, s) &&
 			matchPattern(t, `\..*init.*exited`, s) &&
 			// Expect modules to be listed along with their default workspace.
-			strings.Count(s, "└  default 0") >= 6
+			strings.Count(s, "└  default ✓ 0") >= 6
 	})
 
 	// Go back to explorer and clear selection.

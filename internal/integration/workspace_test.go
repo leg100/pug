@@ -24,7 +24,8 @@ func TestWorkspace_SetCurrentWorkspace(t *testing.T) {
 
 	// Expect dev to be the new current workspace
 	waitFor(t, tm, func(s string) bool {
-		return strings.Contains(s, "set current workspace to dev")
+		return strings.Contains(s, "dev ✓") &&
+			strings.Contains(s, "set current workspace to dev")
 	})
 }
 
@@ -139,7 +140,7 @@ func TestWorkspace_SingleDestroy(t *testing.T) {
 			strings.Contains(s, "init 󰠱 modules/a") &&
 			strings.Contains(s, "exited") &&
 			strings.Contains(s, "└ 󰠱 a") &&
-			strings.Contains(s, "└  default 10")
+			strings.Contains(s, "└  default ✓ 10")
 	})
 
 	// Go back to explorer and place cursor on default workspace
@@ -157,7 +158,7 @@ func TestWorkspace_SingleDestroy(t *testing.T) {
 	waitFor(t, tm, func(s string) bool {
 		return strings.Contains(s, "apply (destroy) 󰠱 modules/a  default") &&
 			strings.Contains(s, "exited +0~0-10") &&
-			strings.Contains(s, "└  default 0")
+			strings.Contains(s, "└  default ✓ 0")
 	})
 }
 
@@ -250,7 +251,7 @@ func setupAndInitModuleWithTwoWorkspaces(t *testing.T) *testModel {
 		return strings.Contains(s, "Terraform has been successfully initialized!") &&
 			strings.Contains(s, "init 󰠱 modules/a") &&
 			strings.Contains(s, "exited") &&
-			strings.Contains(s, "├  default 0") &&
+			strings.Contains(s, "├  default ✓ 0") &&
 			strings.Contains(s, "└  dev 0")
 	})
 
