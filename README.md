@@ -31,6 +31,8 @@ brew install leg100/tap/pug
 
 Or download and unzip a [GitHub release](https://github.com/leg100/pug/releases) for your system and architecture.
 
+NOTE: you'll need a [nerdfonts](https://www.nerdfonts.com/) patched font to render the fancy icons.
+
 ## Getting started
 
 Pug requires `terraform` to be installed on your system.
