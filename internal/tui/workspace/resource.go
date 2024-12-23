@@ -125,19 +125,17 @@ func (m *resourceModel) View() string {
 }
 
 func (m *resourceModel) BorderText() map[tui.BorderPosition]string {
-	var tainted string
+	topLeft := fmt.Sprintf("%s %s",
+		tui.Bold.Render("resource"),
+		m.resource,
+	)
 	if m.resource.Tainted {
-		tainted = lipgloss.NewStyle().
+		topLeft += lipgloss.NewStyle().
 			Foreground(tui.Red).
-			Render("(tainted)")
+			Render(" (tainted)")
 	}
 	return map[tui.BorderPosition]string{
-		tui.TopLeftBorder: fmt.Sprintf(
-			"%s %s %s",
-			tui.Bold.Render("resource"),
-			m.resource,
-			tainted,
-		),
+		tui.TopLeftBorder: topLeft,
 	}
 }
 
