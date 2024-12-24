@@ -18,9 +18,7 @@ func Start(cfg app.Config) error {
 	if err != nil {
 		return err
 	}
-	defer func() {
-		app.Cleanup()
-	}()
+	defer app.Cleanup()
 
 	m, err := newModel(cfg, app)
 	if err != nil {
