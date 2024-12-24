@@ -11,9 +11,10 @@ import (
 
 type node interface {
 	fmt.Stringer
-
 	// ID uniquely identifies the node
 	ID() any
+	// Value returns a value for lexicographic sorting
+	Value() string
 }
 
 type dirNode struct {
@@ -26,12 +27,16 @@ func (d dirNode) ID() any {
 	return d.path
 }
 
-func (d dirNode) String() string {
+func (d dirNode) Value() string {
 	if d.root {
-		return fmt.Sprintf("%s %s", tui.DirIcon, d.path)
+		return d.path
 	} else {
-		return fmt.Sprintf("%s %s", tui.DirIcon, filepath.Base(d.path))
+		return filepath.Base(d.path)
 	}
+}
+
+func (d dirNode) String() string {
+	return fmt.Sprintf("%s %s", tui.DirIcon, d.Value())
 }
 
 type moduleNode struct {
@@ -43,8 +48,12 @@ func (m moduleNode) ID() any {
 	return m.id
 }
 
+func (m moduleNode) Value() string {
+	return filepath.Base(m.path)
+}
+
 func (m moduleNode) String() string {
-	return tui.ModulePathWithIcon(filepath.Base(m.path), false)
+	return tui.ModulePathWithIcon(m.Value(), false)
 }
 
 type workspaceNode struct {
@@ -57,6 +66,10 @@ type workspaceNode struct {
 
 func (w workspaceNode) ID() any {
 	return w.id
+}
+
+func (w workspaceNode) Value() string {
+	return w.name
 }
 
 func (w workspaceNode) String() string {

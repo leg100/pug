@@ -1,3 +1,6 @@
 package explorer
 
-type builtTreeMsg *tree
+type builtTreeMsg struct {
+	tree     *tree
+	rendered string
+}

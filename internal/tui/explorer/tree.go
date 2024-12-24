@@ -37,7 +37,7 @@ type treeBuilderHelpers interface {
 	WorkspaceCost(ws *workspace.Workspace) string
 }
 
-func (b *treeBuilder) newTree(filter string) *tree {
+func (b *treeBuilder) newTree(filter string) (*tree, string) {
 	t := &tree{
 		value: dirNode{root: true, path: b.wd.PrettyString()},
 	}
@@ -78,7 +78,15 @@ func (b *treeBuilder) newTree(filter string) *tree {
 			modTree.addChild(ws)
 		}
 	}
-	return t.filter(filter)
+	// Now render the corresponding lipgloss tree. We do this here rather than
+	// in View() because it's quite expensive and thus best kept out of the
+	// bubble event loop.
+	to := lgtree.New().
+		Enumerator(enumerator).
+		Indenter(indentor)
+	t.render(true, to)
+	// Apply any filter and return.
+	return t.filter(filter), to.String()
 }
 
 func (t *tree) filter(text string) *tree {
@@ -135,7 +143,7 @@ func (t *tree) addChild(child node) *tree {
 	t.children = append(t.children, newTree)
 	// keep children lexicographically ordered
 	slices.SortFunc(t.children, func(a, b *tree) int {
-		if internal.StripAnsi(a.value.String()) < internal.StripAnsi(b.value.String()) {
+		if a.value.Value() < b.value.Value() {
 			return -1
 		}
 		return 1

@@ -361,7 +361,7 @@ func (m model) View() string {
 		Width(m.width).
 		Render(footer),
 	)
-	return lipgloss.JoinVertical(lipgloss.Top, components...)
+	return strings.Join(components, "\n")
 }
 
 var (
