@@ -90,8 +90,8 @@ func borderize(content string, active bool, embeddedText map[BorderPosition]stri
 		// Add the corners
 		return style.Render(leftCorner) + s + style.Render(rightCorner)
 	}
-	// Stack top border onto remaining borders
-	return lipgloss.JoinVertical(lipgloss.Top,
+	// Stack top border, content and horizontal borders, and bottom border.
+	return strings.Join([]string{
 		buildHorizontalBorder(
 			embeddedText[TopLeftBorder],
 			embeddedText[TopMiddleBorder],
@@ -111,5 +111,5 @@ func borderize(content string, active bool, embeddedText map[BorderPosition]stri
 			border.Bottom,
 			border.BottomRight,
 		),
-	)
+	}, "\n")
 }

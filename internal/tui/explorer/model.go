@@ -10,7 +10,6 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	lgtree "github.com/charmbracelet/lipgloss/tree"
 	"github.com/leg100/pug/internal"
 	"github.com/leg100/pug/internal/module"
 	"github.com/leg100/pug/internal/resource"
@@ -34,16 +33,17 @@ func (mm *Maker) Make(id resource.ID, width, height int) (tui.ChildModel, error)
 		moduleService:    mm.ModuleService,
 		workspaceService: mm.WorkspaceService,
 	}
-	tree := builder.newTree("")
 	filter := textinput.New()
 	filter.Prompt = "Filter: "
+	tree, lgtree := builder.newTree("")
 	m := &model{
-		Helpers:     mm.Helpers,
-		Workdir:     mm.Workdir,
-		treeBuilder: builder,
-		tree:        tree,
-		tracker:     newTracker(tree, height),
-		filter:      filter,
+		Helpers:      mm.Helpers,
+		Workdir:      mm.Workdir,
+		treeBuilder:  builder,
+		tree:         tree,
+		renderedTree: lgtree,
+		tracker:      newTracker(tree, height),
+		filter:       filter,
 	}
 	m.common = &tui.ActionHandler{
 		Helpers:     mm.Helpers,
@@ -61,11 +61,21 @@ type model struct {
 	treeBuilder   *treeBuilder
 	tree          *tree
 	tracker       *tracker
+	renderedTree  string
 	width, height int
 	filter        textinput.Model
+	status        buildTreeStatus
 }
 
-func (m model) Init() tea.Cmd {
+type buildTreeStatus int
+
+const (
+	notBuildingTree buildTreeStatus = iota
+	buildingTree
+	queueBuildTree
+)
+
+func (m *model) Init() tea.Cmd {
 	return tea.Batch(
 		m.buildTree,
 		reload(true, m.Modules),
@@ -136,10 +146,15 @@ func (m *model) Update(msg tea.Msg) tea.Cmd {
 			return m.common.Update(msg)
 		}
 	case builtTreeMsg:
-		m.tree = (*tree)(msg)
+		m.tree = msg.tree
+		m.renderedTree = msg.rendered
 		// TODO: perform this in a cmd
 		m.tracker.reindex(m.tree, m.treeHeight())
-		return nil
+		if m.status == queueBuildTree {
+			return m.buildTree
+		} else {
+			m.status = notBuildingTree
+		}
 	case resource.Event[*module.Module]:
 		return m.buildTree
 	case resource.Event[*workspace.Workspace]:
@@ -209,12 +224,7 @@ func (m model) View() string {
 		Width(m.width - tui.ScrollbarWidth).
 		MaxWidth(m.width - tui.ScrollbarWidth).
 		Inline(true)
-	to := lgtree.New().
-		Enumerator(enumerator).
-		Indenter(indentor)
-	m.tree.render(true, to)
-	s := to.String()
-	lines := strings.Split(s, "\n")
+	lines := strings.Split(m.renderedTree, "\n")
 	numVisibleLines := clamp(m.treeHeight(), 0, len(lines))
 	visibleLines := lines[m.tracker.start : m.tracker.start+numVisibleLines]
 	for i := range visibleLines {
@@ -273,9 +283,18 @@ func (m model) BorderText() map[tui.BorderPosition]string {
 	}
 }
 
-func (m model) buildTree() tea.Msg {
-	tree := m.treeBuilder.newTree(m.filter.Value())
-	return builtTreeMsg(tree)
+func (m *model) buildTree() tea.Msg {
+	switch m.status {
+	case notBuildingTree:
+		tree, rendered := m.treeBuilder.newTree(m.filter.Value())
+		return builtTreeMsg{
+			tree:     tree,
+			rendered: rendered,
+		}
+	case buildingTree:
+		m.status = queueBuildTree
+	}
+	return nil
 }
 
 func (m model) filterVisible() bool {
