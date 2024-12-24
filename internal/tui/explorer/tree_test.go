@@ -52,7 +52,7 @@ func TestTree(t *testing.T) {
 		helpers: &fakeTreeBuilderHelpers{},
 	}
 
-	got := builder.newTree("")
+	got, _ := builder.newTree("")
 
 	want := &tree{
 		value: dirNode{path: builder.wd.String(), root: true},

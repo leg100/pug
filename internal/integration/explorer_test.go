@@ -15,6 +15,7 @@ func TestExplorer_Filter(t *testing.T) {
 
 	// Expect filter prompt
 	waitFor(t, tm, func(s string) bool {
+		t.Log(s)
 		return strings.Contains(s, "Filter:")
 	})
 
@@ -23,6 +24,7 @@ func TestExplorer_Filter(t *testing.T) {
 
 	// Expect table title to show 1 module filtered out of a total 3.
 	waitFor(t, tm, func(s string) bool {
+		t.Log(s)
 		return strings.Contains(s, "󰠱 1  0")
 	})
 }

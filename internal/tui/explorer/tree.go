@@ -78,15 +78,16 @@ func (b *treeBuilder) newTree(filter string) (*tree, string) {
 			modTree.addChild(ws)
 		}
 	}
+	// Apply filter if there is one.
+	filtered := t.filter(filter)
 	// Now render the corresponding lipgloss tree. We do this here rather than
 	// in View() because it's quite expensive and thus best kept out of the
 	// bubble event loop.
 	to := lgtree.New().
 		Enumerator(enumerator).
 		Indenter(indentor)
-	t.render(true, to)
-	// Apply any filter and return.
-	return t.filter(filter), to.String()
+	filtered.render(true, to)
+	return filtered, to.String()
 }
 
 func (t *tree) filter(text string) *tree {
@@ -141,8 +142,20 @@ func (t *tree) addChild(child node) *tree {
 	}
 	newTree := &tree{value: child}
 	t.children = append(t.children, newTree)
-	// keep children lexicographically ordered
+	// keep children ordered
 	slices.SortFunc(t.children, func(a, b *tree) int {
+		// directories come before modules
+		if _, ok := a.value.(dirNode); ok {
+			if _, ok := b.value.(moduleNode); ok {
+				return -1
+			}
+		}
+		if _, ok := a.value.(moduleNode); ok {
+			if _, ok := b.value.(dirNode); ok {
+				return 1
+			}
+		}
+		// otherwise order lexicographically.
 		if a.value.Value() < b.value.Value() {
 			return -1
 		}
