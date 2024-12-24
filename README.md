@@ -89,7 +89,7 @@ Pug automatically loads variables from a .tfvars file. It looks for a file named
 
 ### Explorer
 
-The explorer pane a tree of [modules](#module) and [workspaces](#workspace) discovered on your filesystem. From here, terraform commands can be carried out on both modules and workspaces.
+The explorer pane shows a tree of [modules](#module) and [workspaces](#workspace) discovered on your filesystem. From here, terraform commands can be carried out on both modules and workspaces.
 
 You can select multiple modules or workspaces; you cannot select a combination of the two. Any terraform commands are then carried out on the selection.
 

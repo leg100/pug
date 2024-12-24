@@ -2,9 +2,7 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"os"
-	"runtime/pprof"
 
 	"github.com/leg100/pug/internal/app"
 	"github.com/leg100/pug/internal/tui/top"
@@ -12,13 +10,6 @@ import (
 )
 
 func main() {
-	f, err := os.Create("cpu.prof")
-	if err != nil {
-		log.Fatal(err)
-	}
-	pprof.StartCPUProfile(f)
-	defer pprof.StopCPUProfile()
-
 	if err := run(); err != nil {
 		fmt.Println(err.Error())
 		os.Exit(1)
