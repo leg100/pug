@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.6.1](https://github.com/leg100/pug/compare/v0.6.0...v0.6.1) (2024-12-24)
+
+
+### Bug Fixes
+
+* flaky test ([d4bfbf4](https://github.com/leg100/pug/commit/d4bfbf41fee5e17f888ba0b0539e03b44a142bd6))
+* resolve performance issues ([#140](https://github.com/leg100/pug/issues/140)) ([30a3793](https://github.com/leg100/pug/commit/30a3793530930d5cee3d3b2ecfde7a48ee143e11))
+
 ## [0.6.0](https://github.com/leg100/pug/compare/v0.5.5...v0.6.0) (2024-12-23)
 
 
