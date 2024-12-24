@@ -43,8 +43,12 @@ func TestTask_NewReader(t *testing.T) {
 	require.NoError(t, err)
 	// stderr and stdout streams can be interwoven, so we use assert.Contains
 	// rather than assert.Equal
-	assert.Contains(t, string(got), "foo\nbar\nbaz\nbye\n")
-	assert.Contains(t, string(got), "err")
+	assert.Len(t, strings.Fields(string(got)), 5)
+	assert.Contains(t, strings.Fields(string(got)), "foo")
+	assert.Contains(t, strings.Fields(string(got)), "bar")
+	assert.Contains(t, strings.Fields(string(got)), "bye")
+	assert.Contains(t, strings.Fields(string(got)), "baz")
+	assert.Contains(t, strings.Fields(string(got)), "err")
 }
 
 func TestTask_cancel(t *testing.T) {
