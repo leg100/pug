@@ -14,12 +14,7 @@ Set FontFamily "JetBrainsMono Nerd Font"
 
 # Clear any leftover artefacts from last demo
 Hide
-Type@1ms "asdf uninstall terraform" Enter
-Type@1ms "find demo/ -name .terraform -exec rm -rf {} \; > /dev/null 2>&1 || true" Enter
-Type@1ms "find demo/ -name terraform.tfstate -exec rm {} \; > /dev/null 2>&1 || true" Enter
-Type@1ms "find demo/ -name terraform.tfstate.* -exec rm {} \; > /dev/null 2>&1 || true" Enter
-Type@1ms "find demo/ -name .terraform.lock.hcl -exec rm {} \; > /dev/null 2>&1 || true" Enter
-Type@1ms "find demo/ -name environment -exec rm {} \; > /dev/null 2>&1 || true" Enter
+Type@1ms "./hacks/reset_demo.sh" Enter
 Show
 
 Hide
@@ -77,6 +72,7 @@ Type "0" Sleep 1s
 # take screen shot of explorer tree populated with workspaces
 Screenshot demo/workspaces.png
 # filter dev workspaces
+Ctrl+Backslash Sleep 0.5s
 Type "/" Sleep 0.5s Type "dev" Sleep 0.5s Enter
 # take screen shot of filter mode
 Screenshot demo/filter.png Sleep 0.5s
