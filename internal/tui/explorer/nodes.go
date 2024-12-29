@@ -18,9 +18,8 @@ type node interface {
 }
 
 type dirNode struct {
-	path   string
-	root   bool
-	closed bool
+	path string
+	root bool
 }
 
 func (d dirNode) ID() any {

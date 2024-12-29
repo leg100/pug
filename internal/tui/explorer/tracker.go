@@ -41,23 +41,32 @@ func (t *tracker) reindex(tree *tree, height int) {
 	t.doReindex(tree)
 	t.selector.reindex(t.nodes)
 
+	placeCursorOnFirstModule := func() bool {
+		for i, n := range t.nodes {
+			if _, ok := n.(moduleNode); ok {
+				t.cursorNode = t.nodes[i]
+				t.cursorIndex = i
+				return true
+			}
+		}
+		// If no modules found then set cursor on first node
+		if t.cursorIndex < 0 {
+			t.cursorNode = t.nodes[0]
+			t.cursorIndex = 0
+		}
+		return false
+	}
+
 	// When pug first starts up, for the user's convenience we want the cursor
 	// to be on the first module. Because modules are added asynchronously, a
 	// semaphore detects whether the cursor has been set to the first module, to
 	// ensure this is only done once.
 	if !t.initialized {
-		for i, n := range t.nodes {
-			if _, ok := n.(moduleNode); ok {
-				t.cursorNode = t.nodes[i]
-				t.cursorIndex = i
-				t.initialized = true
-				break
-			}
+		if placeCursorOnFirstModule() {
+			t.initialized = true
 		}
-	}
-	if t.cursorIndex < 0 {
-		t.cursorNode = t.nodes[0]
-		t.cursorIndex = 0
+	} else if t.cursorIndex < 0 {
+		placeCursorOnFirstModule()
 	}
 	t.setStart(height)
 }
