@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.6.2](https://github.com/leg100/pug/compare/v0.6.1...v0.6.2) (2024-12-29)
+
+
+### Bug Fixes
+
+* always try to put cursor on first module ([29539f7](https://github.com/leg100/pug/commit/29539f7c88fae1916be9fce1643595876cc81834))
+* prune selections when filtering ([17dba76](https://github.com/leg100/pug/commit/17dba7673a47e271be12be8d829ceff583a64ba7))
+
 ## [0.6.1](https://github.com/leg100/pug/compare/v0.6.0...v0.6.1) (2024-12-24)
 
 
