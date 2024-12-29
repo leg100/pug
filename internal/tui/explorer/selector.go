@@ -36,6 +36,23 @@ func (s *selector) add(n node) error {
 	return nil
 }
 
+func (s *selector) reindex(nodes []node) {
+	if len(s.selections) == 0 {
+		return
+	}
+	selections := make(map[resource.ID]struct{}, len(s.selections))
+	for _, n := range nodes {
+		id, ok := n.ID().(resource.ID)
+		if !ok {
+			continue
+		}
+		if _, ok := s.selections[id]; ok {
+			selections[id] = struct{}{}
+		}
+	}
+	s.selections = selections
+}
+
 // addAll implements "select all" functionality with a twist: it ensures only
 // nodes of the same type of selected; the cursor node must match any existing
 // selection type, and then the nodes are filtered to only add those

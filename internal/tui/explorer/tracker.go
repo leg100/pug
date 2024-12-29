@@ -39,6 +39,7 @@ func (t *tracker) reindex(tree *tree, height int) {
 	t.totalWorkspaces = 0
 	t.cursorIndex = -1
 	t.doReindex(tree)
+	t.selector.reindex(t.nodes)
 
 	// When pug first starts up, for the user's convenience we want the cursor
 	// to be on the first module. Because modules are added asynchronously, a
@@ -73,12 +74,6 @@ func (t *tracker) doReindex(tree *tree) {
 	// Track index of cursor node
 	if t.cursorNode != nil && t.cursorNode.ID() == tree.value.ID() {
 		t.cursorIndex = len(t.nodes) - 1
-	}
-	// Track indices of selected nodes
-	if dir, ok := tree.value.(dirNode); ok {
-		if dir.closed {
-			return
-		}
 	}
 	for _, child := range tree.children {
 		t.doReindex(child)
