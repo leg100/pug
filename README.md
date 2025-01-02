@@ -23,10 +23,12 @@ With `go`:
 go install github.com/leg100/pug@latest
 ```
 
-Homebrew:
+### Homebrew
 
-```
-brew install leg100/tap/pug
+If you use [Homebrew](https://brew.sh/), you can install [pug](https://formulae.brew.sh/formula/pug) with the following command:
+
+```sh
+$ brew install pug
 ```
 
 Or download and unzip a [GitHub release](https://github.com/leg100/pug/releases) for your system and architecture.
