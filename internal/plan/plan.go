@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 
 	"github.com/leg100/pug/internal"
+	"github.com/leg100/pug/internal/machine"
 	"github.com/leg100/pug/internal/pubsub"
 	"github.com/leg100/pug/internal/resource"
 	"github.com/leg100/pug/internal/state"
@@ -17,13 +18,14 @@ import (
 type plan struct {
 	resource.ID
 
-	ModuleID      resource.ID
-	WorkspaceID   resource.ID
-	ModulePath    string
-	HasChanges    bool
-	ArtefactsPath string
-	Destroy       bool
-	TargetAddrs   []state.ResourceAddress
+	ModuleID                 resource.ID
+	WorkspaceID              resource.ID
+	ModulePath               string
+	HasChanges               bool
+	ArtefactsPath            string
+	Destroy                  bool
+	TargetAddrs              []state.ResourceAddress
+	DisableMachineReadableUI bool
 
 	targetArgs         []string
 	terragrunt         bool
@@ -98,7 +100,11 @@ func (r *plan) planPath() string {
 }
 
 func (r *plan) args() []string {
-	return append([]string{"-input"}, r.targetArgs...)
+	args := append([]string{"-input"}, r.targetArgs...)
+	if !r.DisableMachineReadableUI {
+		args = append(args, "-json")
+	}
+	return args
 }
 
 func (r *plan) planTaskSpec() task.Spec {
@@ -120,13 +126,39 @@ func (r *plan) planTaskSpec() task.Spec {
 			r.taskID = &t.ID
 		},
 		BeforeExited: func(t *task.Task) (task.Summary, error) {
-			out, err := io.ReadAll(t.NewReader(false))
-			if err != nil {
-				return nil, err
-			}
-			changes, report, err := parsePlanReport(string(out))
-			if err != nil {
-				return nil, err
+			reader := t.NewReader(false)
+			var (
+				changes bool
+				report  Report
+			)
+			if r.DisableMachineReadableUI {
+				out, err := io.ReadAll(reader)
+				if err != nil {
+					return nil, err
+				}
+				changes, report, err = parsePlanReport(string(out))
+			} else {
+				messages, err := machine.Unmarshal(reader)
+				if err != nil {
+					return nil, fmt.Errorf("unmarshaling machine readable UI output: %w", err)
+				}
+				var found bool
+				for _, msg := range messages {
+					if summary, ok := msg.(*machine.ChangeSummaryMsg); ok {
+						report = Report{
+							Additions:    summary.Changes.Add,
+							Changes:      summary.Changes.Change,
+							Destructions: summary.Changes.Remove,
+						}
+						// TODO: parse outputs too, and take that into account
+						// as to whether there are any changes.
+						changes = report.Additions != 0 || report.Changes != 0 || report.Destructions != 0
+						found = true
+					}
+				}
+				if !found {
+					return nil, errors.New("no change summary found in machine readable UI output")
+				}
 			}
 			r.HasChanges = changes
 			return report, nil

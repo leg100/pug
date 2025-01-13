@@ -11,7 +11,6 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/x/ansi"
-	"github.com/google/uuid"
 	"github.com/leg100/pug/internal/logging"
 	"github.com/leg100/pug/internal/plan"
 	"github.com/leg100/pug/internal/resource"
@@ -43,29 +42,24 @@ func (mm *Maker) make(id resource.ID, width, height int, border bool) (tui.Child
 	}
 
 	m := Model{
-		id:      uuid.New(),
-		tasks:   mm.Tasks,
-		plans:   mm.Plans,
-		task:    task,
-		output:  task.NewStreamer(),
-		spinner: mm.Spinner,
-		// read upto 1kb at a time
-		buf:      make([]byte, 1024),
+		tasks:    mm.Tasks,
+		plans:    mm.Plans,
+		task:     task,
 		Helpers:  mm.Helpers,
 		showInfo: mm.showInfo,
 		width:    width,
+		height:   height,
 		program:  mm.Program,
-		// Disable autoscroll if either task is finished or user has disabled it
-		disableAutoscroll: task.State.IsFinal() || mm.disableAutoscroll,
 	}
-	m.setHeight(height)
+	if !task.MachineReadableUI {
+		m.sub = newHuman(task, humanOptions{
+			disableAutoscroll: mm.disableAutoscroll,
+			spinner:           mm.Spinner,
+			width:             width,
+			height:            height,
+		})
+	}
 
-	m.viewport = tui.NewViewport(tui.ViewportOptions{
-		JSON:    m.task.JSON,
-		Width:   m.viewportWidth(),
-		Height:  m.height,
-		Spinner: m.spinner,
-	})
 	m.common = &tui.ActionHandler{
 		Helpers:     mm.Helpers,
 		IDRetriever: &m,
@@ -100,29 +94,22 @@ func (mm *Maker) Update(msg tea.Msg) tea.Cmd {
 type Model struct {
 	*tui.Helpers
 
-	id uuid.UUID
-
 	tasks  *task.Service
 	task   *task.Task
 	plans  *plan.Service
 	common *tui.ActionHandler
 
-	output <-chan []byte
-	buf    []byte
+	program  string
+	showInfo bool
 
-	program           string
-	disableAutoscroll bool
-	showInfo          bool
+	sub tea.Model
 
-	viewport tui.Viewport
-	spinner  *spinner.Model
-
-	height int
 	width  int
+	height int
 }
 
 func (m *Model) Init() tea.Cmd {
-	return m.getOutput
+	return m.sub.Init()
 }
 
 func (m *Model) Update(msg tea.Msg) tea.Cmd {
@@ -154,24 +141,13 @@ func (m *Model) Update(msg tea.Msg) tea.Cmd {
 			cmd := m.common.Update(msg)
 			cmds = append(cmds, cmd)
 		}
-	case toggleAutoscrollMsg:
-		m.disableAutoscroll = !m.disableAutoscroll
 	case toggleTaskInfoMsg:
 		m.showInfo = !m.showInfo
-		// adjust width of viewport to accomodate info
-		m.viewport.SetDimensions(m.viewportWidth(), m.height)
-	case outputMsg:
-		// Ensure output is for this model
-		if msg.modelID != m.id {
-			return nil
-		}
-		err := m.viewport.AppendContent(msg.output, msg.eof, !m.disableAutoscroll)
-		if err != nil {
-			return tui.ReportError(err)
-		}
-		if !msg.eof {
-			cmds = append(cmds, m.getOutput)
-		}
+		// adjust width of sub model to accomodate info
+		m.sub.Update(tea.WindowSizeMsg{
+			Width:  m.subWidth(),
+			Height: m.height,
+		})
 	case resource.Event[*task.Task]:
 		if msg.Payload.ID != m.task.ID {
 			// Ignore event for different task.
@@ -180,27 +156,26 @@ func (m *Model) Update(msg tea.Msg) tea.Cmd {
 		m.task = msg.Payload
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
-		m.setHeight(msg.Height)
-		m.viewport.SetDimensions(m.viewportWidth(), m.height)
+		m.height = msg.Height
+		m.sub, cmd = m.sub.Update(tea.WindowSizeMsg{
+			Width:  m.subWidth(),
+			Height: m.height,
+		})
 		return nil
 	}
 
-	// Handle keyboard and mouse events in the viewport
-	m.viewport, cmd = m.viewport.Update(msg)
+	// Handle remaining messages in sub model.
+	m.sub, cmd = m.sub.Update(msg)
 	cmds = append(cmds, cmd)
 
 	return tea.Batch(cmds...)
 }
 
-func (m Model) viewportWidth() int {
+func (m Model) subWidth() int {
 	if m.showInfo {
-		m.width -= infoWidth
+		return m.width - infoWidth
 	}
-	return max(0, m.width)
-}
-
-func (m *Model) setHeight(height int) {
-	m.height = height
+	return m.width
 }
 
 const (
@@ -214,60 +189,52 @@ const (
 
 // View renders the viewport
 func (m *Model) View() string {
-	var components []string
-
-	if m.showInfo {
-		var (
-			args = "-"
-			envs = "-"
-		)
-		if len(m.task.Args) > 0 {
-			args = strings.Join(m.task.Args, "\n")
-		}
-		if len(m.task.AdditionalEnv) > 0 {
-			envs = strings.Join(m.task.AdditionalEnv, "\n")
-		}
-
-		// Show info to the left of the viewport.
-		content := lipgloss.JoinVertical(lipgloss.Top,
-			tui.Bold.Render("Task ID"),
-			m.task.ID.String(),
-			"",
-			tui.Bold.Render("Program"),
-			m.task.Program,
-			"",
-			tui.Bold.Render("Arguments"),
-			args,
-			"",
-			tui.Bold.Render("Path"),
-			m.task.Path,
-			"",
-			tui.Bold.Render("Environment variables"),
-			envs,
-			"",
-			fmt.Sprintf("Autoscroll: %s", boolToOnOff(!m.disableAutoscroll)),
-			"",
-			fmt.Sprintf("Dependencies: %v", m.task.DependsOn),
-		)
-
-		// Word wrap task info to ensure it wraps "cleanly".
-		// Wrap on spaces and path separator
-		wrapped := ansi.Wordwrap(content, infoContentWidth, " "+string(filepath.Separator))
-
-		container := tui.Regular.
-			Padding(0, 1).
-			// Border to the right, dividing the info from the viewport
-			Border(lipgloss.NormalBorder(), false, true, false, false).
-			BorderForeground(tui.LighterGrey).
-			Height(m.height).
-			// Crop content exceeding height
-			MaxHeight(m.height).
-			Width(infoContentWidth).
-			Render(wrapped)
-		components = append(components, container)
+	if !m.showInfo {
+		return m.sub.View()
 	}
-	components = append(components, m.viewport.View())
-	return lipgloss.JoinHorizontal(lipgloss.Left, components...)
+	// Build info side pane
+	var (
+		args = "-"
+		envs = "-"
+	)
+	if len(m.task.Args) > 0 {
+		args = strings.Join(m.task.Args, "\n")
+	}
+	if len(m.task.AdditionalEnv) > 0 {
+		envs = strings.Join(m.task.AdditionalEnv, "\n")
+	}
+	content := lipgloss.JoinVertical(lipgloss.Top,
+		tui.Bold.Render("Task ID"),
+		m.task.ID.String(),
+		"",
+		tui.Bold.Render("Program"),
+		m.task.Program,
+		"",
+		tui.Bold.Render("Arguments"),
+		args,
+		"",
+		tui.Bold.Render("Path"),
+		m.task.Path,
+		"",
+		tui.Bold.Render("Environment variables"),
+		envs,
+		"",
+		fmt.Sprintf("Dependencies: %v", m.task.DependsOn),
+	)
+	// Word wrap task info to ensure it wraps "cleanly".
+	// Wrap on spaces and path separator
+	wrapped := ansi.Wordwrap(content, infoContentWidth, " "+string(filepath.Separator))
+	container := tui.Regular.
+		Padding(0, 1).
+		// Border to the right, dividing the info from the viewport
+		Border(lipgloss.NormalBorder(), false, true, false, false).
+		BorderForeground(tui.LighterGrey).
+		Height(m.height).
+		// Crop content exceeding height
+		MaxHeight(m.height).
+		Width(infoContentWidth).
+		Render(wrapped)
+	return lipgloss.JoinHorizontal(lipgloss.Left, container, m.sub.View())
 }
 
 func boolToOnOff(b bool) string {
@@ -310,24 +277,6 @@ func (m Model) HelpBindings() []key.Binding {
 	}
 	bindings = append(bindings, m.common.HelpBindings()...)
 	return bindings
-}
-
-func (m Model) getOutput() tea.Msg {
-	msg := outputMsg{modelID: m.id}
-
-	b, ok := <-m.output
-	if ok {
-		msg.output = b
-	} else {
-		msg.eof = true
-	}
-	return msg
-}
-
-type outputMsg struct {
-	modelID uuid.UUID
-	output  []byte
-	eof     bool
 }
 
 func (m Model) GetModuleIDs() ([]resource.ID, error) {

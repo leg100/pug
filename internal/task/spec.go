@@ -31,6 +31,9 @@ type Spec struct {
 	Exclusive bool
 	// Set to true to indicate that the task produces JSON output
 	JSON bool
+	// Set to true to indicate that the task produces machine readable UI
+	// output.
+	MachineReadableUI bool
 	// Skip queue and immediately start task
 	Immediate bool
 	// Short if true indicates that the task runtime is short and the output is

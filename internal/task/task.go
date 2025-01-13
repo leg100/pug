@@ -36,6 +36,7 @@ type Task struct {
 	Blocking            bool
 	State               Status
 	JSON                bool
+	MachineReadableUI   bool
 	Immediate           bool
 	Short               bool
 	AdditionalEnv       []string
@@ -132,6 +133,7 @@ func (f *factory) newTask(spec Spec) (*Task, error) {
 		AdditionalExecution: spec.AdditionalExecution,
 		AdditionalEnv:       append(f.userEnvs, spec.Env...),
 		JSON:                spec.JSON,
+		MachineReadableUI:   spec.MachineReadableUI,
 		Blocking:            spec.Blocking,
 		DependsOn:           spec.dependsOn,
 		Immediate:           spec.Immediate,

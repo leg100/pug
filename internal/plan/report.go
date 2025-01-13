@@ -12,10 +12,6 @@ type Report struct {
 	Destructions int `json:"destructions"`
 }
 
-func (r Report) HasChanges() bool {
-	return r != Report{}
-}
-
 func (r Report) String() string {
 	// \u2212 is a proper minus sign; an ascii hyphen is too narrow (in the
 	// default github font at least) and looks incongruous alongside
