@@ -28,7 +28,7 @@ const (
 )
 
 // Model defines a state for the table widget.
-type Model[V resource.Resource] struct {
+type Model[V fmt.Stringer] struct {
 	cols        []Column
 	rows        []Row[V]
 	rowRenderer RowRenderer[V]
@@ -88,7 +88,7 @@ type RenderedRow map[ColumnKey]string
 type SortFunc[V any] func(V, V) int
 
 // New creates a new model for the table widget.
-func New[V resource.Resource](cols []Column, fn RowRenderer[V], width, height int, opts ...Option[V]) Model[V] {
+func New[V fmt.Stringer](cols []Column, fn RowRenderer[V], width, height int, opts ...Option[V]) Model[V] {
 	filter := textinput.New()
 	filter.Prompt = "Filter: "
 
@@ -121,17 +121,17 @@ func New[V resource.Resource](cols []Column, fn RowRenderer[V], width, height in
 	return m
 }
 
-type Option[V resource.Resource] func(m *Model[V])
+type Option[V fmt.Stringer] func(m *Model[V])
 
 // WithSortFunc configures the table to sort rows using the given func.
-func WithSortFunc[V resource.Resource](sortFunc func(V, V) int) Option[V] {
+func WithSortFunc[V fmt.Stringer](sortFunc func(V, V) int) Option[V] {
 	return func(m *Model[V]) {
 		m.sortFunc = sortFunc
 	}
 }
 
 // WithSelectable sets whether rows are selectable.
-func WithSelectable[V resource.Resource](s bool) Option[V] {
+func WithSelectable[V fmt.Stringer](s bool) Option[V] {
 	return func(m *Model[V]) {
 		m.selectable = s
 	}
@@ -139,7 +139,7 @@ func WithSelectable[V resource.Resource](s bool) Option[V] {
 
 // WithPreview configures the table to automatically populate the bottom right
 // pane with a model corresponding to the current row.
-func WithPreview[V resource.Resource](maker tui.Kind) Option[V] {
+func WithPreview[V fmt.Stringer](maker tui.Kind) Option[V] {
 	return func(m *Model[V]) {
 		m.previewKind = &maker
 	}

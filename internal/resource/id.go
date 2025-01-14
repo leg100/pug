@@ -30,16 +30,12 @@ func NewID(kind Kind) ID {
 	}
 }
 
+// String provides a human readable description.
 func (id ID) String() string {
 	return fmt.Sprintf("#%d", id.Serial)
 }
 
-// GetID allows ID to be accessed via an interface value.
-func (id ID) GetID() ID {
+// GetID returns a comparable value.
+func (id ID) GetID() any {
 	return id
-}
-
-// GetKind allows Kind to be accessed via an interface value.
-func (id ID) GetKind() Kind {
-	return id.Kind
 }
