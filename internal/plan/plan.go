@@ -15,8 +15,7 @@ import (
 )
 
 type plan struct {
-	resource.ID
-
+	ID            resource.MonotonicID
 	ModuleID      resource.ID
 	WorkspaceID   resource.ID
 	ModulePath    string
@@ -34,7 +33,7 @@ type plan struct {
 
 	// taskID is the ID of the plan task, and is only set once the task is
 	// created.
-	taskID *resource.ID
+	taskID resource.ID
 }
 
 type CreateOptions struct {
@@ -66,7 +65,7 @@ func (f *factory) newPlan(workspaceID resource.ID, opts CreateOptions) (*plan, e
 		return nil, fmt.Errorf("retrieving module: %w", err)
 	}
 	plan := &plan{
-		ID:                 resource.NewID(resource.Plan),
+		ID:                 resource.NewMonotonicID(resource.Plan),
 		ModuleID:           mod.ID,
 		WorkspaceID:        ws.ID,
 		ModulePath:         mod.Path,
@@ -78,7 +77,7 @@ func (f *factory) newPlan(workspaceID resource.ID, opts CreateOptions) (*plan, e
 		moduleDependencies: mod.Dependencies(),
 	}
 	if opts.planFile {
-		plan.ArtefactsPath = filepath.Join(f.dataDir, fmt.Sprintf("%d", plan.Serial))
+		plan.ArtefactsPath = filepath.Join(f.dataDir, fmt.Sprintf("%d", plan.ID.Serial))
 		if err := os.MkdirAll(plan.ArtefactsPath, 0o755); err != nil {
 			return nil, fmt.Errorf("creating run artefacts directory: %w", err)
 		}
@@ -105,8 +104,8 @@ func (r *plan) planTaskSpec() task.Spec {
 	// TODO: assert planFile is true first
 	spec := task.Spec{
 		Identifier:  PlanTask,
-		ModuleID:    &r.ModuleID,
-		WorkspaceID: &r.WorkspaceID,
+		ModuleID:    r.ModuleID,
+		WorkspaceID: r.WorkspaceID,
 		Path:        r.ModulePath,
 		Env:         r.envs,
 		Execution: task.Execution{
@@ -117,7 +116,7 @@ func (r *plan) planTaskSpec() task.Spec {
 		Blocking:    true,
 		Description: "plan",
 		AfterCreate: func(t *task.Task) {
-			r.taskID = &t.ID
+			r.taskID = t.ID
 		},
 		BeforeExited: func(t *task.Task) (task.Summary, error) {
 			out, err := io.ReadAll(t.NewReader(false))
@@ -153,8 +152,8 @@ func (r *plan) applyTaskSpec() (task.Spec, error) {
 	}
 	spec := task.Spec{
 		Identifier:  ApplyTask,
-		ModuleID:    &r.ModuleID,
-		WorkspaceID: &r.WorkspaceID,
+		ModuleID:    r.ModuleID,
+		WorkspaceID: r.WorkspaceID,
 		Path:        r.ModulePath,
 		Execution: task.Execution{
 			TerraformCommand: []string{"apply"},

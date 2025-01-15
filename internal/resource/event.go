@@ -11,7 +11,7 @@ type (
 	EventType string
 
 	// Event represents an event in the lifecycle of a resource
-	Event[T Resource] struct {
+	Event[T any] struct {
 		Type    EventType
 		Payload T
 	}

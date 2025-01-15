@@ -53,7 +53,7 @@ func (r *reloader) Reload(moduleID resource.ID) (task.Spec, error) {
 		return task.Spec{}, err
 	}
 	return task.Spec{
-		ModuleID: &mod.ID,
+		ModuleID: mod.ID,
 		Path:     mod.Path,
 		Execution: task.Execution{
 			TerraformCommand: []string{"workspace", "list"},
@@ -109,8 +109,7 @@ func (r *reloader) resetWorkspaces(mod *module.Module, discovered []string, curr
 	if err != nil {
 		return nil, nil, fmt.Errorf("cannot find current workspace: %s: %w", current, err)
 	}
-	err = r.modules.SetCurrent(mod.ID, currentWorkspace.ID)
-	if err != nil {
+	if err := r.modules.SetCurrent(mod.ID, currentWorkspace.ID); err != nil {
 		return nil, nil, err
 	}
 	return

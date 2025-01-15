@@ -125,7 +125,7 @@ func (t *tracker) selectRange() error {
 
 func (t *tracker) getSelectedOrCurrentIDs() (resource.Kind, []resource.ID) {
 	if len(t.selections) == 0 {
-		id, ok := t.cursorNode.ID().(resource.ID)
+		id, ok := t.cursorNode.ID().(resource.MonotonicID)
 		if !ok {
 			// TODO: consider returning error
 			return -1, nil

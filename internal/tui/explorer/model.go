@@ -322,7 +322,7 @@ func (m model) GetWorkspaceIDs() ([]resource.ID, error) {
 			if mod.CurrentWorkspaceID == nil {
 				return nil, errors.New("modules must have a current workspace")
 			}
-			ids[i] = *mod.CurrentWorkspaceID
+			ids[i] = mod.CurrentWorkspaceID
 		}
 		return ids, nil
 	default:

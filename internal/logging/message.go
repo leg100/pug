@@ -8,23 +8,19 @@ import (
 
 // Message is the event payload for a log message
 type Message struct {
-	// A message is a pug resource, but only insofar as it makes it easier to
-	// handle consistently alongside all other resources (modules, workspaces,
-	// etc) in the TUI.
-	resource.ID
-
+	ID         resource.MonotonicID
 	Time       time.Time
 	Level      string
 	Message    string `json:"msg"`
 	Attributes []Attr
 }
 
+func (m Message) GetID() resource.ID { return m.ID }
+
 type Attr struct {
+	ID    resource.MonotonicID
 	Key   string
 	Value string
-
-	// An attribute is a pug resource, but only insofar as it makes it easier to
-	// handle consistently alongside all other resources (modules, workspaces,
-	// etc) in the TUI.
-	resource.ID
 }
+
+func (a Attr) GetID() resource.ID { return a.ID }

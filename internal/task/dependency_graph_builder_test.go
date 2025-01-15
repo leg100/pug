@@ -15,19 +15,19 @@ func (f *fakeTaskCreator) Create(spec Spec) (*Task, error) {
 }
 
 func TestNewGroupWithDependencies(t *testing.T) {
-	vpcID := resource.NewID(resource.Module)
-	mysqlID := resource.NewID(resource.Module)
-	redisID := resource.NewID(resource.Module)
-	backendID := resource.NewID(resource.Module)
-	frontendID := resource.NewID(resource.Module)
-	mqID := resource.NewID(resource.Module)
+	vpcID := resource.NewMonotonicID(resource.Module)
+	mysqlID := resource.NewMonotonicID(resource.Module)
+	redisID := resource.NewMonotonicID(resource.Module)
+	backendID := resource.NewMonotonicID(resource.Module)
+	frontendID := resource.NewMonotonicID(resource.Module)
+	mqID := resource.NewMonotonicID(resource.Module)
 
-	vpcSpec := Spec{ModuleID: &vpcID, Dependencies: &Dependencies{}}
-	mysqlSpec := Spec{ModuleID: &mysqlID, Dependencies: &Dependencies{ModuleIDs: []resource.ID{vpcID}}}
-	redisSpec := Spec{ModuleID: &redisID, Dependencies: &Dependencies{ModuleIDs: []resource.ID{vpcID}}}
-	backendSpec := Spec{ModuleID: &backendID, Dependencies: &Dependencies{ModuleIDs: []resource.ID{vpcID, mysqlID, redisID}}}
-	frontendSpec := Spec{ModuleID: &frontendID, Dependencies: &Dependencies{ModuleIDs: []resource.ID{vpcID, backendID}}}
-	mqSpec := Spec{ModuleID: &mqID, Dependencies: &Dependencies{}}
+	vpcSpec := Spec{ModuleID: vpcID, Dependencies: &Dependencies{}}
+	mysqlSpec := Spec{ModuleID: mysqlID, Dependencies: &Dependencies{ModuleIDs: []resource.ID{vpcID}}}
+	redisSpec := Spec{ModuleID: redisID, Dependencies: &Dependencies{ModuleIDs: []resource.ID{vpcID}}}
+	backendSpec := Spec{ModuleID: backendID, Dependencies: &Dependencies{ModuleIDs: []resource.ID{vpcID, mysqlID, redisID}}}
+	frontendSpec := Spec{ModuleID: frontendID, Dependencies: &Dependencies{ModuleIDs: []resource.ID{vpcID, backendID}}}
+	mqSpec := Spec{ModuleID: mqID, Dependencies: &Dependencies{}}
 
 	t.Run("normal order", func(t *testing.T) {
 		got, err := createDependentTasks(&fakeTaskCreator{}, false,
@@ -72,9 +72,11 @@ func TestNewGroupWithDependencies(t *testing.T) {
 	})
 }
 
-func hasDependencies(t *testing.T, got []*Task, want resource.ID, deps ...resource.ID) resource.ID {
+func hasDependencies(t *testing.T, got []*Task, wantModuleID resource.ID, deps ...resource.MonotonicID) resource.MonotonicID {
+	t.Helper()
+
 	for _, task := range got {
-		if task.ModuleID != nil && *task.ModuleID == want {
+		if task.ModuleID != nil && task.ModuleID == wantModuleID {
 			// Module matches, so now check dependencies
 			if assert.Len(t, task.DependsOn, len(deps)) {
 				for _, dep := range deps {
@@ -84,6 +86,6 @@ func hasDependencies(t *testing.T, got []*Task, want resource.ID, deps ...resour
 			}
 		}
 	}
-	t.Fatalf("%s not found in %v", want, got)
-	return resource.ID{}
+	t.Fatalf("%s not found in %v", wantModuleID, got)
+	return resource.MonotonicID{}
 }

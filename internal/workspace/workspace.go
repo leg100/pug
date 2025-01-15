@@ -13,10 +13,9 @@ import (
 )
 
 type Workspace struct {
-	resource.ID
-
+	ID         resource.MonotonicID
 	Name       string
-	ModuleID   resource.ID
+	ModuleID   resource.MonotonicID
 	ModulePath string
 	Cost       *float64
 }
@@ -26,7 +25,7 @@ func New(mod *module.Module, name string) (*Workspace, error) {
 		return nil, fmt.Errorf("invalid workspace name: %s", name)
 	}
 	return &Workspace{
-		ID:         resource.NewID(resource.Workspace),
+		ID:         resource.NewMonotonicID(resource.Workspace),
 		Name:       name,
 		ModuleID:   mod.ID,
 		ModulePath: mod.Path,

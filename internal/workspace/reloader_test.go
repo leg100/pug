@@ -30,18 +30,20 @@ func TestWorkspace_parseList(t *testing.T) {
 
 func TestWorkspace_resetWorkspaces(t *testing.T) {
 	mod := &module.Module{Path: "a/b/c"}
+
 	dev, err := New(mod, "dev")
 	require.NoError(t, err)
+
 	staging, err := New(mod, "staging")
 	require.NoError(t, err)
 
-	var gotCurrent resource.ID
 	table := &fakeWorkspaceTable{
 		existing: []*Workspace{dev, staging},
 	}
+	moduleService := &fakeModuleService{}
 	reloader := &reloader{
 		&Service{
-			modules: &fakeModuleService{current: &gotCurrent},
+			modules: moduleService,
 			table:   table,
 		},
 	}
@@ -56,17 +58,17 @@ func TestWorkspace_resetWorkspaces(t *testing.T) {
 	assert.Equal(t, "prod", table.added[0].Name)
 
 	// expect dev to have been made the current workspace
-	assert.Equal(t, dev.ID, gotCurrent)
+	assert.Equal(t, dev.ID, moduleService.current)
 }
 
 type fakeModuleService struct {
-	current *resource.ID
+	current resource.ID
 
 	modules
 }
 
 func (f *fakeModuleService) SetCurrent(moduleID, workspaceID resource.ID) error {
-	*f.current = workspaceID
+	f.current = workspaceID
 	return nil
 }
 

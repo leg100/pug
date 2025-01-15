@@ -101,7 +101,7 @@ func (s *Service) LoadWorkspacesUponInit(sub <-chan resource.Event[*task.Task]) 
 		if moduleID == nil {
 			continue
 		}
-		mod, err := s.modules.Get(*moduleID)
+		mod, err := s.modules.Get(moduleID)
 		if err != nil {
 			continue
 		}
@@ -125,7 +125,7 @@ func (s *Service) Create(path, name string) (task.Spec, error) {
 		return task.Spec{}, err
 	}
 	return task.Spec{
-		ModuleID: &mod.ID,
+		ModuleID: mod.ID,
 		Path:     mod.Path,
 		Execution: task.Execution{
 			TerraformCommand: []string{"workspace", "new"},
@@ -157,13 +157,13 @@ func (s *Service) GetByName(modulePath, name string) (*Workspace, error) {
 
 type ListOptions struct {
 	// Filter by ID of workspace's module.
-	ModuleID *resource.ID
+	ModuleID resource.ID
 }
 
 func (s *Service) List(opts ListOptions) []*Workspace {
 	var existing []*Workspace
 	for _, ws := range s.table.List() {
-		if opts.ModuleID != nil && *opts.ModuleID != ws.ModuleID {
+		if opts.ModuleID != nil && opts.ModuleID != ws.ModuleID {
 			continue
 		}
 		existing = append(existing, ws)
@@ -185,7 +185,7 @@ func (s *Service) SelectWorkspace(workspaceID resource.ID) error {
 	}
 	// Create task to immediately set workspace as current workspace for module.
 	_, err = s.tasks.Create(task.Spec{
-		ModuleID: &mod.ID,
+		ModuleID: mod.ID,
 		Path:     mod.Path,
 		Execution: task.Execution{
 			TerraformCommand: []string{"workspace", "select"},
@@ -217,7 +217,7 @@ func (s *Service) Delete(workspaceID resource.ID) (task.Spec, error) {
 		return task.Spec{}, err
 	}
 	return task.Spec{
-		ModuleID: &mod.ID,
+		ModuleID: mod.ID,
 		Path:     mod.Path,
 		Execution: task.Execution{
 			TerraformCommand: []string{"workspace", "delete"},

@@ -10,8 +10,7 @@ import (
 )
 
 type Group struct {
-	resource.ID
-
+	ID           resource.MonotonicID
 	Created      time.Time
 	Command      string
 	Tasks        []*Task
@@ -23,7 +22,7 @@ func newGroup(service *Service, specs ...Spec) (*Group, error) {
 		return nil, errors.New("no specs provided")
 	}
 	g := &Group{
-		ID:      resource.NewID(resource.TaskGroup),
+		ID:      resource.NewMonotonicID(resource.TaskGroup),
 		Created: time.Now(),
 	}
 	// Validate specifications. There are some settings that are incompatible
@@ -84,9 +83,10 @@ func newGroup(service *Service, specs ...Spec) (*Group, error) {
 	return g, nil
 }
 
-func (g *Group) String() string { return g.Command }
+func (g *Group) String() string     { return g.Command }
+func (g *Group) GetID() resource.ID { return g.ID }
 
-func (g *Group) IncludesTask(taskID resource.ID) bool {
+func (g *Group) IncludesTask(taskID resource.MonotonicID) bool {
 	return slices.ContainsFunc(g.Tasks, func(tgt *Task) bool {
 		return tgt.ID == taskID
 	})

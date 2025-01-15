@@ -12,29 +12,29 @@ import (
 
 var (
 	mod1 = &module.Module{
-		ID:   resource.NewID(resource.Module),
+		ID:   resource.NewMonotonicID(resource.Module),
 		Path: "a",
 	}
 	mod2 = &module.Module{
-		ID:   resource.NewID(resource.Module),
+		ID:   resource.NewMonotonicID(resource.Module),
 		Path: "a/b",
 	}
 	mod3 = &module.Module{
-		ID:   resource.NewID(resource.Module),
+		ID:   resource.NewMonotonicID(resource.Module),
 		Path: "a/b/c",
 	}
 	ws1 = &workspace.Workspace{
-		ID:       resource.NewID(resource.Workspace),
+		ID:       resource.NewMonotonicID(resource.Workspace),
 		ModuleID: mod1.ID,
 		Name:     "ws1",
 	}
 	ws2 = &workspace.Workspace{
-		ID:       resource.NewID(resource.Workspace),
+		ID:       resource.NewMonotonicID(resource.Workspace),
 		ModuleID: mod2.ID,
 		Name:     "ws2",
 	}
 	ws3 = &workspace.Workspace{
-		ID:       resource.NewID(resource.Workspace),
+		ID:       resource.NewMonotonicID(resource.Workspace),
 		ModuleID: mod3.ID,
 		Name:     "ws3",
 	}

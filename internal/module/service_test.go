@@ -71,11 +71,11 @@ digraph {
 		assert.Len(t, vpc.Dependencies(), 0)
 		// redis
 		if assert.Len(t, redis.Dependencies(), 1) {
-			assert.Equal(t, vpc.ID, redis.Dependencies()[0].GetID())
+			assert.Equal(t, vpc.ID, redis.Dependencies()[0])
 		}
 		// mysql
 		if assert.Len(t, mysql.Dependencies(), 1) {
-			assert.Equal(t, vpc.ID, mysql.Dependencies()[0].GetID())
+			assert.Equal(t, vpc.ID, mysql.Dependencies()[0])
 		}
 		// backend
 		if assert.Len(t, backend.Dependencies(), 3) {

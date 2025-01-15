@@ -21,8 +21,8 @@ type Maker interface {
 type Page struct {
 	// The model kind. Identifies the model maker to construct the page.
 	Kind Kind
-	// The ID of the resource for a model. In the case of global listings of
-	// modules, workspaces, etc, this is the global resource.
+	// ID of resource for a model. If the model does not have a single resource
+	// but is say a listing of resources, then this is nil.
 	ID resource.ID
 }
 

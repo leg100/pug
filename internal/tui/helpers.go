@@ -38,7 +38,7 @@ func (h *Helpers) ModuleCurrentWorkspace(mod *module.Module) *workspace.Workspac
 	if mod.CurrentWorkspaceID == nil {
 		return nil
 	}
-	ws, err := h.Workspaces.Get(*mod.CurrentWorkspaceID)
+	ws, err := h.Workspaces.Get(mod.CurrentWorkspaceID)
 	if err != nil {
 		h.Logger.Error("retrieving current workspace for module", "error", err, "module", mod)
 		return nil
@@ -46,11 +46,11 @@ func (h *Helpers) ModuleCurrentWorkspace(mod *module.Module) *workspace.Workspac
 	return ws
 }
 
-func (h *Helpers) CurrentWorkspaceName(workspaceID *resource.ID) string {
+func (h *Helpers) CurrentWorkspaceName(workspaceID resource.ID) string {
 	if workspaceID == nil {
 		return "-"
 	}
-	ws, err := h.Workspaces.Get(*workspaceID)
+	ws, err := h.Workspaces.Get(workspaceID)
 	if err != nil {
 		h.Logger.Error("rendering current workspace name", "error", err)
 		return ""
@@ -62,7 +62,7 @@ func (h *Helpers) ModuleCurrentResourceCount(mod *module.Module) string {
 	if mod.CurrentWorkspaceID == nil {
 		return ""
 	}
-	ws, err := h.Workspaces.Get(*mod.CurrentWorkspaceID)
+	ws, err := h.Workspaces.Get(mod.CurrentWorkspaceID)
 	if err != nil {
 		h.Logger.Error("rendering module current workspace resource count", "error", err)
 		return ""
@@ -78,7 +78,7 @@ func (h *Helpers) WorkspaceCurrentCheckmark(ws *workspace.Workspace) string {
 		h.Logger.Error("rendering current workspace checkmark", "error", err)
 		return ""
 	}
-	if mod.CurrentWorkspaceID != nil && *mod.CurrentWorkspaceID == ws.ID {
+	if mod.CurrentWorkspaceID != nil && mod.CurrentWorkspaceID == ws.ID {
 		return "✓"
 	}
 	return ""
@@ -117,7 +117,7 @@ func (h *Helpers) TaskModule(t *task.Task) *module.Module {
 	if moduleID == nil {
 		return nil
 	}
-	mod, err := h.Modules.Get(*moduleID)
+	mod, err := h.Modules.Get(moduleID)
 	if err != nil {
 		return nil
 	}
@@ -144,7 +144,7 @@ func (h *Helpers) TaskWorkspace(t *task.Task) *workspace.Workspace {
 	if workspaceID == nil {
 		return nil
 	}
-	ws, err := h.Workspaces.Get(*workspaceID)
+	ws, err := h.Workspaces.Get(workspaceID)
 	if err != nil {
 		return nil
 	}
