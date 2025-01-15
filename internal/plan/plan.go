@@ -56,7 +56,7 @@ type factory struct {
 	terragrunt bool
 }
 
-func (f *factory) newPlan(workspaceID resource.ID, opts CreateOptions) (*plan, error) {
+func (f *factory) newPlan(workspaceID resource.Identity, opts CreateOptions) (*plan, error) {
 	ws, err := f.workspaces.Get(workspaceID)
 	if err != nil {
 		return nil, fmt.Errorf("retrieving workspace: %w", err)

@@ -26,7 +26,7 @@ type Maker struct {
 	Helpers          *tui.Helpers
 }
 
-func (mm *Maker) Make(id resource.ID, width, height int) (tui.ChildModel, error) {
+func (mm *Maker) Make(id resource.Identity, width, height int) (tui.ChildModel, error) {
 	builder := &treeBuilder{
 		wd:               mm.Workdir,
 		helpers:          mm.Helpers,
@@ -308,7 +308,7 @@ func (m model) filterVisible() bool {
 // respective *current* workspaces. An error is returned if all modules don't
 // have a current workspace or if any other type of rows are selected or are
 // currently the cursor row.
-func (m model) GetWorkspaceIDs() ([]resource.ID, error) {
+func (m model) GetWorkspaceIDs() ([]resource.Identity, error) {
 	kind, ids := m.tracker.getSelectedOrCurrentIDs()
 	switch kind {
 	case resource.Workspace:
@@ -322,7 +322,7 @@ func (m model) GetWorkspaceIDs() ([]resource.ID, error) {
 			if mod.CurrentWorkspaceID == nil {
 				return nil, errors.New("modules must have a current workspace")
 			}
-			ids[i] = *mod.CurrentWorkspaceID
+			ids[i] = mod.CurrentWorkspaceID
 		}
 		return ids, nil
 	default:
@@ -335,7 +335,7 @@ func (m model) GetWorkspaceIDs() ([]resource.ID, error) {
 // the IDs of their respective parent modules; if the rows are modules then it
 // returns their IDs. An error is returned if the rows are not workspaces or
 // modules.
-func (m model) GetModuleIDs() ([]resource.ID, error) {
+func (m model) GetModuleIDs() ([]resource.Identity, error) {
 	kind, ids := m.tracker.getSelectedOrCurrentIDs()
 	switch kind {
 	case resource.Module:

@@ -11,7 +11,7 @@ func TestSelector_isSelected(t *testing.T) {
 	mod1 := moduleNode{id: resource.NewID(resource.Module)}
 	mod2 := moduleNode{id: resource.NewID(resource.Module)}
 
-	s := selector{selections: make(map[resource.ID]struct{})}
+	s := selector{selections: make(map[resource.Identity]struct{})}
 	s.add(mod1)
 
 	assert.True(t, s.isSelected(mod1))
@@ -22,7 +22,7 @@ func TestSelector_reindex(t *testing.T) {
 	mod1 := moduleNode{id: resource.NewID(resource.Module)}
 	mod2 := moduleNode{id: resource.NewID(resource.Module)}
 
-	s := selector{selections: make(map[resource.ID]struct{})}
+	s := selector{selections: make(map[resource.Identity]struct{})}
 	s.add(mod1)
 	s.add(mod2)
 

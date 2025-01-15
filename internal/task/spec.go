@@ -71,7 +71,7 @@ type Spec struct {
 }
 
 // SpecFunc is a function that creates a spec.
-type SpecFunc func(resource.ID) (Spec, error)
+type SpecFunc func(resource.Identity) (Spec, error)
 
 // Execution specifies the program and arguments to execute
 type Execution struct {

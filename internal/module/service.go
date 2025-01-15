@@ -39,10 +39,10 @@ type taskCreator interface {
 }
 
 type moduleTable interface {
-	Add(id resource.ID, row *Module)
-	Update(id resource.ID, updater func(existing *Module) error) (*Module, error)
-	Delete(id resource.ID)
-	Get(id resource.ID) (*Module, error)
+	Add(id resource.Identity, row *Module)
+	Update(id resource.Identity, updater func(existing *Module) error) (*Module, error)
+	Delete(id resource.Identity)
+	Get(id resource.Identity) (*Module, error)
 	List() []*Module
 }
 
@@ -205,7 +205,7 @@ func (s *Service) loadTerragruntDependenciesFromDigraph(r io.Reader) error {
 const InitTask task.Identifier = "init"
 
 // Init invokes terraform init on the module.
-func (s *Service) Init(moduleID resource.ID, upgrade bool) (task.Spec, error) {
+func (s *Service) Init(moduleID resource.Identity, upgrade bool) (task.Spec, error) {
 	mod, err := s.table.Get(moduleID)
 	if err != nil {
 		return task.Spec{}, err
@@ -230,7 +230,7 @@ func (s *Service) Init(moduleID resource.ID, upgrade bool) (task.Spec, error) {
 	return spec, nil
 }
 
-func (s *Service) Format(moduleID resource.ID) (task.Spec, error) {
+func (s *Service) Format(moduleID resource.Identity) (task.Spec, error) {
 	mod, err := s.table.Get(moduleID)
 	if err != nil {
 		return task.Spec{}, err
@@ -247,7 +247,7 @@ func (s *Service) Format(moduleID resource.ID) (task.Spec, error) {
 	return spec, nil
 }
 
-func (s *Service) Validate(moduleID resource.ID) (task.Spec, error) {
+func (s *Service) Validate(moduleID resource.Identity) (task.Spec, error) {
 	mod, err := s.table.Get(moduleID)
 	if err != nil {
 		return task.Spec{}, err
@@ -268,7 +268,7 @@ func (s *Service) List() []*Module {
 	return s.table.List()
 }
 
-func (s *Service) Get(id resource.ID) (*Module, error) {
+func (s *Service) Get(id resource.Identity) (*Module, error) {
 	return s.table.Get(id)
 }
 
@@ -282,16 +282,16 @@ func (s *Service) GetByPath(path string) (*Module, error) {
 }
 
 // SetCurrent sets the current workspace for the module.
-func (s *Service) SetCurrent(moduleID, workspaceID resource.ID) error {
+func (s *Service) SetCurrent(moduleID, workspaceID resource.Identity) error {
 	_, err := s.table.Update(moduleID, func(existing *Module) error {
-		existing.CurrentWorkspaceID = &workspaceID
+		existing.CurrentWorkspaceID = workspaceID
 		return nil
 	})
 	return err
 }
 
 // Execute a program in a module's directory.
-func (s *Service) Execute(moduleID resource.ID, program string, args ...string) (task.Spec, error) {
+func (s *Service) Execute(moduleID resource.Identity, program string, args ...string) (task.Spec, error) {
 	mod, err := s.table.Get(moduleID)
 	if err != nil {
 		return task.Spec{}, err

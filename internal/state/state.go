@@ -14,14 +14,14 @@ import (
 type State struct {
 	resource.ID
 
-	WorkspaceID      resource.ID
+	WorkspaceID      resource.Identity
 	Resources        map[ResourceAddress]*Resource
 	Serial           int64
 	TerraformVersion string
 	Lineage          string
 }
 
-func newState(workspaceID resource.ID, r io.Reader) (*State, error) {
+func newState(workspaceID resource.Identity, r io.Reader) (*State, error) {
 	// Default to a serial of -1 to indicate that there is no state yet.
 	state := &State{
 		ID:          resource.NewID(resource.State),

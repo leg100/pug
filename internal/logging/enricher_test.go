@@ -67,6 +67,6 @@ type fakeResourceGetter struct {
 	res *fakeResource
 }
 
-func (f *fakeResourceGetter) Get(resource.ID) (*fakeResource, error) {
+func (f *fakeResourceGetter) Get(resource.Identity) (*fakeResource, error) {
 	return f.res, nil
 }

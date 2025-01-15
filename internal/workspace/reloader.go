@@ -33,7 +33,7 @@ func (s ReloadSummary) LogValue() slog.Value {
 	)
 }
 
-func (r *reloader) createReloadTask(moduleID resource.ID) error {
+func (r *reloader) createReloadTask(moduleID resource.Identity) error {
 	spec, err := r.Reload(moduleID)
 	if err != nil {
 		return err
@@ -47,7 +47,7 @@ func (r *reloader) createReloadTask(moduleID resource.ID) error {
 // workspaces and pruning any workspaces no longer found to exist.
 //
 // TODO: separate into Load and Reload
-func (r *reloader) Reload(moduleID resource.ID) (task.Spec, error) {
+func (r *reloader) Reload(moduleID resource.Identity) (task.Spec, error) {
 	mod, err := r.modules.Get(moduleID)
 	if err != nil {
 		return task.Spec{}, err
@@ -109,8 +109,7 @@ func (r *reloader) resetWorkspaces(mod *module.Module, discovered []string, curr
 	if err != nil {
 		return nil, nil, fmt.Errorf("cannot find current workspace: %s: %w", current, err)
 	}
-	err = r.modules.SetCurrent(mod.ID, currentWorkspace.ID)
-	if err != nil {
+	if err := r.modules.SetCurrent(mod.ID, currentWorkspace.ID); err != nil {
 		return nil, nil, err
 	}
 	return

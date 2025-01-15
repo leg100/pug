@@ -32,11 +32,11 @@ type Maker struct {
 	showInfo          bool
 }
 
-func (mm *Maker) Make(id resource.ID, width, height int) (tui.ChildModel, error) {
+func (mm *Maker) Make(id resource.Identity, width, height int) (tui.ChildModel, error) {
 	return mm.make(id, width, height, true)
 }
 
-func (mm *Maker) make(id resource.ID, width, height int, border bool) (tui.ChildModel, error) {
+func (mm *Maker) make(id resource.Identity, width, height int, border bool) (tui.ChildModel, error) {
 	task, err := mm.Tasks.Get(id)
 	if err != nil {
 		return nil, err
@@ -330,16 +330,16 @@ type outputMsg struct {
 	eof     bool
 }
 
-func (m Model) GetModuleIDs() ([]resource.ID, error) {
+func (m Model) GetModuleIDs() ([]resource.Identity, error) {
 	if m.task.ModuleID == nil {
 		return nil, errors.New("valid only on modules")
 	}
-	return []resource.ID{*m.task.ModuleID}, nil
+	return []resource.Identity{*m.task.ModuleID}, nil
 }
 
-func (m Model) GetWorkspaceIDs() ([]resource.ID, error) {
+func (m Model) GetWorkspaceIDs() ([]resource.Identity, error) {
 	if m.task.WorkspaceID != nil {
-		return []resource.ID{*m.task.WorkspaceID}, nil
+		return []resource.Identity{*m.task.WorkspaceID}, nil
 	} else if m.task.ModuleID == nil {
 		return nil, errors.New("valid only on tasks associated with a module or a workspace")
 	} else {
@@ -353,6 +353,6 @@ func (m Model) GetWorkspaceIDs() ([]resource.ID, error) {
 		if mod.CurrentWorkspaceID == nil {
 			return nil, errors.New("valid only on tasks associated with a module with a current workspace, or a workspace")
 		}
-		return []resource.ID{*mod.CurrentWorkspaceID}, nil
+		return []resource.Identity{mod.CurrentWorkspaceID}, nil
 	}
 }

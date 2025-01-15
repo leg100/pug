@@ -140,7 +140,7 @@ func (f *fakeEnqueuerTaskService) List(opts ListOptions) []*Task {
 	return nil
 }
 
-func (f *fakeEnqueuerTaskService) Get(id resource.ID) (*Task, error) {
+func (f *fakeEnqueuerTaskService) Get(id resource.Identity) (*Task, error) {
 	for _, task := range append(append(f.pending, f.active...), f.other...) {
 		if id == task.ID {
 			return task, nil

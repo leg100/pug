@@ -17,7 +17,7 @@ type Logger interface {
 }
 
 // Broker allows clients to publish events and subscribe to events
-type Broker[T resource.Resource] struct {
+type Broker[T any] struct {
 	subs   map[chan resource.Event[T]]struct{} // subscriptions
 	mu     sync.Mutex                          // sync access to map
 	done   chan struct{}                       // close when broker is shutting down
@@ -25,7 +25,7 @@ type Broker[T resource.Resource] struct {
 }
 
 // NewBroker constructs a pub/sub broker.
-func NewBroker[T resource.Resource](logger Logger) *Broker[T] {
+func NewBroker[T any](logger Logger) *Broker[T] {
 	b := &Broker[T]{
 		subs:   make(map[chan resource.Event[T]]struct{}),
 		done:   make(chan struct{}),

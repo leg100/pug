@@ -14,16 +14,16 @@ type ChildModel interface {
 
 // Maker makes new models
 type Maker interface {
-	Make(id resource.ID, width, height int) (ChildModel, error)
+	Make(id resource.Identity, width, height int) (ChildModel, error)
 }
 
 // Page identifies an instance of a model
 type Page struct {
 	// The model kind. Identifies the model maker to construct the page.
 	Kind Kind
-	// The ID of the resource for a model. In the case of global listings of
-	// modules, workspaces, etc, this is the global resource.
-	ID resource.ID
+	// ID of resource for a model. If the model does not have a single resource
+	// but is say a listing of resources, then this is nil.
+	ID resource.Identity
 }
 
 // ModelHelpBindings is implemented by models that surface further help bindings

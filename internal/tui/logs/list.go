@@ -37,7 +37,7 @@ type ListMaker struct {
 	Helpers       *tui.Helpers
 }
 
-func (m *ListMaker) Make(_ resource.ID, width, height int) (tui.ChildModel, error) {
+func (m *ListMaker) Make(_ resource.Identity, width, height int) (tui.ChildModel, error) {
 	columns := []table.Column{
 		timeColumn,
 		levelColumn,

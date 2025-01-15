@@ -33,7 +33,7 @@ type ResourceListMaker struct {
 	Helpers    *tui.Helpers
 }
 
-func (mm *ResourceListMaker) Make(workspaceID resource.ID, width, height int) (tui.ChildModel, error) {
+func (mm *ResourceListMaker) Make(workspaceID resource.Identity, width, height int) (tui.ChildModel, error) {
 	ws, err := mm.Workspaces.Get(workspaceID)
 	if err != nil {
 		return nil, err
@@ -151,7 +151,7 @@ func (m *resourceList) Update(msg tea.Msg) tea.Cmd {
 				// no rows; do nothing
 				return nil
 			}
-			fn := func(workspaceID resource.ID) (task.Spec, error) {
+			fn := func(workspaceID resource.Identity) (task.Spec, error) {
 				return m.states.Delete(workspaceID, addrs...)
 			}
 			return tui.YesNoPrompt(
@@ -166,7 +166,7 @@ func (m *resourceList) Update(msg tea.Msg) tea.Cmd {
 			return m.createStateCommand(m.states.Untaint, addrs...)
 		case key.Matches(msg, resourcesKeys.Move):
 			if row, ok := m.CurrentRow(); ok {
-				from := row.Value.Address
+				from := row.Address
 				return m.Move(m.workspace.ID, from)
 			}
 		case key.Matches(msg, keys.Common.PlanDestroy):
@@ -178,7 +178,7 @@ func (m *resourceList) Update(msg tea.Msg) tea.Cmd {
 			createRunOptions.TargetAddrs = m.selectedOrCurrentAddresses()
 			// NOTE: even if the user hasn't selected any rows, we still proceed
 			// to create a run without targeted resources.
-			fn := func(workspaceID resource.ID) (task.Spec, error) {
+			fn := func(workspaceID resource.Identity) (task.Spec, error) {
 				return m.plans.Plan(workspaceID, createRunOptions)
 			}
 			return m.CreateTasks(fn, m.workspace.ID)
@@ -189,8 +189,8 @@ func (m *resourceList) Update(msg tea.Msg) tea.Cmd {
 		case key.Matches(msg, keys.Common.AutoApply):
 			// Create a targeted apply.
 			createRunOptions.TargetAddrs = m.selectedOrCurrentAddresses()
-			resourceIDs := m.SelectedOrCurrentIDs()
-			fn := func(workspaceID resource.ID) (task.Spec, error) {
+			resourceIDs := m.SelectedOrCurrent()
+			fn := func(workspaceID resource.Identity) (task.Spec, error) {
 				return m.plans.Apply(workspaceID, createRunOptions)
 			}
 			return tui.YesNoPrompt(
@@ -258,7 +258,7 @@ func (m resourceList) selectedOrCurrentAddresses() []state.ResourceAddress {
 	addrs := make([]state.ResourceAddress, len(rows))
 	var i int
 	for _, v := range rows {
-		addrs[i] = v.Value.Address
+		addrs[i] = v.Address
 		i++
 	}
 	return addrs
@@ -283,10 +283,10 @@ func (m *resourceList) BorderText() map[tui.BorderPosition]string {
 	}
 }
 
-func (m *resourceList) GetModuleIDs() ([]resource.ID, error) {
-	return []resource.ID{m.workspace.ModuleID}, nil
+func (m *resourceList) GetModuleIDs() ([]resource.Identity, error) {
+	return []resource.Identity{m.workspace.ModuleID}, nil
 }
 
-func (m *resourceList) GetWorkspaceIDs() ([]resource.ID, error) {
-	return []resource.ID{m.workspace.ID}, nil
+func (m *resourceList) GetWorkspaceIDs() ([]resource.Identity, error) {
+	return []resource.Identity{m.workspace.ID}, nil
 }

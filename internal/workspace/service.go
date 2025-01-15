@@ -34,17 +34,17 @@ type ServiceOptions struct {
 }
 
 type workspaceTable interface {
-	Add(id resource.ID, row *Workspace)
-	Update(id resource.ID, updater func(existing *Workspace) error) (*Workspace, error)
-	Delete(id resource.ID)
-	Get(id resource.ID) (*Workspace, error)
+	Add(id resource.Identity, row *Workspace)
+	Update(id resource.Identity, updater func(existing *Workspace) error) (*Workspace, error)
+	Delete(id resource.Identity)
+	Get(id resource.Identity) (*Workspace, error)
 	List() []*Workspace
 }
 
 type modules interface {
-	Get(id resource.ID) (*module.Module, error)
+	Get(id resource.Identity) (*module.Module, error)
 	GetByPath(path string) (*module.Module, error)
-	SetCurrent(moduleID, workspaceID resource.ID) error
+	SetCurrent(moduleID, workspaceID resource.Identity) error
 	Reload() ([]string, []string, error)
 	List() []*module.Module
 }
@@ -142,7 +142,7 @@ func (s *Service) Create(path, name string) (task.Spec, error) {
 	}, nil
 }
 
-func (s *Service) Get(workspaceID resource.ID) (*Workspace, error) {
+func (s *Service) Get(workspaceID resource.Identity) (*Workspace, error) {
 	return s.table.Get(workspaceID)
 }
 
@@ -157,13 +157,13 @@ func (s *Service) GetByName(modulePath, name string) (*Workspace, error) {
 
 type ListOptions struct {
 	// Filter by ID of workspace's module.
-	ModuleID *resource.ID
+	ModuleID resource.Identity
 }
 
 func (s *Service) List(opts ListOptions) []*Workspace {
 	var existing []*Workspace
 	for _, ws := range s.table.List() {
-		if opts.ModuleID != nil && *opts.ModuleID != ws.ModuleID {
+		if opts.ModuleID != nil && opts.ModuleID != ws.ModuleID {
 			continue
 		}
 		existing = append(existing, ws)
@@ -174,7 +174,7 @@ func (s *Service) List(opts ListOptions) []*Workspace {
 // SelectWorkspace runs the `terraform workspace select <workspace_name>`
 // command, which sets the current workspace for the module. Once that's
 // finished it then updates the current workspace in pug itself too.
-func (s *Service) SelectWorkspace(workspaceID resource.ID) error {
+func (s *Service) SelectWorkspace(workspaceID resource.Identity) error {
 	ws, err := s.table.Get(workspaceID)
 	if err != nil {
 		return err
@@ -207,7 +207,7 @@ func (s *Service) SelectWorkspace(workspaceID resource.ID) error {
 }
 
 // Delete a workspace. Asynchronous.
-func (s *Service) Delete(workspaceID resource.ID) (task.Spec, error) {
+func (s *Service) Delete(workspaceID resource.Identity) (task.Spec, error) {
 	ws, err := s.table.Get(workspaceID)
 	if err != nil {
 		return task.Spec{}, fmt.Errorf("deleting workspace: %w", err)

@@ -7,11 +7,11 @@ import (
 	"github.com/leg100/pug/internal/task"
 )
 
-type stateFunc func(workspaceID resource.ID, addr state.ResourceAddress) (task.Spec, error)
+type stateFunc func(workspaceID resource.Identity, addr state.ResourceAddress) (task.Spec, error)
 
 func (m resourceList) createStateCommand(fn stateFunc, addrs ...state.ResourceAddress) tea.Cmd {
 	// Make N copies of the workspace ID where N is the number of addresses
-	workspaceIDs := make([]resource.ID, len(addrs))
+	workspaceIDs := make([]resource.Identity, len(addrs))
 	for i := range workspaceIDs {
 		workspaceIDs[i] = m.workspace.ID
 	}
@@ -32,7 +32,7 @@ type stateTaskFunc struct {
 	i     int
 }
 
-func (f *stateTaskFunc) createTask(workspaceID resource.ID) (task.Spec, error) {
+func (f *stateTaskFunc) createTask(workspaceID resource.Identity) (task.Spec, error) {
 	t, err := f.fn(workspaceID, f.addrs[f.i])
 	f.i++
 	return t, err

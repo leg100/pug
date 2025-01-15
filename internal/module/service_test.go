@@ -101,7 +101,7 @@ func (f *fakeModuleTable) List() []*Module {
 	return f.modules
 }
 
-func (f *fakeModuleTable) Update(id resource.ID, updater func(*Module) error) (*Module, error) {
+func (f *fakeModuleTable) Update(id resource.Identity, updater func(*Module) error) (*Module, error) {
 	for _, mod := range f.modules {
 		if mod.ID == id {
 			if err := updater(mod); err != nil {

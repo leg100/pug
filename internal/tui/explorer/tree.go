@@ -44,14 +44,14 @@ func (b *treeBuilder) newTree(filter string) (*tree, string) {
 	modules := b.moduleService.List()
 	workspaces := b.workspaceService.List(workspace.ListOptions{})
 	// Create set of current workspaces for assignment below.
-	currentWorkspaces := make(map[resource.ID]bool)
+	currentWorkspaces := make(map[resource.Identity]bool)
 	for _, mod := range modules {
 		if mod.CurrentWorkspaceID != nil {
-			currentWorkspaces[*mod.CurrentWorkspaceID] = true
+			currentWorkspaces[mod.CurrentWorkspaceID] = true
 		}
 	}
 	// Arrange workspaces by module, for attachment to modules in tree below.
-	workspaceNodes := make(map[resource.ID][]workspaceNode, len(modules))
+	workspaceNodes := make(map[resource.Identity][]workspaceNode, len(modules))
 	for _, ws := range workspaces {
 		wsNode := workspaceNode{
 			id:            ws.ID,

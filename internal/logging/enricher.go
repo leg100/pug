@@ -39,7 +39,7 @@ type ReferenceUpdater[T any] struct {
 }
 
 type Getter[T any] interface {
-	Get(resource.ID) (T, error)
+	Get(resource.Identity) (T, error)
 }
 
 func (e *ReferenceUpdater[T]) UpdateArgs(args ...any) []any {

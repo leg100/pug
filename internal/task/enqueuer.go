@@ -23,7 +23,7 @@ type enqueuer struct {
 type enqueuerTaskService interface {
 	taskLister
 
-	Get(taskID resource.ID) (*Task, error)
+	Get(taskID resource.Identity) (*Task, error)
 }
 
 func StartEnqueuer(tasks *Service) {

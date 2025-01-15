@@ -33,7 +33,7 @@ type Maker struct {
 	Helpers *tui.Helpers
 }
 
-func (mm *Maker) Make(id resource.ID, width, height int) (tui.ChildModel, error) {
+func (mm *Maker) Make(id resource.Identity, width, height int) (tui.ChildModel, error) {
 	msg, err := mm.Logger.Get(id)
 	if err != nil {
 		return nil, err

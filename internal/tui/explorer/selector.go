@@ -15,7 +15,7 @@ var (
 // not directories), and resources must be of the same kind.
 // selected.
 type selector struct {
-	selections map[resource.ID]struct{}
+	selections map[resource.Identity]struct{}
 	kind       *resource.Kind
 }
 
@@ -40,7 +40,7 @@ func (s *selector) reindex(nodes []node) {
 	if len(s.selections) == 0 {
 		return
 	}
-	selections := make(map[resource.ID]struct{}, len(s.selections))
+	selections := make(map[resource.Identity]struct{}, len(s.selections))
 	for _, n := range nodes {
 		id, ok := n.ID().(resource.ID)
 		if !ok {
@@ -133,7 +133,7 @@ func (s *selector) remove(n node) {
 }
 
 func (s *selector) removeAll() {
-	s.selections = make(map[resource.ID]struct{})
+	s.selections = make(map[resource.Identity]struct{})
 	s.kind = nil
 }
 

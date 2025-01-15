@@ -10,7 +10,7 @@ import (
 type Resource struct {
 	resource.ID
 
-	WorkspaceID resource.ID
+	WorkspaceID resource.Identity
 	Address     ResourceAddress
 	Attributes  map[string]any
 	Tainted     bool
@@ -20,7 +20,7 @@ func (r *Resource) String() string {
 	return string(r.Address)
 }
 
-func newResource(workspaceID resource.ID, addr ResourceAddress, attrs json.RawMessage) (*Resource, error) {
+func newResource(workspaceID resource.Identity, addr ResourceAddress, attrs json.RawMessage) (*Resource, error) {
 	res := &Resource{
 		ID:          resource.NewID(resource.StateResource),
 		WorkspaceID: workspaceID,

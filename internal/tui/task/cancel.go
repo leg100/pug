@@ -11,7 +11,7 @@ import (
 )
 
 // cancel task(s)
-func cancel(tasks *task.Service, taskIDs ...resource.ID) tea.Cmd {
+func cancel(tasks *task.Service, taskIDs ...resource.Identity) tea.Cmd {
 	var (
 		prompt string
 		cmd    tea.Cmd

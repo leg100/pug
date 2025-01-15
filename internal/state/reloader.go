@@ -13,7 +13,7 @@ type reloader struct {
 
 // Reload creates a task to repopulate the local cache of the state of the given
 // workspace.
-func (r *reloader) Reload(workspaceID resource.ID) (task.Spec, error) {
+func (r *reloader) Reload(workspaceID resource.Identity) (task.Spec, error) {
 	return r.createTaskSpec(workspaceID, task.Spec{
 		Execution: task.Execution{
 			TerraformCommand: []string{"state", "pull"},
@@ -42,7 +42,7 @@ func (r *reloader) Reload(workspaceID resource.ID) (task.Spec, error) {
 	})
 }
 
-func (s *Service) CreateReloadTask(workspaceID resource.ID) (*task.Task, error) {
+func (s *Service) CreateReloadTask(workspaceID resource.Identity) (*task.Task, error) {
 	spec, err := s.Reload(workspaceID)
 	if err != nil {
 		return nil, fmt.Errorf("creating reload task spec: %w", err)

@@ -39,11 +39,11 @@ type ServiceOptions struct {
 }
 
 type moduleGetter interface {
-	Get(moduleID resource.ID) (*module.Module, error)
+	Get(moduleID resource.Identity) (*module.Module, error)
 }
 
 type workspaceGetter interface {
-	Get(workspaceID resource.ID) (*workspace.Workspace, error)
+	Get(workspaceID resource.Identity) (*workspace.Workspace, error)
 }
 
 func NewService(opts ServiceOptions) *Service {
@@ -94,7 +94,7 @@ func (s *Service) ReloadAfterApply(sub <-chan resource.Event[*task.Task]) {
 
 // Plan creates a task spec to create a plan, i.e. `terraform plan -out
 // plan.file`.
-func (s *Service) Plan(workspaceID resource.ID, opts CreateOptions) (task.Spec, error) {
+func (s *Service) Plan(workspaceID resource.Identity, opts CreateOptions) (task.Spec, error) {
 	opts.planFile = true
 	plan, err := s.newPlan(workspaceID, opts)
 	if err != nil {
@@ -108,7 +108,7 @@ func (s *Service) Plan(workspaceID resource.ID, opts CreateOptions) (task.Spec, 
 
 // Apply creates a task spec to auto-apply a plan, i.e. `terraform apply`. To
 // apply an existing plan, see ApplyPlan.
-func (s *Service) Apply(workspaceID resource.ID, opts CreateOptions) (task.Spec, error) {
+func (s *Service) Apply(workspaceID resource.Identity, opts CreateOptions) (task.Spec, error) {
 	plan, err := s.newPlan(workspaceID, opts)
 	if err != nil {
 		return task.Spec{}, err
@@ -119,7 +119,7 @@ func (s *Service) Apply(workspaceID resource.ID, opts CreateOptions) (task.Spec,
 // ApplyPlan creates a task spec to apply an existing plan, i.e. `terraform
 // apply existing.plan`. The taskID is the ID of a plan task, which must have
 // finished successfully.
-func (s *Service) ApplyPlan(taskID resource.ID) (task.Spec, error) {
+func (s *Service) ApplyPlan(taskID resource.Identity) (task.Spec, error) {
 	planTask, err := s.tasks.Get(taskID)
 	if err != nil {
 		return task.Spec{}, err
@@ -144,11 +144,11 @@ func IsApplyable(t *task.Task) error {
 	return nil
 }
 
-func (s *Service) Get(runID resource.ID) (*plan, error) {
+func (s *Service) Get(runID resource.Identity) (*plan, error) {
 	return s.table.Get(runID)
 }
 
-func (s *Service) getByTaskID(taskID resource.ID) (*plan, error) {
+func (s *Service) getByTaskID(taskID resource.Identity) (*plan, error) {
 	for _, plan := range s.List() {
 		if plan.taskID != nil && *plan.taskID == taskID {
 			return plan, nil

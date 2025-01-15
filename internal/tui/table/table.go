@@ -28,23 +28,23 @@ const (
 )
 
 // Model defines a state for the table widget.
-type Model[V fmt.Stringer] struct {
+type Model[V resource.Identifiable] struct {
 	cols        []Column
-	rows        []Row[V]
+	rows        []V
 	rowRenderer RowRenderer[V]
-	rendered    map[resource.ID]RenderedRow
+	rendered    map[resource.Identity]RenderedRow
 
 	border      lipgloss.Border
 	borderColor lipgloss.TerminalColor
 
 	currentRowIndex int
-	currentRowID    resource.ID
+	currentRowID    resource.Identity
 
 	// items are the unfiltered set of items available to the table.
-	items    map[resource.ID]V
+	items    map[resource.Identity]V
 	sortFunc SortFunc[V]
 
-	selected   map[resource.ID]V
+	selected   map[resource.Identity]V
 	selectable bool
 
 	filter textinput.Model
@@ -75,11 +75,6 @@ type Column struct {
 
 type ColumnKey string
 
-type Row[V any] struct {
-	ID    resource.ID
-	Value V
-}
-
 type RowRenderer[V any] func(V) RenderedRow
 
 // RenderedRow provides the rendered string for each column in a row.
@@ -88,15 +83,15 @@ type RenderedRow map[ColumnKey]string
 type SortFunc[V any] func(V, V) int
 
 // New creates a new model for the table widget.
-func New[V fmt.Stringer](cols []Column, fn RowRenderer[V], width, height int, opts ...Option[V]) Model[V] {
+func New[V resource.Identifiable](cols []Column, fn RowRenderer[V], width, height int, opts ...Option[V]) Model[V] {
 	filter := textinput.New()
 	filter.Prompt = "Filter: "
 
 	m := Model[V]{
 		rowRenderer:     fn,
-		items:           make(map[resource.ID]V),
-		rendered:        make(map[resource.ID]RenderedRow),
-		selected:        make(map[resource.ID]V),
+		items:           make(map[resource.Identity]V),
+		rendered:        make(map[resource.Identity]RenderedRow),
+		selected:        make(map[resource.Identity]V),
 		selectable:      true,
 		filter:          filter,
 		border:          lipgloss.NormalBorder(),
@@ -121,17 +116,17 @@ func New[V fmt.Stringer](cols []Column, fn RowRenderer[V], width, height int, op
 	return m
 }
 
-type Option[V fmt.Stringer] func(m *Model[V])
+type Option[V resource.Identifiable] func(m *Model[V])
 
 // WithSortFunc configures the table to sort rows using the given func.
-func WithSortFunc[V fmt.Stringer](sortFunc func(V, V) int) Option[V] {
+func WithSortFunc[V resource.Identifiable](sortFunc func(V, V) int) Option[V] {
 	return func(m *Model[V]) {
 		m.sortFunc = sortFunc
 	}
 }
 
 // WithSelectable sets whether rows are selectable.
-func WithSelectable[V fmt.Stringer](s bool) Option[V] {
+func WithSelectable[V resource.Identifiable](s bool) Option[V] {
 	return func(m *Model[V]) {
 		m.selectable = s
 	}
@@ -139,7 +134,7 @@ func WithSelectable[V fmt.Stringer](s bool) Option[V] {
 
 // WithPreview configures the table to automatically populate the bottom right
 // pane with a model corresponding to the current row.
-func WithPreview[V fmt.Stringer](maker tui.Kind) Option[V] {
+func WithPreview[V resource.Identifiable](maker tui.Kind) Option[V] {
 	return func(m *Model[V]) {
 		m.previewKind = &maker
 	}
@@ -252,7 +247,8 @@ func (m Model[V]) Update(msg tea.Msg) (Model[V], tea.Cmd) {
 	return m, nil
 }
 
-func (m *Model[V]) PreviewCurrentRow() (tui.Kind, resource.ID, bool) {
+// PreviewCurrentRow
+func (m *Model[V]) PreviewCurrentRow() (tui.Kind, resource.Identity, bool) {
 	if _, ok := m.CurrentRow(); !ok {
 		return 0, resource.ID{}, false
 	}
@@ -321,37 +317,27 @@ func (m *Model[V]) SetBorderStyle(border lipgloss.Border, color lipgloss.Termina
 
 // CurrentRow returns the current row the user has highlighted.  If the table is
 // empty then false is returned.
-func (m Model[V]) CurrentRow() (Row[V], bool) {
+func (m Model[V]) CurrentRow() (V, bool) {
 	if m.currentRowIndex < 0 || m.currentRowIndex >= len(m.rows) {
-		return *new(Row[V]), false
+		return *new(V), false
 	}
 	return m.rows[m.currentRowIndex], true
 }
 
 // SelectedOrCurrent returns either the selected rows, or if there are no
 // selections, the current row
-func (m Model[V]) SelectedOrCurrent() []Row[V] {
+func (m Model[V]) SelectedOrCurrent() []V {
 	if len(m.selected) > 0 {
-		rows := make([]Row[V], len(m.selected))
+		rows := make([]V, len(m.selected))
 		var i int
-		for k, v := range m.selected {
-			rows[i] = Row[V]{ID: k, Value: v}
+		for _, v := range m.selected {
+			rows[i] = v
 			i++
 		}
 		return rows
 	}
 	if row, ok := m.CurrentRow(); ok {
-		return []Row[V]{row}
-	}
-	return nil
-}
-
-func (m Model[V]) SelectedOrCurrentIDs() []resource.ID {
-	if len(m.selected) > 0 {
-		return maps.Keys(m.selected)
-	}
-	if row, ok := m.CurrentRow(); ok {
-		return []resource.ID{row.ID}
+		return []V{row}
 	}
 	return nil
 }
@@ -365,16 +351,16 @@ func (m *Model[V]) ToggleSelection() {
 	if !ok {
 		return
 	}
-	if _, isSelected := m.selected[current.ID]; isSelected {
-		delete(m.selected, current.ID)
+	if _, isSelected := m.selected[current]; isSelected {
+		delete(m.selected, current)
 	} else {
-		m.selected[current.ID] = current.Value
+		m.selected[current.GetID()] = current
 	}
 }
 
-// ToggleSelectionByID toggles the selection of the row with the given id. If
-// the id does not exist no action is taken.
-func (m *Model[V]) ToggleSelectionByID(id resource.ID) {
+// ToggleSelectionByID toggles the selection of the row with the given ID. If
+// the ID does not exist no action is taken.
+func (m *Model[V]) ToggleSelectionByID(id resource.Identity) {
 	if !m.selectable {
 		return
 	}
@@ -394,9 +380,8 @@ func (m *Model[V]) SelectAll() {
 	if !m.selectable {
 		return
 	}
-
 	for _, row := range m.rows {
-		m.selected[row.ID] = row.Value
+		m.selected[row] = row
 	}
 }
 
@@ -405,8 +390,7 @@ func (m *Model[V]) DeselectAll() {
 	if !m.selectable {
 		return
 	}
-
-	m.selected = make(map[resource.ID]V)
+	m.selected = make(map[resource.Identity]V)
 }
 
 // SelectRange selects a range of rows. If the current row is *below* a selected
@@ -430,7 +414,7 @@ func (m *Model[V]) SelectRange() {
 			n = m.currentRowIndex - first + 1
 			break
 		}
-		if _, ok := m.selected[row.ID]; !ok {
+		if _, ok := m.selected[row.GetID()]; !ok {
 			// Ignore unselected rows
 			continue
 		}
@@ -445,14 +429,14 @@ func (m *Model[V]) SelectRange() {
 		first = i + 1
 	}
 	for _, row := range m.rows[first : first+n] {
-		m.selected[row.ID] = row.Value
+		m.selected[row.GetID()] = row
 	}
 }
 
 // SetItems overwrites all existing items in the table with items.
 func (m *Model[V]) SetItems(items ...V) {
-	m.items = make(map[resource.ID]V)
-	m.rendered = make(map[resource.ID]RenderedRow)
+	m.items = make(map[resource.Identity]V)
+	m.rendered = make(map[resource.Identity]RenderedRow)
 	m.AddItems(items...)
 }
 
@@ -469,11 +453,11 @@ func (m *Model[V]) AddItems(items ...V) {
 }
 
 func (m *Model[V]) removeItem(item V) {
-	delete(m.rendered, item.GetID())
-	delete(m.items, item.GetID())
-	delete(m.selected, item.GetID())
+	delete(m.rendered, item)
+	delete(m.items, item)
+	delete(m.selected, item)
 	for i, row := range m.rows {
-		if row.ID == item.GetID() {
+		if row.GetID() == item.GetID() {
 			// TODO: this might well produce a memory leak. See note:
 			// https://go.dev/wiki/SliceTricks#delete-without-preserving-order
 			m.rows = append(m.rows[:i], m.rows[i+1:]...)
@@ -492,31 +476,31 @@ func (m *Model[V]) removeItem(item V) {
 }
 
 func (m *Model[V]) setRows(items ...V) {
-	selected := make(map[resource.ID]V)
-	m.rows = make([]Row[V], 0, len(items))
+	selected := make(map[resource.Identity]V)
+	m.rows = make([]V, 0, len(items))
 	for _, item := range items {
-		if m.filterVisible() && !m.matchFilter(item.GetID()) {
+		if m.filterVisible() && !m.matchFilter(item) {
 			// Skip item that doesn't match filter
 			continue
 		}
-		m.rows = append(m.rows, Row[V]{ID: item.GetID(), Value: item})
+		m.rows = append(m.rows, item)
 		if m.selectable {
-			if _, ok := m.selected[item.GetID()]; ok {
-				selected[item.GetID()] = item
+			if _, ok := m.selected[item]; ok {
+				selected[item] = item
 			}
 		}
 	}
 	m.selected = selected
 	// Sort rows in-place
 	if m.sortFunc != nil {
-		slices.SortFunc(m.rows, func(i, j Row[V]) int {
-			return m.sortFunc(i.Value, j.Value)
+		slices.SortFunc(m.rows, func(i, j V) int {
+			return m.sortFunc(i, j)
 		})
 	}
 	// Track current row index
 	m.currentRowIndex = -1
 	for i, row := range m.rows {
-		if row.ID == m.currentRowID {
+		if row.GetID() == m.currentRowID {
 			m.currentRowIndex = i
 			break
 		}
@@ -526,15 +510,15 @@ func (m *Model[V]) setRows(items ...V) {
 	// first row.
 	if len(m.rows) > 0 && m.currentRowIndex == -1 {
 		m.currentRowIndex = 0
-		m.currentRowID = m.rows[m.currentRowIndex].ID
+		m.currentRowID = m.rows[m.currentRowIndex].GetID()
 	}
 	m.setStart()
 }
 
 // matchFilter returns true if the item with the given ID matches the filter
 // value.
-func (m *Model[V]) matchFilter(id resource.ID) bool {
-	for _, col := range m.rendered[id] {
+func (m *Model[V]) matchFilter(item V) bool {
+	for _, col := range m.rendered[item.GetID()] {
 		// Remove ANSI escapes code before filtering
 		stripped := internal.StripAnsi(col)
 		if strings.Contains(stripped, m.filter.Value()) {
@@ -559,7 +543,7 @@ func (m *Model[V]) MoveDown(n int) {
 func (m *Model[V]) moveCurrentRow(n int) {
 	if len(m.rows) > 0 {
 		m.currentRowIndex = clamp(m.currentRowIndex+n, 0, len(m.rows)-1)
-		m.currentRowID = m.rows[m.currentRowIndex].ID
+		m.currentRowID = m.rows[m.currentRowIndex].GetID()
 		m.setStart()
 	}
 }
@@ -611,7 +595,7 @@ func (m *Model[V]) renderRow(rowIdx int) string {
 		current    bool
 		selected   bool
 	)
-	if _, ok := m.selected[row.ID]; ok {
+	if _, ok := m.selected[row.GetID()]; ok {
 		selected = true
 	}
 	current = rowIdx == m.currentRowIndex
@@ -626,7 +610,7 @@ func (m *Model[V]) renderRow(rowIdx int) string {
 		foreground = tui.SelectedForeground
 	}
 
-	cells := m.rendered[row.ID]
+	cells := m.rendered[row.GetID()]
 	styledCells := make([]string, len(m.cols))
 	for i, col := range m.cols {
 		content := cells[col.Key]

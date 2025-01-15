@@ -55,7 +55,7 @@ func TestTable_CurrentRow(t *testing.T) {
 	got, ok := tbl.CurrentRow()
 	require.True(t, ok)
 
-	assert.Equal(t, resource0, got.Value)
+	assert.Equal(t, resource0, got)
 }
 
 func TestTable_ToggleSelection(t *testing.T) {
@@ -70,55 +70,55 @@ func TestTable_ToggleSelection(t *testing.T) {
 func TestTable_SelectRange(t *testing.T) {
 	tests := []struct {
 		name     string
-		selected []resource.ID
+		selected []resource.Identity
 		cursor   int
-		want     []resource.ID
+		want     []resource.Identity
 	}{
 		{
 			name:     "select no range when nothing is selected, and cursor is on first row",
-			selected: []resource.ID{},
-			want:     []resource.ID{},
+			selected: []resource.Identity{},
+			want:     []resource.Identity{},
 		},
 		{
 			name:     "select no range when nothing is selected, and cursor is on last row",
-			selected: []resource.ID{},
-			want:     []resource.ID{},
+			selected: []resource.Identity{},
+			want:     []resource.Identity{},
 		},
 		{
 			name:     "select no range when cursor is on the only selected row",
-			selected: []resource.ID{resource0.ID},
-			want:     []resource.ID{resource0.ID},
+			selected: []resource.Identity{resource0.ID},
+			want:     []resource.Identity{resource0.ID},
 		},
 		{
 			name:     "select all rows between selected top row and cursor on last row",
-			selected: []resource.ID{resource0.ID}, // first row
-			cursor:   5,                           // last row
-			want:     []resource.ID{resource0.ID, resource1.ID, resource2.ID, resource3.ID, resource4.ID, resource5.ID},
+			selected: []resource.Identity{resource0.ID}, // first row
+			cursor:   5,                                 // last row
+			want:     []resource.Identity{resource0.ID, resource1.ID, resource2.ID, resource3.ID, resource4.ID, resource5.ID},
 		},
 		{
 			name:     "select rows between selected top row and cursor in third row",
-			selected: []resource.ID{resource0.ID}, // first row
-			cursor:   2,                           // third row
-			want:     []resource.ID{resource0.ID, resource1.ID, resource2.ID},
+			selected: []resource.Identity{resource0.ID}, // first row
+			cursor:   2,                                 // third row
+			want:     []resource.Identity{resource0.ID, resource1.ID, resource2.ID},
 		},
 		{
 			name:     "select rows between selected top row and cursor in third row, ignoring selected last row",
-			selected: []resource.ID{resource0.ID, resource5.ID}, // first and last row
-			cursor:   2,                                         // third row
-			want:     []resource.ID{resource0.ID, resource1.ID, resource2.ID, resource5.ID},
+			selected: []resource.Identity{resource0.ID, resource5.ID}, // first and last row
+			cursor:   2,                                               // third row
+			want:     []resource.Identity{resource0.ID, resource1.ID, resource2.ID, resource5.ID},
 		},
 		{
 			name:     "select rows between cursor in third row and selected last row",
-			selected: []resource.ID{resource5.ID}, // last row
-			cursor:   2,                           // third row
-			want:     []resource.ID{resource2.ID, resource3.ID, resource4.ID, resource5.ID},
+			selected: []resource.Identity{resource5.ID}, // last row
+			cursor:   2,                                 // third row
+			want:     []resource.Identity{resource2.ID, resource3.ID, resource4.ID, resource5.ID},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			tbl := setupTest()
-			for _, key := range tt.selected {
-				tbl.ToggleSelectionByID(key)
+			for _, id := range tt.selected {
+				tbl.ToggleSelectionByID(id)
 			}
 			tbl.currentRowIndex = tt.cursor
 
@@ -132,8 +132,8 @@ func TestTable_SelectRange(t *testing.T) {
 	}
 }
 
-func sortStrings(i, j resource.ID) int {
-	if i.String() < j.String() {
+func sortStrings(i, j resource.Identity) int {
+	if i.(resource.ID).String() < j.(resource.ID).String() {
 		return -1
 	}
 	return 1

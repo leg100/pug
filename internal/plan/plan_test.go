@@ -61,7 +61,7 @@ type fakeModuleGetter struct {
 	mod *module.Module
 }
 
-func (f *fakeModuleGetter) Get(resource.ID) (*module.Module, error) {
+func (f *fakeModuleGetter) Get(resource.Identity) (*module.Module, error) {
 	return f.mod, nil
 }
 
@@ -69,6 +69,6 @@ type fakeWorkspaceGetter struct {
 	ws *workspace.Workspace
 }
 
-func (f *fakeWorkspaceGetter) Get(resource.ID) (*workspace.Workspace, error) {
+func (f *fakeWorkspaceGetter) Get(resource.Identity) (*workspace.Workspace, error) {
 	return f.ws, nil
 }

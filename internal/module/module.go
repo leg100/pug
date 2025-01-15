@@ -21,7 +21,7 @@ type Module struct {
 	// Path relative to pug working directory
 	Path string
 	// The module's current workspace.
-	CurrentWorkspaceID *resource.ID
+	CurrentWorkspaceID resource.Identity
 
 	// The module's backend type
 	Backend string

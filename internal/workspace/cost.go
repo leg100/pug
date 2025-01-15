@@ -21,7 +21,7 @@ type costTaskSpecCreator struct {
 
 // Cost creates a task that retrieves a breakdown of the costs of the
 // infrastructure deployed by the workspace.
-func (s *costTaskSpecCreator) Cost(workspaceIDs ...resource.ID) (task.Spec, error) {
+func (s *costTaskSpecCreator) Cost(workspaceIDs ...resource.Identity) (task.Spec, error) {
 	if len(workspaceIDs) == 0 {
 		return task.Spec{}, errors.New("no workspaces specified")
 	}

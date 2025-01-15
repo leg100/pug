@@ -5,6 +5,13 @@ import (
 	"sync"
 )
 
+// Identity is anything that uniquely differentiates a resource from another.
+type Identity any
+
+type Identifiable interface {
+	GetID() Identity
+}
+
 var (
 	// nextID provides the next ID for each kind
 	nextID map[Kind]uint = make(map[Kind]uint)
@@ -35,7 +42,7 @@ func (id ID) String() string {
 	return fmt.Sprintf("#%d", id.Serial)
 }
 
-// GetID returns a comparable value.
-func (id ID) GetID() any {
+// GetID implements Identifiable
+func (id ID) GetID() Identity {
 	return id
 }

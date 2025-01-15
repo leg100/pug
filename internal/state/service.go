@@ -44,14 +44,14 @@ func NewService(opts ServiceOptions) *Service {
 }
 
 // Get retrieves the state for a workspace.
-func (s *Service) Get(workspaceID resource.ID) (*State, error) {
+func (s *Service) Get(workspaceID resource.Identity) (*State, error) {
 	return s.cache.Get(workspaceID)
 }
 
 // GetResource retrieves a state resource.
 //
 // TODO: this is massively inefficient
-func (s *Service) GetResource(resourceID resource.ID) (*Resource, error) {
+func (s *Service) GetResource(resourceID resource.Identity) (*Resource, error) {
 	for _, state := range s.cache.List() {
 		for _, res := range state.Resources {
 			if res.ID == resourceID {
@@ -62,7 +62,7 @@ func (s *Service) GetResource(resourceID resource.ID) (*Resource, error) {
 	return nil, resource.ErrNotFound
 }
 
-func (s *Service) Delete(workspaceID resource.ID, addrs ...ResourceAddress) (task.Spec, error) {
+func (s *Service) Delete(workspaceID resource.Identity, addrs ...ResourceAddress) (task.Spec, error) {
 	addrStrings := make([]string, len(addrs))
 	for i, addr := range addrs {
 		addrStrings[i] = string(addr)
@@ -83,7 +83,7 @@ func (s *Service) Delete(workspaceID resource.ID, addrs ...ResourceAddress) (tas
 	})
 }
 
-func (s *Service) Taint(workspaceID resource.ID, addr ResourceAddress) (task.Spec, error) {
+func (s *Service) Taint(workspaceID resource.Identity, addr ResourceAddress) (task.Spec, error) {
 	return s.createTaskSpec(workspaceID, task.Spec{
 		Blocking: true,
 		Execution: task.Execution{
@@ -100,7 +100,7 @@ func (s *Service) Taint(workspaceID resource.ID, addr ResourceAddress) (task.Spe
 	})
 }
 
-func (s *Service) Untaint(workspaceID resource.ID, addr ResourceAddress) (task.Spec, error) {
+func (s *Service) Untaint(workspaceID resource.Identity, addr ResourceAddress) (task.Spec, error) {
 	return s.createTaskSpec(workspaceID, task.Spec{
 		Blocking: true,
 		Execution: task.Execution{
@@ -117,7 +117,7 @@ func (s *Service) Untaint(workspaceID resource.ID, addr ResourceAddress) (task.S
 	})
 }
 
-func (s *Service) Move(workspaceID resource.ID, src, dest ResourceAddress) (task.Spec, error) {
+func (s *Service) Move(workspaceID resource.Identity, src, dest ResourceAddress) (task.Spec, error) {
 	return s.createTaskSpec(workspaceID, task.Spec{
 		Blocking: true,
 		Execution: task.Execution{
@@ -135,7 +135,7 @@ func (s *Service) Move(workspaceID resource.ID, src, dest ResourceAddress) (task
 }
 
 // TODO: move this logic into task.Create
-func (s *Service) createTaskSpec(workspaceID resource.ID, opts task.Spec) (task.Spec, error) {
+func (s *Service) createTaskSpec(workspaceID resource.Identity, opts task.Spec) (task.Spec, error) {
 	ws, err := s.workspaces.Get(workspaceID)
 	if err != nil {
 		return task.Spec{}, err
