@@ -124,7 +124,7 @@ func (m *resourceList) Update(msg tea.Msg) tea.Cmd {
 		switch {
 		case key.Matches(msg, resourcesKeys.Enter):
 			if row, ok := m.CurrentRow(); ok {
-				return tui.NavigateTo(tui.ResourceKind, tui.WithParent(row.MonotonicID))
+				return tui.NavigateTo(tui.ResourceKind, tui.WithParent(row.ID))
 			}
 		case key.Matches(msg, resourcesKeys.Reload):
 			if m.reloading {

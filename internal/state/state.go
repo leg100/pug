@@ -12,8 +12,7 @@ import (
 )
 
 type State struct {
-	resource.MonotonicID
-
+	ID               resource.MonotonicID
 	WorkspaceID      resource.ID
 	Resources        map[ResourceAddress]*Resource
 	Serial           int64
@@ -24,7 +23,7 @@ type State struct {
 func newState(workspaceID resource.ID, r io.Reader) (*State, error) {
 	// Default to a serial of -1 to indicate that there is no state yet.
 	state := &State{
-		MonotonicID: resource.NewMonotonicID(resource.State),
+		ID:          resource.NewMonotonicID(resource.State),
 		WorkspaceID: workspaceID,
 		Serial:      -1,
 	}
@@ -87,6 +86,8 @@ func newState(workspaceID resource.ID, r io.Reader) (*State, error) {
 
 	return state, nil
 }
+
+func (s *State) GetID() resource.ID { return s.ID }
 
 func (s *State) LogValue() slog.Value {
 	return slog.GroupValue(

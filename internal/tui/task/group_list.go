@@ -40,7 +40,7 @@ func (m *GroupListMaker) Make(_ resource.ID, width, height int) (tui.ChildModel,
 	renderer := func(g *task.Group) table.RenderedRow {
 		row := table.RenderedRow{
 			commandColumn.Key:  g.Command,
-			taskGroupID.Key:    g.MonotonicID.String(),
+			taskGroupID.Key:    g.ID.String(),
 			taskGroupCount.Key: m.Helpers.GroupReport(g, true),
 			ageColumn.Key:      tui.Ago(time.Now(), g.Created),
 		}
@@ -83,7 +83,7 @@ func (m *groupList) Update(msg tea.Msg) tea.Cmd {
 		switch {
 		case key.Matches(msg, groupListKeys.Enter):
 			if row, ok := m.table.CurrentRow(); ok {
-				return tui.NavigateTo(tui.TaskGroupKind, tui.WithParent(row.MonotonicID))
+				return tui.NavigateTo(tui.TaskGroupKind, tui.WithParent(row.ID))
 			}
 		}
 	}

@@ -10,8 +10,7 @@ import (
 )
 
 type Group struct {
-	resource.MonotonicID
-
+	ID           resource.MonotonicID
 	Created      time.Time
 	Command      string
 	Tasks        []*Task
@@ -23,8 +22,8 @@ func newGroup(service *Service, specs ...Spec) (*Group, error) {
 		return nil, errors.New("no specs provided")
 	}
 	g := &Group{
-		MonotonicID: resource.NewMonotonicID(resource.TaskGroup),
-		Created:     time.Now(),
+		ID:      resource.NewMonotonicID(resource.TaskGroup),
+		Created: time.Now(),
 	}
 	// Validate specifications. There are some settings that are incompatible
 	// with one another within a task group.
@@ -84,7 +83,8 @@ func newGroup(service *Service, specs ...Spec) (*Group, error) {
 	return g, nil
 }
 
-func (g *Group) String() string { return g.Command }
+func (g *Group) String() string     { return g.Command }
+func (g *Group) GetID() resource.ID { return g.ID }
 
 func (g *Group) IncludesTask(taskID resource.MonotonicID) bool {
 	return slices.ContainsFunc(g.Tasks, func(tgt *Task) bool {

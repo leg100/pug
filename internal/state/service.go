@@ -54,7 +54,7 @@ func (s *Service) Get(workspaceID resource.ID) (*State, error) {
 func (s *Service) GetResource(resourceID resource.ID) (*Resource, error) {
 	for _, state := range s.cache.List() {
 		for _, res := range state.Resources {
-			if res.MonotonicID == resourceID {
+			if res.ID == resourceID {
 				return res, nil
 			}
 		}

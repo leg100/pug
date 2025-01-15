@@ -109,7 +109,7 @@ func (s *Service) CreateGroup(specs ...Spec) (*Group, error) {
 
 // AddGroup adds a task group to the DB.
 func (s *Service) AddGroup(group *Group) {
-	s.groups.Add(group.MonotonicID, group)
+	s.groups.Add(group.ID, group)
 }
 
 // Enqueue moves the task onto the global queue for processing.

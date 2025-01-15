@@ -11,7 +11,8 @@ var (
 	mu              sync.Mutex
 )
 
-// MonotonicID is a unique identifier for a pug resource.
+// MonotonicID is an identifier based on an ever-increasing serial number, and a
+// kind to differentiate it from other kinds of identifiers.
 type MonotonicID struct {
 	Serial uint
 	Kind   Kind
@@ -30,12 +31,7 @@ func NewMonotonicID(kind Kind) MonotonicID {
 	}
 }
 
-// String provides a human readable description.
+// String provides a human readable representation of the identifier.
 func (id MonotonicID) String() string {
 	return fmt.Sprintf("#%d", id.Serial)
-}
-
-// GetID implements Identifiable
-func (id MonotonicID) GetID() ID {
-	return id
 }

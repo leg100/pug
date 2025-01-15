@@ -360,7 +360,7 @@ func (h *Helpers) createTaskGroup(specs ...task.Spec) tea.Msg {
 	if err != nil {
 		return ReportError(fmt.Errorf("creating task group: %w", err))
 	}
-	return NewNavigationMsg(TaskGroupKind, WithParent(group.MonotonicID))
+	return NewNavigationMsg(TaskGroupKind, WithParent(group.ID))
 }
 
 func (h *Helpers) Move(workspaceID resource.ID, from state.ResourceAddress) tea.Cmd {
