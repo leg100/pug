@@ -15,12 +15,12 @@ var (
 // not directories), and resources must be of the same kind.
 // selected.
 type selector struct {
-	selections map[resource.Identity]struct{}
+	selections map[resource.ID]struct{}
 	kind       *resource.Kind
 }
 
 func (s *selector) add(n node) error {
-	id, ok := n.ID().(resource.ID)
+	id, ok := n.ID().(resource.MonotonicID)
 	if !ok {
 		return ErrUnselectableNode
 	}
@@ -40,9 +40,9 @@ func (s *selector) reindex(nodes []node) {
 	if len(s.selections) == 0 {
 		return
 	}
-	selections := make(map[resource.Identity]struct{}, len(s.selections))
+	selections := make(map[resource.ID]struct{}, len(s.selections))
 	for _, n := range nodes {
-		id, ok := n.ID().(resource.ID)
+		id, ok := n.ID().(resource.MonotonicID)
 		if !ok {
 			continue
 		}
@@ -121,7 +121,7 @@ func (s *selector) addRange(cursor node, cursorIndex int, nodes ...node) error {
 }
 
 func (s *selector) remove(n node) {
-	id, ok := n.ID().(resource.ID)
+	id, ok := n.ID().(resource.MonotonicID)
 	if !ok {
 		// silently ignore request to remove non-resource node
 		return
@@ -133,7 +133,7 @@ func (s *selector) remove(n node) {
 }
 
 func (s *selector) removeAll() {
-	s.selections = make(map[resource.Identity]struct{})
+	s.selections = make(map[resource.ID]struct{})
 	s.kind = nil
 }
 
@@ -146,7 +146,7 @@ func (s *selector) toggle(n node) error {
 }
 
 func (s *selector) isSelected(n node) bool {
-	id, ok := n.ID().(resource.ID)
+	id, ok := n.ID().(resource.MonotonicID)
 	if !ok {
 		// non-resource nodes cannot be selected
 		return false

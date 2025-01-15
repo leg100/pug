@@ -33,7 +33,7 @@ func (s ReloadSummary) LogValue() slog.Value {
 	)
 }
 
-func (r *reloader) createReloadTask(moduleID resource.Identity) error {
+func (r *reloader) createReloadTask(moduleID resource.ID) error {
 	spec, err := r.Reload(moduleID)
 	if err != nil {
 		return err
@@ -47,13 +47,13 @@ func (r *reloader) createReloadTask(moduleID resource.Identity) error {
 // workspaces and pruning any workspaces no longer found to exist.
 //
 // TODO: separate into Load and Reload
-func (r *reloader) Reload(moduleID resource.Identity) (task.Spec, error) {
+func (r *reloader) Reload(moduleID resource.ID) (task.Spec, error) {
 	mod, err := r.modules.Get(moduleID)
 	if err != nil {
 		return task.Spec{}, err
 	}
 	return task.Spec{
-		ModuleID: &mod.ID,
+		ModuleID: mod.ID,
 		Path:     mod.Path,
 		Execution: task.Execution{
 			TerraformCommand: []string{"workspace", "list"},

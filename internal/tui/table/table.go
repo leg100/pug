@@ -32,19 +32,19 @@ type Model[V resource.Identifiable] struct {
 	cols        []Column
 	rows        []V
 	rowRenderer RowRenderer[V]
-	rendered    map[resource.Identity]RenderedRow
+	rendered    map[resource.ID]RenderedRow
 
 	border      lipgloss.Border
 	borderColor lipgloss.TerminalColor
 
 	currentRowIndex int
-	currentRowID    resource.Identity
+	currentRowID    resource.ID
 
 	// items are the unfiltered set of items available to the table.
-	items    map[resource.Identity]V
+	items    map[resource.ID]V
 	sortFunc SortFunc[V]
 
-	selected   map[resource.Identity]V
+	selected   map[resource.ID]V
 	selectable bool
 
 	filter textinput.Model
@@ -89,9 +89,9 @@ func New[V resource.Identifiable](cols []Column, fn RowRenderer[V], width, heigh
 
 	m := Model[V]{
 		rowRenderer:     fn,
-		items:           make(map[resource.Identity]V),
-		rendered:        make(map[resource.Identity]RenderedRow),
-		selected:        make(map[resource.Identity]V),
+		items:           make(map[resource.ID]V),
+		rendered:        make(map[resource.ID]RenderedRow),
+		selected:        make(map[resource.ID]V),
 		selectable:      true,
 		filter:          filter,
 		border:          lipgloss.NormalBorder(),
@@ -248,12 +248,12 @@ func (m Model[V]) Update(msg tea.Msg) (Model[V], tea.Cmd) {
 }
 
 // PreviewCurrentRow
-func (m *Model[V]) PreviewCurrentRow() (tui.Kind, resource.Identity, bool) {
+func (m *Model[V]) PreviewCurrentRow() (tui.Kind, resource.ID, bool) {
 	if _, ok := m.CurrentRow(); !ok {
-		return 0, resource.ID{}, false
+		return 0, resource.MonotonicID{}, false
 	}
 	if m.previewKind == nil {
-		return 0, resource.ID{}, false
+		return 0, resource.MonotonicID{}, false
 	}
 	return *m.previewKind, m.currentRowID, true
 }
@@ -360,7 +360,7 @@ func (m *Model[V]) ToggleSelection() {
 
 // ToggleSelectionByID toggles the selection of the row with the given ID. If
 // the ID does not exist no action is taken.
-func (m *Model[V]) ToggleSelectionByID(id resource.Identity) {
+func (m *Model[V]) ToggleSelectionByID(id resource.ID) {
 	if !m.selectable {
 		return
 	}
@@ -390,7 +390,7 @@ func (m *Model[V]) DeselectAll() {
 	if !m.selectable {
 		return
 	}
-	m.selected = make(map[resource.Identity]V)
+	m.selected = make(map[resource.ID]V)
 }
 
 // SelectRange selects a range of rows. If the current row is *below* a selected
@@ -435,8 +435,8 @@ func (m *Model[V]) SelectRange() {
 
 // SetItems overwrites all existing items in the table with items.
 func (m *Model[V]) SetItems(items ...V) {
-	m.items = make(map[resource.Identity]V)
-	m.rendered = make(map[resource.Identity]RenderedRow)
+	m.items = make(map[resource.ID]V)
+	m.rendered = make(map[resource.ID]RenderedRow)
 	m.AddItems(items...)
 }
 
@@ -476,7 +476,7 @@ func (m *Model[V]) removeItem(item V) {
 }
 
 func (m *Model[V]) setRows(items ...V) {
-	selected := make(map[resource.Identity]V)
+	selected := make(map[resource.ID]V)
 	m.rows = make([]V, 0, len(items))
 	for _, item := range items {
 		if m.filterVisible() && !m.matchFilter(item) {

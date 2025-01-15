@@ -16,7 +16,7 @@ type groupTaskMaker struct {
 	*Maker
 }
 
-func (m *groupTaskMaker) Make(id resource.Identity, width, height int) (tui.ChildModel, error) {
+func (m *groupTaskMaker) Make(id resource.ID, width, height int) (tui.ChildModel, error) {
 	return m.make(id, width, height, false)
 }
 
@@ -37,7 +37,7 @@ func NewGroupMaker(tasks *task.Service, plans *plan.Service, taskMaker *Maker, h
 	}
 }
 
-func (mm *GroupMaker) Make(id resource.Identity, width, height int) (tui.ChildModel, error) {
+func (mm *GroupMaker) Make(id resource.ID, width, height int) (tui.ChildModel, error) {
 	group, err := mm.taskListMaker.Tasks.GetGroup(id)
 	if err != nil {
 		return nil, err

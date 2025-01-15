@@ -8,9 +8,9 @@ import (
 
 // Resource is a pug state resource.
 type Resource struct {
-	resource.ID
+	resource.MonotonicID
 
-	WorkspaceID resource.Identity
+	WorkspaceID resource.ID
 	Address     ResourceAddress
 	Attributes  map[string]any
 	Tainted     bool
@@ -20,9 +20,9 @@ func (r *Resource) String() string {
 	return string(r.Address)
 }
 
-func newResource(workspaceID resource.Identity, addr ResourceAddress, attrs json.RawMessage) (*Resource, error) {
+func newResource(workspaceID resource.ID, addr ResourceAddress, attrs json.RawMessage) (*Resource, error) {
 	res := &Resource{
-		ID:          resource.NewID(resource.StateResource),
+		MonotonicID: resource.NewMonotonicID(resource.StateResource),
 		WorkspaceID: workspaceID,
 		Address:     addr,
 	}

@@ -26,7 +26,7 @@ type tracker struct {
 func newTracker(tree *tree, height int) *tracker {
 	t := &tracker{
 		selector: &selector{
-			selections: make(map[resource.Identity]struct{}),
+			selections: make(map[resource.ID]struct{}),
 		},
 	}
 	t.reindex(tree, height)
@@ -123,14 +123,14 @@ func (t *tracker) selectRange() error {
 	return t.selector.addRange(t.cursorNode, t.cursorIndex, t.nodes...)
 }
 
-func (t *tracker) getSelectedOrCurrentIDs() (resource.Kind, []resource.Identity) {
+func (t *tracker) getSelectedOrCurrentIDs() (resource.Kind, []resource.ID) {
 	if len(t.selections) == 0 {
-		id, ok := t.cursorNode.ID().(resource.ID)
+		id, ok := t.cursorNode.ID().(resource.MonotonicID)
 		if !ok {
 			// TODO: consider returning error
 			return -1, nil
 		}
-		return id.Kind, []resource.Identity{id}
+		return id.Kind, []resource.ID{id}
 	}
 	return *t.selector.kind, maps.Keys(t.selections)
 }

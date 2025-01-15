@@ -53,7 +53,7 @@ type pane struct {
 }
 
 type tablePane interface {
-	PreviewCurrentRow() (Kind, resource.Identity, bool)
+	PreviewCurrentRow() (Kind, resource.ID, bool)
 }
 
 // NewPaneManager constructs the pane manager with at least the explorer, which

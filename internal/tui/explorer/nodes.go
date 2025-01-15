@@ -39,7 +39,7 @@ func (d dirNode) String() string {
 }
 
 type moduleNode struct {
-	id   resource.ID
+	id   resource.MonotonicID
 	path string
 }
 
@@ -56,7 +56,7 @@ func (m moduleNode) String() string {
 }
 
 type workspaceNode struct {
-	id            resource.ID
+	id            resource.MonotonicID
 	name          string
 	current       bool
 	resourceCount string

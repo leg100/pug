@@ -33,7 +33,7 @@ type Maker struct {
 	Helpers *tui.Helpers
 }
 
-func (mm *Maker) Make(id resource.Identity, width, height int) (tui.ChildModel, error) {
+func (mm *Maker) Make(id resource.ID, width, height int) (tui.ChildModel, error) {
 	msg, err := mm.Logger.Get(id)
 	if err != nil {
 		return nil, err
@@ -53,17 +53,17 @@ func (mm *Maker) Make(id resource.Identity, width, height int) (tui.ChildModel, 
 		{
 			Key:   timeAttrKey,
 			Value: msg.Time.Format(timeFormat),
-			ID:    resource.NewID(resource.LogAttr),
+			ID:    resource.NewMonotonicID(resource.LogAttr),
 		},
 		{
 			Key:   messageAttrKey,
 			Value: msg.Message,
-			ID:    resource.NewID(resource.LogAttr),
+			ID:    resource.NewMonotonicID(resource.LogAttr),
 		},
 		{
 			Key:   levelAttrKey,
 			Value: coloredLogLevel(msg.Level),
-			ID:    resource.NewID(resource.LogAttr),
+			ID:    resource.NewMonotonicID(resource.LogAttr),
 		},
 	}
 	items = append(items, msg.Attributes...)

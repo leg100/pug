@@ -8,10 +8,10 @@ import (
 )
 
 func TestSelector_isSelected(t *testing.T) {
-	mod1 := moduleNode{id: resource.NewID(resource.Module)}
-	mod2 := moduleNode{id: resource.NewID(resource.Module)}
+	mod1 := moduleNode{id: resource.NewMonotonicID(resource.Module)}
+	mod2 := moduleNode{id: resource.NewMonotonicID(resource.Module)}
 
-	s := selector{selections: make(map[resource.Identity]struct{})}
+	s := selector{selections: make(map[resource.ID]struct{})}
 	s.add(mod1)
 
 	assert.True(t, s.isSelected(mod1))
@@ -19,10 +19,10 @@ func TestSelector_isSelected(t *testing.T) {
 }
 
 func TestSelector_reindex(t *testing.T) {
-	mod1 := moduleNode{id: resource.NewID(resource.Module)}
-	mod2 := moduleNode{id: resource.NewID(resource.Module)}
+	mod1 := moduleNode{id: resource.NewMonotonicID(resource.Module)}
+	mod2 := moduleNode{id: resource.NewMonotonicID(resource.Module)}
 
-	s := selector{selections: make(map[resource.Identity]struct{})}
+	s := selector{selections: make(map[resource.ID]struct{})}
 	s.add(mod1)
 	s.add(mod2)
 

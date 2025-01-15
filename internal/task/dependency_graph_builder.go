@@ -21,12 +21,12 @@ func createDependentTasks(svc taskCreator, reverse bool, specs ...Spec) ([]*Task
 	// the specs that belong to that module. Once the graph is built and
 	// dependencies are established, only then are tasks created from the specs.
 	for _, spec := range specs {
-		node, ok := b.nodes[*spec.ModuleID]
+		node, ok := b.nodes[spec.ModuleID]
 		if !ok {
 			node = &dependencyGraphNode{dependencies: spec.Dependencies.ModuleIDs}
 		}
 		node.specs = append(node.specs, spec)
-		b.nodes[*spec.ModuleID] = node
+		b.nodes[spec.ModuleID] = node
 	}
 	for id, v := range b.nodes {
 		if !v.visited {

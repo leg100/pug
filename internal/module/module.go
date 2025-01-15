@@ -16,12 +16,12 @@ import (
 
 // Module is a terraform root module.
 type Module struct {
-	resource.ID
+	ID resource.MonotonicID
 
 	// Path relative to pug working directory
 	Path string
 	// The module's current workspace.
-	CurrentWorkspaceID resource.Identity
+	CurrentWorkspaceID resource.ID
 
 	// The module's backend type
 	Backend string
@@ -41,7 +41,7 @@ type Options struct {
 // New constructs a module.
 func New(opts Options) *Module {
 	return &Module{
-		ID:      resource.NewID(resource.Module),
+		ID:      resource.NewMonotonicID(resource.Module),
 		Path:    opts.Path,
 		Backend: opts.Backend,
 	}

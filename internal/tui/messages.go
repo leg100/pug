@@ -22,7 +22,7 @@ func NewNavigationMsg(kind Kind, opts ...NavigateOption) NavigationMsg {
 
 type NavigateOption func(msg *NavigationMsg)
 
-func WithParent(parent resource.Identity) NavigateOption {
+func WithParent(parent resource.ID) NavigateOption {
 	return func(msg *NavigationMsg) {
 		msg.Page.ID = parent
 	}

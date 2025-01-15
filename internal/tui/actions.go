@@ -19,8 +19,8 @@ type ActionHandler struct {
 }
 
 type IDRetriever interface {
-	GetModuleIDs() ([]resource.Identity, error)
-	GetWorkspaceIDs() ([]resource.Identity, error)
+	GetModuleIDs() ([]resource.ID, error)
+	GetWorkspaceIDs() ([]resource.ID, error)
 }
 
 func (m *ActionHandler) Update(msg tea.Msg) tea.Cmd {
@@ -42,7 +42,7 @@ func (m *ActionHandler) Update(msg tea.Msg) tea.Cmd {
 			if err != nil {
 				return ReportError(err)
 			}
-			fn := func(moduleID resource.Identity) (task.Spec, error) {
+			fn := func(moduleID resource.ID) (task.Spec, error) {
 				return m.Modules.Init(moduleID, upgrade)
 			}
 			return m.CreateTasks(fn, ids...)
@@ -62,7 +62,7 @@ func (m *ActionHandler) Update(msg tea.Msg) tea.Cmd {
 					parts := strings.Split(v, " ")
 					prog := parts[0]
 					args := parts[1:]
-					fn := func(moduleID resource.Identity) (task.Spec, error) {
+					fn := func(moduleID resource.ID) (task.Spec, error) {
 						return m.Modules.Execute(moduleID, prog, args...)
 					}
 					return m.CreateTasks(fn, ids...)
@@ -92,7 +92,7 @@ func (m *ActionHandler) Update(msg tea.Msg) tea.Cmd {
 			if err != nil {
 				return ReportError(err)
 			}
-			fn := func(workspaceID resource.Identity) (task.Spec, error) {
+			fn := func(workspaceID resource.ID) (task.Spec, error) {
 				return m.Plans.Plan(workspaceID, createPlanOptions)
 			}
 			return m.CreateTasks(fn, ids...)
@@ -105,7 +105,7 @@ func (m *ActionHandler) Update(msg tea.Msg) tea.Cmd {
 			if err != nil {
 				return ReportError(err)
 			}
-			fn := func(workspaceID resource.Identity) (task.Spec, error) {
+			fn := func(workspaceID resource.ID) (task.Spec, error) {
 				return m.Plans.Apply(workspaceID, createPlanOptions)
 			}
 			return YesNoPrompt(

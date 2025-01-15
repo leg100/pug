@@ -9,7 +9,7 @@ import (
 
 // Table is an in-memory database table that emits events upon changes.
 type Table[T any] struct {
-	rows map[Identity]T
+	rows map[ID]T
 	mu   sync.RWMutex
 
 	pub Publisher[T]
@@ -17,12 +17,12 @@ type Table[T any] struct {
 
 func NewTable[T any](pub Publisher[T]) *Table[T] {
 	return &Table[T]{
-		rows: make(map[Identity]T),
+		rows: make(map[ID]T),
 		pub:  pub,
 	}
 }
 
-func (t *Table[T]) Add(id Identity, row T) {
+func (t *Table[T]) Add(id ID, row T) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
@@ -30,7 +30,7 @@ func (t *Table[T]) Add(id Identity, row T) {
 	t.pub.Publish(CreatedEvent, row)
 }
 
-func (t *Table[T]) Update(id Identity, updater func(existing T) error) (T, error) {
+func (t *Table[T]) Update(id ID, updater func(existing T) error) (T, error) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
@@ -48,7 +48,7 @@ func (t *Table[T]) Update(id Identity, updater func(existing T) error) (T, error
 	return row, nil
 }
 
-func (t *Table[T]) Delete(id Identity) {
+func (t *Table[T]) Delete(id ID) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
@@ -57,7 +57,7 @@ func (t *Table[T]) Delete(id Identity) {
 	t.pub.Publish(DeletedEvent, row)
 }
 
-func (t *Table[T]) Get(id Identity) (T, error) {
+func (t *Table[T]) Get(id ID) (T, error) {
 	t.mu.RLock()
 	defer t.mu.RUnlock()
 

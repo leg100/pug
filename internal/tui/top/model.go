@@ -46,7 +46,7 @@ type model struct {
 	tasks      *task.Service
 	spinner    *spinner.Model
 	spinning   bool
-	lastTaskID *resource.ID
+	lastTaskID *resource.MonotonicID
 	err        error
 	info       string
 }

@@ -34,17 +34,17 @@ type ServiceOptions struct {
 }
 
 type workspaceTable interface {
-	Add(id resource.Identity, row *Workspace)
-	Update(id resource.Identity, updater func(existing *Workspace) error) (*Workspace, error)
-	Delete(id resource.Identity)
-	Get(id resource.Identity) (*Workspace, error)
+	Add(id resource.ID, row *Workspace)
+	Update(id resource.ID, updater func(existing *Workspace) error) (*Workspace, error)
+	Delete(id resource.ID)
+	Get(id resource.ID) (*Workspace, error)
 	List() []*Workspace
 }
 
 type modules interface {
-	Get(id resource.Identity) (*module.Module, error)
+	Get(id resource.ID) (*module.Module, error)
 	GetByPath(path string) (*module.Module, error)
-	SetCurrent(moduleID, workspaceID resource.Identity) error
+	SetCurrent(moduleID, workspaceID resource.ID) error
 	Reload() ([]string, []string, error)
 	List() []*module.Module
 }
@@ -101,7 +101,7 @@ func (s *Service) LoadWorkspacesUponInit(sub <-chan resource.Event[*task.Task]) 
 		if moduleID == nil {
 			continue
 		}
-		mod, err := s.modules.Get(*moduleID)
+		mod, err := s.modules.Get(moduleID)
 		if err != nil {
 			continue
 		}
@@ -125,7 +125,7 @@ func (s *Service) Create(path, name string) (task.Spec, error) {
 		return task.Spec{}, err
 	}
 	return task.Spec{
-		ModuleID: &mod.ID,
+		ModuleID: mod.ID,
 		Path:     mod.Path,
 		Execution: task.Execution{
 			TerraformCommand: []string{"workspace", "new"},
@@ -142,7 +142,7 @@ func (s *Service) Create(path, name string) (task.Spec, error) {
 	}, nil
 }
 
-func (s *Service) Get(workspaceID resource.Identity) (*Workspace, error) {
+func (s *Service) Get(workspaceID resource.ID) (*Workspace, error) {
 	return s.table.Get(workspaceID)
 }
 
@@ -157,7 +157,7 @@ func (s *Service) GetByName(modulePath, name string) (*Workspace, error) {
 
 type ListOptions struct {
 	// Filter by ID of workspace's module.
-	ModuleID resource.Identity
+	ModuleID resource.ID
 }
 
 func (s *Service) List(opts ListOptions) []*Workspace {
@@ -174,7 +174,7 @@ func (s *Service) List(opts ListOptions) []*Workspace {
 // SelectWorkspace runs the `terraform workspace select <workspace_name>`
 // command, which sets the current workspace for the module. Once that's
 // finished it then updates the current workspace in pug itself too.
-func (s *Service) SelectWorkspace(workspaceID resource.Identity) error {
+func (s *Service) SelectWorkspace(workspaceID resource.ID) error {
 	ws, err := s.table.Get(workspaceID)
 	if err != nil {
 		return err
@@ -185,7 +185,7 @@ func (s *Service) SelectWorkspace(workspaceID resource.Identity) error {
 	}
 	// Create task to immediately set workspace as current workspace for module.
 	_, err = s.tasks.Create(task.Spec{
-		ModuleID: &mod.ID,
+		ModuleID: mod.ID,
 		Path:     mod.Path,
 		Execution: task.Execution{
 			TerraformCommand: []string{"workspace", "select"},
@@ -207,7 +207,7 @@ func (s *Service) SelectWorkspace(workspaceID resource.Identity) error {
 }
 
 // Delete a workspace. Asynchronous.
-func (s *Service) Delete(workspaceID resource.Identity) (task.Spec, error) {
+func (s *Service) Delete(workspaceID resource.ID) (task.Spec, error) {
 	ws, err := s.table.Get(workspaceID)
 	if err != nil {
 		return task.Spec{}, fmt.Errorf("deleting workspace: %w", err)
@@ -217,7 +217,7 @@ func (s *Service) Delete(workspaceID resource.Identity) (task.Spec, error) {
 		return task.Spec{}, err
 	}
 	return task.Spec{
-		ModuleID: &mod.ID,
+		ModuleID: mod.ID,
 		Path:     mod.Path,
 		Execution: task.Execution{
 			TerraformCommand: []string{"workspace", "delete"},

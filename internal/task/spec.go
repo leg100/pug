@@ -6,13 +6,13 @@ import "github.com/leg100/pug/internal/resource"
 type Spec struct {
 	// ModuleID is the ID of the module the task belongs to. If nil, the task
 	// does not belong to a module
-	ModuleID *resource.ID
+	ModuleID resource.ID
 	// WorkspaceID is the ID of the workspace the task belongs to. If nil, the
 	// task does not belong to a workspace.
-	WorkspaceID *resource.ID
+	WorkspaceID resource.ID
 	// TaskGroupID specifies the ID of the task group this task is to belong to.
 	// Nil means the task does not belong to a group.
-	TaskGroupID *resource.ID
+	TaskGroupID resource.ID
 	// Execution specifies the execution of a program.
 	Execution Execution
 	// AdditionalExecution specifies the execution of another program. The
@@ -71,7 +71,7 @@ type Spec struct {
 }
 
 // SpecFunc is a function that creates a spec.
-type SpecFunc func(resource.Identity) (Spec, error)
+type SpecFunc func(resource.ID) (Spec, error)
 
 // Execution specifies the program and arguments to execute
 type Execution struct {

@@ -38,7 +38,7 @@ type ListTaskMaker struct {
 	*Maker
 }
 
-func (m *ListTaskMaker) Make(id resource.Identity, width, height int) (tui.ChildModel, error) {
+func (m *ListTaskMaker) Make(id resource.ID, width, height int) (tui.ChildModel, error) {
 	return m.make(id, width, height, false)
 }
 
@@ -61,7 +61,7 @@ type ListMaker struct {
 	Helpers   *tui.Helpers
 }
 
-func (mm *ListMaker) Make(_ resource.Identity, width, height int) (tui.ChildModel, error) {
+func (mm *ListMaker) Make(_ resource.ID, width, height int) (tui.ChildModel, error) {
 	columns := []table.Column{
 		table.ModuleColumn,
 		table.WorkspaceColumn,
@@ -124,7 +124,7 @@ func (m *List) Update(msg tea.Msg) tea.Cmd {
 		switch {
 		case key.Matches(msg, keys.Common.Cancel):
 			rows := m.SelectedOrCurrent()
-			taskIDs := make([]resource.Identity, len(rows))
+			taskIDs := make([]resource.ID, len(rows))
 			for i, row := range rows {
 				taskIDs[i] = row.ID
 			}
@@ -179,9 +179,9 @@ func (m List) HelpBindings() []key.Binding {
 	return bindings
 }
 
-func (m List) allPlans() ([]resource.Identity, error) {
+func (m List) allPlans() ([]resource.ID, error) {
 	rows := m.SelectedOrCurrent()
-	ids := make([]resource.Identity, len(rows))
+	ids := make([]resource.ID, len(rows))
 	for i, row := range rows {
 		if err := plan.IsApplyable(row); err != nil {
 			return nil, fmt.Errorf("at least one task is not applyable: %w", err)
@@ -191,31 +191,31 @@ func (m List) allPlans() ([]resource.Identity, error) {
 	return ids, nil
 }
 
-func (m List) GetModuleIDs() ([]resource.Identity, error) {
+func (m List) GetModuleIDs() ([]resource.ID, error) {
 	rows := m.SelectedOrCurrent()
-	ids := make([]resource.Identity, len(rows))
+	ids := make([]resource.ID, len(rows))
 	for i, row := range rows {
 		if row.ModuleID == nil {
 			return nil, errors.New("valid only on modules")
 		}
-		ids[i] = *row.ModuleID
+		ids[i] = row.ModuleID
 	}
 	return ids, nil
 }
 
-func (m List) GetWorkspaceIDs() ([]resource.Identity, error) {
+func (m List) GetWorkspaceIDs() ([]resource.ID, error) {
 	rows := m.SelectedOrCurrent()
-	ids := make([]resource.Identity, len(rows))
+	ids := make([]resource.ID, len(rows))
 	for i, row := range rows {
 		if row.WorkspaceID != nil {
-			ids[i] = *row.WorkspaceID
+			ids[i] = row.WorkspaceID
 		} else if row.ModuleID == nil {
 			return nil, errors.New("valid only on tasks associated with a module or a workspace")
 		} else {
 			// task has a module ID but no workspace ID, so find out if its
 			// module has a current workspace, and if so, use that. Otherwise
 			// return error
-			mod, err := m.Modules.Get(*row.ModuleID)
+			mod, err := m.Modules.Get(row.ModuleID)
 			if err != nil {
 				return nil, err
 			}

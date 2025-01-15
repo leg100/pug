@@ -23,7 +23,7 @@ type ResourceMaker struct {
 	disableBorders bool
 }
 
-func (mm *ResourceMaker) Make(id resource.Identity, width, height int) (tui.ChildModel, error) {
+func (mm *ResourceMaker) Make(id resource.ID, width, height int) (tui.ChildModel, error) {
 	stateResource, err := mm.States.GetResource(id)
 	if err != nil {
 		return nil, err
@@ -77,19 +77,19 @@ func (m *resourceModel) Update(msg tea.Msg) tea.Cmd {
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, resourcesKeys.Taint):
-			fn := func(workspaceID resource.Identity) (task.Spec, error) {
+			fn := func(workspaceID resource.ID) (task.Spec, error) {
 				return m.states.Taint(workspaceID, m.resource.Address)
 			}
 			return m.CreateTasks(fn, m.resource.WorkspaceID)
 		case key.Matches(msg, resourcesKeys.Untaint):
-			fn := func(workspaceID resource.Identity) (task.Spec, error) {
+			fn := func(workspaceID resource.ID) (task.Spec, error) {
 				return m.states.Untaint(workspaceID, m.resource.Address)
 			}
 			return m.CreateTasks(fn, m.resource.WorkspaceID)
 		case key.Matches(msg, resourcesKeys.Move):
 			return m.Move(m.resource.WorkspaceID, m.resource.Address)
 		case key.Matches(msg, keys.Common.Delete):
-			fn := func(workspaceID resource.Identity) (task.Spec, error) {
+			fn := func(workspaceID resource.ID) (task.Spec, error) {
 				return m.states.Delete(workspaceID, m.resource.Address)
 			}
 			return tui.YesNoPrompt(
@@ -103,7 +103,7 @@ func (m *resourceModel) Update(msg tea.Msg) tea.Cmd {
 		case key.Matches(msg, keys.Common.Plan):
 			// Create a targeted plan.
 			createRunOptions.TargetAddrs = []state.ResourceAddress{m.resource.Address}
-			fn := func(workspaceID resource.Identity) (task.Spec, error) {
+			fn := func(workspaceID resource.ID) (task.Spec, error) {
 				return m.plans.Plan(workspaceID, createRunOptions)
 			}
 			return m.CreateTasks(fn, m.resource.WorkspaceID)

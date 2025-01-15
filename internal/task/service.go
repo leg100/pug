@@ -109,11 +109,11 @@ func (s *Service) CreateGroup(specs ...Spec) (*Group, error) {
 
 // AddGroup adds a task group to the DB.
 func (s *Service) AddGroup(group *Group) {
-	s.groups.Add(group.ID, group)
+	s.groups.Add(group.MonotonicID, group)
 }
 
 // Enqueue moves the task onto the global queue for processing.
-func (s *Service) Enqueue(taskID resource.Identity) (*Task, error) {
+func (s *Service) Enqueue(taskID resource.ID) (*Task, error) {
 	task, err := s.tasks.Update(taskID, func(existing *Task) error {
 		existing.updateState(Queued)
 		return nil
@@ -191,15 +191,15 @@ func (s *Service) ListGroups() []*Group {
 	return s.groups.List()
 }
 
-func (s *Service) Get(taskID resource.Identity) (*Task, error) {
+func (s *Service) Get(taskID resource.ID) (*Task, error) {
 	return s.tasks.Get(taskID)
 }
 
-func (s *Service) GetGroup(groupID resource.Identity) (*Group, error) {
+func (s *Service) GetGroup(groupID resource.ID) (*Group, error) {
 	return s.groups.Get(groupID)
 }
 
-func (s *Service) Cancel(taskID resource.Identity) (*Task, error) {
+func (s *Service) Cancel(taskID resource.ID) (*Task, error) {
 	task, err := func() (*Task, error) {
 		task, err := s.tasks.Get(taskID)
 		if err != nil {
@@ -216,7 +216,7 @@ func (s *Service) Cancel(taskID resource.Identity) (*Task, error) {
 	return task, nil
 }
 
-func (s *Service) Delete(taskID resource.Identity) error {
+func (s *Service) Delete(taskID resource.ID) error {
 	// TODO: only allow deleting task if in finished state (error message should
 	// instruct user to cancel task first).
 	s.tasks.Delete(taskID)

@@ -11,16 +11,16 @@ import (
 )
 
 var (
-	resource0 = testResource{n: 0, ID: resource.NewID(resource.Workspace)}
-	resource1 = testResource{n: 1, ID: resource.NewID(resource.Workspace)}
-	resource2 = testResource{n: 2, ID: resource.NewID(resource.Workspace)}
-	resource3 = testResource{n: 3, ID: resource.NewID(resource.Workspace)}
-	resource4 = testResource{n: 4, ID: resource.NewID(resource.Workspace)}
-	resource5 = testResource{n: 5, ID: resource.NewID(resource.Workspace)}
+	resource0 = testResource{n: 0, MonotonicID: resource.NewMonotonicID(resource.Workspace)}
+	resource1 = testResource{n: 1, MonotonicID: resource.NewMonotonicID(resource.Workspace)}
+	resource2 = testResource{n: 2, MonotonicID: resource.NewMonotonicID(resource.Workspace)}
+	resource3 = testResource{n: 3, MonotonicID: resource.NewMonotonicID(resource.Workspace)}
+	resource4 = testResource{n: 4, MonotonicID: resource.NewMonotonicID(resource.Workspace)}
+	resource5 = testResource{n: 5, MonotonicID: resource.NewMonotonicID(resource.Workspace)}
 )
 
 type testResource struct {
-	resource.ID
+	resource.MonotonicID
 
 	n int
 }
@@ -64,54 +64,54 @@ func TestTable_ToggleSelection(t *testing.T) {
 	tbl.ToggleSelection()
 
 	assert.Len(t, tbl.selected, 1)
-	assert.Equal(t, resource0, tbl.selected[resource0.ID])
+	assert.Equal(t, resource0, tbl.selected[resource0.MonotonicID])
 }
 
 func TestTable_SelectRange(t *testing.T) {
 	tests := []struct {
 		name     string
-		selected []resource.Identity
+		selected []resource.ID
 		cursor   int
-		want     []resource.Identity
+		want     []resource.ID
 	}{
 		{
 			name:     "select no range when nothing is selected, and cursor is on first row",
-			selected: []resource.Identity{},
-			want:     []resource.Identity{},
+			selected: []resource.ID{},
+			want:     []resource.ID{},
 		},
 		{
 			name:     "select no range when nothing is selected, and cursor is on last row",
-			selected: []resource.Identity{},
-			want:     []resource.Identity{},
+			selected: []resource.ID{},
+			want:     []resource.ID{},
 		},
 		{
 			name:     "select no range when cursor is on the only selected row",
-			selected: []resource.Identity{resource0.ID},
-			want:     []resource.Identity{resource0.ID},
+			selected: []resource.ID{resource0.MonotonicID},
+			want:     []resource.ID{resource0.MonotonicID},
 		},
 		{
 			name:     "select all rows between selected top row and cursor on last row",
-			selected: []resource.Identity{resource0.ID}, // first row
-			cursor:   5,                                 // last row
-			want:     []resource.Identity{resource0.ID, resource1.ID, resource2.ID, resource3.ID, resource4.ID, resource5.ID},
+			selected: []resource.ID{resource0.MonotonicID}, // first row
+			cursor:   5,                                    // last row
+			want:     []resource.ID{resource0.MonotonicID, resource1.MonotonicID, resource2.MonotonicID, resource3.MonotonicID, resource4.MonotonicID, resource5.MonotonicID},
 		},
 		{
 			name:     "select rows between selected top row and cursor in third row",
-			selected: []resource.Identity{resource0.ID}, // first row
-			cursor:   2,                                 // third row
-			want:     []resource.Identity{resource0.ID, resource1.ID, resource2.ID},
+			selected: []resource.ID{resource0.MonotonicID}, // first row
+			cursor:   2,                                    // third row
+			want:     []resource.ID{resource0.MonotonicID, resource1.MonotonicID, resource2.MonotonicID},
 		},
 		{
 			name:     "select rows between selected top row and cursor in third row, ignoring selected last row",
-			selected: []resource.Identity{resource0.ID, resource5.ID}, // first and last row
-			cursor:   2,                                               // third row
-			want:     []resource.Identity{resource0.ID, resource1.ID, resource2.ID, resource5.ID},
+			selected: []resource.ID{resource0.MonotonicID, resource5.MonotonicID}, // first and last row
+			cursor:   2,                                                           // third row
+			want:     []resource.ID{resource0.MonotonicID, resource1.MonotonicID, resource2.MonotonicID, resource5.MonotonicID},
 		},
 		{
 			name:     "select rows between cursor in third row and selected last row",
-			selected: []resource.Identity{resource5.ID}, // last row
-			cursor:   2,                                 // third row
-			want:     []resource.Identity{resource2.ID, resource3.ID, resource4.ID, resource5.ID},
+			selected: []resource.ID{resource5.MonotonicID}, // last row
+			cursor:   2,                                    // third row
+			want:     []resource.ID{resource2.MonotonicID, resource3.MonotonicID, resource4.MonotonicID, resource5.MonotonicID},
 		},
 	}
 	for _, tt := range tests {
@@ -132,8 +132,8 @@ func TestTable_SelectRange(t *testing.T) {
 	}
 }
 
-func sortStrings(i, j resource.Identity) int {
-	if i.(resource.ID).String() < j.(resource.ID).String() {
+func sortStrings(i, j resource.ID) int {
+	if i.(resource.MonotonicID).String() < j.(resource.MonotonicID).String() {
 		return -1
 	}
 	return 1

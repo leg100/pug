@@ -51,7 +51,7 @@ func TestWorkspace_resetWorkspaces(t *testing.T) {
 	require.NoError(t, err)
 
 	// expect staging to be dropped
-	assert.Equal(t, []resource.Identity{staging.ID}, table.deleted)
+	assert.Equal(t, []resource.ID{staging.ID}, table.deleted)
 
 	// expect prod to be added
 	assert.Len(t, table.added, 1)
@@ -62,12 +62,12 @@ func TestWorkspace_resetWorkspaces(t *testing.T) {
 }
 
 type fakeModuleService struct {
-	current resource.Identity
+	current resource.ID
 
 	modules
 }
 
-func (f *fakeModuleService) SetCurrent(moduleID, workspaceID resource.Identity) error {
+func (f *fakeModuleService) SetCurrent(moduleID, workspaceID resource.ID) error {
 	f.current = workspaceID
 	return nil
 }
@@ -75,16 +75,16 @@ func (f *fakeModuleService) SetCurrent(moduleID, workspaceID resource.Identity) 
 type fakeWorkspaceTable struct {
 	existing []*Workspace
 	added    []*Workspace
-	deleted  []resource.Identity
+	deleted  []resource.ID
 
 	workspaceTable
 }
 
-func (f *fakeWorkspaceTable) Add(id resource.Identity, row *Workspace) {
+func (f *fakeWorkspaceTable) Add(id resource.ID, row *Workspace) {
 	f.added = append(f.added, row)
 }
 
-func (f *fakeWorkspaceTable) Delete(id resource.Identity) {
+func (f *fakeWorkspaceTable) Delete(id resource.ID) {
 	f.deleted = append(f.deleted, id)
 }
 

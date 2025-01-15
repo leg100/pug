@@ -23,7 +23,7 @@ type enqueuer struct {
 type enqueuerTaskService interface {
 	taskLister
 
-	Get(taskID resource.Identity) (*Task, error)
+	Get(taskID resource.ID) (*Task, error)
 }
 
 func StartEnqueuer(tasks *Service) {
@@ -58,10 +58,10 @@ func (e *enqueuer) enqueuable() []*Task {
 	for _, t := range active {
 		if t.Blocking {
 			if t.ModuleID != nil {
-				blockedModules[*t.ModuleID] = struct{}{}
+				blockedModules[t.ModuleID] = struct{}{}
 			}
 			if t.WorkspaceID != nil {
-				blockedWorkspaces[*t.WorkspaceID] = struct{}{}
+				blockedWorkspaces[t.WorkspaceID] = struct{}{}
 			}
 		}
 	}
@@ -79,13 +79,13 @@ func (e *enqueuer) enqueuable() []*Task {
 			continue
 		}
 		if t.WorkspaceID != nil {
-			if _, ok := blockedWorkspaces[*t.WorkspaceID]; ok {
+			if _, ok := blockedWorkspaces[t.WorkspaceID]; ok {
 				// Don't enqueue task belonging to workspace blocked by another task
 				continue
 			}
 		}
 		if t.ModuleID != nil {
-			if _, ok := blockedModules[*t.ModuleID]; ok {
+			if _, ok := blockedModules[t.ModuleID]; ok {
 				// Don't enqueue task belonging to module blocked by another task
 				continue
 			}
@@ -102,12 +102,12 @@ func (e *enqueuer) enqueuable() []*Task {
 			if t.WorkspaceID != nil {
 				// Task blocks workspace; no further tasks belonging to workspace
 				// shall be enqueued.
-				blockedWorkspaces[*t.WorkspaceID] = struct{}{}
+				blockedWorkspaces[t.WorkspaceID] = struct{}{}
 			}
 			if t.ModuleID != nil {
 				// Task blocks module; no further tasks belonging to module
 				// shall be enqueued.
-				blockedModules[*t.ModuleID] = struct{}{}
+				blockedModules[t.ModuleID] = struct{}{}
 			}
 		}
 	}

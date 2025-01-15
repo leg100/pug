@@ -39,7 +39,7 @@ type ReferenceUpdater[T any] struct {
 }
 
 type Getter[T any] interface {
-	Get(resource.Identity) (T, error)
+	Get(resource.ID) (T, error)
 }
 
 func (e *ReferenceUpdater[T]) UpdateArgs(args ...any) []any {
@@ -47,7 +47,7 @@ func (e *ReferenceUpdater[T]) UpdateArgs(args ...any) []any {
 		// Where an argument is of type resource.ID, try and retrieve the
 		// resource corresponding to the ID and replace argument with the
 		// resource.
-		if id, ok := arg.(resource.ID); ok {
+		if id, ok := arg.(resource.MonotonicID); ok {
 			t, err := e.Get(id)
 			if err != nil {
 				continue
@@ -68,7 +68,7 @@ func (e *ReferenceUpdater[T]) UpdateArgs(args ...any) []any {
 		if !f.IsValid() {
 			continue
 		}
-		id, ok := f.Interface().(resource.ID)
+		id, ok := f.Interface().(resource.MonotonicID)
 		if !ok {
 			continue
 		}

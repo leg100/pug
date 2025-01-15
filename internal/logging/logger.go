@@ -99,6 +99,6 @@ func (l *Logger) List() []Message {
 }
 
 // Get retrieves a log message by ID.
-func (l *Logger) Get(id resource.Identity) (Message, error) {
+func (l *Logger) Get(id resource.ID) (Message, error) {
 	return l.writer.table.Get(id)
 }

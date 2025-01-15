@@ -19,7 +19,7 @@ func (w *writer) Write(p []byte) (int, error) {
 	d := logfmt.NewDecoder(bytes.NewReader(p))
 	for d.ScanRecord() {
 		msg := Message{
-			ID: resource.NewID(resource.Log),
+			ID: resource.NewMonotonicID(resource.Log),
 		}
 		for d.ScanKeyval() {
 			switch string(d.Key()) {
@@ -37,7 +37,7 @@ func (w *writer) Write(p []byte) (int, error) {
 				msg.Attributes = append(msg.Attributes, Attr{
 					Key:   string(d.Key()),
 					Value: string(d.Value()),
-					ID:    resource.NewID(resource.LogAttr),
+					ID:    resource.NewMonotonicID(resource.LogAttr),
 				})
 			}
 		}

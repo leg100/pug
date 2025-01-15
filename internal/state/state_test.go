@@ -82,5 +82,4 @@ func TestState(t *testing.T) {
 		}
 		assert.Equal(t, wantAttrs, got.Resources[`time_sleep.wait_three_seconds["duration"]`].Attributes)
 	})
-
 }
