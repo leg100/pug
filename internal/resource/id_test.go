@@ -8,10 +8,10 @@ import (
 )
 
 func TestID_String(t *testing.T) {
-	mod := NewID(Module)
-	ws := NewID(Workspace)
-	run := NewID(Plan)
-	task := NewID(Task)
+	mod := NewMonotonicID(Module)
+	ws := NewMonotonicID(Workspace)
+	run := NewMonotonicID(Plan)
+	task := NewMonotonicID(Task)
 
 	t.Run("string", func(t *testing.T) {
 		assert.True(t, strings.HasPrefix(mod.String(), "#"))

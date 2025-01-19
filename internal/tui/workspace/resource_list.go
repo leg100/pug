@@ -101,7 +101,7 @@ func (m *resourceList) Init() tea.Cmd {
 
 // reloadedMsg is sent when a state reload has finished.
 type reloadedMsg struct {
-	workspaceID resource.ID
+	workspaceID resource.MonotonicID
 	err         error
 }
 
@@ -166,7 +166,7 @@ func (m *resourceList) Update(msg tea.Msg) tea.Cmd {
 			return m.createStateCommand(m.states.Untaint, addrs...)
 		case key.Matches(msg, resourcesKeys.Move):
 			if row, ok := m.CurrentRow(); ok {
-				from := row.Value.Address
+				from := row.Address
 				return m.Move(m.workspace.ID, from)
 			}
 		case key.Matches(msg, keys.Common.PlanDestroy):
@@ -189,7 +189,7 @@ func (m *resourceList) Update(msg tea.Msg) tea.Cmd {
 		case key.Matches(msg, keys.Common.AutoApply):
 			// Create a targeted apply.
 			createRunOptions.TargetAddrs = m.selectedOrCurrentAddresses()
-			resourceIDs := m.SelectedOrCurrentIDs()
+			resourceIDs := m.SelectedOrCurrent()
 			fn := func(workspaceID resource.ID) (task.Spec, error) {
 				return m.plans.Apply(workspaceID, createRunOptions)
 			}
@@ -258,7 +258,7 @@ func (m resourceList) selectedOrCurrentAddresses() []state.ResourceAddress {
 	addrs := make([]state.ResourceAddress, len(rows))
 	var i int
 	for _, v := range rows {
-		addrs[i] = v.Value.Address
+		addrs[i] = v.Address
 		i++
 	}
 	return addrs

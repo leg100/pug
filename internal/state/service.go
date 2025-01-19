@@ -144,8 +144,8 @@ func (s *Service) createTaskSpec(workspaceID resource.ID, opts task.Spec) (task.
 	if err != nil {
 		return task.Spec{}, err
 	}
-	opts.ModuleID = &mod.ID
-	opts.WorkspaceID = &ws.ID
+	opts.ModuleID = mod.ID
+	opts.WorkspaceID = ws.ID
 	opts.Env = []string{ws.TerraformEnv()}
 	opts.Path = mod.Path
 

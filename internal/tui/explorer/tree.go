@@ -47,7 +47,7 @@ func (b *treeBuilder) newTree(filter string) (*tree, string) {
 	currentWorkspaces := make(map[resource.ID]bool)
 	for _, mod := range modules {
 		if mod.CurrentWorkspaceID != nil {
-			currentWorkspaces[*mod.CurrentWorkspaceID] = true
+			currentWorkspaces[mod.CurrentWorkspaceID] = true
 		}
 	}
 	// Arrange workspaces by module, for attachment to modules in tree below.

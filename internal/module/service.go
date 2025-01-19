@@ -215,7 +215,7 @@ func (s *Service) Init(moduleID resource.ID, upgrade bool) (task.Spec, error) {
 		args = append(args, "-upgrade")
 	}
 	spec := task.Spec{
-		ModuleID:   &mod.ID,
+		ModuleID:   mod.ID,
 		Path:       mod.Path,
 		Identifier: InitTask,
 		Execution: task.Execution{
@@ -236,7 +236,7 @@ func (s *Service) Format(moduleID resource.ID) (task.Spec, error) {
 		return task.Spec{}, err
 	}
 	spec := task.Spec{
-		ModuleID: &mod.ID,
+		ModuleID: mod.ID,
 		Path:     mod.Path,
 		Execution: task.Execution{
 			TerraformCommand: []string{"fmt"},
@@ -253,7 +253,7 @@ func (s *Service) Validate(moduleID resource.ID) (task.Spec, error) {
 		return task.Spec{}, err
 	}
 	spec := task.Spec{
-		ModuleID: &mod.ID,
+		ModuleID: mod.ID,
 		Path:     mod.Path,
 		Execution: task.Execution{
 			TerraformCommand: []string{"validate"},
@@ -284,7 +284,7 @@ func (s *Service) GetByPath(path string) (*Module, error) {
 // SetCurrent sets the current workspace for the module.
 func (s *Service) SetCurrent(moduleID, workspaceID resource.ID) error {
 	_, err := s.table.Update(moduleID, func(existing *Module) error {
-		existing.CurrentWorkspaceID = &workspaceID
+		existing.CurrentWorkspaceID = workspaceID
 		return nil
 	})
 	return err
@@ -297,7 +297,7 @@ func (s *Service) Execute(moduleID resource.ID, program string, args ...string) 
 		return task.Spec{}, err
 	}
 	spec := task.Spec{
-		ModuleID: &mod.ID,
+		ModuleID: mod.ID,
 		Path:     mod.Path,
 		Execution: task.Execution{
 			Program: program,

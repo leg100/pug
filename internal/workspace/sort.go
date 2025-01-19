@@ -6,7 +6,7 @@ import (
 )
 
 type moduleGetter interface {
-	Get(id resource.ID) (*module.Module, error)
+	Get(id resource.MonotonicID) (*module.Module, error)
 }
 
 // Sort sorts workspaces accordingly:

@@ -53,17 +53,17 @@ func (mm *Maker) Make(id resource.ID, width, height int) (tui.ChildModel, error)
 		{
 			Key:   timeAttrKey,
 			Value: msg.Time.Format(timeFormat),
-			ID:    resource.NewID(resource.LogAttr),
+			ID:    resource.NewMonotonicID(resource.LogAttr),
 		},
 		{
 			Key:   messageAttrKey,
 			Value: msg.Message,
-			ID:    resource.NewID(resource.LogAttr),
+			ID:    resource.NewMonotonicID(resource.LogAttr),
 		},
 		{
 			Key:   levelAttrKey,
 			Value: coloredLogLevel(msg.Level),
-			ID:    resource.NewID(resource.LogAttr),
+			ID:    resource.NewMonotonicID(resource.LogAttr),
 		},
 	}
 	items = append(items, msg.Attributes...)

@@ -13,25 +13,25 @@ import (
 func TestEnqueuer(t *testing.T) {
 	t.Parallel()
 
-	mod1ID := resource.NewID(resource.Module)
-	ws1ID := resource.NewID(resource.Workspace)
+	mod1ID := resource.NewMonotonicID(resource.Module)
+	ws1ID := resource.NewMonotonicID(resource.Workspace)
 
-	mod1Task1 := newTestTask(t, Spec{ModuleID: &mod1ID})
-	mod1TaskBlocking1 := newTestTask(t, Spec{ModuleID: &mod1ID, Blocking: true})
+	mod1Task1 := newTestTask(t, Spec{ModuleID: mod1ID})
+	mod1TaskBlocking1 := newTestTask(t, Spec{ModuleID: mod1ID, Blocking: true})
 
-	ws1Task1 := newTestTask(t, Spec{ModuleID: &mod1ID, WorkspaceID: &ws1ID})
-	ws1Task2 := newTestTask(t, Spec{ModuleID: &mod1ID, WorkspaceID: &ws1ID})
+	ws1Task1 := newTestTask(t, Spec{ModuleID: mod1ID, WorkspaceID: ws1ID})
+	ws1Task2 := newTestTask(t, Spec{ModuleID: mod1ID, WorkspaceID: ws1ID})
 
-	ws1TaskBlocking1 := newTestTask(t, Spec{ModuleID: &mod1ID, WorkspaceID: &ws1ID, Blocking: true})
-	ws1TaskBlocking2 := newTestTask(t, Spec{ModuleID: &mod1ID, WorkspaceID: &ws1ID, Blocking: true})
-	ws1TaskBlocking3 := newTestTask(t, Spec{ModuleID: &mod1ID, WorkspaceID: &ws1ID, Blocking: true})
-	ws1TaskImmediate := newTestTask(t, Spec{ModuleID: &mod1ID, WorkspaceID: &ws1ID, Immediate: true})
-	ws1TaskDependOnTask1 := newTestTask(t, Spec{ModuleID: &mod1ID, WorkspaceID: &ws1ID, dependsOn: []resource.ID{ws1Task1.ID}})
+	ws1TaskBlocking1 := newTestTask(t, Spec{ModuleID: mod1ID, WorkspaceID: ws1ID, Blocking: true})
+	ws1TaskBlocking2 := newTestTask(t, Spec{ModuleID: mod1ID, WorkspaceID: ws1ID, Blocking: true})
+	ws1TaskBlocking3 := newTestTask(t, Spec{ModuleID: mod1ID, WorkspaceID: ws1ID, Blocking: true})
+	ws1TaskImmediate := newTestTask(t, Spec{ModuleID: mod1ID, WorkspaceID: ws1ID, Immediate: true})
+	ws1TaskDependOnTask1 := newTestTask(t, Spec{ModuleID: mod1ID, WorkspaceID: ws1ID, dependsOn: []resource.ID{ws1Task1.ID}})
 
-	ws1TaskCompleted := newTestTask(t, Spec{ModuleID: &mod1ID, WorkspaceID: &ws1ID})
+	ws1TaskCompleted := newTestTask(t, Spec{ModuleID: mod1ID, WorkspaceID: ws1ID})
 	ws1TaskCompleted.updateState(Exited)
 
-	ws1TaskDependOnCompletedTask := newTestTask(t, Spec{ModuleID: &mod1ID, WorkspaceID: &ws1ID, dependsOn: []resource.ID{ws1TaskCompleted.ID}})
+	ws1TaskDependOnCompletedTask := newTestTask(t, Spec{ModuleID: mod1ID, WorkspaceID: ws1ID, dependsOn: []resource.ID{ws1TaskCompleted.ID}})
 
 	tests := []struct {
 		name string

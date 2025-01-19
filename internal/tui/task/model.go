@@ -283,25 +283,25 @@ func (m Model) GetModuleIDs() ([]resource.ID, error) {
 	if m.task.ModuleID == nil {
 		return nil, errors.New("valid only on modules")
 	}
-	return []resource.ID{*m.task.ModuleID}, nil
+	return []resource.ID{m.task.ModuleID}, nil
 }
 
 func (m Model) GetWorkspaceIDs() ([]resource.ID, error) {
 	if m.task.WorkspaceID != nil {
-		return []resource.ID{*m.task.WorkspaceID}, nil
+		return []resource.ID{m.task.WorkspaceID}, nil
 	} else if m.task.ModuleID == nil {
 		return nil, errors.New("valid only on tasks associated with a module or a workspace")
 	} else {
 		// task has a module ID but no workspace ID, so find out if if
 		// module has a current workspace, and if so, use that. Otherwise
 		// return error
-		mod, err := m.Modules.Get(*m.task.ModuleID)
+		mod, err := m.Modules.Get(m.task.ModuleID)
 		if err != nil {
 			return nil, err
 		}
 		if mod.CurrentWorkspaceID == nil {
 			return nil, errors.New("valid only on tasks associated with a module with a current workspace, or a workspace")
 		}
-		return []resource.ID{*mod.CurrentWorkspaceID}, nil
+		return []resource.ID{mod.CurrentWorkspaceID}, nil
 	}
 }

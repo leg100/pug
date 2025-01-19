@@ -8,7 +8,7 @@ import (
 )
 
 func TestReferenceUpdater(t *testing.T) {
-	res := &fakeResource{ID: resource.NewID(resource.Module)}
+	res := &fakeResource{MonotonicID: resource.NewMonotonicID(resource.Module)}
 	updater := &ReferenceUpdater[*fakeResource]{
 		Getter: &fakeResourceGetter{res: res},
 		Name:   "fake",
@@ -16,7 +16,7 @@ func TestReferenceUpdater(t *testing.T) {
 	}
 
 	t.Run("replace resource id with resource", func(t *testing.T) {
-		args := []any{"fake", res.ID}
+		args := []any{"fake", res.MonotonicID}
 		got := updater.UpdateArgs(args...)
 
 		want := []any{"fake", res}
@@ -25,10 +25,10 @@ func TestReferenceUpdater(t *testing.T) {
 
 	t.Run("add resource when referenced from struct with pointer field", func(t *testing.T) {
 		type logMsgArg struct {
-			FakeResourceID *resource.ID
+			FakeResourceID *resource.MonotonicID
 		}
 
-		args := []any{"arg1", logMsgArg{FakeResourceID: &res.ID}}
+		args := []any{"arg1", logMsgArg{FakeResourceID: &res.MonotonicID}}
 		got := updater.UpdateArgs(args...)
 
 		want := append(args, "fake", res)
@@ -37,10 +37,10 @@ func TestReferenceUpdater(t *testing.T) {
 
 	t.Run("add resource when referenced from struct with non-pointer field", func(t *testing.T) {
 		type logMsgArg struct {
-			FakeResourceID resource.ID
+			FakeResourceID resource.MonotonicID
 		}
 
-		args := []any{"arg1", logMsgArg{FakeResourceID: res.ID}}
+		args := []any{"arg1", logMsgArg{FakeResourceID: res.MonotonicID}}
 		got := updater.UpdateArgs(args...)
 
 		want := append(args, "fake", res)
@@ -49,7 +49,7 @@ func TestReferenceUpdater(t *testing.T) {
 
 	t.Run("handle nil pointer from struct", func(t *testing.T) {
 		type logMsgArg struct {
-			FakeResourceID *resource.ID
+			FakeResourceID *resource.MonotonicID
 		}
 
 		args := []any{"arg1", logMsgArg{FakeResourceID: nil}}
@@ -60,7 +60,7 @@ func TestReferenceUpdater(t *testing.T) {
 }
 
 type fakeResource struct {
-	resource.ID
+	resource.MonotonicID
 }
 
 type fakeResourceGetter struct {

@@ -11,27 +11,28 @@ import (
 )
 
 var (
-	resource0 = testResource{n: 0, ID: resource.NewID(resource.Workspace)}
-	resource1 = testResource{n: 1, ID: resource.NewID(resource.Workspace)}
-	resource2 = testResource{n: 2, ID: resource.NewID(resource.Workspace)}
-	resource3 = testResource{n: 3, ID: resource.NewID(resource.Workspace)}
-	resource4 = testResource{n: 4, ID: resource.NewID(resource.Workspace)}
-	resource5 = testResource{n: 5, ID: resource.NewID(resource.Workspace)}
+	resource0 = testResource{n: 0, ID: resource.NewMonotonicID(resource.Workspace)}
+	resource1 = testResource{n: 1, ID: resource.NewMonotonicID(resource.Workspace)}
+	resource2 = testResource{n: 2, ID: resource.NewMonotonicID(resource.Workspace)}
+	resource3 = testResource{n: 3, ID: resource.NewMonotonicID(resource.Workspace)}
+	resource4 = testResource{n: 4, ID: resource.NewMonotonicID(resource.Workspace)}
+	resource5 = testResource{n: 5, ID: resource.NewMonotonicID(resource.Workspace)}
 )
 
 type testResource struct {
-	resource.ID
-
-	n int
+	ID resource.MonotonicID
+	n  int
 }
+
+func (r *testResource) GetID() resource.ID { return r.ID }
 
 // setupTest sets up a table test with several rows. Each row is keyed with an
 // int, and the row item is an int corresponding to the key, for ease of
 // testing. The rows are sorted from lowest int to highest int.
-func setupTest() Model[testResource] {
-	renderer := func(v testResource) RenderedRow { return nil }
+func setupTest() Model[*testResource] {
+	renderer := func(v *testResource) RenderedRow { return nil }
 	tbl := New(nil, renderer, 0, 0,
-		WithSortFunc(func(i, j testResource) int {
+		WithSortFunc(func(i, j *testResource) int {
 			if i.n < j.n {
 				return -1
 			}
@@ -39,12 +40,12 @@ func setupTest() Model[testResource] {
 		}),
 	)
 	tbl.SetItems(
-		resource0,
-		resource1,
-		resource2,
-		resource3,
-		resource4,
-		resource5,
+		&resource0,
+		&resource1,
+		&resource2,
+		&resource3,
+		&resource4,
+		&resource5,
 	)
 	return tbl
 }
@@ -55,7 +56,7 @@ func TestTable_CurrentRow(t *testing.T) {
 	got, ok := tbl.CurrentRow()
 	require.True(t, ok)
 
-	assert.Equal(t, resource0, got.Value)
+	assert.Equal(t, &resource0, got)
 }
 
 func TestTable_ToggleSelection(t *testing.T) {
@@ -64,7 +65,7 @@ func TestTable_ToggleSelection(t *testing.T) {
 	tbl.ToggleSelection()
 
 	assert.Len(t, tbl.selected, 1)
-	assert.Equal(t, resource0, tbl.selected[resource0.ID])
+	assert.Equal(t, &resource0, tbl.selected[resource0.ID])
 }
 
 func TestTable_SelectRange(t *testing.T) {
@@ -117,8 +118,8 @@ func TestTable_SelectRange(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			tbl := setupTest()
-			for _, key := range tt.selected {
-				tbl.ToggleSelectionByID(key)
+			for _, id := range tt.selected {
+				tbl.ToggleSelectionByID(id)
 			}
 			tbl.currentRowIndex = tt.cursor
 
@@ -133,7 +134,7 @@ func TestTable_SelectRange(t *testing.T) {
 }
 
 func sortStrings(i, j resource.ID) int {
-	if i.String() < j.String() {
+	if i.(resource.MonotonicID).String() < j.(resource.MonotonicID).String() {
 		return -1
 	}
 	return 1

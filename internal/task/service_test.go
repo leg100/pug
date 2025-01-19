@@ -10,11 +10,11 @@ import (
 func TestService_List(t *testing.T) {
 	t.Parallel()
 
-	pending := &Task{ID: resource.NewID(resource.Task), State: Pending}
-	queued := &Task{ID: resource.NewID(resource.Task), State: Queued}
-	running := &Task{ID: resource.NewID(resource.Task), State: Running}
-	exited := &Task{ID: resource.NewID(resource.Task), State: Exited}
-	errored := &Task{ID: resource.NewID(resource.Task), State: Errored}
+	pending := &Task{ID: resource.NewMonotonicID(resource.Task), State: Pending}
+	queued := &Task{ID: resource.NewMonotonicID(resource.Task), State: Queued}
+	running := &Task{ID: resource.NewMonotonicID(resource.Task), State: Running}
+	exited := &Task{ID: resource.NewMonotonicID(resource.Task), State: Exited}
+	errored := &Task{ID: resource.NewMonotonicID(resource.Task), State: Errored}
 
 	tests := []struct {
 		name string

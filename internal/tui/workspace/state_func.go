@@ -13,7 +13,7 @@ func (m resourceList) createStateCommand(fn stateFunc, addrs ...state.ResourceAd
 	// Make N copies of the workspace ID where N is the number of addresses
 	workspaceIDs := make([]resource.ID, len(addrs))
 	for i := range workspaceIDs {
-		workspaceIDs[i] = m.workspace.GetID()
+		workspaceIDs[i] = m.workspace.ID
 	}
 	f := newStateTaskFunc(fn, addrs...)
 	return m.CreateTasks(f.createTask, workspaceIDs...)

@@ -23,11 +23,10 @@ type Identifier string
 
 // Task is an execution of a CLI program.
 type Task struct {
-	resource.ID
-
-	ModuleID            *resource.ID
-	WorkspaceID         *resource.ID
-	TaskGroupID         *resource.ID
+	ID                  resource.MonotonicID
+	ModuleID            resource.ID
+	WorkspaceID         resource.ID
+	TaskGroupID         resource.ID
 	Identifier          Identifier
 	Program             string
 	Args                []string
@@ -117,7 +116,7 @@ func (f *factory) newTask(spec Spec) (*Task, error) {
 		return nil, errors.New("a task cannot both be blocking and immediately")
 	}
 	task := &Task{
-		ID:                  resource.NewID(resource.Task),
+		ID:                  resource.NewMonotonicID(resource.Task),
 		ModuleID:            spec.ModuleID,
 		WorkspaceID:         spec.WorkspaceID,
 		TaskGroupID:         spec.TaskGroupID,
@@ -201,9 +200,8 @@ func (f *factory) newTask(spec Spec) (*Task, error) {
 	return task, nil
 }
 
-func (t *Task) String() string {
-	return t.Description
-}
+func (t *Task) GetID() resource.ID { return t.ID }
+func (t *Task) String() string     { return t.Description }
 
 // NewReader returns a reader which contains what has been written thus far to
 // the task buffer.

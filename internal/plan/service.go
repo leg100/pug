@@ -83,11 +83,11 @@ func (s *Service) ReloadAfterApply(sub <-chan resource.Event[*task.Task]) {
 			if workspaceID == nil {
 				continue
 			}
-			if _, err := s.states.CreateReloadTask(*workspaceID); err != nil {
-				s.logger.Error("reloading state after apply", "error", err, "workspace", *workspaceID)
+			if _, err := s.states.CreateReloadTask(workspaceID); err != nil {
+				s.logger.Error("reloading state after apply", "error", err, "workspace", workspaceID)
 				continue
 			}
-			s.logger.Debug("reloading state after apply", "workspace", *workspaceID)
+			s.logger.Debug("reloading state after apply", "workspace", workspaceID)
 		}
 	}
 }
@@ -150,7 +150,7 @@ func (s *Service) Get(runID resource.ID) (*plan, error) {
 
 func (s *Service) getByTaskID(taskID resource.ID) (*plan, error) {
 	for _, plan := range s.List() {
-		if plan.taskID != nil && *plan.taskID == taskID {
+		if plan.taskID != nil && plan.taskID == taskID {
 			return plan, nil
 		}
 	}

@@ -123,7 +123,11 @@ func (m *List) Update(msg tea.Msg) tea.Cmd {
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, keys.Common.Cancel):
-			taskIDs := m.SelectedOrCurrentIDs()
+			rows := m.SelectedOrCurrent()
+			taskIDs := make([]resource.ID, len(rows))
+			for i, row := range rows {
+				taskIDs[i] = row.ID
+			}
 			return cancel(m.tasks, taskIDs...)
 		case key.Matches(msg, keys.Common.AutoApply):
 			ids, err := m.allPlans()
@@ -138,7 +142,7 @@ func (m *List) Update(msg tea.Msg) tea.Cmd {
 			rows := m.SelectedOrCurrent()
 			specs := make([]task.Spec, len(rows))
 			for i, row := range rows {
-				specs[i] = row.Value.Spec
+				specs[i] = row.Spec
 			}
 			return tui.YesNoPrompt(
 				fmt.Sprintf("Retry %d tasks?", len(rows)),
@@ -179,7 +183,7 @@ func (m List) allPlans() ([]resource.ID, error) {
 	rows := m.SelectedOrCurrent()
 	ids := make([]resource.ID, len(rows))
 	for i, row := range rows {
-		if err := plan.IsApplyable(row.Value); err != nil {
+		if err := plan.IsApplyable(row); err != nil {
 			return nil, fmt.Errorf("at least one task is not applyable: %w", err)
 		}
 		ids[i] = row.ID
@@ -191,10 +195,10 @@ func (m List) GetModuleIDs() ([]resource.ID, error) {
 	rows := m.SelectedOrCurrent()
 	ids := make([]resource.ID, len(rows))
 	for i, row := range rows {
-		if row.Value.ModuleID == nil {
+		if row.ModuleID == nil {
 			return nil, errors.New("valid only on modules")
 		}
-		ids[i] = *row.Value.ModuleID
+		ids[i] = row.ModuleID
 	}
 	return ids, nil
 }
@@ -203,22 +207,22 @@ func (m List) GetWorkspaceIDs() ([]resource.ID, error) {
 	rows := m.SelectedOrCurrent()
 	ids := make([]resource.ID, len(rows))
 	for i, row := range rows {
-		if row.Value.WorkspaceID != nil {
-			ids[i] = *row.Value.WorkspaceID
-		} else if row.Value.ModuleID == nil {
+		if row.WorkspaceID != nil {
+			ids[i] = row.WorkspaceID
+		} else if row.ModuleID == nil {
 			return nil, errors.New("valid only on tasks associated with a module or a workspace")
 		} else {
 			// task has a module ID but no workspace ID, so find out if its
 			// module has a current workspace, and if so, use that. Otherwise
 			// return error
-			mod, err := m.Modules.Get(*row.Value.ModuleID)
+			mod, err := m.Modules.Get(row.ModuleID)
 			if err != nil {
 				return nil, err
 			}
 			if mod.CurrentWorkspaceID == nil {
 				return nil, errors.New("valid only on tasks associated with a module with a current workspace, or a workspace")
 			}
-			ids[i] = *mod.CurrentWorkspaceID
+			ids[i] = mod.CurrentWorkspaceID
 		}
 	}
 	return ids, nil
