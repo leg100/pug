@@ -213,12 +213,6 @@ func (t *Task) NewReader(combined bool) io.Reader {
 	return t.stdout.NewReader()
 }
 
-// NewStreamer returns a stream of output from the task; the channel is closed
-// when the task has finished.
-func (t *Task) NewStreamer() <-chan []byte {
-	return t.combined.Stream()
-}
-
 func (t *Task) IsActive() bool {
 	switch t.State {
 	case Queued, Running:

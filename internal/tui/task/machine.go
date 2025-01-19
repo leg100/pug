@@ -3,92 +3,132 @@ package task
 import (
 	"bufio"
 
-	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/google/uuid"
+	"github.com/leg100/pug/internal/machine"
+	"github.com/leg100/pug/internal/resource"
+	"github.com/leg100/pug/internal/state"
 	"github.com/leg100/pug/internal/task"
 	"github.com/leg100/pug/internal/tui"
+	"github.com/leg100/pug/internal/tui/table"
 )
 
-type machine struct {
-	id       uuid.UUID
-	viewport tui.Viewport
-	spinner  *spinner.Model
-	output   <-chan []byte
-	buf      []byte
-	scanner  *bufio.Scanner
+var (
+	resourceStatusColumn = table.Column{
+		Key:   "resource_status",
+		Title: "STATUS",
+		Width: 7,
+	}
+	resourceAddressColumn = table.Column{
+		Key:        "resource_address",
+		Title:      "ADDRESS",
+		FlexFactor: 1,
+	}
+)
+
+type machineModel struct {
+	id      uuid.UUID
+	table   table.Model[machineResource]
+	scanner *bufio.Scanner
 }
 
-type machineOptions struct {
-	spinner *spinner.Model
-	width   int
-	height  int
+type machineModelOptions struct {
+	width  int
+	height int
 }
 
-func newMachine(t *task.Task, opts machineOptions) machine {
-	return machine{
-		id:      uuid.New(),
-		spinner: opts.spinner,
-		scanner: bufio.NewScanner(t.NewReader(false)),
-		viewport: tui.NewViewport(tui.ViewportOptions{
-			JSON:    t.JSON,
-			Width:   opts.width,
-			Height:  opts.height,
-			Spinner: opts.spinner,
+type machineResource struct {
+	Address state.ResourceAddress
+	Status  string
+}
+
+func (r machineResource) GetID() resource.ID {
+	return r.Address
+}
+
+func newMachineModel(t *task.Task, opts machineModelOptions) machineModel {
+	columns := []table.Column{
+		resourceStatusColumn,
+		resourceAddressColumn,
+	}
+	renderer := func(r machineResource) table.RenderedRow {
+		return table.RenderedRow{
+			resourceStatusColumn.Key:  string(r.Status),
+			resourceAddressColumn.Key: string(r.Address),
+		}
+	}
+	tbl := table.New(
+		columns,
+		renderer,
+		opts.width,
+		opts.height,
+		table.WithSortFunc(func(i, j machineResource) int {
+			if i.Address < j.Address {
+				return -1
+			} else {
+				return 1
+			}
 		}),
-		output: t.NewStreamer(),
-		// read upto 1kb at a time
-		buf: make([]byte, 1024),
+	)
+	return machineModel{
+		id:      uuid.New(),
+		table:   tbl,
+		scanner: bufio.NewScanner(t.NewReader(false)),
 	}
 }
 
-func (h machine) Init() tea.Cmd {
-	return h.getOutput
+func (m machineModel) Init() tea.Cmd {
+	return m.getOutput
 }
 
-func (h machine) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m machineModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
-	case tea.WindowSizeMsg:
-		h.viewport.SetDimensions(msg.Width, msg.Height)
-	case outputMsg:
+	case machineOutputMsg:
 		// Ensure output is for this model
-		if msg.modelID != h.id {
-			return h, nil
+		if msg.modelID != m.id {
+			return m, nil
 		}
-		err := h.viewport.AppendContent(msg.output, msg.eof, true)
+		if msg.eof {
+			return m, nil
+		}
+		mm, err := machine.UnmarshalMessage(msg.line)
 		if err != nil {
-			return h, tui.ReportError(err)
+			return m, tui.ReportError(err)
 		}
-		if !msg.eof {
-			return h, h.getOutput
+		switch mm := mm.(type) {
+		case *machine.PlannedChangeMsg:
+			mr := machineResource{
+				Address: state.ResourceAddress(mm.Change.Resource.ResourceName),
+				Status:  string(mm.Type),
+			}
+			m.table.AddItems(mr)
 		}
-	default:
-		// Handle keyboard and mouse events in the viewport
-		var cmd tea.Cmd
-		h.viewport, cmd = h.viewport.Update(msg)
-		return h, cmd
 	}
-	return h, nil
+	var (
+		cmd  tea.Cmd
+		cmds []tea.Cmd
+	)
+	m.table, cmd = m.table.Update(msg)
+	cmds = append(cmds, cmd)
+	return m, tea.Batch(cmds...)
 }
 
-func (h machine) View() string {
-	return h.viewport.View()
+func (m machineModel) View() string {
+	return m.table.View()
 }
 
-func (h machine) getOutput() tea.Msg {
-	if h.scanner.Scan() {
-		h.scanner.Text
-		msg := outputMsg{modelID: h.id}
-
-	b, ok := <-h.output
-	if ok {
-		msg.output = b
+func (m machineModel) getOutput() tea.Msg {
+	msg := machineOutputMsg{modelID: m.id}
+	if m.scanner.Scan() {
+		msg.line = m.scanner.Bytes()
 	} else {
 		msg.eof = true
 	}
 	return msg
 }
 
-type machineOutput struct{
-
+type machineOutputMsg struct {
+	modelID uuid.UUID
+	line    []byte
+	eof     bool
 }

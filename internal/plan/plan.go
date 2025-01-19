@@ -109,11 +109,12 @@ func (r *plan) args() []string {
 func (r *plan) planTaskSpec() task.Spec {
 	// TODO: assert planFile is true first
 	spec := task.Spec{
-		Identifier:  PlanTask,
-		ModuleID:    r.ModuleID,
-		WorkspaceID: r.WorkspaceID,
-		Path:        r.ModulePath,
-		Env:         r.envs,
+		Identifier:        PlanTask,
+		ModuleID:          r.ModuleID,
+		WorkspaceID:       r.WorkspaceID,
+		Path:              r.ModulePath,
+		Env:               r.envs,
+		MachineReadableUI: true,
 		Execution: task.Execution{
 			TerraformCommand: []string{"plan"},
 			Args:             append(r.args(), "-out", r.planPath()),

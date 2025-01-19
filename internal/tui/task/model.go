@@ -51,7 +51,12 @@ func (mm *Maker) make(id resource.ID, width, height int, border bool) (tui.Child
 		height:   height,
 		program:  mm.Program,
 	}
-	if !task.MachineReadableUI {
+	if task.MachineReadableUI {
+		m.sub = newMachineModel(task, machineModelOptions{
+			width:  width,
+			height: height,
+		})
+	} else {
 		m.sub = newHuman(task, humanOptions{
 			disableAutoscroll: mm.disableAutoscroll,
 			spinner:           mm.Spinner,
