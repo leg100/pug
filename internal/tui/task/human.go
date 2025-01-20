@@ -1,6 +1,10 @@
 package task
 
 import (
+	"errors"
+	"fmt"
+	"io"
+
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/google/uuid"
@@ -13,8 +17,7 @@ type human struct {
 	viewport          tui.Viewport
 	spinner           *spinner.Model
 	disableAutoscroll bool
-	output            <-chan []byte
-	buf               []byte
+	output            io.Reader
 }
 
 type humanOptions struct {
@@ -36,9 +39,7 @@ func newHuman(t *task.Task, opts humanOptions) human {
 		}),
 		// Disable autoscroll if either task is finished or user has disabled it
 		disableAutoscroll: t.State.IsFinal() || opts.disableAutoscroll,
-		output:            t.NewStreamer(),
-		// read upto 1kb at a time
-		buf: make([]byte, 1024),
+		output:            t.NewReader(true),
 	}
 }
 
@@ -78,14 +79,18 @@ func (h human) View() string {
 }
 
 func (h human) getOutput() tea.Msg {
-	msg := outputMsg{modelID: h.id}
-
-	b, ok := <-h.output
-	if ok {
-		msg.output = b
-	} else {
-		msg.eof = true
+	msg := outputMsg{
+		modelID: h.id,
+		output:  make([]byte, 1024),
 	}
+
+	_, err := h.output.Read(msg.output)
+	if errors.Is(err, io.EOF) {
+		msg.eof = true
+	} else if err != nil {
+		return tui.ErrorMsg(fmt.Errorf("reading task output: %w", err))
+	}
+
 	return msg
 }
 

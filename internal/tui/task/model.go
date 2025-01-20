@@ -166,7 +166,7 @@ func (m *Model) Update(msg tea.Msg) tea.Cmd {
 			Width:  m.subWidth(),
 			Height: m.height,
 		})
-		return nil
+		cmds = append(cmds, cmd)
 	}
 
 	// Handle remaining messages in sub model.
