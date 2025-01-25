@@ -1,7 +1,7 @@
 package task
 
 import (
-	"errors"
+	"bufio"
 	"io"
 
 	"github.com/charmbracelet/bubbles/spinner"
@@ -11,43 +11,44 @@ import (
 	"github.com/leg100/pug/internal/tui"
 )
 
-type human struct {
-	id       uuid.UUID
-	viewport tui.Viewport
-	buf      []byte
-	spinner  *spinner.Model
-	output   io.Reader
+type raw struct {
+	id                uuid.UUID
+	viewport          tui.Viewport
+	scanner           *bufio.Scanner
+	spinner           *spinner.Model
+	disableAutoscroll bool
+	output            io.Reader
 }
 
-type humanOptions struct {
+type rawOptions struct {
 	disableAutoscroll bool
 	spinner           *spinner.Model
 	width             int
 	height            int
 }
 
-func newHuman(t *task.Task, opts humanOptions) human {
-	return human{
+func newRaw(t *task.Task, opts rawOptions) raw {
+	return raw{
 		id:      uuid.New(),
 		spinner: opts.spinner,
 		viewport: tui.NewViewport(tui.ViewportOptions{
-			JSON:              t.JSON,
-			Width:             opts.width,
-			Height:            opts.height,
-			Spinner:           opts.spinner,
-			DisableAutoscroll: t.State.IsFinal() || opts.disableAutoscroll,
+			MultiJSON: true,
+			Width:     opts.width,
+			Height:    opts.height,
+			Spinner:   opts.spinner,
 		}),
-		buf: make([]byte, 1024),
+		scanner: bufio.NewScanner(t.NewReader(false)),
 		// Disable autoscroll if either task is finished or user has disabled it
-		output: t.NewReader(true),
+		disableAutoscroll: t.State.IsFinal() || opts.disableAutoscroll,
+		output:            t.NewReader(true),
 	}
 }
 
-func (m human) Init() tea.Cmd {
+func (m raw) Init() tea.Cmd {
 	return m.getOutput
 }
 
-func (m human) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m raw) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.viewport.SetDimensions(msg.Width, msg.Height)
@@ -56,12 +57,12 @@ func (m human) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.modelID != m.id {
 			return m, nil
 		}
+		if msg.eof {
+			return m, nil
+		}
 		err := m.viewport.AppendContent(msg.output, msg.eof)
 		if err != nil {
 			return m, tui.ReportError(err)
-		}
-		if msg.eof {
-			return m, nil
 		}
 		return m, m.getOutput
 	default:
@@ -73,24 +74,16 @@ func (m human) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-func (m human) View() string {
+func (m raw) View() string {
 	return m.viewport.View()
 }
 
-func (m human) getOutput() tea.Msg {
+func (m raw) getOutput() tea.Msg {
 	msg := outputMsg{modelID: m.id}
-	n, err := m.output.Read(m.buf)
-	if errors.Is(err, io.EOF) {
+	if m.scanner.Scan() {
+		msg.output = m.scanner.Bytes()
+	} else {
 		msg.eof = true
-	} else if err != nil {
-		return tui.ErrorMsg(err)
 	}
-	msg.output = m.buf[:n]
 	return msg
-}
-
-type outputMsg struct {
-	modelID uuid.UUID
-	output  []byte
-	eof     bool
 }

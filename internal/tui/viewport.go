@@ -17,25 +17,34 @@ import (
 type Viewport struct {
 	viewport viewport.Model
 
-	content []byte
-	json    bool
-	spinner *spinner.Model
+	content           []byte
+	json              bool
+	multijson         bool
+	spinner           *spinner.Model
+	disableAutoscroll bool
 }
 
 type ViewportOptions struct {
-	Width      int
-	Height     int
-	JSON       bool
-	Border     bool
-	Autoscroll bool
-	Spinner    *spinner.Model
+	Width  int
+	Height int
+	// JSON is true if the content is a json object
+	JSON bool
+	// MultiJSON is true if the content is composed of multiple json objects,
+	// one per line.
+	MultiJSON         bool
+	Border            bool
+	Autoscroll        bool
+	Spinner           *spinner.Model
+	DisableAutoscroll bool
 }
 
 func NewViewport(opts ViewportOptions) Viewport {
 	m := Viewport{
-		viewport: viewport.New(0, 0),
-		json:     opts.JSON,
-		spinner:  opts.Spinner,
+		viewport:          viewport.New(0, 0),
+		json:              opts.JSON,
+		multijson:         opts.MultiJSON,
+		spinner:           opts.Spinner,
+		disableAutoscroll: opts.DisableAutoscroll,
 	}
 	m.SetDimensions(opts.Width, opts.Height)
 	return m
@@ -59,6 +68,8 @@ func (m Viewport) Update(msg tea.Msg) (Viewport, tea.Cmd) {
 		case key.Matches(msg, keys.Navigation.GotoBottom):
 			m.viewport.SetYOffset(m.viewport.TotalLineCount())
 		}
+	case ToggleAutoscrollMsg:
+		m.disableAutoscroll = !m.disableAutoscroll
 	}
 
 	// Handle keyboard and mouse events in the viewport
@@ -103,7 +114,16 @@ func (m *Viewport) SetDimensions(width, height int) {
 	}
 }
 
-func (m *Viewport) AppendContent(content []byte, finished, autoScroll bool) (err error) {
+func (m *Viewport) AppendContent(content []byte, finished bool) (err error) {
+	if m.multijson {
+		if prettified, fmterr := prettyjson.Format(content); fmterr != nil {
+			// In the event of an error, still set unprettified content
+			// below.
+			err = fmt.Errorf("pretty printing json content: %w", fmterr)
+		} else {
+			content = append(prettified, []byte("\n")...)
+		}
+	}
 	m.content = append(m.content, content...)
 	if finished {
 		if len(m.content) == 0 {
@@ -122,7 +142,7 @@ func (m *Viewport) AppendContent(content []byte, finished, autoScroll bool) (err
 		}
 	}
 	m.setContent()
-	if autoScroll {
+	if !m.disableAutoscroll {
 		m.viewport.GotoBottom()
 	}
 	return err
@@ -135,3 +155,6 @@ func (m *Viewport) setContent() {
 	sanitized := SanitizeColors([]byte(wrapped))
 	m.viewport.SetContent(string(sanitized))
 }
+
+// ToggleAutoscrollMsg toggles whether viewport is auto-scrolled.
+type ToggleAutoscrollMsg struct{}

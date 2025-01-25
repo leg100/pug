@@ -83,7 +83,7 @@ func (mm *Maker) Update(msg tea.Msg) tea.Cmd {
 			// Inform user, and send out message to all cached task models to
 			// toggle autoscroll.
 			return tea.Batch(
-				tui.CmdHandler(toggleAutoscrollMsg{}),
+				tui.CmdHandler(tui.ToggleAutoscrollMsg{}),
 				tui.ReportInfo("Toggled autoscroll %s", boolToOnOff(!mm.disableAutoscroll)),
 			)
 		case key.Matches(msg, localKeys.ToggleInfo):

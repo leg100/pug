@@ -15,6 +15,12 @@ import (
 	"github.com/leg100/pug/internal/task"
 )
 
+const (
+	PlanTask  task.Identifier = "plan"
+	JSONTask  task.Identifier = "json"
+	ApplyTask task.Identifier = "apply"
+)
+
 type plan struct {
 	ID                       resource.MonotonicID
 	ModuleID                 resource.ID
@@ -174,10 +180,22 @@ func (r *plan) planTaskSpec() task.Spec {
 	return spec
 }
 
-const (
-	PlanTask  task.Identifier = "plan"
-	ApplyTask task.Identifier = "apply"
-)
+func (r *plan) jsonTaskSpec() task.Spec {
+	spec := task.Spec{
+		Identifier:  JSONTask,
+		ModuleID:    r.ModuleID,
+		WorkspaceID: r.WorkspaceID,
+		Path:        r.ModulePath,
+		Env:         r.envs,
+		JSON:        true,
+		Execution: task.Execution{
+			TerraformCommand: []string{"show"},
+			Args:             []string{"-json", r.planPath()},
+		},
+		Description: "show -json",
+	}
+	return spec
+}
 
 func (r *plan) applyTaskSpec() (task.Spec, error) {
 	if r.planFile && !r.HasChanges {

@@ -42,11 +42,12 @@ func (mm *ResourceMaker) Make(id resource.ID, width, height int) (tui.ChildModel
 		return nil, err
 	}
 	m.viewport = tui.NewViewport(tui.ViewportOptions{
-		Width:  width,
-		Height: height,
-		JSON:   true,
+		Width:             width,
+		Height:            height,
+		JSON:              true,
+		DisableAutoscroll: true,
 	})
-	m.viewport.AppendContent(marshaled, true, false)
+	m.viewport.AppendContent(marshaled, true)
 
 	return &m, nil
 }

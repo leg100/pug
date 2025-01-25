@@ -15,11 +15,13 @@ import (
 	"github.com/davecgh/go-spew/spew"
 	"github.com/leg100/pug/internal/app"
 	"github.com/leg100/pug/internal/module"
+	"github.com/leg100/pug/internal/plan"
 	"github.com/leg100/pug/internal/resource"
 	"github.com/leg100/pug/internal/task"
 	"github.com/leg100/pug/internal/tui"
 	"github.com/leg100/pug/internal/tui/keys"
 	"github.com/leg100/pug/internal/version"
+	"github.com/leg100/pug/internal/workspace"
 )
 
 // pug is in one of several modes, which alter how all messages are handled.
@@ -33,6 +35,7 @@ const (
 
 type model struct {
 	*tui.PaneManager
+	*tui.Helpers
 
 	makers     map[tui.Kind]tui.Maker
 	modules    *module.Service
@@ -79,6 +82,7 @@ func newModel(cfg app.Config, app *app.App) (model, error) {
 
 	m := model{
 		PaneManager: tui.NewPaneManager(makers),
+		Helpers:     helpers,
 		makers:      makers,
 		modules:     app.Modules,
 		spinner:     &spinner,
@@ -103,6 +107,21 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	if m.dump != nil {
 		spew.Fdump(m.dump, msg)
+	}
+
+	switch msg := msg.(type) {
+	case resource.Event[*workspace.Workspace]:
+		switch msg.Type {
+		case resource.CreatedEvent:
+			if msg.Payload.ModulePath == "modules/a" && msg.Payload.Name == "default" {
+				cmds = append(cmds, m.CreateTasks(
+					func(workspaceID resource.ID) (task.Spec, error) {
+						return m.Plans.Plan(msg.Payload.ID, plan.CreateOptions{})
+					},
+					msg.Payload.ID,
+				))
+			}
+		}
 	}
 
 	// Keep shared spinner spinning as long as there are tasks running.

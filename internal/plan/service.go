@@ -92,6 +92,27 @@ func (s *Service) ReloadAfterApply(sub <-chan resource.Event[*task.Task]) {
 	}
 }
 
+// GenerateJSONAfterPlan creates a task to generate a JSON representation of the
+// plan file whenever a plan task completes
+func (s *Service) GenerateJSONAfterPlan(sub <-chan resource.Event[*task.Task]) {
+	for event := range sub {
+		switch event.Type {
+		case resource.UpdatedEvent:
+			if event.Payload.State != task.Exited {
+				continue
+			}
+			if event.Payload.Identifier != PlanTask {
+				continue
+			}
+			if _, err := s.GenerateJSON(event.Payload.ID); err != nil {
+				s.logger.Error("generating JSON representation of plan file", "error", err, "task", event.Payload)
+				continue
+			}
+			s.logger.Debug("triggered JSON generation of plan file", "task", event.Payload)
+		}
+	}
+}
+
 // Plan creates a task spec to create a plan, i.e. `terraform plan -out
 // plan.file`.
 func (s *Service) Plan(workspaceID resource.ID, opts CreateOptions) (task.Spec, error) {
@@ -104,6 +125,16 @@ func (s *Service) Plan(workspaceID resource.ID, opts CreateOptions) (task.Spec, 
 	s.table.Add(plan.ID, plan)
 
 	return plan.planTaskSpec(), nil
+}
+
+// GenerateJSON creates a task to generate a JSON representation of the plan
+// file.
+func (s *Service) GenerateJSON(taskID resource.ID) (*task.Task, error) {
+	plan, err := s.getByTaskID(taskID)
+	if err != nil {
+		return nil, err
+	}
+	return s.tasks.Create(plan.jsonTaskSpec())
 }
 
 // Apply creates a task spec to auto-apply a plan, i.e. `terraform apply`. To

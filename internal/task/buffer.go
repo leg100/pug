@@ -55,9 +55,8 @@ func (b *buffer) NewReader() io.Reader {
 	}
 
 	b.mu.Lock()
-	defer b.mu.Unlock()
-
 	b.clients = append(b.clients, client)
+	b.mu.Unlock()
 
 	return client
 }
@@ -67,11 +66,11 @@ func (b *buffer) Close() {
 }
 
 type bufferClient struct {
-	buf    []byte
+	buf []byte
+	mu  sync.Mutex
+
 	offset int
-	// mu guards access to buf
-	mu   sync.Mutex
-	more chan struct{}
+	more   chan struct{}
 }
 
 func (c *bufferClient) Read(p []byte) (int, error) {
@@ -92,9 +91,9 @@ func (c *bufferClient) Read(p []byte) (int, error) {
 
 func (c *bufferClient) read(p []byte) int {
 	c.mu.Lock()
-	defer c.mu.Unlock()
-
 	n := copy(p, c.buf[c.offset:])
+	c.mu.Unlock()
+
 	c.offset += n
 	return n
 }

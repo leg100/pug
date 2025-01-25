@@ -192,6 +192,11 @@ func setupSubscriptions(app *app.App, cfg app.Config) (chan tea.Msg, func()) {
 		sub := app.Tasks.TaskBroker.Subscribe(ctx)
 		go app.Plans.ReloadAfterApply(sub)
 	}
+	// Whenever a plan file is created, create a task to convert it into JSON
+	{
+		sub := app.Tasks.TaskBroker.Subscribe(ctx)
+		go app.Plans.GenerateJSONAfterPlan(sub)
+	}
 	// cleanup function to be invoked when program is terminated.
 	return ch, func() {
 		cancel()

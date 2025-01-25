@@ -6,6 +6,8 @@ type keyMap struct {
 	ToggleInfo key.Binding
 	Enter      key.Binding
 	ApplyPlan  key.Binding
+	Raw        key.Binding
+	Structured key.Binding
 }
 
 var localKeys = keyMap{
@@ -20,6 +22,14 @@ var localKeys = keyMap{
 	ApplyPlan: key.NewBinding(
 		key.WithKeys("a"),
 		key.WithHelp("a", "apply plan"),
+	),
+	Raw: key.NewBinding(
+		key.WithKeys("R"),
+		key.WithHelp("R", "raw"),
+	),
+	Structured: key.NewBinding(
+		key.WithKeys("S"),
+		key.WithHelp("S", "structured"),
 	),
 }
 

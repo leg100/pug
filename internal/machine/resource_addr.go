@@ -18,3 +18,7 @@ type ResourceAddr struct {
 	ResourceName    string                  `json:"resource_name"`
 	ResourceKey     ctyjson.SimpleJSONValue `json:"resource_key"`
 }
+
+func (ra ResourceAddr) String() string {
+	return ra.ResourceType + "." + ra.ResourceName
+}
