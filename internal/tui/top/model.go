@@ -19,6 +19,7 @@ import (
 	"github.com/leg100/pug/internal/task"
 	"github.com/leg100/pug/internal/tui"
 	"github.com/leg100/pug/internal/tui/keys"
+	tuitask "github.com/leg100/pug/internal/tui/task"
 	"github.com/leg100/pug/internal/version"
 )
 
@@ -49,6 +50,7 @@ type model struct {
 	lastTaskID *resource.MonotonicID
 	err        error
 	info       string
+	taskConfig *tuitask.Config
 }
 
 func newModel(cfg app.Config, app *app.App) (model, error) {
@@ -75,7 +77,8 @@ func newModel(cfg app.Config, app *app.App) (model, error) {
 		Workdir:    cfg.Workdir,
 	}
 	spinner := spinner.New(spinner.WithSpinner(spinner.Line))
-	makers := makeMakers(cfg, app, &spinner, helpers)
+	taskConfig := &tuitask.Config{}
+	makers := makeMakers(cfg, app, &spinner, helpers, taskConfig)
 
 	m := model{
 		PaneManager: tui.NewPaneManager(makers),
@@ -85,6 +88,7 @@ func newModel(cfg app.Config, app *app.App) (model, error) {
 		tasks:       app.Tasks,
 		dump:        dump,
 		workdir:     cfg.Workdir.PrettyString(),
+		taskConfig:  taskConfig,
 	}
 	return m, nil
 }
@@ -271,19 +275,13 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, tui.NavigateTo(tui.TaskKind, tui.WithParent(*m.lastTaskID))
 			}
 		default:
+			// Send all others to global task config updater
+			if cmd := m.taskConfig.Update(msg); cmd != nil {
+				return m, cmd
+			}
 			// Send all other keys to panes.
 			if cmd := m.PaneManager.Update(msg); cmd != nil {
 				return m, cmd
-			}
-			// If pane manager doesn't respond with a command, then send key to
-			// any updateable model makers; first one to respond with a command
-			// wins.
-			for _, maker := range m.makers {
-				if updateable, ok := maker.(updateableMaker); ok {
-					if cmd := updateable.Update(msg); cmd != nil {
-						return m, cmd
-					}
-				}
 			}
 			return m, nil
 		}

@@ -2,7 +2,6 @@ package top
 
 import (
 	"github.com/charmbracelet/bubbles/spinner"
-	tea "github.com/charmbracelet/bubbletea"
 	"github.com/leg100/pug/internal/app"
 	"github.com/leg100/pug/internal/tui"
 	"github.com/leg100/pug/internal/tui/explorer"
@@ -11,17 +10,13 @@ import (
 	workspacetui "github.com/leg100/pug/internal/tui/workspace"
 )
 
-// updateableMaker is a dynamically configurable maker.
-type updateableMaker interface {
-	Update(tea.Msg) tea.Cmd
-}
-
 // makeMakers makes model makers for making models
 func makeMakers(
 	cfg app.Config,
 	app *app.App,
 	spinner *spinner.Model,
 	helpers *tui.Helpers,
+	taskConfig *tasktui.Config,
 ) map[tui.Kind]tui.Maker {
 	taskMaker := &tasktui.Maker{
 		Plans:   app.Plans,
@@ -30,6 +25,7 @@ func makeMakers(
 		Helpers: helpers,
 		Logger:  app.Logger,
 		Program: cfg.Program,
+		Config:  taskConfig,
 	}
 	logMaker := &logs.Maker{
 		Logger:  app.Logger,

@@ -27,9 +27,7 @@ type Maker struct {
 	Helpers *tui.Helpers
 	Logger  *logging.Logger
 	Program string
-
-	disableAutoscroll bool
-	showInfo          bool
+	Config  *Config
 }
 
 func (mm *Maker) Make(id resource.ID, width, height int) (tui.ChildModel, error) {
@@ -50,13 +48,13 @@ func (mm *Maker) make(id resource.ID, width, height int, border bool) (tui.Child
 		output:  task.NewStreamer(),
 		spinner: mm.Spinner,
 		// read upto 1kb at a time
-		buf:      make([]byte, 1024),
-		Helpers:  mm.Helpers,
-		showInfo: mm.showInfo,
-		width:    width,
-		program:  mm.Program,
+		buf:     make([]byte, 1024),
+		Helpers: mm.Helpers,
+		width:   width,
+		program: mm.Program,
+		config:  mm.Config,
 		// Disable autoscroll if either task is finished or user has disabled it
-		disableAutoscroll: task.State.IsFinal() || mm.disableAutoscroll,
+		disableAutoscroll: task.State.IsFinal() || mm.Config.disableAutoscroll,
 	}
 	m.setHeight(height)
 
@@ -74,29 +72,6 @@ func (mm *Maker) make(id resource.ID, width, height int, border bool) (tui.Child
 	return &m, nil
 }
 
-func (mm *Maker) Update(msg tea.Msg) tea.Cmd {
-	switch msg := msg.(type) {
-	case tea.KeyMsg:
-		switch {
-		case key.Matches(msg, keys.Global.Autoscroll):
-			mm.disableAutoscroll = !mm.disableAutoscroll
-
-			// Inform user, and send out message to all cached task models to
-			// toggle autoscroll.
-			return tea.Batch(
-				tui.CmdHandler(toggleAutoscrollMsg{}),
-				tui.ReportInfo("Toggled autoscroll %s", boolToOnOff(!mm.disableAutoscroll)),
-			)
-		case key.Matches(msg, localKeys.ToggleInfo):
-			mm.showInfo = !mm.showInfo
-
-			// Send out message to all cached task models to toggle task info
-			return tui.CmdHandler(toggleTaskInfoMsg{})
-		}
-	}
-	return nil
-}
-
 type Model struct {
 	*tui.Helpers
 
@@ -110,12 +85,12 @@ type Model struct {
 	output <-chan []byte
 	buf    []byte
 
-	program           string
-	disableAutoscroll bool
-	showInfo          bool
+	program string
 
-	viewport tui.Viewport
-	spinner  *spinner.Model
+	viewport          tui.Viewport
+	spinner           *spinner.Model
+	config            *Config
+	disableAutoscroll bool
 
 	height int
 	width  int
@@ -154,12 +129,12 @@ func (m *Model) Update(msg tea.Msg) tea.Cmd {
 			cmd := m.common.Update(msg)
 			cmds = append(cmds, cmd)
 		}
-	case toggleAutoscrollMsg:
-		m.disableAutoscroll = !m.disableAutoscroll
-	case toggleTaskInfoMsg:
-		m.showInfo = !m.showInfo
-		// adjust width of viewport to accomodate info
+	case toggleShowInfo:
+		// adjust width of viewport to reflect presence/absence of task info
+		// side pane.
 		m.viewport.SetDimensions(m.viewportWidth(), m.height)
+	case toggleAutoscrollMsg:
+		m.disableAutoscroll = m.config.disableAutoscroll
 	case outputMsg:
 		// Ensure output is for this model
 		if msg.modelID != m.id {
@@ -193,7 +168,7 @@ func (m *Model) Update(msg tea.Msg) tea.Cmd {
 }
 
 func (m Model) viewportWidth() int {
-	if m.showInfo {
+	if m.config.showInfo {
 		m.width -= infoWidth
 	}
 	return max(0, m.width)
@@ -216,7 +191,7 @@ const (
 func (m *Model) View() string {
 	var components []string
 
-	if m.showInfo {
+	if m.config.showInfo {
 		var (
 			args = "-"
 			envs = "-"
@@ -245,7 +220,7 @@ func (m *Model) View() string {
 			tui.Bold.Render("Environment variables"),
 			envs,
 			"",
-			fmt.Sprintf("Autoscroll: %s", boolToOnOff(!m.disableAutoscroll)),
+			fmt.Sprintf("Autoscroll: %s", boolToOnOff(!m.config.disableAutoscroll)),
 			"",
 			fmt.Sprintf("Dependencies: %v", m.task.DependsOn),
 		)
