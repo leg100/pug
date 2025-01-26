@@ -40,6 +40,8 @@ func UnmarshalMessage(b []byte) (Message, error) {
 		msg = new(ChangeSummaryMsg)
 	case MessageOutputs:
 		msg = new(OutputMsg)
+	case MessageDiagnostic:
+		msg = new(DiagnosticsMsg)
 	default:
 		return nil, nil
 	}

@@ -36,7 +36,7 @@ func newMachineModel(t *task.Task, opts machineModelOptions) machineModel {
 	}
 	return machineModel{
 		views:   views,
-		current: rawView,
+		current: structuredView,
 	}
 }
 

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/google/uuid"
 	"github.com/leg100/pug/internal/machine"
 	"github.com/leg100/pug/internal/resource"
@@ -39,10 +40,13 @@ var (
 )
 
 type structuredModel struct {
-	id         uuid.UUID
-	table      table.Model[structuredResource]
-	scanner    *bufio.Scanner
-	startTimes map[state.ResourceAddress]time.Time
+	id          uuid.UUID
+	diagnostics []*machine.DiagnosticsMsg
+	changes     table.Model[structuredResource]
+	scanner     *bufio.Scanner
+	startTimes  map[state.ResourceAddress]time.Time
+	width       int
+	height      int
 }
 
 type structuredModelOptions struct {
@@ -91,9 +95,11 @@ func newStructuredModel(t *task.Task, opts structuredModelOptions) structuredMod
 	)
 	return structuredModel{
 		id:         uuid.New(),
-		table:      tbl,
+		changes:    tbl,
 		scanner:    bufio.NewScanner(t.NewReader(false)),
 		startTimes: make(map[state.ResourceAddress]time.Time),
+		width:      opts.width,
+		height:     opts.height,
 	}
 }
 
@@ -116,6 +122,12 @@ func (m structuredModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tui.ReportError(err)
 		}
 		switch mm := mm.(type) {
+		case *machine.DiagnosticsMsg:
+			m.diagnostics = append(m.diagnostics, mm)
+			m.changes, _ = m.changes.Update(tea.WindowSizeMsg{
+				Width:  m.width,
+				Height: max(0, m.height-len(m.diagnostics)),
+			})
 		case *machine.PlannedChangeMsg:
 			mr := structuredResource{
 				Action:  string(mm.Change.Action),
@@ -129,21 +141,47 @@ func (m structuredModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.startTimes[addr] = mm.TimeStamp
 			}
 			mr.timeTaken = mm.TimeStamp.Sub(started)
-			m.table.AddItems(mr)
+			m.changes.AddItems(mr)
 		}
 		return m, m.getOutput
+	case tea.WindowSizeMsg:
+		m.width = msg.Width
+		m.height = msg.Height
+
+		m.changes, _ = m.changes.Update(tea.WindowSizeMsg{
+			Width:  m.width,
+			Height: max(0, m.height-len(m.diagnostics)),
+		})
+		return m, nil
 	}
+
 	var (
 		cmd  tea.Cmd
 		cmds []tea.Cmd
 	)
-	m.table, cmd = m.table.Update(msg)
+	m.changes, cmd = m.changes.Update(msg)
 	cmds = append(cmds, cmd)
 	return m, tea.Batch(cmds...)
 }
 
 func (m structuredModel) View() string {
-	return m.table.View()
+	var diagnostics string
+	for _, diag := range m.diagnostics {
+		switch diag.Diagnostic.Severity {
+		case "error":
+			diagnostics += tui.Padded.
+				Background(tui.DarkRed).
+				Foreground(tui.White).
+				Render("ERROR")
+			diagnostics += tui.Padded.
+				Background(tui.Red).
+				Foreground(tui.White).
+				Width(max(0, m.width-lipgloss.Width(diagnostics))).
+				Render(diag.Diagnostic.Summary)
+			diagnostics += "\n"
+		}
+	}
+	return diagnostics + m.changes.View()
 }
 
 func (m structuredModel) getOutput() tea.Msg {
