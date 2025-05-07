@@ -23,6 +23,12 @@ With `go`:
 go install github.com/leg100/pug@latest
 ```
 
+With [x-cmd](https://x-cmd.com):
+
+```
+x install pug
+```
+
 Homebrew:
 
 ```
