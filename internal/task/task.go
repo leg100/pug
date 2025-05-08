@@ -193,7 +193,7 @@ func (f *factory) newTask(spec Spec) (*Task, error) {
 	// Perhaps use constants for terraform, tofu, and terragrunt.
 	if task.Program == "terragrunt" && f.terragrunt {
 		task.AdditionalEnv = append(task.AdditionalEnv, "TERRAGRUNT_FORWARD_TF_STDOUT=1")
-		task.Args = append(task.Args, "--terragrunt-non-interactive")
+		task.Args = append(task.Args, "--non-interactive")
 	}
 	return task, nil
 }

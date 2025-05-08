@@ -310,7 +310,7 @@ When `terragrunt` is specified as the program executable, Pug enables "terragrun
 
 * Modules are detected via the presence of a `terragrunt.hcl` file. (You may want to rename the top-level `terragrunt.hcl` file to something else otherwise it is mis-detected as a module).
 * Module dependencies are supported. After modules are loaded, a task invokes `terragrunt graph-dependencies`, from which dependencies are parsed and configured in Pug. If you apply multiple modules Pug ensures their dependencies are respected, applying modules in topological order. If you apply a *destroy* plan for multiple modules, modules are applied in reverse topological order.
-* The flag `--terragrunt-non-interactive` is added to commands.
+* The flag `--non-interactive` is added to commands.
 
 ## Multiple terraform versions
 
