@@ -8,8 +8,8 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/hashicorp/terraform/command/cliconfig"
 	"github.com/leg100/pug/internal"
+	"github.com/leg100/pug/internal/cliconfig"
 	"github.com/leg100/pug/internal/logging"
 	"github.com/peterbourgon/ff/v4"
 	"github.com/peterbourgon/ff/v4/ffhelp"
