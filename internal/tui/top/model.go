@@ -137,45 +137,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// footer. This is only done for short tasks because these tasks do
 	// not redirect the user to the task output therefore the user needs to be
 	// notified of its success/failure.
-	switch msg := msg.(type) {
-	case resource.Event[*task.Task]:
+	if msg, ok := msg.(resource.Event[*task.Task]); ok {
 		if msg.Type == resource.UpdatedEvent {
-			t := msg.Payload
-			if t.TaskGroupID != nil {
-				break
-			}
-			if !t.Short {
-				break
-			}
-			if t.State != task.Exited && t.State != task.Errored {
-				break
-			}
-			b, err := io.ReadAll(t.NewReader(true))
-			if err != nil {
-				err = fmt.Errorf("unable to report task completion: %w", err)
-				cmds = append(cmds, tui.ReportError(err))
-				break
-			}
-			m.lastTaskID = &msg.Payload.ID
-			report := fmt.Sprintf("%s: ", t.String())
-			errored := t.State == task.Errored
-			if errored {
-				report += task.StripError(string(b))
-			} else {
-				report += "finished successfully"
-			}
-			// Ensure that the suggestion fits within visible width of message.
-			suggestion := "…(Press 'o' for full output)"
-			if len(report)+len(suggestion) > m.availableFooterMsgWidth() {
-				report = report[:m.availableFooterMsgWidth()-len(suggestion)]
-			}
-			report += suggestion
-			if errored {
-				err = errors.New(report)
-				cmds = append(cmds, tui.ReportError(err))
-			} else {
-				cmds = append(cmds, tui.ReportInfo(report))
-			}
+			cmds = append(cmds, m.reportShortTaskResult(msg.Payload))
 		}
 	}
 
@@ -366,6 +330,46 @@ var (
 	helpWidget    = tui.Padded.Background(tui.Grey).Foreground(tui.White).Render("? help")
 	versionWidget = tui.Padded.Background(tui.DarkGrey).Foreground(tui.White).Render(version.Version)
 )
+
+func (m model) reportShortTaskResult(tsk *task.Task) tea.Cmd {
+	if tsk.TaskGroupID != nil {
+		// don't report on tasks that are part of a task group
+		return nil
+	}
+	if !tsk.Short {
+		// only report on short tasks
+		return nil
+	}
+	if tsk.State != task.Exited && tsk.State != task.Errored {
+		// task not yet completed
+		return nil
+	}
+	b, err := io.ReadAll(tsk.NewReader(true))
+	if err != nil {
+		err = fmt.Errorf("unable to report task completion: %w", err)
+		return tui.ReportError(err)
+	}
+	m.lastTaskID = &tsk.ID
+	report := fmt.Sprintf("%s: ", tsk.String())
+	errored := tsk.State == task.Errored
+	if errored {
+		report += task.StripError(string(b))
+	} else {
+		report += "finished successfully"
+	}
+	// Ensure that the suggestion fits within visible width of message.
+	suggestion := "…(Press 'o' for full output)"
+	if len(report)+len(suggestion) > m.availableFooterMsgWidth() {
+		report = report[:m.availableFooterMsgWidth()-len(suggestion)]
+	}
+	report += suggestion
+	if errored {
+		err = errors.New(report)
+		return tui.ReportError(err)
+	} else {
+		return tui.ReportInfo(report)
+	}
+}
 
 func (m model) availableFooterMsgWidth() int {
 	// -2 to accommodate padding

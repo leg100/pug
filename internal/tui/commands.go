@@ -15,8 +15,8 @@ func NavigateTo(kind Kind, opts ...NavigateOption) tea.Cmd {
 	return CmdHandler(NewNavigationMsg(kind, opts...))
 }
 
-func ReportInfo(msg string, args ...any) tea.Cmd {
-	return CmdHandler(InfoMsg(fmt.Sprintf(msg, args...)))
+func ReportInfo(msg string) tea.Cmd {
+	return CmdHandler(InfoMsg(msg))
 }
 
 func OpenEditor(path string) tea.Cmd {

@@ -19,10 +19,7 @@ import (
 
 func TestConfig(t *testing.T) {
 	// Unset environment variables set on host computer
-	t.Setenv("PUG_DEBUG", "")
-	t.Setenv("PUG_FIRST_PAGE", "")
-	t.Setenv("PUG_LOG_LEVEL", "")
-	t.Setenv("PUG_MAX_TASKS", "")
+	testutils.ResetEnv(t)
 	t.Setenv("HOME", t.TempDir())
 
 	tests := []struct {

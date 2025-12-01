@@ -36,6 +36,14 @@ func Test_keyMapToSlice(t *testing.T) {
 				key.WithKeys("up", "k"),
 				key.WithHelp("↑/k", "up"),
 			),
+			key.NewBinding(
+				key.WithKeys("left", "h"),
+				key.WithHelp("←/h", "move left"),
+			),
+			key.NewBinding(
+				key.WithKeys("right", "l"),
+				key.WithHelp("→/l", "move right"),
+			),
 		})
 	assert.Equal(t, want, got)
 }

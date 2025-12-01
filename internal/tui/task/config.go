@@ -1,6 +1,8 @@
 package task
 
 import (
+	"fmt"
+
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/leg100/pug/internal/tui"
@@ -35,7 +37,7 @@ func (c *Config) Update(msg tea.Msg) tea.Cmd {
 			// toggle autoscroll.
 			return tea.Batch(
 				tui.CmdHandler(toggleAutoscrollMsg{}),
-				tui.ReportInfo("Toggled autoscroll %s", boolToOnOff(!c.disableAutoscroll)),
+				tui.ReportInfo(fmt.Sprintf("Toggled autoscroll %s", boolToOnOff(!c.disableAutoscroll))),
 			)
 		case key.Matches(msg, localKeys.ToggleInfo):
 			c.showInfo = !c.showInfo
