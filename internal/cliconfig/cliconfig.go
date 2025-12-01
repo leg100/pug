@@ -13,7 +13,6 @@ package cliconfig
 
 import (
 	"fmt"
-	"log"
 	"os"
 	"path/filepath"
 
@@ -106,8 +105,6 @@ func LoadConfig() (*Config, tfdiags.Diagnostics) {
 				config = config.Merge(dirConfig)
 			}
 		}
-	} else {
-		log.Printf("[DEBUG] Not reading CLI config directory because config location is overridden by environment variable")
 	}
 
 	if envConfig := EnvConfig(); envConfig != nil {
@@ -124,8 +121,6 @@ func LoadConfig() (*Config, tfdiags.Diagnostics) {
 func loadConfigFile(path string) (*Config, tfdiags.Diagnostics) {
 	var diags tfdiags.Diagnostics
 	result := &Config{}
-
-	log.Printf("Loading CLI configuration from %s", path)
 
 	// Read the HCL file and prepare for parsing
 	d, err := os.ReadFile(path)
@@ -244,18 +239,12 @@ func (c *Config) Merge(c2 *Config) *Config {
 		result.Providers[k] = v
 	}
 	for k, v := range c2.Providers {
-		if v1, ok := c.Providers[k]; ok {
-			log.Printf("[INFO] Local %s provider configuration '%s' overrides '%s'", k, v, v1)
-		}
 		result.Providers[k] = v
 	}
 	for k, v := range c.Provisioners {
 		result.Provisioners[k] = v
 	}
 	for k, v := range c2.Provisioners {
-		if v1, ok := c.Provisioners[k]; ok {
-			log.Printf("[INFO] Local %s provisioner configuration '%s' overrides '%s'", k, v, v1)
-		}
 		result.Provisioners[k] = v
 	}
 	result.DisableCheckpoint = c.DisableCheckpoint || c2.DisableCheckpoint
@@ -307,18 +296,10 @@ func cliConfigFile() (string, error) {
 
 	configFilePath := cliConfigFileOverride()
 	if configFilePath == "" {
-		var err error
-		configFilePath, err = ConfigFile()
+		configFilePath, _ = ConfigFile()
 		mustExist = false
-
-		if err != nil {
-			log.Printf(
-				"[ERROR] Error detecting default CLI config file path: %s",
-				err)
-		}
 	}
 
-	log.Printf("[DEBUG] Attempting to open CLI config file: %s", configFilePath)
 	f, err := os.Open(configFilePath)
 	if err == nil {
 		f.Close()
@@ -329,7 +310,6 @@ func cliConfigFile() (string, error) {
 		return "", err
 	}
 
-	log.Println("[DEBUG] File doesn't exist, but doesn't need to. Ignoring.")
 	return "", nil
 }
 
