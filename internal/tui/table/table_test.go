@@ -62,10 +62,16 @@ func TestTable_CurrentRow(t *testing.T) {
 func TestTable_ToggleSelection(t *testing.T) {
 	tbl := setupTest()
 
+	// select current row
 	tbl.ToggleSelection()
 
 	assert.Len(t, tbl.selected, 1)
 	assert.Equal(t, &resource0, tbl.selected[resource0.ID])
+
+	// de-select current row
+	tbl.ToggleSelection()
+
+	assert.Len(t, tbl.selected, 0)
 }
 
 func TestTable_SelectRange(t *testing.T) {

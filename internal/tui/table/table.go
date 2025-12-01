@@ -344,18 +344,11 @@ func (m Model[V]) SelectedOrCurrent() []V {
 
 // ToggleSelection toggles the selection of the current row.
 func (m *Model[V]) ToggleSelection() {
-	if !m.selectable {
-		return
-	}
 	current, ok := m.CurrentRow()
 	if !ok {
 		return
 	}
-	if _, isSelected := m.selected[current]; isSelected {
-		delete(m.selected, current)
-	} else {
-		m.selected[current.GetID()] = current
-	}
+	m.ToggleSelectionByID(current.GetID())
 }
 
 // ToggleSelectionByID toggles the selection of the row with the given ID. If
