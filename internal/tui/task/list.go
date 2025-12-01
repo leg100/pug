@@ -75,7 +75,7 @@ func (mm *ListMaker) Make(_ resource.ID, width, height int) (tui.ChildModel, err
 			table.ModuleColumn.Key:    mm.Helpers.TaskModulePath(t),
 			table.WorkspaceColumn.Key: mm.Helpers.TaskWorkspaceName(t),
 			commandColumn.Key:         t.String(),
-			ageColumn.Key:             tui.Ago(time.Now(), t.Updated),
+			ageColumn.Key:             tui.Ago(time.Now(), t.Created),
 			statusColumn.Key:          mm.Helpers.TaskStatus(t, true),
 			table.SummaryColumn.Key:   mm.Helpers.TaskSummary(t, true),
 		}

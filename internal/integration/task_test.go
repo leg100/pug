@@ -14,6 +14,51 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestTask_LongRunningTasks(t *testing.T) {
+	t.Parallel()
+
+	tm := setup(t, "./testdata/modules_with_long_running_terraform_apply/")
+
+	// Expect three modules in tree
+	waitFor(t, tm, func(s string) bool {
+		return strings.Contains(s, "├ 󰠱 a") &&
+			strings.Contains(s, "├ 󰠱 b") &&
+			strings.Contains(s, "└ 󰠱 c")
+	})
+
+	// Select all modules and init
+	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlA})
+	tm.Type("i")
+
+	// Expect init task group with 3 successful tasks.
+	// Each module should now be populated with at least one workspace.
+	waitFor(t, tm, func(s string) bool {
+		return strings.Contains(s, "init 3/3") &&
+			matchPattern(t, `modules/a.*init.*exited`, s) &&
+			matchPattern(t, `modules/b.*init.*exited`, s) &&
+			matchPattern(t, `modules/c.*init.*exited`, s) &&
+			strings.Contains(s, "󰠱 3  3")
+	})
+
+	// Go to explorer
+	tm.Type("0")
+
+	// Auto-apply all modules
+	tm.Type("a")
+	waitFor(t, tm, func(s string) bool {
+		return strings.Contains(s, "Auto-apply 3 workspaces? (y/N):")
+	})
+	tm.Type("y")
+
+	// Apply tasks should complete with a non-zero age
+	waitFor(t, tm, func(s string) bool {
+		return strings.Contains(s, "apply 3/3") &&
+			matchPattern(t, `modules/a.*default.*apply.*exited.*\+1~0-0.*[1-9]s ago`, s) &&
+			matchPattern(t, `modules/b.*default.*apply.*exited.*\+1~0-0.*[1-9]s ago`, s) &&
+			matchPattern(t, `modules/c.*default.*apply.*exited.*\+1~0-0.*[1-9]s ago`, s)
+	})
+}
+
 func TestTaskList_Split(t *testing.T) {
 	t.Parallel()
 
