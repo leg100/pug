@@ -74,6 +74,20 @@ func TestTable_ToggleSelection(t *testing.T) {
 	assert.Len(t, tbl.selected, 0)
 }
 
+func TestTable_SelectAll(t *testing.T) {
+	tbl := setupTest()
+
+	tbl.SelectAll()
+
+	assert.Len(t, tbl.selected, 6)
+	assert.Equal(t, &resource0, tbl.selected[resource0.ID])
+	assert.Equal(t, &resource1, tbl.selected[resource1.ID])
+	assert.Equal(t, &resource2, tbl.selected[resource2.ID])
+	assert.Equal(t, &resource3, tbl.selected[resource3.ID])
+	assert.Equal(t, &resource4, tbl.selected[resource4.ID])
+	assert.Equal(t, &resource5, tbl.selected[resource5.ID])
+}
+
 func TestTable_SelectRange(t *testing.T) {
 	tests := []struct {
 		name     string

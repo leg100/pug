@@ -374,7 +374,7 @@ func (m *Model[V]) SelectAll() {
 		return
 	}
 	for _, row := range m.rows {
-		m.selected[row] = row
+		m.selected[row.GetID()] = row
 	}
 }
 
