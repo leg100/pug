@@ -1,8 +1,13 @@
 terraform {
   backend "local" {}
+
+  required_providers {
+    google = {
+      version = "= 5.42.0"
+    }
+  }
 }
 
-# Configure the AWS Provider
 provider "google" {
   region = "us-east-1"
 }

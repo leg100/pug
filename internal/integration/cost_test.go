@@ -90,10 +90,10 @@ func setupInfracostWorkspaces(t *testing.T) *testModel {
 
 func withInfracostEnvs(pricingEndpoint string) configOption {
 	return func(cfg *app.Config) {
-		cfg.Envs = []string{
+		cfg.Envs = append(cfg.Envs,
 			fmt.Sprintf("PRICING_API_ENDPOINT=%s", pricingEndpoint),
 			"INFRACOST_API_KEY=ico-abc",
-		}
+		)
 	}
 }
 
