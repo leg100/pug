@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.6.3](https://github.com/leg100/pug/compare/v0.6.2...v0.6.3) (2025-12-01)
+
+
+### Bug Fixes
+
+* age not updating when task updates ([5f3bb72](https://github.com/leg100/pug/commit/5f3bb72a9e6c36295dbe61f2cc7ce900f666c7f2))
+* allow selected task list item to be unselected ([367c968](https://github.com/leg100/pug/commit/367c96870eb687e5712a13b9c8ea06d5e3433d6d))
+* costs integration test overwriting envs ([a6d0777](https://github.com/leg100/pug/commit/a6d07778d4f2055e706234742fca36de21f8df02))
+* remove annoying debug statements from cliconfig ([77c55b1](https://github.com/leg100/pug/commit/77c55b15b6db4ce86fcadb9c10e12a9079c6729b))
+* select all not working on task list ([09eb4f4](https://github.com/leg100/pug/commit/09eb4f4118f4f492a1519303af7d0ab1a72d3270))
+
+
+### Miscellaneous
+
+* update deps ([366b6b8](https://github.com/leg100/pug/commit/366b6b855e68e4db355d2b03ebc5e439ec89ec68))
+
 ## [0.6.2](https://github.com/leg100/pug/compare/v0.6.1...v0.6.2) (2024-12-29)
 
 
