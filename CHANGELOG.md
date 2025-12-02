@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.5](https://github.com/leg100/pug/compare/v0.6.4...v0.6.5) (2025-12-02)
+
+
+### Bug Fixes
+
+* goreleaser config schema change ([b63417e](https://github.com/leg100/pug/commit/b63417e17a30c23cbfd04ada0143fbfe8db881df))
+
 ## [0.6.4](https://github.com/leg100/pug/compare/v0.6.3...v0.6.4) (2025-12-02)
 
 
