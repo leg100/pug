@@ -1,13 +1,13 @@
 # yaml-language-server: $schema=https://goreleaser.com/static/schema.json
 # vim: set ts=2 sw=2 tw=0 fo=cnqoj
 
-version: 1
+version: 2
 
-brews:
+homebrew_casks:
   - name: pug
     homepage: https://github.com/leg100/pug
     description: "Terminal user interface for terraform power users."
-    folder: Formula
+    directory: Formula
     commit_author:
       name: "Louis Garman"
       email: "louisgarman@gmail.com"
