@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.4](https://github.com/leg100/pug/compare/v0.6.3...v0.6.4) (2025-12-02)
+
+
+### Miscellaneous
+
+* bump goreleaser ([c759f2e](https://github.com/leg100/pug/commit/c759f2ee60ae1495522610d16ae06072ab374066))
+
 ## [0.6.3](https://github.com/leg100/pug/compare/v0.6.2...v0.6.3) (2025-12-01)
 
 
