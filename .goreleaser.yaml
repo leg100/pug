@@ -7,7 +7,6 @@ homebrew_casks:
   - name: pug
     homepage: https://github.com/leg100/pug
     description: "Terminal user interface for terraform power users."
-    directory: Formula
     commit_author:
       name: "Louis Garman"
       email: "louisgarman@gmail.com"
@@ -31,5 +30,5 @@ builds:
       - arm64
 
 archives:
-  - format: zip
+  - formats: ['zip']
     name_template: "{{ .ProjectName }}_{{ .Version }}_{{- .Os }}_{{- .Arch }}"
