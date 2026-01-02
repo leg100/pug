@@ -15,6 +15,8 @@ A terminal user interface for terraform power users.
 
 ![Demo](./demo/demo.gif)
 
+Looking for an open source alternative to Terraform Enterprise? Check out [OTF](https://github.com/leg100/otf).
+
 ## Install instructions
 
 With `go`:
