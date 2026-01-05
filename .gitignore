@@ -46,3 +46,6 @@ pug.log
 go.work
 
 dist/
+
+# for people whose editor generates tags
+*tags*
