@@ -6,6 +6,7 @@ import (
 
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/leg100/pug/internal/module"
 	"github.com/leg100/pug/internal/plan"
 	"github.com/leg100/pug/internal/resource"
 	"github.com/leg100/pug/internal/task"
@@ -29,21 +30,23 @@ func (m *ActionHandler) Update(msg tea.Msg) tea.Cmd {
 		// TODO: if only one worskpace is being applied, then customise message
 		// to mention name of workspace being applied.
 		applyPrompt = "Auto-apply %d workspaces?"
-		upgrade     bool
 	)
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch {
-		case key.Matches(msg, keys.Common.InitUpgrade):
-			upgrade = true
-			fallthrough
-		case key.Matches(msg, keys.Common.Init):
+		case key.Matches(msg, keys.Common.Init),
+			key.Matches(msg, keys.Common.InitUpgrade),
+			key.Matches(msg, keys.Common.InitReconfigure):
+			initOpts := module.InitOptions{
+				Upgrade:     key.Matches(msg, keys.Common.InitUpgrade),
+				Reconfigure: key.Matches(msg, keys.Common.InitReconfigure),
+			}
 			ids, err := m.GetModuleIDs()
 			if err != nil {
 				return ReportError(err)
 			}
 			fn := func(moduleID resource.ID) (task.Spec, error) {
-				return m.Modules.Init(moduleID, upgrade)
+				return m.Modules.Init(moduleID, initOpts)
 			}
 			return m.CreateTasks(fn, ids...)
 		case key.Matches(msg, keys.Common.Execute):
@@ -153,6 +156,7 @@ func (m *ActionHandler) HelpBindings() []key.Binding {
 	return []key.Binding{
 		keys.Common.Init,
 		keys.Common.InitUpgrade,
+		keys.Common.InitReconfigure,
 		keys.Common.Format,
 		keys.Common.Validate,
 		keys.Common.Plan,
