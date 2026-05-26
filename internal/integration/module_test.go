@@ -147,6 +147,34 @@ func TestExplorer_SingleInitUpgrade(t *testing.T) {
 	})
 }
 
+func TestExplorer_SingleInitReconfigure(t *testing.T) {
+	t.Parallel()
+
+	tm := setup(t, "./testdata/single_module")
+
+	// Expect single module in tree
+	waitFor(t, tm, func(s string) bool {
+		return strings.Contains(s, "└ 󰠱 a")
+	})
+
+	// Cursor should automatically be on module.
+	// Initialize module, reconfiguring the backend.
+	tm.Type("R")
+
+	// Expect to see task header
+	waitFor(t, tm, func(s string) bool {
+		return strings.Contains(s, "init 󰠱 modules/a")
+	})
+
+	// Show task info sidebar
+	tm.Type("I")
+
+	// Expect to see -reconfigure argument
+	waitFor(t, tm, func(s string) bool {
+		return strings.Contains(s, "-reconfigure")
+	})
+}
+
 func TestExplorer_SingleFormat(t *testing.T) {
 	t.Parallel()
 

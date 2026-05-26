@@ -204,15 +204,26 @@ func (s *Service) loadTerragruntDependenciesFromDigraph(r io.Reader) error {
 
 const InitTask task.Identifier = "init"
 
+// InitOptions configures a terraform init task.
+type InitOptions struct {
+	// Upgrade adds the -upgrade flag.
+	Upgrade bool
+	// Reconfigure adds the -reconfigure flag.
+	Reconfigure bool
+}
+
 // Init invokes terraform init on the module.
-func (s *Service) Init(moduleID resource.ID, upgrade bool) (task.Spec, error) {
+func (s *Service) Init(moduleID resource.ID, opts InitOptions) (task.Spec, error) {
 	mod, err := s.table.Get(moduleID)
 	if err != nil {
 		return task.Spec{}, err
 	}
 	args := []string{"-input=false"}
-	if upgrade {
+	if opts.Upgrade {
 		args = append(args, "-upgrade")
+	}
+	if opts.Reconfigure {
+		args = append(args, "-reconfigure")
 	}
 	spec := task.Spec{
 		ModuleID:   mod.ID,

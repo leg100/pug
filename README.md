@@ -107,6 +107,7 @@ The number of resources in the state is shown alongside the workspace.
 |--|--|--|--|--|
 |`i`|Run `terraform init`|&check;|&check;|&check;\*\*|
 |`u`|Run `terraform init -upgrade`|&check;|&check;|&check;\*\*|
+|`R`|Run `terraform init -reconfigure`|&check;|&check;|&check;\*\*|
 |`f`|Run `terraform fmt`|&check;|&check;|&check;\*\*|
 |`v`|Run `terraform validate`|&check;|&check;|&check;\*\*|
 |`p`|Run `terraform plan`|&check;|&check;\*|&check;|
