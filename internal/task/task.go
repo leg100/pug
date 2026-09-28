@@ -187,13 +187,28 @@ func (f *factory) newTask(spec Spec) (*Task, error) {
 		}
 	}
 
-	// In terragrunt mode add default terragrunt flags
+	// In terragrunt mode set default terragrunt options. Options are set via
+	// environment variables rather than flags, because flag names differ
+	// between terragrunt versions and unrecognised flags are passed on to
+	// terraform, which rejects them. Both the TG_ names introduced by
+	// terragrunt's CLI redesign and the older TERRAGRUNT_ names are set, to
+	// support both old and new versions.
 	//
 	// TODO: introduce a better way to determine whether terrarunt is in use.
 	// Perhaps use constants for terraform, tofu, and terragrunt.
 	if task.Program == "terragrunt" && f.terragrunt {
-		task.AdditionalEnv = append(task.AdditionalEnv, "TERRAGRUNT_FORWARD_TF_STDOUT=1")
-		task.Args = append(task.Args, "--terragrunt-non-interactive")
+		task.AdditionalEnv = append(task.AdditionalEnv,
+			"TG_NON_INTERACTIVE=true",
+			"TERRAGRUNT_NON_INTERACTIVE=true",
+			"TG_TF_FORWARD_STDOUT=true",
+			"TERRAGRUNT_FORWARD_TF_STDOUT=true",
+		)
+		// Terragrunt's CLI redesign no longer forwards unknown commands
+		// (e.g. "workspace") to the underlying tf binary by default; they
+		// must be invoked as `terragrunt run -- <cmd>`.
+		if len(task.Args) > 0 && task.Args[0] == "workspace" {
+			task.Args = append([]string{"run", "--"}, task.Args...)
+		}
 	}
 	return task, nil
 }
